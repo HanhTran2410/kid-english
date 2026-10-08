@@ -29,12 +29,13 @@ export function h(tagSpec, props = {}, ...children) {
 /**
  * Nút nhấn giữ: phải giữ `ms` mili giây mới kích hoạt, có vòng tiến độ (để bé không bấm nhầm).
  */
-export function holdButton({ label, title, ms = 3000, className = '', onHold }) {
+export function holdButton({ label, title, ms = 3000, className = '', onHold, onShortTap }) {
   const btn = h('button.hold-btn', {
     type: 'button', class: className, 'aria-label': title ?? label, title: title ?? '',
   }, h('span.hold-ring'), h('span.hold-label', { text: label }));
   btn.style.setProperty('--hold-ms', `${ms}ms`);
   let timer = null;
+  let pressedAt = 0;
   const cancel = () => {
     clearTimeout(timer);
     timer = null;
@@ -42,13 +43,20 @@ export function holdButton({ label, title, ms = 3000, className = '', onHold }) 
   };
   btn.addEventListener('pointerdown', (e) => {
     e.preventDefault();
+    pressedAt = Date.now();
     btn.classList.add('holding');
     timer = setTimeout(() => {
       cancel();
+      pressedAt = 0;
       onHold();
     }, ms);
   });
-  for (const ev of ['pointerup', 'pointerleave', 'pointercancel']) btn.addEventListener(ev, cancel);
+  btn.addEventListener('pointerup', () => {
+    // Bấm nhẹ (chưa giữ đủ lâu): nhắc cách mở.
+    if (timer && pressedAt && Date.now() - pressedAt < 600) onShortTap?.();
+    cancel();
+  });
+  for (const ev of ['pointerleave', 'pointercancel']) btn.addEventListener(ev, cancel);
   btn.addEventListener('contextmenu', (e) => e.preventDefault());
   return btn;
 }

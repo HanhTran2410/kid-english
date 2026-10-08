@@ -1,12 +1,12 @@
 // Các màn hình của bé: Bắt đầu, màn hình chính, danh sách bài, sticker, Bông đi ngủ (SPEC 4.1, 4.2, 4.8).
 
-import { h, holdButton, wordVisual } from '../ui.js';
+import { h, holdButton, wordVisual, toast } from '../ui.js';
 import { play } from '../speech/sfx.js';
 import { listLessons, getStickers } from '../db.js';
 import { isLearned } from '../progress.js';
 import { isBackupDue } from '../settings.js';
 import { STICKERS } from '../stickers.js';
-import { homeHoldButton } from '../player/layout.js';
+import { homeButton } from '../player/layout.js';
 import { createBunny } from '../player/teacher.js';
 import { MIC } from '../speech/microphone.js';
 import { normalizeWord } from '../text.js';
@@ -25,9 +25,10 @@ function parentButton(app, { dot = false } = {}) {
     ms: PARENT_HOLD_MS,
     className: 'parent-hold',
     onHold: () => app.go('parent'),
+    onShortTap: () => toast('Bố mẹ nhấn giữ ⚙️ 3 giây (đến khi vòng vàng đầy) để mở Góc bố mẹ.', 3500),
   });
   if (dot) btn.append(h('span.dot', { 'aria-label': 'Cần sao lưu' }));
-  return btn;
+  return h('div.parent-entry', {}, btn, h('span.parent-caption', { text: 'Bố mẹ (giữ 3 giây)' }));
 }
 
 const say = (app, text) => app.speaker.speak(text).catch(() => {});
@@ -76,7 +77,7 @@ export function homeScreen(app) {
       play('tap');
       onTap();
     },
-  }, h('span.home-emoji', { text: emoji }));
+  }, h('span.home-emoji', { text: emoji }), h('span.home-label', { text: label }));
 
   const reviewBtn = big('⭐', 'Ôn tập', () => {
     if (reviewBtn.classList.contains('disabled')) say(app, "Let's learn a lesson first!");
@@ -90,7 +91,7 @@ export function homeScreen(app) {
       big('📚', 'Bài học', () => app.go('lessons'), '.lessons'),
       reviewBtn,
       big('🐰', 'Học cùng Bông', () => app.go('learn'), '.learn')),
-    h('div.home-bottom', {}, big('🎁', 'Sticker', () => app.go('stickers'), '.stickers')),
+    h('div.home-bottom', {}, big('🎁', 'Sticker của bé', () => app.go('stickers'), '.stickers')),
     bunny.el,
   );
 
@@ -106,7 +107,7 @@ export function lessonsScreen(app) {
   app.root.className = 'child-screen lessons';
   const grid = h('div.lesson-grid');
   const urls = [];
-  app.root.append(h('header.child-top', {}, homeHoldButton(app)), grid);
+  app.root.append(h('header.child-top', {}, homeButton(app)), grid);
 
   const open = (lesson) => {
     play('tap');
@@ -168,7 +169,7 @@ export function stickersScreen(app) {
   app.root.className = 'child-screen stickers';
   const grid = h('div.sticker-grid');
   const counter = h('span.sticker-count');
-  app.root.append(h('header.child-top', {}, homeHoldButton(app), counter), grid);
+  app.root.append(h('header.child-top', {}, homeButton(app), counter), grid);
 
   getStickers(app.db).then((owned) => {
     const have = STICKERS.filter((s) => owned[s.id]).length;

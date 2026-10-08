@@ -1,6 +1,6 @@
 # SPEC — App học tiếng Anh cho bé (iPad, dùng cá nhân)
 
-> Phiên bản: 0.7 (chốt câu hỏi và tình huống thực tế trước khi viết code) · Ngày: 2026-10-08
+> Phiên bản: 0.8 (sửa theo góp ý sau lần chạy thử đầu tiên) · Ngày: 2026-10-08
 
 ## 1. Mục tiêu
 
@@ -144,9 +144,9 @@ Prompt yêu cầu AI:
 ## 4. Màn hình
 
 ### 4.1. Màn hình chính (bé)
-- 3 nút rất to, có hình: **📚 Bài học**, **⭐ Ôn tập**, **🐰 Học cùng Bông**.
+- 3 nút rất to, có hình **và chữ giải thích**: **📚 Bài học**, **⭐ Ôn tập**, **🐰 Học cùng Bông**.
 - 1 nút **🎁 Bộ sưu tập sticker** (mục 4.8), nhỏ hơn 3 nút chính nhưng vẫn đủ to cho bé bấm.
-- Góc trên có biểu tượng ⚙️ nhỏ dẫn vào **Góc bố mẹ**, mở bằng cách **nhấn giữ 3 giây** để bé không vào nhầm.
+- Góc trên có biểu tượng ⚙️ nhỏ (kèm chữ "Bố mẹ (giữ 3 giây)") dẫn vào **Góc bố mẹ**, mở bằng cách **nhấn giữ 3 giây** để bé không vào nhầm. Bấm nhẹ thì hiện dòng nhắc cách mở.
 - Phần của bé không có: cài đặt, xóa, tạo bài, chữ "AI" hay bất kỳ chi tiết kỹ thuật nào.
 
 ### 4.2. Danh sách bài học
@@ -194,7 +194,7 @@ Mọi trường hợp: Bông **nói lại câu chuẩn** để bé nghe, rồi �
 1. Hiện hình hoặc emoji to toàn màn hình, chữ tiếng Anh ở dưới.
 2. App đọc *"Cow!"*. Nếu đây là lần đầu từ này xuất hiện trong bài và có giọng vi-VN, app đọc thêm *"con bò!"*. Nghỉ một chút rồi đọc *"Can you say cow?"*.
 3. Bật mic, Bông làm động tác "đang nghe", vòng sóng âm chuyển động theo giọng bé. Kết quả xử lý theo mục 4.3.1.
-4. Sau khi Bông đọc lại từ, **tự sang thẻ tiếp sau khoảng 2 giây**. Nút ▶️ để sang ngay. Bé chạm vào hình thì app đọc lại từ và chờ thêm.
+4. Sau khi Bông đọc lại từ, **tự sang thẻ tiếp sau khoảng 2 giây**. Bé chạm vào hình thì app đọc lại từ và chờ thêm.
 5. Giọng bé được ghi lại: tối đa 1 bản ghi cho mỗi từ mỗi ngày, lưu **bản ghi đầu tiên có tiếng**. Lượt bé im lặng thì không lưu.
 
 **B. Hội thoại cùng Bông (theo kịch bản có sẵn)**
@@ -331,7 +331,9 @@ Phân biệt hai trường hợp:
 - Gần như không có chữ trên phần của bé, dùng hình và icon.
 - Màu tươi, nền dịu, chữ tiếng Anh dùng font tròn và dễ đọc.
 - Mọi thao tác đều có âm thanh phản hồi.
-- Không có nút nào làm bé "mất bài" (không có xóa hay thoát nhầm). Muốn quay về màn hình chính phải nhấn giữ nút 🏠.
+- Không có nút nào làm bé "mất bài" (không có xóa). Nút 🏠 **bấm là về màn hình chính**; chỗ đang học đã được lưu nên lần sau chọn "Học tiếp" được.
+- Trong lúc học (bài học, Ôn tập, Học cùng Bông), nút ▶ **luôn hiện**: bấm là bỏ qua phần đang làm (Bông dừng nói/nghe) và sang bước tiếp ngay. Màn Hoan hô không có nút ▶.
+- Màn hình chính có chữ giải thích dưới mỗi nút.
 - Ưu tiên iPad xoay ngang, xoay dọc vẫn dùng được.
 - **iPhone (màn dọc) cũng phải dùng được đầy đủ**: giai đoạn đầu sẽ test trên iPhone vì chưa có iPad. Giao diện co giãn theo màn hình, nút vẫn đủ to cho bé bấm.
 
@@ -521,6 +523,15 @@ D:\kid-english\
 | Tiếng ồn làm từ thành "thuộc" | ✅ Lên tiếng chỉ đưa tối đa 2⭐; 3⭐ cần chọn đúng hình |
 | Câu hỏi tự tạo sai ngữ pháp với màu | ✅ *"Where is the cow?"* / *"Which one is red?"* |
 | Thời gian ở Góc bố mẹ | ✅ Không tính vào giới hạn của bé |
+
+### 9.6. Góp ý sau lần chạy thử đầu tiên (v0.8)
+
+| Góp ý | Quyết định |
+|---|---|
+| Bấm 🏠 là về menu chính luôn (kể cả ở màn danh sách bài) | ✅ Bỏ nhấn giữ 🏠; chỗ đang học vẫn được lưu |
+| Nút ▶ hiện ngay để sang hình tiếp | ✅ Nút ▶ luôn hiện trong lúc học, bấm là sang bước tiếp |
+| Thêm chữ giải thích ở màn hình chính | ✅ Mục 4.1 |
+| Bấm ⚙️ không mở | ✅ Vẫn nhấn giữ 3 giây; thêm chữ "Bố mẹ (giữ 3 giây)" và dòng nhắc khi bấm nhẹ |
 
 ## 10. Quyết định đã chốt (2026-10-08)
 

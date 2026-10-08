@@ -1,17 +1,20 @@
-// Khung màn hình hoạt động của bé: nút 🏠 (nhấn giữ), thanh tiến độ, vùng nội dung, Bông, nút ▶.
+// Khung màn hình hoạt động của bé: nút 🏠, thanh tiến độ, vùng nội dung, Bông, nút ▶.
 
-import { h, holdButton } from '../ui.js';
+import { h } from '../ui.js';
+import { play } from '../speech/sfx.js';
 import { createBunny } from './teacher.js';
 
-export const HOME_HOLD_MS = 1500;
-
-export function homeHoldButton(app) {
-  return holdButton({
-    label: '🏠',
-    title: 'Giữ để về màn hình chính',
-    ms: HOME_HOLD_MS,
-    className: 'home-hold',
-    onHold: () => app.go('home'),
+/** Nút 🏠: bấm là về màn hình chính (chỗ đang học đã được lưu để "Học tiếp"). */
+export function homeButton(app) {
+  return h('button.home-btn-small', {
+    type: 'button',
+    'aria-label': 'Về màn hình chính',
+    title: 'Về màn hình chính',
+    text: '🏠',
+    onclick: () => {
+      play('tap');
+      app.go('home');
+    },
   });
 }
 
@@ -19,10 +22,11 @@ export function activityLayout(app, extraClass = '') {
   const fill = h('div.progress-fill');
   const stage = h('main.stage');
   const bunny = createBunny(app);
-  const nextBtn = h('button.next-btn', { type: 'button', 'aria-label': 'Tiếp', text: '▶', hidden: true });
+  // Nút ▶ luôn hiện để sang bước tiếp ngay (bỏ qua phần đang làm).
+  const nextBtn = h('button.next-btn', { type: 'button', 'aria-label': 'Tiếp', title: 'Sang bước tiếp', text: '▶' });
   app.root.className = `child-screen activity ${extraClass}`.trim();
   app.root.append(
-    h('header.activity-top', {}, homeHoldButton(app), h('div.progress', { 'aria-hidden': 'true' }, fill)),
+    h('header.activity-top', {}, homeButton(app), h('div.progress', { 'aria-hidden': 'true' }, fill)),
     stage,
     bunny.el,
     nextBtn,

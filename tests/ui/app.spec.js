@@ -115,7 +115,7 @@ test('học dở rồi tải lại trang: Học tiếp vào đúng chỗ dừng,
   const words = ['dog', 'cat', 'cow', 'duck', 'pig', 'bird'];
   await expect(page.locator('.word-label')).toHaveText(words[resume.index]);
 
-  await hold(page, page.getByRole('button', { name: /Giữ để về màn hình chính/ }), 1800);
+  await page.getByRole('button', { name: 'Về màn hình chính' }).click();
   await page.getByRole('button', { name: 'Bài học' }).click();
   await page.getByRole('button', { name: 'Animals' }).click();
   await page.getByRole('button', { name: 'Học lại' }).click();
@@ -150,7 +150,7 @@ test('bộ sưu tập sticker: học xong được sticker, chạm vào thì Bô
   await startApp(page);
   await page.getByRole('button', { name: 'Sticker' }).click();
   await expect(page.locator('.sticker-count')).toHaveText('0/40');
-  await hold(page, page.getByRole('button', { name: /Giữ để về màn hình chính/ }), 1800);
+  await page.getByRole('button', { name: 'Về màn hình chính' }).click();
 
   await page.getByRole('button', { name: 'Học cùng Bông' }).click();
   await playThrough(page);
@@ -232,4 +232,37 @@ test('nghe lại giọng bé: lọc theo bài, chọn tất cả rồi xóa', as
   await expect(page.getByText('Xóa 2 bản ghi của bài Animals?')).toBeVisible();
   await page.locator('.dialog').getByRole('button', { name: 'Xóa' }).click();
   await expect(page.locator('.stats')).toContainText('1 bản ghi');
+});
+
+test('nút ▶ luôn hiện và bấm là sang bước tiếp ngay; nút 🏠 bấm là về menu chính', async ({ page }) => {
+  await startApp(page);
+  await page.getByRole('button', { name: 'Bài học' }).click();
+  // Từ màn danh sách bài, bấm 🏠 là về menu chính.
+  await page.getByRole('button', { name: 'Về màn hình chính' }).click();
+  await expect(page.getByRole('button', { name: 'Học cùng Bông' })).toBeVisible();
+
+  await page.getByRole('button', { name: 'Bài học' }).click();
+  await page.getByRole('button', { name: 'Animals' }).click();
+  await expect(page.locator('.word-label')).toHaveText('dog');
+  const next = page.getByRole('button', { name: 'Tiếp' });
+  await expect(next).toBeVisible();
+  await next.click();
+  await expect(page.locator('.word-label')).toHaveText('cat');
+  await next.click();
+  await expect(page.locator('.word-label')).toHaveText('cow');
+
+  await page.getByRole('button', { name: 'Về màn hình chính' }).click();
+  await expect(page.getByRole('button', { name: 'Học cùng Bông' })).toBeVisible();
+  // Chỗ dừng đã được lưu để "Học tiếp".
+  await page.getByRole('button', { name: 'Bài học' }).click();
+  await expect(page.getByRole('button', { name: 'Animals' }).locator('.resume-bar')).toBeVisible();
+});
+
+test('bấm nhẹ ⚙️ thì hiện hướng dẫn nhấn giữ; màn hình chính có chữ giải thích', async ({ page }) => {
+  await startApp(page);
+  for (const label of ['Bài học', 'Ôn tập', 'Học cùng Bông', 'Sticker của bé', 'Bố mẹ (giữ 3 giây)']) {
+    await expect(page.getByText(label, { exact: true })).toBeVisible();
+  }
+  await page.getByRole('button', { name: /Góc bố mẹ/ }).click();
+  await expect(page.getByRole('status')).toContainText('nhấn giữ ⚙️ 3 giây');
 });

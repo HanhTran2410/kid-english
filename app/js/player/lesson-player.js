@@ -12,6 +12,7 @@ import { runConversationStep } from './conversation-stage.js';
 import { runQuizStep } from './quiz-stage.js';
 import { runStoryStep } from './story-stage.js';
 import { runCompletion } from './completion-stage.js';
+import { runSkippable, endSkippable } from './stage-kit.js';
 
 /**
  * Màn hình học bài.
@@ -61,16 +62,18 @@ export function lessonScreen(app, { lessonId, start = 'begin', continueDirectly 
       layout.setProgress(i / steps.length);
       const step = steps[i];
       layout.stage.dataset.stage = step.stage;
-      if (step.stage === 'words') {
-        await runWordStep(ctx, lesson.words[step.index]);
-      } else if (step.stage === 'conversation') {
-        const turn = lesson.conversation[step.index];
-        await runConversationStep(ctx, turn, emojiOf(turn.word));
-      } else if (step.stage === 'quiz') {
-        await runQuizStep(ctx, questions[step.index], pool, emojiOf);
-      } else {
-        await runStoryStep(ctx, lesson.story[step.index]);
-      }
+      await runSkippable(ctx, signal, async () => {
+        if (step.stage === 'words') {
+          await runWordStep(ctx, lesson.words[step.index]);
+        } else if (step.stage === 'conversation') {
+          const turn = lesson.conversation[step.index];
+          await runConversationStep(ctx, turn, emojiOf(turn.word));
+        } else if (step.stage === 'quiz') {
+          await runQuizStep(ctx, questions[step.index], pool, emojiOf);
+        } else {
+          await runStoryStep(ctx, lesson.story[step.index]);
+        }
+      });
       lesson.resume = resumeAfter(steps, i);
       await saveLesson(lesson);
     }
@@ -80,6 +83,7 @@ export function lessonScreen(app, { lessonId, start = 'begin', continueDirectly 
     lesson.resume = null;
     await saveLesson(lesson);
     layout.stage.dataset.stage = 'done';
+    endSkippable(ctx, signal);
     await runCompletion(ctx);
     app.finishActivity();
   }

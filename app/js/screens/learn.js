@@ -12,6 +12,7 @@ import { buildChatTurns } from '../player/plan.js';
 import { runConversationStep } from '../player/conversation-stage.js';
 import { runCompletion } from '../player/completion-stage.js';
 import { markPracticed } from '../player/track.js';
+import { runSkippable, endSkippable } from '../player/stage-kit.js';
 
 export function learnScreen(app) {
   const layout = activityLayout(app, 'learn');
@@ -42,10 +43,11 @@ export function learnScreen(app) {
         practiced.add(key);
         await markPracticed(app, turn.word, emoji);
       }
-      await runConversationStep(ctx, turn, emoji);
+      await runSkippable(ctx, signal, () => runConversationStep(ctx, turn, emoji));
     }
 
     layout.setProgress(1);
+    endSkippable(ctx, signal);
     await runCompletion(ctx);
     app.finishActivity();
   }

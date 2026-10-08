@@ -11,6 +11,7 @@ import { findPrompt, answerSentence } from '../player/plan.js';
 import { runQuizStep } from '../player/quiz-stage.js';
 import { runCompletion } from '../player/completion-stage.js';
 import { markPracticed, markSpoke, spoke } from '../player/track.js';
+import { runSkippable, endSkippable } from '../player/stage-kit.js';
 
 const POOL_SIZE = 10;
 
@@ -41,24 +42,27 @@ export function reviewScreen(app) {
       const { word, emoji } = picked[i];
       await markPracticed(app, word, emoji);
 
-      if (i % 2 === 0 && poolWords.length >= 2) {
-        await runQuizStep(ctx, { ask: findPrompt(word), answer: word }, poolWords, emojiOf);
-        continue;
-      }
+      await runSkippable(ctx, signal, async () => {
+        if (i % 2 === 0 && poolWords.length >= 2) {
+          await runQuizStep(ctx, { ask: findPrompt(word), answer: word }, poolWords, emojiOf);
+          return;
+        }
 
-      // "What's this?": hiện hình, bé nói tên.
-      layout.stage.replaceChildren(h('div.word-card', {}, wordVisual(visuals.get(word), 'big')));
-      await teacher.say("What's this?");
-      const { result } = await teacher.hear([word]);
-      if (spoke(result)) await markSpoke(app, word, emoji);
-      await teacher.praise(result);
-      await teacher.say(answerSentence(word));
-      if (result === RESULT.LISTEN_ONLY) await teacher.say('Good!');
-      await teacher.checkPresence();
-      await teacher.pause(900);
+        // "What's this?": hiện hình, bé nói tên.
+        layout.stage.replaceChildren(h('div.word-card', {}, wordVisual(visuals.get(word), 'big')));
+        await teacher.say("What's this?");
+        const { result } = await teacher.hear([word]);
+        if (spoke(result)) await markSpoke(app, word, emoji);
+        await teacher.praise(result);
+        await teacher.say(answerSentence(word));
+        if (result === RESULT.LISTEN_ONLY) await teacher.say('Good!');
+        await teacher.checkPresence();
+        await teacher.pause(900);
+      });
     }
 
     layout.setProgress(1);
+    endSkippable(ctx, signal);
     await runCompletion(ctx);
     app.finishActivity();
   }

@@ -240,6 +240,8 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .home-btn {
   display: grid;
   place-items: center;
+  align-content: center;
+  gap: 6px;
   width: clamp(var(--tap), 26vw, 260px);
   aspect-ratio: 1;
   border-radius: 40px;
@@ -250,9 +252,35 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .home-btn.lessons { background: var(--sky); }
 .home-btn.review { background: var(--yellow); }
 .home-btn.learn { background: var(--pink); }
-.home-btn.stickers { background: var(--lilac); width: var(--tap); border-radius: 32px; }
+.home-btn.stickers { background: var(--lilac); width: auto; aspect-ratio: auto; min-height: var(--tap); padding: 12px 28px; border-radius: 32px; grid-auto-flow: column; gap: 14px; }
+.home-label {
+  font-size: clamp(18px, 2.6vw, 28px);
+  font-weight: 800;
+  color: #fff;
+  text-shadow: 0 2px 0 rgba(61, 44, 94, 0.25);
+  line-height: 1.1;
+  text-align: center;
+  padding: 0 8px;
+}
+.home-btn.review .home-label { color: var(--ink); text-shadow: none; }
+.parent-entry { display: grid; justify-items: center; gap: 4px; }
+.parent-caption { font-size: 13px; color: var(--ink-soft); }
+.sleep .parent-caption { color: #d9d2f2; }
+.home-btn-small {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  background: var(--card);
+  box-shadow: var(--shadow);
+  font-size: 36px;
+  font-family: var(--emoji);
+}
+.home-btn-small:active { transform: scale(0.94); }
 .home-btn.disabled { filter: grayscale(0.8); opacity: 0.5; }
-.home-emoji { font-size: clamp(64px, 13vw, 140px); }
+.home-emoji { font-size: clamp(56px, 11vw, 120px); }
 .home-btn.stickers .home-emoji { font-size: 64px; }
 .home-bottom { display: flex; justify-content: center; padding-bottom: 8px; }
 .home .bunny { opacity: 0.9; }
@@ -739,6 +767,7 @@ textarea.paste-area { width: 100%; min-height: 200px; font-family: ui-monospace,
   .choice .visual, .choices[data-count='2'] .choice .visual { width: clamp(var(--tap), 38vw, 200px); }
   .next-btn { width: 96px; height: 96px; font-size: 40px; }
   .menu { grid-template-columns: 1fr; }
+  .home .bunny { display: none; }
   .diag { grid-template-columns: 1fr; gap: 2px; }
   .diag dd { margin-bottom: 8px; }
 }
