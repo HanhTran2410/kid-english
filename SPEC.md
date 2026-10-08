@@ -1,6 +1,6 @@
 # SPEC — App học tiếng Anh cho bé (iPad, dùng cá nhân)
 
-> Phiên bản: 0.8 (sửa theo góp ý sau lần chạy thử đầu tiên) · Ngày: 2026-10-08
+> Phiên bản: 0.9 (sửa theo góp ý sau lần chạy thử đầu tiên) · Ngày: 2026-10-08
 
 ## 1. Mục tiêu
 
@@ -305,7 +305,7 @@ Phân biệt hai trường hợp:
 - Mỗi lần được tặng, app **ưu tiên sticker bé chưa có**. Có đủ bộ rồi thì tặng ngẫu nhiên, sticker đó hiện số ×2, ×3...
 - Màn hình bộ sưu tập: lưới sticker to. Sticker đã có thì có màu; chưa có thì hiện bóng xám kèm dấu ❓ để bé tò mò.
 - Bé chạm vào sticker đã có: sticker nảy lên và Bông đọc tên tiếng Anh, ví dụ *"Lion!"*. Bé học thêm từ mới khi chơi.
-- Bé không xóa được sticker. Bố mẹ xem được số sticker trong Góc bố mẹ.
+- Bé không xóa được sticker. Trong Góc bố mẹ → **Sticker của bé**: xem bé có những sticker nào, **bớt từng sticker** hoặc **xóa hết** (có hỏi xác nhận), dùng khi bố mẹ lỡ học thử thay bé.
 
 ### 4.9. Xử lý tình huống bất thường
 
@@ -532,6 +532,8 @@ D:\kid-english\
 | Nút ▶ hiện ngay để sang hình tiếp | ✅ Nút ▶ luôn hiện trong lúc học, bấm là sang bước tiếp |
 | Thêm chữ giải thích ở màn hình chính | ✅ Mục 4.1 |
 | Bấm ⚙️ không mở | ✅ Vẫn nhấn giữ 3 giây; thêm chữ "Bố mẹ (giữ 3 giây)" và dòng nhắc khi bấm nhẹ |
+| Nút "Về màn hình của bé" trong Góc bố mẹ khác màu, chữ ở giữa | ✅ Nút hồng, rộng hết hàng, tách khỏi menu |
+| Reset sticker khi bố mẹ lỡ bấm | ✅ Góc bố mẹ → Sticker của bé: bớt từng sticker hoặc xóa hết (mục 4.8) |
 
 ## 10. Quyết định đã chốt (2026-10-08)
 

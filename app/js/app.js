@@ -8,7 +8,7 @@ import { saveSetting } from './settings.js';
 import { resumeSession, addTime, extend, isTimeUp } from './session.js';
 import { h } from './ui.js';
 
-export const APP_VERSION = '0.1.1';
+export const APP_VERSION = '0.1.2';
 
 const SESSION_SAVE_EVERY_MS = 15000;
 

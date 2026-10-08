@@ -266,3 +266,25 @@ test('bấm nhẹ ⚙️ thì hiện hướng dẫn nhấn giữ; màn hình ch�
   await page.getByRole('button', { name: /Góc bố mẹ/ }).click();
   await expect(page.getByRole('status')).toContainText('nhấn giữ ⚙️ 3 giây');
 });
+
+test('Góc bố mẹ: bớt từng sticker và xóa hết sticker', async ({ page }) => {
+  await startApp(page);
+  await page.evaluate(async () => {
+    const db = window.kidEnglish.db;
+    await db.put('stickers', { id: 'lion', firstEarnedAt: 1, count: 2 });
+    await db.put('stickers', { id: 'frog', firstEarnedAt: 2, count: 1 });
+  });
+  await openParent(page);
+  await page.getByRole('button', { name: 'Sticker của bé' }).click();
+  await expect(page.getByRole('heading', { name: /Bé có 2\/40 loại sticker \(3 lần nhận\)/ })).toBeVisible();
+  await page.getByRole('button', { name: 'Bớt 1 sticker lion' }).click();
+  await expect(page.getByRole('heading', { name: /\(2 lần nhận\)/ })).toBeVisible();
+  await page.getByRole('button', { name: 'Xóa hết sticker' }).click();
+  await page.locator('.dialog').getByRole('button', { name: 'Xóa hết' }).click();
+  await expect(page.getByText(/Bé chưa có sticker nào/)).toBeVisible();
+
+  await page.getByRole('button', { name: '← Quay lại' }).click();
+  await page.getByRole('button', { name: 'Về màn hình của bé' }).click();
+  await page.getByRole('button', { name: 'Sticker của bé' }).click();
+  await expect(page.locator('.sticker-count')).toHaveText('0/40');
+});

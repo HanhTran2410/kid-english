@@ -14,6 +14,7 @@ import { lessonsView, lessonDetailView } from './lessons.js';
 import { recordingsView } from './recordings.js';
 import { settingsView } from './settings.js';
 import { backupView } from './backup.js';
+import { stickersAdminView } from './stickers.js';
 
 const VIEWS = {
   menu: menuView,
@@ -25,6 +26,7 @@ const VIEWS = {
   recordings: recordingsView,
   settings: settingsView,
   backup: backupView,
+  stickers: stickersAdminView,
 };
 
 export function parentScreen(app, params = {}) {
@@ -50,8 +52,10 @@ function menuView(app) {
       item('🎙️', 'Nghe lại giọng bé', () => goParent(app, 'recordings')),
       item('👩‍🏫', 'Copy prompt "cô giáo"', () => copyTeacherPrompt(app)),
       item('💾', 'Sao lưu / Khôi phục', () => goParent(app, 'backup'), due),
-      item('⚙️', 'Cài đặt & chẩn đoán', () => goParent(app, 'settings')),
-      item('🐰', 'Về màn hình của bé', () => app.go('home'))),
+      item('🎁', 'Sticker của bé', () => goParent(app, 'stickers')),
+      item('⚙️', 'Cài đặt & chẩn đoán', () => goParent(app, 'settings'))),
+    h('button.exit-to-child', { type: 'button', onclick: () => app.go('home') },
+      h('span.menu-emoji', { text: '🐰' }), h('span', { text: 'Về màn hình của bé' })),
   );
 
   // Cảnh báo cho bố mẹ (SPEC 4.9).
