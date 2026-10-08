@@ -49,11 +49,12 @@ export function reviewScreen(app) {
         }
 
         // "What's this?": hiện hình, bé nói tên.
-        layout.stage.replaceChildren(h('div.word-card', {}, wordVisual(visuals.get(word), 'big')));
+        const picture = wordVisual(visuals.get(word), 'big');
+        layout.stage.replaceChildren(h('div.word-card', {}, picture));
         await teacher.say("What's this?");
         const { result } = await teacher.hear([word]);
         if (spoke(result)) await markSpoke(app, word, emoji);
-        await teacher.praise(result);
+        await teacher.praise(result, picture);
         await teacher.say(answerSentence(word));
         if (result === RESULT.LISTEN_ONLY) await teacher.say('Good!');
         await teacher.checkPresence();

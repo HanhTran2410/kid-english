@@ -449,6 +449,12 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
   animation: burst 1.2s ease-out forwards;
   --angle: calc(var(--i) * 45deg);
 }
+.star-burst.on-target { inset: auto; z-index: 4; }
+.star-burst.on-target span { font-size: 40px; animation-name: burst-small; }
+@keyframes burst-small {
+  from { transform: rotate(var(--angle)) translateY(0) scale(0.4); opacity: 1; }
+  to { transform: rotate(var(--angle)) translateY(-16vmin) scale(1.1); opacity: 0; }
+}
 @keyframes burst {
   from { transform: rotate(var(--angle)) translateY(0) scale(0.4); opacity: 1; }
   to { transform: rotate(var(--angle)) translateY(-38vmin) scale(1.2); opacity: 0; }

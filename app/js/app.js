@@ -8,7 +8,7 @@ import { saveSetting } from './settings.js';
 import { resumeSession, addTime, extend, isTimeUp } from './session.js';
 import { h } from './ui.js';
 
-export const APP_VERSION = '0.1.2';
+export const APP_VERSION = '0.1.3';
 
 const SESSION_SAVE_EVERY_MS = 15000;
 
@@ -108,9 +108,12 @@ export class App {
     if (!this.recognitionTested && this.mic.ready) {
       this.recognitionTested = true;
       this.recognizer.setAllowed(this.settings.useRecognition);
-      // Không chờ: tự kiểm tra chạy nền, lỗi thì tự tắt cho cả buổi.
-      this.recognizer.selfTest();
+      // Tự kiểm tra chạy nền, lỗi thì tự tắt cho cả buổi. Chỉ chờ khi sắp tắt mic ngay sau đó.
+      const test = this.recognizer.selfTest();
+      if (this.settings.micOnlyWhenListening) await test;
     }
+    // Chỉ bật mic khi nghe bé: đã xin quyền xong thì tắt mic ngay để tiếng Bông không bị rè.
+    if (this.settings.micOnlyWhenListening && this.mic.ready) this.mic.release();
   }
 
   get audioLocked() {

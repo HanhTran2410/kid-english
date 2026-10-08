@@ -1,7 +1,7 @@
 // Cài đặt và thông tin chẩn đoán (SPEC 4.6).
 
 import { h, toast, formatBytes } from '../../ui.js';
-import { englishVoices } from '../../speech/tts.js';
+import { englishVoices, isNoveltyVoice } from '../../speech/tts.js';
 import { pickMimeType } from '../../speech/recorder.js';
 import { LIMIT_OPTIONS } from '../../session.js';
 import { isStandalone } from '../child.js';
@@ -23,7 +23,11 @@ export function settingsView(app) {
   const voiceSel = h('select', {
     onchange: (e) => save('voiceURI', e.target.value || null, () => app.speaker.configure({ voiceURI: s.voiceURI, rate: s.rate })),
   }, h('option', { value: '', text: 'Tự chọn (en-US)' }),
-  ...voices.map((v) => h('option', { value: v.voiceURI, text: `${v.name} (${v.lang})`, selected: v.voiceURI === s.voiceURI })));
+  ...voices.map((v) => h('option', {
+    value: v.voiceURI,
+    text: `${v.name} (${v.lang})${isNoveltyVoice(v) ? ' — giọng hiệu ứng, không nên dùng' : ''}`,
+    selected: v.voiceURI === s.voiceURI,
+  })));
 
   const rateOut = h('output', { text: String(s.rate) });
   const rate = h('input', {
@@ -46,7 +50,9 @@ export function settingsView(app) {
   body.append(
     section('Nhân vật và giọng đọc',
       field('Tên nhân vật', name, 'Tên chỉ hiện trên màn hình; khi nói tiếng Anh Bông xưng "I".'),
-      field('Giọng đọc tiếng Anh', voiceSel, voices.length ? null : 'Máy chưa liệt kê giọng tiếng Anh nào.'),
+      field('Giọng đọc tiếng Anh', voiceSel, voices.length
+        ? 'Giọng tốt xếp trên cùng. Nghe rè thì tải giọng Enhanced/Premium: Cài đặt → Trợ năng → Nội dung được đọc → Giọng nói → Tiếng Anh, rồi chọn lại ở đây.'
+        : 'Máy chưa liệt kê giọng tiếng Anh nào.'),
       field('Tốc độ đọc', h('div.row', {}, rate, rateOut), 'Mặc định 0.8 (chậm hơn bình thường).'),
       h('button.btn', {
         type: 'button', text: '🔊 Nghe thử', onclick: () => app.speaker.speak('Hello! Can you say cow?').catch(() => {}),
@@ -56,6 +62,11 @@ export function settingsView(app) {
     section('Nghe và ghi âm',
       check('recordVoice', 'Ghi âm giọng bé (mỗi từ mỗi ngày 1 bản)'),
       check('useRecognition', 'Dùng nhận dạng giọng nói', () => app.recognizer.setAllowed(s.useRecognition)),
+      check('micOnlyWhenListening', 'Chỉ bật mic khi đang nghe bé', () => {
+        if (s.micOnlyWhenListening) app.mic.release();
+        else app.mic.start();
+      }),
+      h('p.field-hint', { text: 'Bật thử nếu tiếng Bông bị rè hoặc nhỏ: khi mic mở, iPhone/iPad chuyển loa sang chế độ gọi thoại. Nếu máy hỏi quyền mic liên tục thì tắt lại.' }),
       h('p.field-hint', { text: 'Trên iOS, nhận dạng gửi giọng bé lên máy chủ Apple để xử lý và cần mạng. Tắt đi thì app chỉ đo âm lượng.' })),
     section('Thời gian',
       field('Giới hạn mỗi buổi', limit, 'Giới hạn mềm: hết giờ vẫn cho học hết bài. Khi Bông ngủ, bố mẹ nhấn giữ 🌙 3 giây để cho thêm 15 phút.')),

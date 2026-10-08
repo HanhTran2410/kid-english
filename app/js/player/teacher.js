@@ -57,6 +57,8 @@ export class Teacher {
     if (!app.mic.ready) await this.say('Your turn!');
     this.bunny.set('listen');
     app.listening = true;
+    const onDemand = app.settings.micOnlyWhenListening && app.mic.ready;
+    if (onDemand) await app.mic.start();
     let outcome;
     try {
       outcome = await listen({
@@ -68,6 +70,7 @@ export class Teacher {
         onLevel: (r) => this.bunny.setLevel(r),
       });
     } finally {
+      if (onDemand) app.mic.release();
       app.listening = false;
       this.bunny.set('idle');
     }
@@ -76,10 +79,10 @@ export class Teacher {
   }
 
   /** Khen theo kết quả nghe. Không bao giờ nói "sai". */
-  async praise(result) {
+  async praise(result, target = null) {
     if (result === RESULT.MATCH) {
       play('ding');
-      this.celebrate();
+      this.celebrate(target);
       this.bunny.set('clap');
       await this.say('Great job!');
     } else if (result === RESULT.VOICE) {
@@ -92,10 +95,18 @@ export class Teacher {
     this.bunny.set('idle');
   }
 
-  /** Sao bay lên khi bé làm tốt. */
-  celebrate() {
+  /** Sao bay lên khi bé làm tốt; có `target` thì sao bay ra từ chính hình đó (ví dụ hình bé chọn đúng). */
+  celebrate(target = null) {
     const burst = h('div.star-burst', { 'aria-hidden': 'true' },
       ...Array.from({ length: 8 }, (_, i) => h('span', { text: '⭐', style: { '--i': String(i) } })));
+    if (target) {
+      const t = target.getBoundingClientRect();
+      const s = this.stage.getBoundingClientRect();
+      burst.classList.add('on-target');
+      Object.assign(burst.style, {
+        left: `${t.left - s.left}px`, top: `${t.top - s.top}px`, width: `${t.width}px`, height: `${t.height}px`,
+      });
+    }
     this.stage.append(burst);
     setTimeout(() => burst.remove(), 1400);
   }

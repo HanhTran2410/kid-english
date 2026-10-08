@@ -34,7 +34,7 @@ export async function runQuizStep(ctx, question, pool, emojiOf) {
       if (wrong === 0) await markPickedRight(app, question.answer, emojiOf(question.answer));
       tapped.classList.add('correct');
       play('ding');
-      teacher.celebrate();
+      teacher.celebrate(tapped);
       teacher.bunny.set('clap');
       await teacher.say(`Great job! ${capitalize(withArticle(question.answer))}!`);
       teacher.bunny.set('idle');

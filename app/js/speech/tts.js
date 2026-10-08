@@ -20,10 +20,34 @@ export function loadVoices(timeoutMs = 2500) {
   });
 }
 
-const quality = (v) => (/premium/i.test(v.name) ? 3 : /enhanced/i.test(v.name) ? 2 : 0) + (v.localService ? 1 : 0);
+// iOS/macOS có sẵn nhiều giọng "vui" nghe như robot (Albert, Bad News, Zarvox…) và giọng Eloquence (Eddy, Grandpa…).
+// Các giọng này xếp đầu danh sách theo bảng chữ cái nên phải loại ra, nếu không tiếng Anh sẽ bị rè/méo.
+const NOVELTY_NAMES = new Set([
+  'albert', 'bad news', 'bahh', 'bells', 'boing', 'bubbles', 'cellos', 'good news', 'jester', 'organ',
+  'superstar', 'trinoids', 'whisper', 'wobble', 'zarvox', 'fred', 'junior', 'kathy', 'ralph',
+  'eddy', 'flo', 'grandma', 'grandpa', 'reed', 'rocko', 'sandy', 'shelley',
+]);
+const NICE_NAMES = /^(samantha|ava|allison|susan|zoe|nicky|evan|tom|joelle|noelle|nathan|karen|daniel|moira|tessa|serena|linh)/i;
+
+/** Đánh giá giọng: càng cao càng nên dùng. Giọng robot bị điểm âm. */
+export function voiceScore(v) {
+  const name = String(v.name ?? '').toLowerCase().replace(/\s*\(.*\)\s*$/, '');
+  const uri = String(v.voiceURI ?? '').toLowerCase();
+  if (NOVELTY_NAMES.has(name) || uri.includes('speech.synthesis.voice') || uri.includes('eloquence')) return -100;
+  let score = 0;
+  if (/premium/.test(uri) || /premium/i.test(v.name)) score += 50;
+  else if (/enhanced/.test(uri) || /enhanced/i.test(v.name)) score += 40;
+  else if (/siri/.test(uri)) score += 30;
+  if (NICE_NAMES.test(v.name ?? '')) score += 10;
+  if (v.localService) score += 2;
+  if (v.default) score += 1;
+  return score;
+}
+
+export const isNoveltyVoice = (v) => voiceScore(v) < 0;
 
 /**
- * Chọn giọng: đúng giọng bố mẹ đã chọn (nếu máy còn) → đúng ngôn ngữ (en-US) → cùng họ ngôn ngữ (en-*).
+ * Chọn giọng: đúng giọng bố mẹ đã chọn (nếu máy còn) → giọng tốt nhất cùng ngôn ngữ, ưu tiên đúng vùng (en-US).
  * @param {SpeechSynthesisVoice[]} voices
  * @param {string} lang ví dụ 'en-US', 'vi-VN'
  */
@@ -32,15 +56,16 @@ export function pickVoice(voices, lang, preferredURI = null) {
     const chosen = voices.find((v) => v.voiceURI === preferredURI);
     if (chosen && chosen.lang.toLowerCase().startsWith(lang.slice(0, 2).toLowerCase())) return chosen;
   }
-  const norm = (l) => l.toLowerCase().replace('_', '-');
-  const best = (list) => [...list].sort((a, b) => quality(b) - quality(a))[0] ?? null;
-  const exact = voices.filter((v) => norm(v.lang) === norm(lang));
-  if (exact.length) return best(exact);
+  const norm = (l) => String(l).toLowerCase().replace('_', '-');
   const family = voices.filter((v) => norm(v.lang).startsWith(norm(lang).slice(0, 2)));
-  return best(family);
+  const score = (v) => voiceScore(v) + (norm(v.lang) === norm(lang) ? 5 : 0);
+  return [...family].sort((a, b) => score(b) - score(a))[0] ?? null;
 }
 
-export const englishVoices = (voices) => voices.filter((v) => /^en/i.test(v.lang));
+/** Giọng tiếng Anh, giọng tốt trước, giọng robot ở cuối. */
+export const englishVoices = (voices) => voices
+  .filter((v) => /^en/i.test(v.lang))
+  .sort((a, b) => voiceScore(b) - voiceScore(a));
 
 export class Speaker {
   constructor() {

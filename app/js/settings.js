@@ -7,6 +7,7 @@ export const DEFAULT_SETTINGS = {
   rate: 0.8,
   recordVoice: true,
   useRecognition: true,
+  micOnlyWhenListening: false, // true = tắt mic khi Bông nói (thử nếu tiếng bị rè/nhỏ trên iPhone)
   limitMinutes: 15, // null = tắt giới hạn
   lastBackupAt: null,
   firstUseAt: null,

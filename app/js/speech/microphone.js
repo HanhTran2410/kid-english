@@ -79,6 +79,14 @@ export class Microphone {
     return Math.max(MIN_THRESHOLD, this.noiseFloor * 3);
   }
 
+  /** Tạm tắt mic nhưng vẫn giữ trạng thái đã được cho phép (gọi start() để bật lại). */
+  release() {
+    clearInterval(this.sampleTimer);
+    this.stream?.getTracks().forEach((t) => t.stop());
+    this.stream = null;
+    this.analyser = null;
+  }
+
   stop() {
     clearInterval(this.sampleTimer);
     this.stream?.getTracks().forEach((t) => t.stop());

@@ -35,7 +35,7 @@ export async function runConversationStep(ctx, turn, emoji = '') {
     // Bông luôn nói câu mẫu đầy đủ.
     if (result === RESULT.MATCH) {
       play('ding');
-      teacher.celebrate();
+      teacher.celebrate(picture);
       teacher.bunny.set('clap');
       await teacher.say(`Yes! ${turn.child}`);
     } else if (result === RESULT.VOICE) {

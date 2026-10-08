@@ -1,6 +1,6 @@
 # SPEC — App học tiếng Anh cho bé (iPad, dùng cá nhân)
 
-> Phiên bản: 0.9 (sửa theo góp ý sau lần chạy thử đầu tiên) · Ngày: 2026-10-08
+> Phiên bản: 0.10 (sửa theo góp ý sau lần chạy thử đầu tiên) · Ngày: 2026-10-08
 
 ## 1. Mục tiêu
 
@@ -29,7 +29,7 @@ Bố mẹ → ChatGPT/Gemini (miễn phí) → JSON → copy/dán → App (iPad)
 |---|---|---|
 | Dạng app | **PWA** (chọn "Thêm vào Màn hình chính" trên iPad) | Không cần Mac/Xcode, không hết hạn sau 7 ngày như cài app thủ công |
 | Code | HTML + CSS + JavaScript thuần (ES modules), **không framework, không bước build** | Copy thư mục `app/` lên host là chạy |
-| Giọng đọc | Web Speech API `speechSynthesis` | Lấy danh sách giọng qua `getVoices()`, **chọn theo ngôn ngữ** (en-US, vi-VN), không ghi cứng tên giọng. Không có giọng vi-VN thì bỏ qua phần đọc nghĩa tiếng Việt. Không có giọng en-US thì dùng giọng `en-*` bất kỳ. Thường chạy offline, nhưng còn tùy giọng nào đã cài trên iPad |
+| Giọng đọc | Web Speech API `speechSynthesis` | Lấy danh sách giọng qua `getVoices()`, **chọn theo ngôn ngữ** (en-US, vi-VN), không ghi cứng tên giọng. **Loại các giọng hiệu ứng/robot của iOS** (Albert, Bad News, Zarvox…, giọng Eloquence như Eddy, Grandpa…), ưu tiên giọng Premium → Enhanced → Siri → giọng thường. Không có giọng vi-VN thì bỏ qua phần đọc nghĩa tiếng Việt. Không có giọng en-US thì dùng giọng `en-*` bất kỳ. Thường chạy offline, nhưng còn tùy giọng nào đã cài trên iPad |
 | Nghe bé nói | **Lõi:** đo âm lượng mic (`getUserMedia` + Web Audio) để biết bé có lên tiếng hay không. **Bổ sung:** `SpeechRecognition` nếu trình duyệt có và chạy được | Xem mục 4.3.1. App phải học được trọn vẹn khi **không có** nhận dạng giọng nói |
 | Ghi âm giọng bé | `MediaRecorder`, **chọn định dạng lúc chạy** bằng `isTypeSupported` theo thứ tự `audio/mp4` → `audio/webm;codecs=opus` → `audio/webm` | Lưu kèm `mimeType` cùng bản ghi |
 | Lưu dữ liệu | **IndexedDB**. Ảnh và ghi âm lưu dạng **Blob** (không dùng base64) | Mô hình dữ liệu ở mục 2.1 |
@@ -254,6 +254,7 @@ Kết thúc bài: màn hình **"Hoan hô!"** kèm 1 sticker tặng bé, sticker 
   - Tốc độ đọc (mặc định 0.8, chậm hơn bình thường).
   - Bật hoặc tắt ghi âm.
   - Bật hoặc tắt nhận dạng giọng nói (mặc định: bật; xem mục 4.3.1).
+  - **Chỉ bật mic khi đang nghe bé** (mặc định: tắt). Bật thử nếu tiếng Bông bị rè/nhỏ, vì khi mic mở iOS chuyển loa sang chế độ gọi thoại (mục 6).
   - Giới hạn thời gian mỗi buổi: 15 / 20 / 30 phút hoặc **Tắt** (mặc định 15 phút). Đây là giới hạn **mềm**:
     - Hết giờ khi bé đang học dở thì **cho học hết bài đó**, không cắt ngang.
     - Học xong bài, Bông ngáp và nói *"I'm sleepy! Bye-bye!"* kèm hình Bông ngủ, phần của bé tạm khóa.
@@ -534,6 +535,8 @@ D:\kid-english\
 | Bấm ⚙️ không mở | ✅ Vẫn nhấn giữ 3 giây; thêm chữ "Bố mẹ (giữ 3 giây)" và dòng nhắc khi bấm nhẹ |
 | Nút "Về màn hình của bé" trong Góc bố mẹ khác màu, chữ ở giữa | ✅ Nút hồng, rộng hết hàng, tách khỏi menu |
 | Reset sticker khi bố mẹ lỡ bấm | ✅ Góc bố mẹ → Sticker của bé: bớt từng sticker hoặc xóa hết (mục 4.8) |
+| Sao khen đúng hiện cố định một chỗ | ✅ Sao bay ra từ chính hình bé chọn đúng (hoặc hình đang hiện khi bé nói đúng) |
+| Tiếng Anh bị rè | ✅ Không chọn giọng robot của iOS; Cài đặt xếp giọng tốt lên đầu; thêm tùy chọn "Chỉ bật mic khi đang nghe bé" |
 
 ## 10. Quyết định đã chốt (2026-10-08)
 

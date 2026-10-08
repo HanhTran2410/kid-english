@@ -1,6 +1,6 @@
 {
   "name": "kid-english",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "private": true,
   "type": "module",
   "description": "PWA học tiếng Anh cho bé 3 tuổi (nghe → nói lại). Xem SPEC.md.",

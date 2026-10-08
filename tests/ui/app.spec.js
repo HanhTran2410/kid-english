@@ -288,3 +288,30 @@ test('Góc bố mẹ: bớt từng sticker và xóa hết sticker', async ({ pag
   await page.getByRole('button', { name: 'Sticker của bé' }).click();
   await expect(page.locator('.sticker-count')).toHaveText('0/40');
 });
+
+test('chọn đúng hình thì sao bay ra ngay trên hình đó', async ({ page }) => {
+  await startApp(page);
+  await page.getByRole('button', { name: 'Bài học' }).click();
+  await page.getByRole('button', { name: 'Animals' }).click();
+  const next = page.getByRole('button', { name: 'Tiếp' });
+  // Bấm ▶ để sang nhanh tới phần trò chơi (câu đầu: "Which one says woof?" → dog).
+  for (let i = 0; i < 40 && !(await page.locator('.choice').first().isVisible()); i++) {
+    await next.click();
+    await page.waitForTimeout(80);
+  }
+  const dog = page.locator('.choice[data-word="dog"]');
+  await expect(dog).toBeVisible();
+  await expect.poll(() => page.evaluate(() => window.kidEnglish.speaker.speaking)).toBe(false);
+  await dog.click();
+  const burst = page.locator('.star-burst.on-target');
+  await expect(burst).toBeAttached();
+  const [b, d] = await Promise.all([
+    burst.evaluate((el) => el.getBoundingClientRect().toJSON()),
+    dog.evaluate((el) => el.getBoundingClientRect().toJSON()),
+  ]);
+  const center = (r) => [r.x + r.width / 2, r.y + r.height / 2];
+  const [bx, by] = center(b);
+  const [dx, dy] = center(d);
+  expect(Math.abs(bx - dx)).toBeLessThan(20);
+  expect(Math.abs(by - dy)).toBeLessThan(20);
+});

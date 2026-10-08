@@ -43,3 +43,24 @@ test('định dạng ghi âm theo thứ tự mp4 → webm opus → webm', () => 
   assert.equal(pickMimeType((t) => t === 'audio/webm'), 'audio/webm');
   assert.equal(pickMimeType(() => false), '');
 });
+
+test('không chọn giọng robot của iOS (Albert, Bad News, Eloquence…) dù đứng đầu danh sách', async () => {
+  const { voiceScore, englishVoices } = await import('../../app/js/speech/tts.js');
+  const ios = [
+    v('Albert', 'en-US', { voiceURI: 'com.apple.speech.synthesis.voice.Albert' }),
+    v('Bad News', 'en-US', { voiceURI: 'com.apple.speech.synthesis.voice.BadNews' }),
+    v('Eddy (English (US))', 'en-US', { voiceURI: 'com.apple.eloquence.en-US.Eddy' }),
+    v('Grandpa (English (US))', 'en-US', { voiceURI: 'com.apple.eloquence.en-US.Grandpa' }),
+    v('Daniel', 'en-GB', { voiceURI: 'com.apple.voice.compact.en-GB.Daniel' }),
+    v('Samantha', 'en-US', { voiceURI: 'com.apple.voice.compact.en-US.Samantha' }),
+  ];
+  assert.equal(pickVoice(ios, 'en-US').name, 'Samantha');
+  assert.ok(voiceScore(ios[0]) < 0 && voiceScore(ios[2]) < 0);
+  const premium = v('Ava (Premium)', 'en-US', { voiceURI: 'com.apple.voice.premium.en-US.Ava' });
+  assert.equal(pickVoice([...ios, premium], 'en-US').name, 'Ava (Premium)');
+  // Danh sách trong Cài đặt: giọng tốt trước, giọng robot cuối.
+  assert.equal(englishVoices([...ios, premium])[0].name, 'Ava (Premium)');
+  assert.equal(englishVoices(ios).at(-1).name.startsWith('Albert') || voiceScore(englishVoices(ios).at(-1)) < 0, true);
+  // Chỉ có giọng en-GB tốt và en-US robot → chọn en-GB.
+  assert.equal(pickVoice([ios[0], ios[4]], 'en-US').name, 'Daniel');
+});

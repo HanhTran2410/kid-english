@@ -28,7 +28,7 @@ export async function runWordStep(ctx, word) {
   if (recording) await saveRecording(app, lesson.id, word.en, recording);
   if (spoke(result)) await markSpoke(app, word.en, word.emoji);
 
-  await teacher.praise(result);
+  await teacher.praise(result, picture);
   await teacher.say(`${word.en}!`);
   if (result === RESULT.LISTEN_ONLY) await teacher.say('Good!');
   await teacher.checkPresence();
