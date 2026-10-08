@@ -1,0 +1,41 @@
+{
+  "version": 1,
+  "title": "Colors",
+  "titleVi": "Màu sắc",
+  "emoji": "🌈",
+  "words": [
+    { "en": "red", "vi": "màu đỏ", "emoji": "🔴", "sentence": "The apple is red.", "imagePrompt": "A big red circle, cute children's flashcard illustration, simple flat shapes, thick soft outlines, bright pastel colors, plain white background, one object centered, no text" },
+    { "en": "blue", "vi": "màu xanh dương", "emoji": "🔵", "sentence": "The sky is blue.", "imagePrompt": "A big blue circle, cute children's flashcard illustration, simple flat shapes, thick soft outlines, bright pastel colors, plain white background, one object centered, no text" },
+    { "en": "yellow", "vi": "màu vàng", "emoji": "🟡", "sentence": "The sun is yellow.", "imagePrompt": "A big yellow circle, cute children's flashcard illustration, simple flat shapes, thick soft outlines, bright pastel colors, plain white background, one object centered, no text" },
+    { "en": "green", "vi": "màu xanh lá", "emoji": "🟢", "sentence": "The leaf is green.", "imagePrompt": "A big green circle, cute children's flashcard illustration, simple flat shapes, thick soft outlines, bright pastel colors, plain white background, one object centered, no text" },
+    { "en": "pink", "vi": "màu hồng", "emoji": "🩷", "sentence": "The pig is pink.", "imagePrompt": "A big pink heart, cute children's flashcard illustration, simple flat shapes, thick soft outlines, bright pastel colors, plain white background, one object centered, no text" },
+    { "en": "orange", "vi": "màu cam", "emoji": "🟠", "sentence": "The orange is orange.", "imagePrompt": "A big orange circle, cute children's flashcard illustration, simple flat shapes, thick soft outlines, bright pastel colors, plain white background, one object centered, no text" }
+  ],
+  "conversation": [
+    { "word": "red", "teacher": "What color is it?", "child": "It's red!" },
+    { "word": "red", "teacher": "Is the apple red?", "child": "Yes! Red!" },
+    { "word": "blue", "teacher": "What color is it?", "child": "It's blue!" },
+    { "word": "blue", "teacher": "Is the sky blue?", "child": "Yes! Blue!" },
+    { "word": "yellow", "teacher": "What color is it?", "child": "It's yellow!" },
+    { "word": "yellow", "teacher": "Is the sun yellow?", "child": "Yes! Yellow!" },
+    { "word": "green", "teacher": "What color is it?", "child": "It's green!" },
+    { "word": "green", "teacher": "Is the leaf green?", "child": "Yes! Green!" },
+    { "word": "pink", "teacher": "What color is it?", "child": "It's pink!" },
+    { "word": "pink", "teacher": "Is the pig pink?", "child": "Yes! Pink!" },
+    { "word": "orange", "teacher": "What color is it?", "child": "It's orange!" },
+    { "word": "orange", "teacher": "Is the orange orange?", "child": "Yes! Orange!" }
+  ],
+  "questions": [
+    { "ask": "Which one is red?", "answer": "red" },
+    { "ask": "Which one is blue?", "answer": "blue" },
+    { "ask": "Which one is yellow?", "answer": "yellow" },
+    { "ask": "Which one is green?", "answer": "green" },
+    { "ask": "Which one is pink?", "answer": "pink" },
+    { "ask": "Which one is orange?", "answer": "orange" }
+  ],
+  "story": [
+    { "text": "I see a red apple.", "repeat": "Red apple!" },
+    { "text": "I see a blue sky.", "repeat": "Blue sky!" },
+    { "text": "I see a yellow sun. Hello, sun!", "repeat": "Hello, sun!" }
+  ]
+}

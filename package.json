@@ -1,0 +1,19 @@
+{
+  "name": "kid-english",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "PWA học tiếng Anh cho bé 3 tuổi (nghe → nói lại). Xem SPEC.md.",
+  "scripts": {
+    "test": "node --test \"tests/unit/*.test.js\"",
+    "serve": "node scripts/serve.mjs 8080",
+    "test:ui": "playwright test",
+    "icons": "node scripts/make-icons.mjs"
+  },
+  "devDependencies": {
+    "@fontsource/nunito": "^5.3.0",
+    "@playwright/test": "^1.64.0",
+    "fake-indexeddb": "^6.2.5",
+    "jszip": "^3.10.2"
+  }
+}

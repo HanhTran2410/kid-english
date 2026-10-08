@@ -1,0 +1,41 @@
+{
+  "version": 1,
+  "title": "Animals",
+  "titleVi": "Con vật",
+  "emoji": "🐶",
+  "words": [
+    { "en": "dog", "vi": "con chó", "emoji": "🐶", "sentence": "The dog says woof!", "imagePrompt": "A happy puppy, cute children's flashcard illustration, simple flat shapes, thick soft outlines, bright pastel colors, plain white background, one object centered, no text" },
+    { "en": "cat", "vi": "con mèo", "emoji": "🐱", "sentence": "The cat says meow!", "imagePrompt": "A smiling kitten, cute children's flashcard illustration, simple flat shapes, thick soft outlines, bright pastel colors, plain white background, one object centered, no text" },
+    { "en": "cow", "vi": "con bò", "emoji": "🐮", "sentence": "The cow says moo!", "imagePrompt": "A friendly cow, cute children's flashcard illustration, simple flat shapes, thick soft outlines, bright pastel colors, plain white background, one object centered, no text" },
+    { "en": "duck", "vi": "con vịt", "emoji": "🦆", "sentence": "The duck says quack!", "imagePrompt": "A little yellow duck, cute children's flashcard illustration, simple flat shapes, thick soft outlines, bright pastel colors, plain white background, one object centered, no text" },
+    { "en": "pig", "vi": "con lợn", "emoji": "🐷", "sentence": "The pig says oink!", "imagePrompt": "A pink piglet, cute children's flashcard illustration, simple flat shapes, thick soft outlines, bright pastel colors, plain white background, one object centered, no text" },
+    { "en": "bird", "vi": "con chim", "emoji": "🐦", "sentence": "The bird says tweet!", "imagePrompt": "A small blue bird, cute children's flashcard illustration, simple flat shapes, thick soft outlines, bright pastel colors, plain white background, one object centered, no text" }
+  ],
+  "conversation": [
+    { "word": "dog", "teacher": "Look! What's this?", "child": "It's a dog!" },
+    { "word": "dog", "teacher": "What does a dog say?", "child": "Woof woof!" },
+    { "word": "cat", "teacher": "Look! What's this?", "child": "It's a cat!" },
+    { "word": "cat", "teacher": "What does a cat say?", "child": "Meow meow!" },
+    { "word": "cow", "teacher": "Look! What's this?", "child": "It's a cow!" },
+    { "word": "cow", "teacher": "What does a cow say?", "child": "Moo moo!" },
+    { "word": "duck", "teacher": "Look! What's this?", "child": "It's a duck!" },
+    { "word": "duck", "teacher": "What does a duck say?", "child": "Quack quack!" },
+    { "word": "pig", "teacher": "Look! What's this?", "child": "It's a pig!" },
+    { "word": "pig", "teacher": "What does a pig say?", "child": "Oink oink!" },
+    { "word": "bird", "teacher": "Look! What's this?", "child": "It's a bird!" },
+    { "word": "bird", "teacher": "What does a bird say?", "child": "Tweet tweet!" }
+  ],
+  "questions": [
+    { "ask": "Which one says woof?", "answer": "dog" },
+    { "ask": "Which one says meow?", "answer": "cat" },
+    { "ask": "Which one says moo?", "answer": "cow" },
+    { "ask": "Which one says quack?", "answer": "duck" },
+    { "ask": "Which one says oink?", "answer": "pig" },
+    { "ask": "Which one can fly?", "answer": "bird" }
+  ],
+  "story": [
+    { "text": "On the farm, the cow says moo!", "repeat": "Moo moo!" },
+    { "text": "The duck says quack, quack!", "repeat": "Quack quack!" },
+    { "text": "The dog jumps and says woof!", "repeat": "Woof woof!" }
+  ]
+}
