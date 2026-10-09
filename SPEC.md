@@ -260,7 +260,7 @@ Kết thúc bài: màn hình **"Hoan hô!"** kèm 1 sticker tặng bé. **Hộp 
   - Mọi lần xóa đều hỏi xác nhận và ghi rõ số bản ghi, ví dụ *"Xóa 23 bản ghi của bài Farm Animals?"*.
   - Hiện tổng số bản ghi và dung lượng đang dùng, ví dụ *"152 bản ghi · 18 MB"*.
 - **Cài đặt**:
-  - Tên nhân vật (mặc định Bông).
+  - Tên nhân vật (mặc định Bông): hiện trên nút **"Learn with … / Học cùng …"** ở màn hình chính và các dòng chữ trong Góc bố mẹ. Khi nói tiếng Anh nhân vật xưng "I" nên không đọc tên. Tên app trên Màn hình chính iPhone ("Bông") là cố định.
   - Chọn giọng đọc tiếng Anh, lọc theo ngôn ngữ trong danh sách giọng của máy.
   - Bật hoặc tắt việc đọc nghĩa tiếng Việt (mặc định: **tắt**, chỉ đọc tiếng Anh).
   - Tốc độ đọc (mặc định 0.8, chậm hơn bình thường).

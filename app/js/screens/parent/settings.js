@@ -4,7 +4,7 @@ import { h, toast, formatBytes } from '../../ui.js';
 import { englishVoices, isNoveltyVoice } from '../../speech/tts.js';
 import { pickMimeType } from '../../speech/recorder.js';
 import { LIMIT_OPTIONS } from '../../session.js';
-import { isStandalone } from '../child.js';
+import { isStandalone, characterName } from '../child.js';
 import { parentLayout, goParent, section, field, notice } from './common.js';
 
 export function settingsView(app) {
@@ -49,7 +49,7 @@ export function settingsView(app) {
 
   body.append(
     section('Nhân vật và giọng đọc',
-      field('Tên nhân vật', name, 'Tên chỉ hiện trên màn hình; khi nói tiếng Anh Bông xưng "I".'),
+      field('Tên nhân vật', name, 'Tên hiện trên màn hình chính (nút "Học cùng …"). Khi nói tiếng Anh, nhân vật xưng "I" nên không đọc tên. Tên app trên Màn hình chính iPhone vẫn là "Bông".'),
       field('Giọng đọc tiếng Anh', voiceSel, voices.length
         ? 'Giọng tốt xếp trên cùng. Nghe rè thì tải giọng Enhanced/Premium: Cài đặt → Trợ năng → Nội dung được đọc → Giọng nói → Tiếng Anh, rồi chọn lại ở đây.'
         : 'Máy chưa liệt kê giọng tiếng Anh nào.'),
@@ -66,10 +66,10 @@ export function settingsView(app) {
         if (s.micOnlyWhenListening) app.mic.release();
         else app.mic.start();
       }),
-      h('p.field-hint', { text: 'Bật thử nếu tiếng Bông bị rè hoặc nhỏ: khi mic mở, iPhone/iPad chuyển loa sang chế độ gọi thoại. Nếu máy hỏi quyền mic liên tục thì tắt lại.' }),
+      h('p.field-hint', { text: `Bật thử nếu tiếng ${characterName(app)} bị rè hoặc nhỏ: khi mic mở, iPhone/iPad chuyển loa sang chế độ gọi thoại. Nếu máy hỏi quyền mic liên tục thì tắt lại.` }),
       h('p.field-hint', { text: 'Trên iOS, nhận dạng gửi giọng bé lên máy chủ Apple để xử lý và cần mạng. Tắt đi thì app chỉ đo âm lượng.' })),
     section('Thời gian',
-      field('Giới hạn mỗi buổi', limit, 'Giới hạn mềm: hết giờ vẫn cho học hết bài. Khi Bông ngủ, bố mẹ nhấn giữ 🌙 3 giây để cho thêm 15 phút.')),
+      field('Giới hạn mỗi buổi', limit, `Giới hạn mềm: hết giờ vẫn cho học hết bài. Khi ${characterName(app)} ngủ, bố mẹ nhấn giữ 🌙 3 giây để cho thêm 15 phút.`)),
     diagnostics(app));
 }
 

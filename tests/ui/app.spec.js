@@ -558,3 +558,15 @@ test('từ cần ôn: tích sẵn 2 từ chưa thuộc, xoay vòng lần sau, ch
   await page.getByRole('button', { name: 'Copy prompt' }).click();
   expect(await page.evaluate(() => navigator.clipboard.readText())).toMatch(/REVIEW WORDS.*nose, cat/);
 });
+
+test('đổi tên nhân vật trong Cài đặt thì màn hình chính dùng tên mới', async ({ page }) => {
+  await startApp(page);
+  await openParent(page);
+  await page.getByRole('button', { name: 'Cài đặt & chẩn đoán' }).click();
+  await page.getByRole('textbox').first().fill('Thỏ');
+  await page.getByRole('textbox').first().press('Tab');
+  await page.getByRole('button', { name: '← Quay lại' }).click();
+  await page.getByRole('button', { name: 'Về màn hình của bé' }).click();
+  await expect(page.getByText('Learn with Thỏ', { exact: true })).toBeVisible();
+  await expect(page.getByText('Học cùng Thỏ', { exact: true })).toBeVisible();
+});

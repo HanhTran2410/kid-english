@@ -9,7 +9,7 @@ import { resumeSession, addTime, extend, isTimeUp } from './session.js';
 import { h } from './ui.js';
 import { bongElement } from './bong.js';
 
-export const APP_VERSION = '0.1.13';
+export const APP_VERSION = '0.1.14';
 
 const SESSION_SAVE_EVERY_MS = 15000;
 

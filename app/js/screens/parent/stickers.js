@@ -4,6 +4,7 @@ import { h, toast, confirmDialog } from '../../ui.js';
 import { getStickers } from '../../db.js';
 import { STICKERS } from '../../stickers.js';
 import { parentLayout, goParent, section, notice } from './common.js';
+import { characterName } from '../child.js';
 
 export function stickersAdminView(app) {
   const body = parentLayout(app, { title: 'Sticker của bé', back: () => goParent(app) });
@@ -14,7 +15,7 @@ export function stickersAdminView(app) {
     const total = list.reduce((sum, s) => sum + owned[s.id].count, 0);
 
     if (!list.length) {
-      body.append(section(null, h('p', { text: 'Bé chưa có sticker nào. Mỗi lần học xong bài, ôn tập hoặc học cùng Bông, bé được tặng 1 sticker.' })));
+      body.append(section(null, h('p', { text: `Bé chưa có sticker nào. Mỗi lần học xong bài, ôn tập hoặc học cùng ${characterName(app)}, bé được tặng 1 sticker.` })));
       return;
     }
 

@@ -37,6 +37,9 @@ function parentButton(app, { dot = false } = {}) {
 
 const say = (app, text) => app.speaker.speak(text).catch(() => {});
 
+/** Tên nhân vật bố mẹ đặt trong Cài đặt (mặc định Bông). */
+export const characterName = (app) => String(app.settings?.characterName ?? '').trim() || 'Bông';
+
 // ---------- Bắt đầu ----------
 
 export function startScreen(app) {
@@ -97,7 +100,7 @@ export function homeScreen(app) {
     h('div.home-grid', {},
       big('📚', 'Lessons', 'Bài học', () => app.go('lessons'), '.lessons'),
       reviewBtn,
-      big(bongElement('home-bong'), 'Learn with Bông', 'Học cùng Bông', () => app.go('learn'), '.learn')),
+      big(bongElement('home-bong'), `Learn with ${characterName(app)}`, `Học cùng ${characterName(app)}`, () => app.go('learn'), '.learn')),
     h('div.home-bottom', {}, big('🎁', 'My Stickers', 'Sticker của bé', () => app.go('stickers'), '.stickers')),
     bunny.el,
   );
