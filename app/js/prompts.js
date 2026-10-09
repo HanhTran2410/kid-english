@@ -391,7 +391,7 @@ export function buildFramesPrompt(rows) {
     '## COMPOSITION AND CONTINUITY',
     '- Within each row: same camera angle, same character scale, same background layout and prop placement.',
     '- Bông and the essential props occupy about 60–70% of each cell, centered, with visible white space around them.',
-    '- The object of the action (shirt, toothbrush, cup, door…) is big and clearly recognizable.',
+    '- The main object of each action is big and clearly recognizable.',
     '- No body part, prop, water drop, motion mark or shadow may touch or cross a divider line.',
     '',
     '## STRICT NEGATIVE RULES',
