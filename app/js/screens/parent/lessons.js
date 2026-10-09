@@ -39,9 +39,13 @@ export function lessonsView(app) {
         titles.push(l.title);
       }
       // Chỉ lấy bài và ảnh; không đụng tới tiến độ, sticker, cài đặt, ghi âm của máy này.
-      await applyBackup(app.db, { ...payload, recordings: [], progress: [], stickers: [], settings: [] }, 'merge');
-      const added = payload.lessons.filter((l) => !before.has(l.id)).length;
-      toast(added ? `Đã nhập ${added} bài.` : 'Các bài trong file đã có sẵn trên máy này.', 3500);
+      // Bài đã có trên máy này (cùng bài, chia sẻ lại sau khi sửa) thì cập nhật nội dung và ảnh mới hơn.
+      const { added, updated } = await applyBackup(app.db,
+        { ...payload, recordings: [], progress: [], stickers: [], settings: [] }, 'merge', { updateLessons: true });
+      const parts = [];
+      if (added) parts.push(`nhập ${added} bài mới`);
+      if (updated) parts.push(`cập nhật ${updated} bài đã có`);
+      toast(parts.length ? `Đã ${parts.join(', ')}.` : 'Không có gì thay đổi.', 3500);
       goParent(app, 'lessons');
     } catch (err) {
       toast(err instanceof BackupError ? err.message : 'Không đọc được file bài học.', 4000);
@@ -101,6 +105,7 @@ export function lessonDetailView(app, { lessonId }) {
           const others = (await listLessons(app.db)).filter((l) => l.id !== lesson.id).map((l) => l.title);
           lesson.title = uniqueTitle(title, others);
           lesson.topic = topicInput.value.trim();
+          lesson.updatedAt = Date.now();
           await app.db.put('lessons', lesson);
           name.value = lesson.title;
           toast(lesson.title === title ? 'Đã lưu.' : `Tên đã có, lưu thành "${lesson.title}".`);

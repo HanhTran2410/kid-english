@@ -43,7 +43,7 @@ Bố mẹ → ChatGPT/Gemini (miễn phí) → JSON → copy/dán → App (iPad)
 
 | Kho dữ liệu | Nội dung chính |
 |---|---|
-| `lessons` | `id` (app tự tạo bằng `crypto.randomUUID()`), `createdAt`, `timesCompleted`, `topic` (chủ đề để chia tab; không có thì lấy theo tên bài), `resume` (chỗ đang học dở: `{ stage, index, savedAt }`, hoặc `null`), cùng toàn bộ nội dung bài (mục 3.1) |
+| `lessons` | `id` (app tự tạo bằng `crypto.randomUUID()`), `createdAt`, `updatedAt` (lần bố mẹ sửa gần nhất: tên, chủ đề, ảnh), `timesCompleted`, `topic` (chủ đề để chia tab; không có thì lấy theo tên bài), `resume` (chỗ đang học dở: `{ stage, index, savedAt }`, hoặc `null`), cùng toàn bộ nội dung bài (mục 3.1) |
 | `images` | `id`, `lessonId`, `word`, `blob`, `mimeType`, `width`, `height` |
 | `recordings` | `id`, `lessonId`, `word`, `date`, `blob`, `mimeType`, `durationMs` |
 | `progress` | khóa là từ tiếng Anh (viết thường): `mastery` (0–5), `practiceCount`, `lastPracticedAt`, `lastVoiceDay` (ngày gần nhất được cộng điểm vì lên tiếng), `emoji` |
@@ -71,6 +71,8 @@ Bố mẹ → ChatGPT/Gemini (miễn phí) → JSON → copy/dán → App (iPad)
    - App tự thu nhỏ ảnh xuống 512px và lưu dạng Blob.
    - **Ảnh lưới (khuyên dùng):** bản AI miễn phí giới hạn số lần tạo ảnh, nên app có nút **"Copy prompt ảnh lưới"**: nhờ AI vẽ **1 ảnh** chứa tất cả các từ theo lưới (4 từ → 2×2, 6 từ → 3×2, 8 từ → 4×2…), sau đó **"Chọn ảnh lưới"**: app tự cắt ra từng ô theo thứ tự từ, cho xem trước rồi mới lưu.
 6. **(Tùy chọn) Tạo bài trên máy tính rồi chuyển sang iPad/iPhone:** mở cùng link app trên máy tính, tạo bài và thêm ảnh (dễ thao tác hơn), bấm **"Chia sẻ bài"** để xuất file `kid-english-bai-<tên>-<ngày>.zip` (chỉ gồm bài và ảnh, không có ghi âm hay tiến độ), gửi sang máy của bé (AirDrop, iCloud, Zalo…), rồi trên máy đó vào **Quản lý bài → "Nhập bài từ file"**.
+   - **Chia sẻ lại sau khi sửa** (đổi tên, chủ đề, thay ảnh): nhập file trên máy kia sẽ **cập nhật bài đã có** (không tạo bài trùng), giữ số ⭐ và chỗ đang học dở của máy đó. Chỉ bản sửa **mới hơn** mới ghi đè; mỗi từ chỉ giữ **một ảnh — ảnh mới hơn**; nhập lại file cũ thì không đổi gì.
+   - Dữ liệu **không tự đồng bộ** giữa các máy (không có server): mỗi máy, và cả tab Safari với app trên Màn hình chính, giữ dữ liệu riêng.
    - **Nếu không có ảnh, app hiển thị emoji to.** Bài học dùng được ngay mà không cần tạo ảnh.
 
 ### 3.1. Định dạng bài học (JSON do AI trả về)

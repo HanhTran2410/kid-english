@@ -20,6 +20,9 @@ export function extensionFor(mimeType) {
 
 export class BackupError extends Error {}
 
+/** Lần sửa gần nhất của bài (đổi tên, chủ đề, ảnh…). */
+const editedAt = (lesson) => lesson.updatedAt ?? lesson.createdAt ?? 0;
+
 const slug = (text) => String(text).normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/đ/gi, 'd')
   .toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'bai-hoc';
 
@@ -175,24 +178,59 @@ export async function readBackup(input, { JSZip = globalThis.JSZip } = {}) {
  * Ghi dữ liệu sao lưu vào máy trong một transaction.
  * @param {'merge'|'replace'} mode gộp với dữ liệu hiện có, hoặc thay thế toàn bộ
  */
-export async function applyBackup(db, payload, mode) {
+/**
+ * Ghi dữ liệu sao lưu vào máy trong một transaction.
+ * @param {'merge'|'replace'} mode gộp với dữ liệu hiện có, hoặc thay thế toàn bộ
+ * @param {{ updateLessons?: boolean }} [options] updateLessons: bài đã có (cùng id) thì cập nhật nội dung theo file
+ *   (dùng khi nhập "file bài" chia sẻ từ máy khác), giữ số lần học xong và chỗ đang học dở của máy này.
+ * @returns {Promise<{ added: number, updated: number }>} số bài thêm mới / cập nhật
+ */
+export async function applyBackup(db, payload, mode, { updateLessons = false } = {}) {
   if (mode === 'replace') {
     await db.write(STORES, (tx) => {
       for (const s of STORES) tx.objectStore(s).clear();
       for (const s of STORES) for (const item of payload[s]) tx.objectStore(s).put(item);
     });
-    return;
+    return { added: payload.lessons.length, updated: 0 };
   }
 
   // Gộp: đọc dữ liệu hiện có trước, tính kết quả, rồi ghi một lần.
   const current = await readAll(db);
   const byKey = (list, key) => new Map(list.map((x) => [x[key], x]));
   const writes = { lessons: [], images: [], recordings: [], progress: [], stickers: [], settings: [] };
+  const deletes = { images: [] };
+  let added = 0;
+  let updated = 0;
 
-  for (const s of ['lessons', 'images', 'recordings']) {
-    const existing = byKey(current[s], 'id');
-    writes[s] = payload[s].filter((x) => !existing.has(x.id)); // trùng id thì giữ bản đang có
+  // Bài: trùng id thì giữ bản đang có, trừ khi được yêu cầu cập nhật.
+  const lessons = byKey(current.lessons, 'id');
+  for (const l of payload.lessons) {
+    const mine = lessons.get(l.id);
+    if (!mine) {
+      writes.lessons.push(l);
+      added++;
+    } else if (updateLessons && editedAt(l) > editedAt(mine)) {
+      // Chỉ bản sửa mới hơn mới ghi đè (nhập lại file cũ thì không làm mất chỗ đã sửa).
+      writes.lessons.push({ ...l, createdAt: mine.createdAt, timesCompleted: mine.timesCompleted ?? 0, resume: mine.resume ?? null });
+      updated++;
+    }
   }
+
+  // Ảnh: mỗi từ của mỗi bài chỉ giữ MỘT ảnh — ảnh mới hơn thắng.
+  const imageKey = (img) => `${img.lessonId}|${img.word}`;
+  const images = byKey(current.images, 'id');
+  const imagesByWord = new Map(current.images.map((img) => [imageKey(img), img]));
+  for (const img of payload.images) {
+    if (images.has(img.id)) continue;
+    const mine = imagesByWord.get(imageKey(img));
+    if (mine && (mine.createdAt ?? 0) >= (img.createdAt ?? 0)) continue;
+    if (mine) deletes.images.push(mine.id);
+    imagesByWord.set(imageKey(img), img);
+    writes.images.push(img);
+  }
+
+  const recordings = byKey(current.recordings, 'id');
+  writes.recordings = payload.recordings.filter((x) => !recordings.has(x.id));
   const progress = byKey(current.progress, 'word');
   writes.progress = payload.progress.map((p) => mergeProgress(progress.get(p.word), p));
   const stickers = byKey(current.stickers, 'id');
@@ -201,6 +239,8 @@ export async function applyBackup(db, payload, mode) {
   writes.settings = payload.settings.filter((s) => !settings.has(s.key)); // cài đặt giữ bản đang có
 
   await db.write(STORES, (tx) => {
+    for (const id of deletes.images) tx.objectStore('images').delete(id);
     for (const s of STORES) for (const item of writes[s]) tx.objectStore(s).put(item);
   });
+  return { added, updated };
 }

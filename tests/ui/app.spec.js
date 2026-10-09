@@ -411,8 +411,23 @@ test('chia sẻ bài: xuất file bài rồi nhập lại trên máy khác', asy
   await other.getByRole('button', { name: 'Quản lý bài' }).click();
   await expect(other.getByRole('button', { name: /Colors/ })).toHaveCount(0);
   await other.locator('input[type=file]').setInputFiles(file);
-  await expect(other.getByRole('status')).toContainText('Đã nhập 1 bài');
+  await expect(other.getByRole('status')).toContainText('Đã nhập 1 bài mới');
   await expect(other.getByRole('button', { name: /Colors/ })).toBeVisible();
+
+  // Sửa bài trên máy đầu (đổi tên) rồi chia sẻ lại → máy kia cập nhật bài đã có, không tạo bài trùng.
+  await page.getByLabel('Tên bài').fill('Colors đẹp');
+  await page.getByRole('button', { name: 'Lưu', exact: true }).click();
+  await page.getByRole('button', { name: '1. Tạo file bài' }).click();
+  const download2 = page.waitForEvent('download');
+  await page.getByRole('button', { name: '2. Gửi file' }).click();
+  await other.locator('input[type=file]').setInputFiles(await (await download2).path());
+  await expect(other.getByRole('status').filter({ hasText: 'cập nhật 1 bài đã có' })).toBeVisible();
+  await expect(other.getByRole('button', { name: /Colors đẹp/ })).toBeVisible();
+  await expect(other.locator('.lesson-row', { hasText: 'Colors' })).toHaveCount(1);
+
+  // Nhập lại file cũ thì không đổi gì.
+  await other.locator('input[type=file]').setInputFiles(file);
+  await expect(other.getByRole('status').filter({ hasText: 'Không có gì thay đổi' })).toBeVisible();
   await other.context().close();
 });
 

@@ -132,16 +132,24 @@ export async function setWordImage(db, { lessonId, word, blob, mimeType, width, 
   const key = normalizeWord(word);
   const old = await db.getAllByIndex('images', 'lessonId', lessonId);
   const record = { id: crypto.randomUUID(), lessonId, word: key, blob, mimeType, width, height, createdAt: now };
-  await db.write(['images'], (tx) => {
+  const lesson = await db.get('lessons', lessonId);
+  await db.write(['images', 'lessons'], (tx) => {
     for (const img of old) if (img.word === key) tx.objectStore('images').delete(img.id);
     tx.objectStore('images').put(record);
+    // Đánh dấu bài vừa được sửa, để khi chia sẻ lại thì máy kia nhận bản mới này.
+    if (lesson) tx.objectStore('lessons').put({ ...lesson, updatedAt: now });
   });
   return record;
 }
 
-export async function removeWordImage(db, lessonId, word) {
+export async function removeWordImage(db, lessonId, word, now = Date.now()) {
   const img = await getWordImage(db, lessonId, word);
-  if (img) await db.delete('images', img.id);
+  const lesson = await db.get('lessons', lessonId);
+  if (!img) return;
+  await db.write(['images', 'lessons'], (tx) => {
+    tx.objectStore('images').delete(img.id);
+    if (lesson) tx.objectStore('lessons').put({ ...lesson, updatedAt: now });
+  });
 }
 
 // ---------- Ghi âm ----------

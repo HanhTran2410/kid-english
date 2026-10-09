@@ -184,3 +184,34 @@ test('gói bài để chia sẻ: chỉ bài được chọn và ảnh của bài
   assert.equal(p.images.length, 1);
   assert.deepEqual([p.recordings.length, p.progress.length, p.stickers.length, p.settings.length], [0, 0, 0, 0]);
 });
+
+test('nhập lại file bài đã sửa: cập nhật nội dung và ảnh mới hơn, giữ số lần học và chỗ đang học', async () => {
+  // "Máy tính": tạo bài L1 có ảnh cũ, chia sẻ sang "điện thoại".
+  const pc = await open();
+  await seed(pc);
+  const phone = await open();
+  const first = await readBackup((await createBackup(pc, { lessonIds: ['L1'], JSZip })).blob, { JSZip });
+  assert.deepEqual(await applyBackup(phone, first, 'merge', { updateLessons: true }), { added: 1, updated: 0 });
+  await phone.put('lessons', { ...(await phone.get('lessons', 'L1')), timesCompleted: 3, resume: { stage: 'quiz', index: 0 } });
+
+  // Trên máy tính: đổi tên bài, thay ảnh "cow", thêm ảnh "dog"; chia sẻ lại.
+  await pc.put('lessons', { ...(await pc.get('lessons', 'L1')), title: 'Farm (mới)', updatedAt: 400 });
+  await setWordImage(pc, { lessonId: 'L1', word: 'cow', blob: blob('cow-new', 'image/jpeg'), mimeType: 'image/jpeg' }, 500);
+  await setWordImage(pc, { lessonId: 'L1', word: 'dog', blob: blob('dog-new', 'image/jpeg'), mimeType: 'image/jpeg' }, 500);
+  const second = await readBackup((await createBackup(pc, { lessonIds: ['L1'], JSZip })).blob, { JSZip });
+  assert.deepEqual(await applyBackup(phone, second, 'merge', { updateLessons: true }), { added: 0, updated: 1 });
+
+  const lesson = await phone.get('lessons', 'L1');
+  assert.equal(lesson.title, 'Farm (mới)');
+  assert.equal(lesson.timesCompleted, 3);
+  assert.deepEqual(lesson.resume, { stage: 'quiz', index: 0 });
+  const imgs = await phone.getAllByIndex('images', 'lessonId', 'L1');
+  assert.equal(imgs.length, 2, 'mỗi từ chỉ một ảnh');
+  assert.equal(await (await getWordImage(phone, 'L1', 'cow')).blob.text(), 'cow-new');
+  assert.equal(await (await getWordImage(phone, 'L1', 'dog')).blob.text(), 'dog-new');
+
+  // Nhập lại file CŨ thì không ghi đè tên và ảnh mới hơn.
+  assert.deepEqual(await applyBackup(phone, first, 'merge', { updateLessons: true }), { added: 0, updated: 0 });
+  assert.equal((await phone.get('lessons', 'L1')).title, 'Farm (mới)');
+  assert.equal(await (await getWordImage(phone, 'L1', 'cow')).blob.text(), 'cow-new');
+});
