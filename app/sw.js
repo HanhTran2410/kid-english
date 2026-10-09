@@ -2,7 +2,7 @@
 // Mỗi lần sửa code: tăng VERSION (trùng APP_VERSION trong js/app.js) để máy tải bản mới.
 // Thêm/bớt file trong app/ thì cập nhật ASSETS (test tests/unit/sw.test.js sẽ báo nếu thiếu).
 
-const VERSION = '0.1.15';
+const VERSION = '0.2.0';
 const CACHE = `kid-english-${VERSION}`;
 
 const ASSETS = [
@@ -28,12 +28,16 @@ const ASSETS = [
   'js/lesson.js',
   'js/main.js',
   'js/match.js',
+  'js/phrase.js',
   'js/player/completion-stage.js',
   'js/player/conversation-stage.js',
+  'js/player/phrase-player.js',
+  'js/player/phrase-stages.js',
   'js/player/layout.js',
   'js/player/lesson-player.js',
   'js/player/plan.js',
   'js/player/quiz-stage.js',
+  'js/player/scene.js',
   'js/player/stage-kit.js',
   'js/player/story-stage.js',
   'js/player/teacher.js',
@@ -68,6 +72,7 @@ const ASSETS = [
   'js/ui.js',
   'lessons/animals.json',
   'lessons/colors.json',
+  'lessons/morning.json',
   'vendor/jszip.min.js',
 ];
 

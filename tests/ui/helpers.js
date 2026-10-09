@@ -71,6 +71,9 @@ export async function playThrough(page, { stopAfterSteps = Infinity } = {}) {
     if (await page.locator('.done-btn').isVisible()) return taps;
     const progress = await page.locator('.progress-fill').evaluate((el) => parseFloat(el.style.width) || 0);
     if (progress >= stopAfterSteps) return taps;
+    // Bước "làm theo" của bài câu: bé (bố mẹ) chạm ✔.
+    const did = page.locator('.did-btn:not(.done)');
+    if (await did.isVisible().catch(() => false)) await did.click({ timeout: 1000, force: true }).catch(() => {});
     const choice = page.locator('.choice:not(.shake)').first();
     if (await choice.isVisible().catch(() => false)) {
       await choice.click({ timeout: 1000 }).catch(() => {});

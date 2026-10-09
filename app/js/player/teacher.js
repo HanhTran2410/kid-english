@@ -53,7 +53,7 @@ export class Teacher {
   }
 
   /** Nghe bé nói một lượt (SPEC 4.3.1). */
-  async hear(keywords, { record = false } = {}) {
+  async hear(keywords, { record = false, maxMs = 5500 } = {}) {
     const { app } = this;
     if (!app.mic.ready) await this.say('Your turn!');
     this.bunny.set('listen');
@@ -67,6 +67,7 @@ export class Teacher {
         recognizer: app.recognizer,
         keywords,
         record,
+        maxMs,
         signal: this.signal,
         onLevel: (r) => this.bunny.setLevel(r),
       });

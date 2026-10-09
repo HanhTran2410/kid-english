@@ -261,3 +261,64 @@ export function buildGridImagePrompt(words, { cols, rows }) {
     '- Do not merge cells, resize individual cells, or let illustrations cross cell boundaries.',
   ].join('\n');
 }
+
+export const SITUATIONS = ['Morning', 'Getting dressed', 'Going out', 'Bath time', 'Meal time', 'Bedtime', 'Playtime'];
+export const PHRASE_COUNTS = [4, 6];
+export const BONG_DESCRIPTION = 'Bông, a cute bunny with creamy white fur, light-pink inner ears, big glossy eyes and rosy cheeks';
+
+/**
+ * Prompt tạo bài câu (SPEC-v1.0 mục 7.1).
+ * @param {{ situation: string, count?: number, level?: 'beginner'|'some', age?: number, avoidPhrases?: string[] }} options
+ */
+export function buildPhraseLessonPrompt({ situation, count = 4, level = 'beginner', age = 3, avoidPhrases = [] }) {
+  const motionList = ['open', 'close', 'put-on', 'take-off', 'wash', 'brush', 'eat', 'drink', 'turn-on', 'turn-off',
+    'sit-down', 'stand-up', 'wave', 'clap', 'jump', 'sleep', 'go', 'none'];
+  const lengthRule = level === 'beginner' ? '2 to 3 words' : '3 to 5 words';
+  const shape = `{
+  "version": 2,
+  "kind": "phrases",
+  "title": "Morning",
+  "titleVi": "Buổi sáng",
+  "emoji": "🌅",
+  "routine": true,
+  "phrases": [
+    {
+      "id": "p1",
+      "en": "Wash your face",
+      "vi": "Rửa mặt",
+      "emoji": "🧼",
+      "motion": "wash",
+      "requiredKeywords": ["wash"],
+      "keywords": ["face"],
+      "chunks": ["Wash", "your face"],
+      "imagePrompt": "${BONG_DESCRIPTION}, washing her face with water and bubbles, ${IMAGE_STYLE}",
+      "framePrompts": ["Bông turns on the tap", "Bông splashes water on her face", "Bông smiles with a clean face"]
+    }
+  ],
+  "commands": ["p1"]
+}`;
+  const avoid = [...new Set(avoidPhrases.map((p) => p.toLowerCase()))].slice(0, 60);
+  return [
+    `You are an English teacher for a ${age}-year-old Vietnamese child who learns by listening and doing actions (Total Physical Response).`,
+    `Create one short lesson of everyday English phrases for the situation: "${situation}".`,
+    '',
+    'Reply with ONLY one JSON object in exactly this format. No explanation, no greeting, no markdown:',
+    shape,
+    '',
+    'Rules:',
+    `- "phrases": exactly ${count} short, friendly commands or invitations a parent says every day in this situation (${lengthRule} each, never more than 5 words). Examples: "Open the door", "Put on your shirt", "Wash your hands".`,
+    '- Only commands/invitations. No questions, no "I am ..." sentences.',
+    '- If the situation has a natural order (morning routine, getting dressed…), list the phrases in that order and set "routine": true; otherwise "routine": false.',
+    '- "id": "p1", "p2", … in order.',
+    '- "vi": natural Vietnamese meaning.',
+    '- "emoji": ONE emoji of the main OBJECT of the action (🚪 door, 👕 shirt, 🥛 milk, 🪥 toothbrush…), or of the action if there is no object.',
+    `- "motion": exactly one of: ${motionList.join(', ')}. Choose the one that best shows the action (e.g. "Put on your hat" → "put-on", "Drink your milk" → "drink", "Turn off the light" → "turn-off"). Use "none" if nothing fits.`,
+    '- "requiredKeywords": the main verb or phrasal verb that MUST be said (e.g. ["put on"], ["wash"]). "keywords": the main noun(s) (e.g. ["shirt"]).',
+    '- "chunks": split the phrase into 1–3 short parts that, joined with spaces, give EXACTLY the phrase (e.g. ["Put on", "your shirt"]).',
+    `- "imagePrompt": ${BONG_DESCRIPTION}, doing the action, concrete and clear. Always end with: "${IMAGE_STYLE}".`,
+    '- "framePrompts": 2 to 4 very short steps of Bông doing the action, like a tiny comic strip.',
+    '- "commands": the ids of phrases that are easy to act out with the body (for a "Bông says" game).',
+    ...(avoid.length ? [`- The child ALREADY LEARNED these phrases. Do NOT repeat them: ${avoid.join('; ')}.`] : []),
+    '- Use simple, positive, child-friendly language only.',
+  ].join('\n');
+}

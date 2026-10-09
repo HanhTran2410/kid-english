@@ -1,8 +1,10 @@
 // Tạo bài: form → Copy prompt → Dán bài → Xem trước → Lưu (SPEC mục 3).
 
 import { h, toast, copyText } from '../../ui.js';
-import { buildLessonPrompt, DURATIONS, MAX_AVOID_WORDS } from '../../prompts.js';
-import { pickWordsForPrompt, markUsedInPrompt, isUnknown, KNOWN_MASTERY } from '../../progress.js';
+import { buildLessonPrompt, DURATIONS, MAX_AVOID_WORDS, buildPhraseLessonPrompt, SITUATIONS, PHRASE_COUNTS } from '../../prompts.js';
+import { isPhraseLesson, phraseOverlap } from '../../phrase.js';
+import { createScene } from '../../player/scene.js';
+import { pickWordsForPrompt, markUsedInPrompt, isUnknown, KNOWN_MASTERY, wordRecords } from '../../progress.js';
 import { parseLesson, createLessonRecord, overlapWithLessons, uniqueTitle, baseTitle, nextLessonNo } from '../../lesson.js';
 import { listLessons } from '../../db.js';
 import { quizQuestions } from '../../player/plan.js';
@@ -34,12 +36,13 @@ export function createView(app) {
   const selectedReview = () => [...reviewBox.querySelectorAll('input:checked')].map((i) => i.value);
 
   // Từ cần ôn: bố mẹ tự chọn (tối đa 2). App tích sẵn 2 từ chưa thuộc theo cách XOAY VÒNG.
-  Promise.all([app.db.getAll('progress'), listLessons(app.db)]).then(([progress, lessons]) => {
+  Promise.all([app.db.getAll('progress'), listLessons(app.db)]).then(([allProgress, lessons]) => {
+    const progress = wordRecords(allProgress);
     const weak = progress.filter(isUnknown);
     const suggested = new Set(pickWordsForPrompt(progress, MAX_REVIEW, app.settings.reviewUsedAt ?? {}).map((r) => r.word));
     const starsOf = new Map(progress.map((r) => [r.word, r.mastery]));
     const weakKeys = new Set(weak.map((r) => r.word));
-    const others = [...new Set(lessons.flatMap((l) => l.words.map((w) => w.en.toLowerCase())))]
+    const others = [...new Set(lessons.flatMap((l) => (l.words ?? []).map((w) => w.en.toLowerCase())))]
       .filter((w) => !weakKeys.has(w)).sort();
 
     const onChange = () => {
@@ -65,7 +68,7 @@ export function createView(app) {
     onChange();
   });
   listLessons(app.db).then((lessons) => {
-    avoidWords = [...new Set(lessons.flatMap((l) => l.words.map((w) => w.en.toLowerCase())))];
+    avoidWords = [...new Set(lessons.flatMap((l) => (l.words ?? []).map((w) => w.en.toLowerCase())))];
     avoidInfo.textContent = avoidWords.length
       ? `Để không trùng, prompt dặn AI tránh ${Math.min(avoidWords.length, MAX_AVOID_WORDS)} từ bé đã có ở các bài khác.`
       : '';
@@ -164,7 +167,13 @@ export function pasteView(app) {
     if (finalTitle !== parsed.lesson.title) {
       parsed.warnings.push(`Đã có bài tên "${parsed.lesson.title}" — bài này sẽ được lưu là "${finalTitle}".`);
     }
-    const overlap = overlapWithLessons(parsed.lesson, lessons, app.settings.lastPromptReviewWords ?? []);
+    const phrases = isPhraseLesson(parsed.lesson);
+    const overlap = phrases ? [] : overlapWithLessons(parsed.lesson, lessons, app.settings.lastPromptReviewWords ?? []);
+    const repeated = phrases ? phraseOverlap(parsed.lesson, lessons) : [];
+    if (repeated.length) {
+      parsed.warnings.push(`${repeated.length}/${parsed.lesson.phrases.length} câu đã có ở bài khác: `
+        + `${repeated.map((o) => `${o.phrase} (${o.lessonTitle})`).join(', ')}. Vẫn lưu được.`);
+    }
     if (overlap.length) {
       parsed.warnings.push(`${overlap.length}/${parsed.lesson.words.length} từ đã có ở bài khác: `
         + `${overlap.map((o) => `${o.word} (${o.lessonTitle})`).join(', ')}. Vẫn lưu được; muốn bài mới hoàn toàn thì nhờ AI đổi từ.`);
@@ -188,7 +197,7 @@ export function pasteView(app) {
         goParent(app, 'lesson', { lessonId: record.id });
       },
     });
-    result.append(lessonPreview(app, parsed.lesson), h('div.actions.sticky', {}, save));
+    result.append(phrases ? phrasePreview(app, parsed.lesson) : lessonPreview(app, parsed.lesson), h('div.actions.sticky', {}, save));
   };
 
   body.append(
@@ -209,4 +218,72 @@ export function pasteView(app) {
       }),
       h('button.btn.primary', { type: 'button', text: 'Kiểm tra bài', onclick: check })),
     result);
+}
+
+/** Xem trước bài câu: từng câu có cảnh hiệu ứng, 🔊, nghĩa. */
+export function phrasePreview(app, lesson) {
+  return h('div.preview', {},
+    h('h2.preview-title', {}, `${lesson.emoji} ${lesson.title}`, lesson.titleVi ? h('span.muted', { text: ` — ${lesson.titleVi}` }) : null),
+    section(`Câu (${lesson.phrases.length})${lesson.routine ? ' — theo thứ tự' : ''}`,
+      h('ul.phrase-admin-list', {}, ...lesson.phrases.map((p) => {
+        const scene = createScene({ emoji: p.emoji, motion: p.motion, small: true });
+        return h('li.phrase-admin', {},
+          h('div.scene-box', {}, scene.el),
+          h('div.grow', {},
+            h('b', { text: p.en }), speakButton(app, p.en),
+            h('div.muted', { text: `${p.vi} · hiệu ứng: ${scene.motion} · nói được khi nghe ra: ${p.requiredKeywords.join(', ')}` }),
+            h('button.btn.small', { type: 'button', text: '▶ Xem', onclick: () => scene.play(1) })));
+      }))));
+}
+
+/** Tạo bài câu (SPEC-v1.0 mục 6.3): tình huống, số câu, trình độ → Copy prompt. */
+export function phraseCreateView(app) {
+  const body = parentLayout(app, { title: 'Tạo bài câu', back: () => goParent(app) });
+  const situation = h('input', { type: 'text', placeholder: 'Ví dụ: Morning, Bath time…', value: 'Morning' });
+  const chips = h('div.chips', {}, ...SITUATIONS.map((t) => h('button.chip', {
+    type: 'button', text: t, onclick: () => { situation.value = t; },
+  })));
+  let avoidPhrases = [];
+  listLessons(app.db).then((lessons) => {
+    avoidPhrases = lessons.filter(isPhraseLesson).flatMap((l) => l.phrases.map((p) => p.en));
+  });
+
+  const promptArea = h('textarea.prompt-area', { rows: '8', readonly: true, 'aria-label': 'Prompt' });
+  const result = h('div.prompt-result', { hidden: true },
+    notice('info', 'Nếu chưa copy được: chạm vào ô dưới → "Chọn tất cả" → "Sao chép".'),
+    promptArea,
+    h('div.actions', {},
+      h('a.btn', { href: 'https://chatgpt.com/', target: '_blank', rel: 'noopener', text: 'Mở ChatGPT' }),
+      h('a.btn', { href: 'https://gemini.google.com/app', target: '_blank', rel: 'noopener', text: 'Mở Gemini' })),
+    h('button.btn.primary.big', { type: 'button', text: 'Đã có bài từ AI → Dán bài', onclick: () => goParent(app, 'paste') }));
+
+  const form = h('form.form', {
+    onsubmit: (e) => {
+      e.preventDefault();
+      const prompt = buildPhraseLessonPrompt({
+        situation: situation.value.trim() || 'Morning',
+        count: Number(radioValue(form, 'count')),
+        level: radioValue(form, 'level'),
+        avoidPhrases,
+      });
+      const copied = copyText(prompt); // copy NGAY trong lúc chạm (iOS)
+      promptArea.value = prompt;
+      result.hidden = false;
+      copied.then((ok) => {
+        toast(ok ? 'Đã copy prompt. Mở ChatGPT hoặc Gemini, dán vào và gửi.' : 'Chưa copy được tự động — hãy copy tay trong ô prompt.', 4000);
+        result.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      });
+      app.setSetting('lastPromptReviewWords', []);
+      app.setSetting('lastPromptTopic', situation.value.trim());
+    },
+  },
+  section('🏠 Tình huống trong ngày', chips, field('Hoặc tự gõ', situation)),
+  section('Bài câu',
+    field('💬 Số câu', radios('count', PHRASE_COUNTS.map((n) => [n, `${n} câu`]), 4)),
+    field('🎯 Trình độ', radios('level', [['beginner', 'Câu 2–3 từ'], ['some', 'Câu 3–5 từ']], 'beginner'))),
+  h('div.actions', {}, h('button.btn.primary.big', { type: 'submit', text: 'Copy prompt' })));
+
+  body.append(
+    notice('info', 'Bài câu dạy bé câu ngắn dùng hằng ngày (Open the door, Wash your face…). Bé nghe, xem Bông làm, làm theo rồi nói theo.'),
+    form, result);
 }

@@ -252,6 +252,7 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .home-btn.lessons { background: var(--sky); }
 .home-btn.review { background: var(--yellow); }
 .home-btn.learn { background: var(--pink); }
+.home-btn.phrases { background: var(--mint); }
 .home-btn.stickers { background: var(--lilac); width: auto; aspect-ratio: auto; min-height: var(--tap); padding: 12px 28px; border-radius: 32px; grid-auto-flow: column; gap: 14px; }
 .home-text { display: grid; justify-items: center; gap: 2px; padding: 0 8px; text-align: center; line-height: 1.1; }
 .home-en {
@@ -891,3 +892,171 @@ a.btn { text-decoration: none; }
 .import-log { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; font-size: 14px; }
 .import-log li { padding-bottom: 6px; border-bottom: 1px solid #f1ebe3; }
 .lesson-meta { display: block; font-size: 13px; color: #7a6f86; font-weight: 600; margin-top: 2px; }
+
+/* ---------- Cảnh câu nói: Bông + vật + hiệu ứng theo động từ (SPEC-v1.0 mục 2.2) ---------- */
+.scene {
+  --times: 2;
+  --dur: 1.6s;
+  position: relative;
+  width: min(84vw, 62vh, 560px);
+  aspect-ratio: 5 / 4;
+  border-radius: var(--radius);
+  background: linear-gradient(#fffdf8, #fff3e2);
+  box-shadow: var(--shadow);
+  overflow: hidden;
+  font-size: min(15vmin, 110px); /* cỡ emoji vật; các phần khác tính theo em */
+}
+.scene.small { width: clamp(var(--tap), 27vmin, 260px); font-size: min(7vmin, 52px); box-shadow: none; }
+.scene-bong { position: absolute; left: 4%; bottom: 4%; width: 54%; height: 68%; transform-origin: 50% 100%; }
+.scene-object {
+  position: absolute;
+  left: 60%;
+  top: 22%;
+  width: 34%;
+  display: grid;
+  place-items: center;
+  transform-origin: 0% 50%;
+}
+.scene-object .emoji { font-size: 1em; line-height: 1; font-family: var(--emoji); }
+.scene-fx { position: absolute; inset: 0; pointer-events: none; }
+.scene-fx .fx { position: absolute; font-family: var(--emoji); font-size: 0.55em; opacity: 0; }
+
+/* Mặc định khi đứng yên: nhún nhẹ. */
+.scene .scene-bong { animation: scene-idle 2.4s ease-in-out infinite; }
+@keyframes scene-idle { 50% { transform: translateY(-2%); } }
+
+/* Khi chạy hiệu ứng (.playing): mọi animation chạy --times lần và giữ trạng thái cuối. */
+.scene.playing .scene-bong, .scene.playing .scene-object, .scene.playing .fx {
+  animation-duration: var(--dur);
+  animation-iteration-count: var(--times);
+  animation-timing-function: ease-in-out;
+  animation-fill-mode: both;
+}
+.scene.playing .scene-bong { animation-name: none; }
+
+/* open / close: vật xoay như cánh cửa */
+.scene[data-motion='open'], .scene[data-motion='close'] { perspective: 600px; }
+.scene.playing[data-motion='open'] .scene-object { animation-name: m-open; }
+.scene.playing[data-motion='close'] .scene-object { animation-name: m-close; }
+@keyframes m-open { 0%, 20% { transform: rotateY(0); } 80%, 100% { transform: rotateY(-70deg); } }
+@keyframes m-close { 0%, 20% { transform: rotateY(-70deg); } 80%, 100% { transform: rotateY(0); } }
+
+/* put-on / take-off: vật bay xuống / lên khỏi người Bông */
+.scene.playing[data-motion='put-on'] .scene-object { animation-name: m-put-on; }
+.scene.playing[data-motion='take-off'] .scene-object { animation-name: m-take-off; }
+@keyframes m-put-on {
+  0% { left: 60%; top: 22%; transform: scale(1); }
+  35% { left: 14%; top: -10%; transform: scale(1); }
+  75%, 100% { left: 14%; top: 64%; transform: scale(0.8); }
+}
+@keyframes m-take-off {
+  0%, 15% { left: 14%; top: 64%; transform: scale(0.8); }
+  55% { left: 14%; top: -10%; transform: scale(1); }
+  100% { left: 60%; top: 22%; transform: scale(1); }
+}
+
+/* wash: bọt nước quanh mặt Bông, Bông lắc lắc */
+.scene.playing[data-motion='wash'] .scene-bong { animation-name: m-wiggle; }
+.scene[data-motion='wash'] .fx.bubble { left: calc(12% + var(--i) * 9%); top: 46%; }
+.scene.playing[data-motion='wash'] .fx.bubble { animation-name: m-bubble; animation-delay: calc(var(--i) * 0.15s); }
+@keyframes m-wiggle { 25% { transform: rotate(-5deg); } 75% { transform: rotate(5deg); } }
+@keyframes m-bubble { 0% { opacity: 0; transform: translateY(20%) scale(0.5); } 40% { opacity: 1; } 100% { opacity: 0; transform: translateY(-160%) scale(1.1); } }
+
+/* brush: bàn chải chải qua lại trước miệng Bông */
+.scene[data-motion='brush'] .fx.main { left: 22%; top: 66%; font-size: 0.7em; }
+.scene[data-motion='brush'] .scene-object { visibility: hidden; } /* bàn chải đã có ở lớp hiệu ứng */
+.scene[data-motion='brush'] .fx.main { opacity: 1; } /* bàn chải hiện cả lúc đứng yên */
+.scene.playing[data-motion='brush'] .fx.main { animation-name: m-brush; }
+@keyframes m-brush { 0% { opacity: 1; transform: translateX(-30%); } 25% { transform: translateX(30%); } 50% { transform: translateX(-30%); } 75% { transform: translateX(30%); } 100% { opacity: 1; transform: translateX(0); } }
+
+/* eat / drink: vật tới gần miệng Bông, nhỏ dần / nghiêng */
+.scene.playing[data-motion='eat'] .scene-object { animation-name: m-eat; }
+.scene.playing[data-motion='drink'] .scene-object { animation-name: m-drink; }
+@keyframes m-eat { 0% { left: 60%; top: 22%; } 35% { left: 34%; top: 56%; transform: scale(1); } 55% { transform: scale(0.75); } 75% { transform: scale(0.5); } 100% { left: 34%; top: 56%; transform: scale(0.3); } }
+@keyframes m-drink { 0% { left: 60%; top: 22%; transform: rotate(0); } 40% { left: 34%; top: 56%; transform: rotate(0); } 100% { left: 34%; top: 56%; transform: rotate(-45deg); } }
+
+/* turn-on / turn-off: vật sáng lên / tối đi */
+.scene.playing[data-motion='turn-on'] .scene-object { animation-name: m-turn-on; }
+.scene.playing[data-motion='turn-off'] .scene-object { animation-name: m-turn-off; }
+@keyframes m-turn-on { 0%, 30% { filter: brightness(0.45) grayscale(0.6); } 60%, 100% { filter: brightness(1.15) drop-shadow(0 0 0.25em #ffd166); } }
+@keyframes m-turn-off { 0%, 30% { filter: brightness(1.15) drop-shadow(0 0 0.25em #ffd166); } 60%, 100% { filter: brightness(0.45) grayscale(0.6); } }
+
+/* sit-down / stand-up / jump: Bông hạ xuống / bật lên / nhảy */
+.scene.playing[data-motion='sit-down'] .scene-bong { animation-name: m-sit; }
+.scene.playing[data-motion='stand-up'] .scene-bong { animation-name: m-stand; }
+.scene.playing[data-motion='jump'] .scene-bong { animation-name: m-jump; }
+@keyframes m-sit { 0%, 20% { transform: translateY(0) scaleY(1); } 70%, 100% { transform: translateY(14%) scaleY(0.88); } }
+@keyframes m-stand { 0%, 20% { transform: translateY(14%) scaleY(0.88); } 55% { transform: translateY(-10%) scaleY(1.05); } 100% { transform: translateY(0) scaleY(1); } }
+@keyframes m-jump { 0%, 100% { transform: translateY(0); } 30% { transform: translateY(-22%) scaleY(1.05); } 55% { transform: translateY(0) scaleY(0.92); } 75% { transform: translateY(-10%); } }
+
+/* wave / clap: bàn tay cạnh Bông */
+.scene[data-motion='wave'] .fx.main { left: 58%; top: 30%; font-size: 0.9em; transform-origin: 50% 90%; }
+.scene[data-motion='clap'] .fx.main { left: 46%; top: 52%; font-size: 0.8em; }
+.scene.playing[data-motion='wave'] .fx.main { animation-name: m-wave; }
+.scene.playing[data-motion='clap'] .fx.main { animation-name: m-clap; }
+.scene.playing[data-motion='wave'] .scene-bong, .scene.playing[data-motion='clap'] .scene-bong { animation-name: m-jump; }
+@keyframes m-wave { 0% { opacity: 1; transform: rotate(0); } 20% { transform: rotate(25deg); } 40% { transform: rotate(-15deg); } 60% { transform: rotate(25deg); } 80% { transform: rotate(-15deg); } 100% { opacity: 1; transform: rotate(0); } }
+@keyframes m-clap { 0% { opacity: 1; transform: scale(1); } 25% { transform: scale(0.7); } 50% { transform: scale(1.15); } 75% { transform: scale(0.7); } 100% { opacity: 1; transform: scale(1.1); } }
+
+/* sleep: Bông nghiêng, chữ z bay lên */
+.scene.playing[data-motion='sleep'] .scene-bong { animation-name: m-sleep; }
+.scene[data-motion='sleep'] .fx.zzz { left: calc(44% + var(--i) * 8%); top: calc(30% - var(--i) * 8%); }
+.scene.playing[data-motion='sleep'] .fx.zzz { animation-name: m-zzz; animation-delay: calc(var(--i) * 0.3s); }
+@keyframes m-sleep { 0% { transform: rotate(0); } 100% { transform: rotate(-12deg); } }
+@keyframes m-zzz { 0% { opacity: 0; transform: translate(0, 0) scale(0.6); } 50% { opacity: 1; } 100% { opacity: 0; transform: translate(30%, -60%) scale(1.1); } }
+
+/* go: Bông đi ngang, dấu chân */
+.scene.playing[data-motion='go'] .scene-bong { animation-name: m-go; }
+.scene[data-motion='go'] .fx.step { left: calc(8% + var(--i) * 16%); bottom: 4%; font-size: 0.4em; }
+.scene.playing[data-motion='go'] .fx.step { animation-name: m-step; animation-delay: calc(var(--i) * 0.35s); }
+@keyframes m-go { 0% { transform: translateX(-8%); } 50% { transform: translateX(18%) translateY(-3%); } 100% { transform: translateX(36%); } }
+@keyframes m-step { 0% { opacity: 0; } 40%, 100% { opacity: 0.8; } }
+
+/* tia sáng cho open / clap / turn-on */
+.scene .fx.spark { left: calc(60% + var(--i) * 12%); top: calc(14% + var(--i) * 18%); }
+.scene.playing .fx.spark { animation-name: m-spark; animation-delay: calc(var(--i) * 0.2s + 0.5s); }
+@keyframes m-spark { 0% { opacity: 0; transform: scale(0.3); } 50% { opacity: 1; transform: scale(1.1); } 100% { opacity: 0; transform: scale(0.6); } }
+
+/* none: nhún nhẹ cả Bông và vật */
+.scene.playing[data-motion='none'] .scene-bong, .scene.playing[data-motion='none'] .scene-object { animation-name: m-jump; }
+
+/* Hiệu ứng nhẹ cho ảnh / flipbook (1.0-b) */
+.scene.playing[data-motion='pulse'] .scene-object { animation-name: m-pulse; }
+.scene.playing[data-motion='bounce'] .scene-object { animation-name: m-jump; }
+.scene.playing[data-motion='glow'] .scene-object { animation-name: m-turn-on; }
+@keyframes m-pulse { 50% { transform: scale(1.08); } }
+
+@media (prefers-reduced-motion: reduce) {
+  .scene .scene-bong { animation: none; }
+}
+
+/* Màn hình chính 4 nút: một hàng trên iPad ngang, 2×2 trên màn hẹp. */
+.home-grid .home-btn { width: clamp(var(--tap), 20vw, 230px); }
+@media (max-width: 760px) {
+  .home-grid { display: grid; grid-template-columns: repeat(2, auto); justify-content: center; }
+  .home-grid .home-btn { width: clamp(var(--tap), 40vw, 200px); }
+}
+
+/* Thẻ câu: cảnh + chữ (cụm đang đọc được tô màu) */
+.phrase-card { position: relative; display: grid; justify-items: center; gap: 14px; }
+.phrase-text { font-size: clamp(28px, 6vmin, 60px); font-weight: 800; text-align: center; line-height: 1.25; }
+.phrase-text .chunk { padding: 0 6px; border-radius: 12px; transition: background 150ms; }
+.phrase-text .chunk.on { background: var(--yellow); }
+.did-btn {
+  width: 120px;
+  height: 120px;
+  border-radius: 50%;
+  background: var(--mint);
+  color: #fff;
+  font-size: 64px;
+  box-shadow: 0 8px 0 #3fae84;
+  animation: breathe 1.6s ease-in-out infinite;
+}
+.did-btn:active { transform: translateY(5px); box-shadow: 0 3px 0 #3fae84; }
+.did-btn.done { animation: pop 0.4s; background: var(--yellow); box-shadow: 0 8px 0 #e0b84f; }
+.choice.phrase-choice { padding: 6px; }
+
+.phrase-admin-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+.phrase-admin { display: flex; gap: 12px; align-items: center; padding: 8px 0; border-bottom: 1px solid #f1ebe3; flex-wrap: wrap; }
+.scene-box .scene.small { width: 130px; font-size: 26px; }
+.daily-phrases { font-family: inherit; white-space: pre-wrap; background: #fff; border: 1px solid #ece4d8; border-radius: 12px; padding: 10px; font-size: 15px; }

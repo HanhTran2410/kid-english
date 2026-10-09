@@ -6,10 +6,11 @@ import { listLessons, getStickers } from '../../db.js';
 import { isBackupDue } from '../../settings.js';
 import { STICKERS } from '../../stickers.js';
 import { buildTeacherPrompt } from '../../prompts.js';
-import { pickWordsForPrompt, isLearned, KNOWN_MASTERY } from '../../progress.js';
+import { pickWordsForPrompt, isLearned, KNOWN_MASTERY, wordRecords, phraseRecords } from '../../progress.js';
+import { isPhraseLesson } from '../../phrase.js';
 import { isStandalone, micProblem } from '../child.js';
 import { parentLayout, goParent, section, notice } from './common.js';
-import { createView, pasteView } from './create.js';
+import { createView, pasteView, phraseCreateView } from './create.js';
 import { lessonsView, lessonDetailView } from './lessons.js';
 import { recordingsView } from './recordings.js';
 import { settingsView } from './settings.js';
@@ -20,6 +21,7 @@ import { stickersAdminView } from './stickers.js';
 const VIEWS = {
   menu: menuView,
   create: createView,
+  'create-phrases': phraseCreateView,
   paste: pasteView,
   lessons: lessonsView,
   lesson: lessonDetailView,
@@ -49,7 +51,8 @@ function menuView(app) {
   body.append(
     warnings,
     h('nav.menu', {},
-      item('＋', 'Tạo bài học', () => goParent(app, 'create')),
+      item('＋', 'Tạo bài học (từ vựng)', () => goParent(app, 'create')),
+      item('💬', 'Tạo bài câu', () => goParent(app, 'create-phrases')),
       item('📋', 'Dán bài', () => goParent(app, 'paste')),
       item('📚', 'Quản lý bài', () => goParent(app, 'lessons')),
       item('📈', 'Bé đã học', () => goParent(app, 'progress')),
@@ -102,8 +105,8 @@ function menuView(app) {
 }
 
 async function buildTeacherPromptFor(app) {
-  const lessons = await listLessons(app.db);
-  const progress = await app.db.getAll('progress');
+  const lessons = (await listLessons(app.db)).filter((l) => !isPhraseLesson(l));
+  const progress = wordRecords(await app.db.getAll('progress'));
   const latest = lessons[0];
   return buildTeacherPrompt({
     words: latest?.words.map((w) => w.en) ?? [],
@@ -123,17 +126,27 @@ function copyTeacherPrompt(prompt) {
 function progressView(app) {
   const body = parentLayout(app, { title: 'Bé đã học', back: () => goParent(app) });
   app.db.getAll('progress').then((list) => {
-    const learned = list.filter(isLearned).sort((a, b) => a.mastery - b.mastery || a.word.localeCompare(b.word));
-    if (!learned.length) {
-      body.append(section(null, h('p', { text: 'Bé chưa học từ nào.' })));
+    const sorted = (records) => records.filter(isLearned).sort((a, b) => a.mastery - b.mastery || a.word.localeCompare(b.word));
+    const words = sorted(wordRecords(list));
+    const phrases = sorted(phraseRecords(list));
+    if (!words.length && !phrases.length) {
+      body.append(section(null, h('p', { text: 'Bé chưa học từ hay câu nào.' })));
       return;
     }
-    const known = learned.filter((r) => r.mastery >= KNOWN_MASTERY).length;
-    body.append(section(`${known}/${learned.length} từ đã thuộc (từ 3⭐)`,
-      h('ul.progress-list', {}, ...learned.map((r) => h('li', {},
-        h('span.p-emoji', { text: r.emoji || '•' }),
-        h('span.p-word', { text: r.word }),
-        h('span.p-stars', { text: stars(r.mastery) }),
-        h('span.p-meta', { text: `gặp ${r.practiceCount} lần · ${timeAgo(r.lastPracticedAt)}` }))))));
+    const row = (r, label, extra = '') => h('li', {},
+      h('span.p-emoji', { text: r.emoji || '•' }),
+      h('span.p-word', { text: label }),
+      h('span.p-stars', { text: stars(r.mastery) }),
+      h('span.p-meta', { text: `gặp ${r.practiceCount} lần · ${timeAgo(r.lastPracticedAt)}${extra}` }));
+    const known = (records) => records.filter((r) => r.mastery >= KNOWN_MASTERY).length;
+    if (words.length) {
+      body.append(section(`Từ vựng — ${known(words)}/${words.length} từ đã thuộc (từ 3⭐)`,
+        h('ul.progress-list', {}, ...words.map((r) => row(r, r.word)))));
+    }
+    if (phrases.length) {
+      body.append(section(`Câu nói — ${known(phrases)}/${phrases.length} câu đã thuộc (từ 3⭐)`,
+        h('ul.progress-list', {}, ...phrases.map((r) => row(r, r.word.replace(/^phrase:/, ''),
+          r.attempts ? ` · chọn hình: đúng ngay ${r.attempts.right}, sai ${r.attempts.wrong}` : '')))));
+    }
   });
 }

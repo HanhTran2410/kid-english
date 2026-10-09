@@ -3,7 +3,8 @@
 import { isAbort } from '../timing.js';
 import { normalizeWord } from '../text.js';
 import { listLessons } from '../db.js';
-import { isUnknown } from '../progress.js';
+import { isUnknown, wordRecords } from '../progress.js';
+import { isPhraseLesson } from '../phrase.js';
 import { findWord } from '../lesson.js';
 import { activityLayout } from '../player/layout.js';
 import { Teacher } from '../player/teacher.js';
@@ -20,12 +21,12 @@ export function learnScreen(app) {
   const visuals = new VisualSet();
 
   async function run() {
-    const lessons = await listLessons(app.db);
+    const lessons = (await listLessons(app.db)).filter((l) => !isPhraseLesson(l));
     if (!lessons.length) {
       app.go('home');
       return;
     }
-    const weak = new Set((await app.db.getAll('progress')).filter(isUnknown).map((r) => r.word));
+    const weak = new Set(wordRecords(await app.db.getAll('progress')).filter(isUnknown).map((r) => r.word));
     const turns = buildChatTurns(lessons, weak, 7);
     const byId = new Map(lessons.map((l) => [l.id, l]));
     for (const id of new Set(turns.map((t) => t.lessonId))) await loadLessonVisuals(app.db, byId.get(id), visuals);

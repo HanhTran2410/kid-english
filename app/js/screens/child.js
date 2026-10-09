@@ -3,7 +3,7 @@
 import { h, holdButton, wordVisual, toast } from '../ui.js';
 import { play } from '../speech/sfx.js';
 import { listLessons, getStickers, mediaBlob } from '../db.js';
-import { isLearned } from '../progress.js';
+import { isLearned, wordRecords } from '../progress.js';
 import { isBackupDue } from '../settings.js';
 import { STICKERS } from '../stickers.js';
 import { homeButton } from '../player/layout.js';
@@ -11,6 +11,7 @@ import { createBunny } from '../player/teacher.js';
 import { MIC } from '../speech/microphone.js';
 import { normalizeWord } from '../text.js';
 import { groupByTopic } from '../lesson.js';
+import { lessonKind, PHRASE_KIND, WORDS_KIND } from '../phrase.js';
 
 const ALL = '__all__';
 import { bongElement } from '../bong.js';
@@ -99,6 +100,7 @@ export function homeScreen(app) {
     h('header.home-top', {}, parentButton(app, { dot: due })),
     h('div.home-grid', {},
       big('📚', 'Lessons', 'Bài học', () => app.go('lessons'), '.lessons'),
+      big('💬', 'Phrases', 'Câu nói', () => app.go('phrases'), '.phrases'),
       reviewBtn,
       big(bongElement('home-bong'), `Learn with ${characterName(app)}`, `Học cùng ${characterName(app)}`, () => app.go('learn'), '.learn')),
     h('div.home-bottom', {}, big('🎁', 'My Stickers', 'Sticker của bé', () => app.go('stickers'), '.stickers')),
@@ -106,15 +108,20 @@ export function homeScreen(app) {
   );
 
   app.db.getAll('progress').then((list) => {
-    if (!list.some(isLearned)) reviewBtn.classList.add('disabled');
+    if (!wordRecords(list).some(isLearned)) reviewBtn.classList.add('disabled');
   });
   return () => bunny.destroy();
 }
 
 // ---------- Danh sách bài học ----------
 
-export function lessonsScreen(app) {
-  app.root.className = 'child-screen lessons';
+/**
+ * Danh sách bài của bé: bài từ vựng (mặc định) hoặc bài câu (`kind: 'phrases'`, SPEC-v1.0 mục 6.2).
+ */
+export function lessonsScreen(app, { kind = WORDS_KIND } = {}) {
+  const playScreen = kind === PHRASE_KIND ? 'phrase-lesson' : 'lesson';
+  app.lessonTabs ??= {};
+  app.root.className = `child-screen lessons ${kind}`;
   const grid = h('div.lesson-grid');
   const urls = [];
   app.root.append(h('header.child-top', {}, homeButton(app)), grid);
@@ -122,7 +129,7 @@ export function lessonsScreen(app) {
   const open = (lesson) => {
     play('tap');
     if (!lesson.resume) {
-      app.go('lesson', { lessonId: lesson.id, start: 'begin' });
+      app.go(playScreen, { lessonId: lesson.id, start: 'begin' });
       return;
     }
     // Bài đang học dở: hai lựa chọn Học tiếp / Học lại (SPEC 4.2).
@@ -133,14 +140,14 @@ export function lessonsScreen(app) {
           type: 'button', 'aria-label': 'Học tiếp', text: '▶️',
           onclick: () => {
             close();
-            app.go('lesson', { lessonId: lesson.id, start: 'resume' });
+            app.go(playScreen, { lessonId: lesson.id, start: 'resume' });
           },
         }),
         h('button.choice-big.restart', {
           type: 'button', 'aria-label': 'Học lại', text: '🔄',
           onclick: () => {
             close();
-            app.go('lesson', { lessonId: lesson.id, start: 'begin' });
+            app.go(playScreen, { lessonId: lesson.id, start: 'begin' });
           },
         })));
     app.root.append(overlay);
@@ -151,9 +158,13 @@ export function lessonsScreen(app) {
   grid.before(tabs);
 
   const card = async (lesson) => {
-    const images = await app.db.getAllByIndex('images', 'lessonId', lesson.id);
-    const firstKey = normalizeWord(lesson.words[0]?.en ?? '');
-    const cover = images.find((img) => img.word === firstKey) ?? null;
+    const items = lesson.words ?? lesson.phrases ?? [];
+    let cover = null;
+    if (lesson.words) {
+      const images = await app.db.getAllByIndex('images', 'lessonId', lesson.id);
+      const firstKey = normalizeWord(lesson.words[0]?.en ?? '');
+      cover = images.find((img) => img.word === firstKey) ?? null;
+    }
     let url = null;
     if (cover) {
       url = URL.createObjectURL(mediaBlob(cover));
@@ -166,13 +177,13 @@ export function lessonsScreen(app) {
     wordVisual({ url, emoji: lesson.emoji, word: lesson.title }, 'cover'),
     h('span.lesson-title', { text: lesson.title }),
     // Hàng emoji các từ trong bài: bé chưa biết đọc vẫn phân biệt được "Animals" và "Animals 2".
-    h('span.lesson-words', { text: lesson.words.slice(0, 4).map((w) => w.emoji).join('') }),
+    h('span.lesson-words', { text: items.slice(0, 4).map((w) => w.emoji).join('') }),
     h('span.lesson-stars', { text: n ? (n <= 5 ? '⭐'.repeat(n) : `⭐×${n}`) : '' }),
     lesson.resume ? h('span.resume-bar', {}, h('span', { style: { width: `${Math.round((lesson.resume.progress ?? 0) * 100)}%` } })) : null);
   };
 
   (async () => {
-    const lessons = await listLessons(app.db);
+    const lessons = (await listLessons(app.db)).filter((l) => lessonKind(l) === kind);
     if (!lessons.length) {
       grid.append(h('div.empty', { text: '📭' }));
       return;
@@ -182,7 +193,7 @@ export function lessonsScreen(app) {
     const groups = groupByTopic(lessons);
 
     const show = (topic) => {
-      app.lessonTab = topic;
+      app.lessonTabs[kind] = topic;
       for (const t of tabs.children) t.classList.toggle('active', t.dataset.topic === topic);
       const visible = topic === ALL ? lessons : groups.find((g) => g.topic === topic)?.lessons ?? lessons;
       grid.replaceChildren(...visible.map((l) => cards.get(l.id)));
@@ -203,7 +214,8 @@ export function lessonsScreen(app) {
     } else {
       tabs.hidden = true;
     }
-    const remembered = app.lessonTab && groups.some((g) => g.topic === app.lessonTab) ? app.lessonTab : ALL;
+    const saved = app.lessonTabs[kind];
+    const remembered = saved && groups.some((g) => g.topic === saved) ? saved : ALL;
     show(groups.length >= 2 ? remembered : ALL);
   })();
 

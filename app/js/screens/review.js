@@ -2,7 +2,7 @@
 
 import { h, wordVisual } from '../ui.js';
 import { isAbort } from '../timing.js';
-import { isLearned, pickReviewWords } from '../progress.js';
+import { isLearned, pickReviewWords, wordRecords } from '../progress.js';
 import { RESULT } from '../speech/listen.js';
 import { activityLayout } from '../player/layout.js';
 import { Teacher } from '../player/teacher.js';
@@ -21,7 +21,7 @@ export function reviewScreen(app) {
   const visuals = new VisualSet();
 
   async function run() {
-    const records = await app.db.getAll('progress');
+    const records = wordRecords(await app.db.getAll('progress'));
     const picked = pickReviewWords(records, { count: 6 });
     if (!picked.length) {
       app.go('home');

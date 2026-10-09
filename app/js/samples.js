@@ -1,21 +1,24 @@
-// 2 bài mẫu có sẵn (SPEC mục 4.6). Chỉ thêm một lần ở lần chạy đầu; có nút "Thêm lại bài mẫu".
+// Bài mẫu có sẵn (SPEC mục 4.6, SPEC-v1.0 mục 11). Mỗi nhóm chỉ thêm một lần; có nút "Thêm lại bài mẫu".
 
-import { parseLesson, createLessonRecord } from './lesson.js';
+import { parseLesson, createLessonRecord, baseTitle } from './lesson.js';
 import { ensureLessonNumbers } from './db.js';
 
 export const SAMPLE_FILES = ['lessons/animals.json', 'lessons/colors.json'];
+export const PHRASE_SAMPLE_FILES = ['lessons/morning.json'];
 
-/** Thêm bài mẫu vào máy. Trả về số bài đã thêm. */
-export async function addSampleLessons(app) {
+/** Thêm các bài mẫu trong danh sách file. Trả về số bài đã thêm. */
+async function addFrom(app, files) {
   let added = 0;
   const now = Date.now();
-  for (const [i, file] of SAMPLE_FILES.entries()) {
+  for (const [i, file] of files.entries()) {
     try {
       const res = await fetch(file);
       const parsed = parseLesson(await res.text());
       if (!parsed.ok) continue;
-      // Đánh số theo thứ tự tạo: Animals #01, Colors #02.
-      await app.db.put('lessons', createLessonRecord(parsed.lesson, now - SAMPLE_FILES.length + i));
+      // Đánh số theo thứ tự tạo: Animals #01, Colors #02…
+      const record = createLessonRecord(parsed.lesson, now - files.length + i);
+      record.topic = baseTitle(parsed.lesson.title);
+      await app.db.put('lessons', record);
       added++;
     } catch (err) {
       console.error('Không thêm được bài mẫu', file, err);
@@ -25,8 +28,17 @@ export async function addSampleLessons(app) {
   return added;
 }
 
+/** Nút "Thêm lại bài mẫu": thêm lại cả bài từ vựng và bài câu mẫu. */
+export async function addSampleLessons(app) {
+  return (await addFrom(app, SAMPLE_FILES)) + (await addFrom(app, PHRASE_SAMPLE_FILES));
+}
+
+/** Lần chạy đầu: thêm bài mẫu. Bài câu mẫu có cờ riêng để máy đã dùng bản cũ vẫn nhận được. */
 export async function seedSamplesOnce(app) {
-  if (app.settings.samplesSeeded) return;
-  const added = await addSampleLessons(app);
-  if (added) await app.setSetting('samplesSeeded', true);
+  if (!app.settings.samplesSeeded) {
+    if (await addFrom(app, SAMPLE_FILES)) await app.setSetting('samplesSeeded', true);
+  }
+  if (!app.settings.phraseSamplesSeeded) {
+    if (await addFrom(app, PHRASE_SAMPLE_FILES)) await app.setSetting('phraseSamplesSeeded', true);
+  }
 }

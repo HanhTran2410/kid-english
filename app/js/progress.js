@@ -113,3 +113,22 @@ export function mergeProgress(current, incoming) {
     lastVoiceDay: laterDay(current.lastVoiceDay, incoming.lastVoiceDay),
   };
 }
+
+/** Bỏ các bản ghi tiến độ của câu (khóa `phrase:…`) — dùng cho phần từ vựng. */
+export const wordRecords = (records) => records.filter((r) => !String(r.word).startsWith('phrase:'));
+/** Chỉ các bản ghi tiến độ của câu. */
+export const phraseRecords = (records) => records.filter((r) => String(r.word).startsWith('phrase:'));
+
+/** Bé làm theo câu (chạm ✔): +1, tối đa một lần mỗi ngày, chỉ đưa tới tối đa 2⭐ (SPEC-v1.0 mục 8). */
+export function onDid(rec, now = Date.now()) {
+  const today = dayKey(new Date(now));
+  if (rec.lastDidDay === today) return rec;
+  const mastery = rec.mastery < VOICE_MASTERY_CAP ? rec.mastery + 1 : rec.mastery;
+  return { ...rec, mastery, lastDidDay: today };
+}
+
+/** Ghi lịch sử lượt chọn hình của câu (không trừ sao). */
+export function onAttempt(rec, correctFirstTry) {
+  const a = rec.attempts ?? { right: 0, wrong: 0 };
+  return { ...rec, attempts: correctFirstTry ? { ...a, right: a.right + 1 } : { ...a, wrong: a.wrong + 1 } };
+}

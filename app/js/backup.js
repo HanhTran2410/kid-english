@@ -26,7 +26,7 @@ export class BackupError extends Error {}
 const editedAt = (lesson) => lesson.updatedAt ?? lesson.createdAt ?? 0;
 
 /** "Chữ ký" của bài theo danh sách từ (không phân biệt thứ tự, hoa/thường). */
-const wordSignature = (lesson) => (lesson.words ?? []).map((w) => normalizeWord(w.en)).sort().join('|');
+const wordSignature = (lesson) => `${lesson.words ? 'w' : 'p'}:${(lesson.words ?? lesson.phrases ?? []).map((w) => normalizeWord(w.en)).sort().join('|')}`;
 
 const withoutBlob = ({ blob, data, ...meta }) => meta;
 
@@ -143,7 +143,7 @@ export async function readBackup(input, { JSZip = globalThis.JSZip } = {}) {
   const lessons = [];
   for (const file of zip.file(/^lessons\/[^/]+\.json$/)) {
     const lesson = await readJson(file.name);
-    if (!lesson?.id || !lesson.title || !Array.isArray(lesson.words)) {
+    if (!lesson?.id || !lesson.title || !(Array.isArray(lesson.words) || Array.isArray(lesson.phrases))) {
       throw new BackupError(`File sao lưu bị hỏng (${file.name}).`);
     }
     lessons.push(lesson);

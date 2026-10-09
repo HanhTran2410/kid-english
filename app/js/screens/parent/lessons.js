@@ -6,6 +6,9 @@ const IMPORT_LOG_MAX = 30;
 import { listLessons, deleteLesson, setWordImage, removeWordImage, isQuotaError, mediaBlob, ensureLessonNumbers } from '../../db.js';
 import { normalizeWord } from '../../text.js';
 import { uniqueTitle, topicOf, formatLessonNo, lessonFileName } from '../../lesson.js';
+import { isPhraseLesson, MOTION_NAMES } from '../../phrase.js';
+import { createScene } from '../../player/scene.js';
+import { speakButton } from './common.js';
 import { resizeImage, sliceGrid, gridShape, loadGridImage, GRID_OPTIONS, ImageError } from '../../image.js';
 import { addSampleLessons } from '../../samples.js';
 import { buildGridImagePrompt } from '../../prompts.js';
@@ -93,7 +96,7 @@ export function lessonsView(app) {
         h('span.lesson-no', { text: `#${formatLessonNo(l.no)}` }),
         h('span.p-emoji', { text: l.emoji }),
         h('span.grow', {}, h('b', { text: l.title }),
-          h('span.lesson-meta', { text: `${topicOf(l)} · ${l.words.length} từ · học xong ${l.timesCompleted ?? 0} lần · ${formatDateTime(l.createdAt).slice(0, 10)}` })))));
+          h('span.lesson-meta', { text: `${isPhraseLesson(l) ? '💬 Câu nói' : '📚 Từ vựng'} · ${topicOf(l)} · ${isPhraseLesson(l) ? `${l.phrases.length} câu` : `${l.words.length} từ`} · học xong ${l.timesCompleted ?? 0} lần · ${formatDateTime(l.createdAt).slice(0, 10)}` })))));
     }
   });
 }
@@ -112,30 +115,11 @@ export function lessonDetailView(app, { lessonId }) {
     const imageOf = (en) => images.find((img) => img.word === normalizeWord(en));
 
     // Đổi tên và chủ đề
-    const name = h('input', { type: 'text', value: lesson.title, 'aria-label': 'Tên bài' });
-    const noInput = h('input', { type: 'number', min: '1', max: '999', value: String(lesson.no ?? ''), 'aria-label': 'Số bài' });
-    const topicInput = h('input', { type: 'text', value: topicOf(lesson), 'aria-label': 'Chủ đề' });
-    const rename = section('Tên bài và chủ đề',
-      h('label.field', {}, h('span.field-label', { text: 'Số bài (đứng đầu tên file khi chia sẻ)' }), noInput),
-      h('label.field', {}, h('span.field-label', { text: 'Tên bài' }), name),
-      h('label.field', {}, h('span.field-label', { text: 'Chủ đề (tab ở màn hình Bài học của bé)' }), topicInput),
-      h('button.btn', {
-        type: 'button',
-        text: 'Lưu',
-        onclick: async () => {
-          const title = name.value.trim();
-          if (!title) return;
-          const others = (await listLessons(app.db)).filter((l) => l.id !== lesson.id).map((l) => l.title);
-          lesson.title = uniqueTitle(title, others);
-          lesson.topic = topicInput.value.trim();
-          if (Number(noInput.value) > 0) lesson.no = Math.round(Number(noInput.value));
-          lesson.updatedAt = Date.now();
-          await app.db.put('lessons', lesson);
-          name.value = lesson.title;
-          toast(lesson.title === title ? 'Đã lưu.' : `Tên đã có, lưu thành "${lesson.title}".`);
-        },
-      }));
-
+    const rename = renameSection(app, lesson);
+    if (isPhraseLesson(lesson)) {
+      body.append(...phraseDetailSections(app, lesson), shareSection(app, lesson), section(null, deleteButton(app, lesson)));
+      return;
+    }
     // Ảnh từng từ
     const rows = lesson.words.map((w) => {
       const img = imageOf(w.en);
@@ -181,20 +165,7 @@ export function lessonDetailView(app, { lessonId }) {
         input);
     });
 
-    const remove = h('button.btn.danger', {
-      type: 'button',
-      text: 'Xóa bài này',
-      onclick: async () => {
-        const ok = await confirmDialog(
-          `Xóa bài "${lesson.title}"? Ảnh và ghi âm của bài cũng bị xóa. Tiến độ các từ vẫn được giữ.`,
-          { okText: 'Xóa bài', danger: true },
-        );
-        if (!ok) return;
-        await deleteLesson(app.db, lesson.id);
-        toast('Đã xóa bài.');
-        goParent(app, 'lessons');
-      },
-    });
+    const remove = deleteButton(app, lesson);
 
     const preview = h('details', {}, h('summary', { text: 'Xem nội dung bài' }), lessonPreview(app, lesson));
 
@@ -352,4 +323,90 @@ function shareSection(app, lesson) {
     h('p', { text: `File ${lessonFileName(lesson)} gồm nội dung bài và ảnh (không có ghi âm, tiến độ của bé). Trên máy kia: Góc bố mẹ → Quản lý bài → "Nhập bài từ file".` }),
     h('div.actions', {}, makeBtn, sendBtn),
     status);
+}
+
+/** Đổi số bài, tên bài, chủ đề (dùng chung cho bài từ vựng và bài câu). */
+function renameSection(app, lesson) {
+  const name = h('input', { type: 'text', value: lesson.title, 'aria-label': 'Tên bài' });
+  const noInput = h('input', { type: 'number', min: '1', max: '999', value: String(lesson.no ?? ''), 'aria-label': 'Số bài' });
+  const topicInput = h('input', { type: 'text', value: topicOf(lesson), 'aria-label': 'Chủ đề' });
+  return section('Tên bài và chủ đề',
+    h('label.field', {}, h('span.field-label', { text: 'Số bài (đứng đầu tên file khi chia sẻ)' }), noInput),
+    h('label.field', {}, h('span.field-label', { text: 'Tên bài' }), name),
+    h('label.field', {}, h('span.field-label', { text: 'Chủ đề (tab ở danh sách bài của bé)' }), topicInput),
+    h('button.btn', {
+      type: 'button',
+      text: 'Lưu',
+      onclick: async () => {
+        const title = name.value.trim();
+        if (!title) return;
+        const others = (await listLessons(app.db)).filter((l) => l.id !== lesson.id).map((l) => l.title);
+        lesson.title = uniqueTitle(title, others);
+        lesson.topic = topicInput.value.trim();
+        if (Number(noInput.value) > 0) lesson.no = Math.round(Number(noInput.value));
+        lesson.updatedAt = Date.now();
+        await app.db.put('lessons', lesson);
+        name.value = lesson.title;
+        toast(lesson.title === title ? 'Đã lưu.' : `Tên đã có, lưu thành "${lesson.title}".`);
+      },
+    }));
+}
+
+function deleteButton(app, lesson) {
+  return h('button.btn.danger', {
+    type: 'button',
+    text: 'Xóa bài này',
+    onclick: async () => {
+      const ok = await confirmDialog(
+        `Xóa bài "${lesson.title}"? Ảnh và ghi âm của bài cũng bị xóa. Tiến độ vẫn được giữ.`,
+        { okText: 'Xóa bài', danger: true },
+      );
+      if (!ok) return;
+      await deleteLesson(app.db, lesson.id);
+      toast('Đã xóa bài.');
+      goParent(app, 'lessons');
+    },
+  });
+}
+
+/** Trang bài câu (SPEC-v1.0 mục 6.3): xem trước từng câu, đổi hiệu ứng, "Câu dùng trong ngày". */
+function phraseDetailSections(app, lesson) {
+  const rows = lesson.phrases.map((p, i) => {
+    let scene = createScene({ emoji: p.emoji, motion: p.motion, small: true });
+    const sceneBox = h('div.scene-box', {}, scene.el);
+    const motionSel = h('select', { 'aria-label': `Hiệu ứng của câu ${i + 1}` },
+      ...MOTION_NAMES.map((m) => h('option', { value: m, text: m, selected: m === p.motion })));
+    motionSel.addEventListener('change', async () => {
+      p.motion = motionSel.value;
+      lesson.updatedAt = Date.now();
+      await app.db.put('lessons', lesson);
+      scene = createScene({ emoji: p.emoji, motion: p.motion, small: true });
+      sceneBox.replaceChildren(scene.el);
+      scene.play(1);
+      toast(scene.motion === p.motion ? 'Đã đổi hiệu ứng.' : `Hiệu ứng "${p.motion}" cần emoji của vật, đang hiện "${scene.motion}".`, 2500);
+    });
+    return h('li.phrase-admin', {},
+      sceneBox,
+      h('div.grow', {},
+        h('b', { text: p.en }), speakButton(app, p.en),
+        h('div.muted', { text: p.vi }),
+        h('div.row', {},
+          h('span.field-hint', { text: 'Hiệu ứng:' }), motionSel,
+          h('button.btn.small', { type: 'button', text: '▶ Xem', onclick: () => scene.play(1) }))));
+  });
+
+  const daily = lesson.phrases.map((p) => `${p.en} — ${p.vi}`).join('\n');
+  return [
+    renameSection(app, lesson),
+    section(`Các câu (${lesson.phrases.length})${lesson.routine ? ' — theo thứ tự trong ngày' : ''}`,
+      h('ul.phrase-admin-list', {}, ...rows)),
+    section('Câu dùng trong ngày',
+      h('p.field-hint', { text: 'Bố mẹ nói đúng các câu này khi bé làm thật (lúc mặc áo, rửa mặt…) để bé nhớ lâu.' }),
+      h('pre.daily-phrases', { text: daily }),
+      h('button.btn.small', {
+        type: 'button',
+        text: 'Copy',
+        onclick: () => copyText(daily).then((ok) => toast(ok ? 'Đã copy.' : 'Không copy được.')),
+      })),
+  ];
 }

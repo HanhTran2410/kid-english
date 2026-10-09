@@ -71,12 +71,16 @@ Repo chỉ chứa code, icon, font và 2 bài mẫu. Không có dữ liệu nào
 
 Nếu AI trả bài bị cắt ngang, nhắn cho AI chữ `continue` rồi copy lại toàn bộ.
 
+### Bài câu nói hằng ngày (Phrases)
+
+Góc bố mẹ → **Tạo bài câu** → chọn tình huống (Morning, Getting dressed, Going out…), số câu (4 hoặc 6) → **Copy prompt** → dán vào ChatGPT/Gemini → **Dán bài** (cùng chỗ với bài từ vựng). Bé học ở nút **💬 Phrases / Câu nói** trên màn hình chính: xem Bông làm → làm theo (chạm ✔) → nói theo → chọn hình đúng câu. Trong Quản lý bài, bố mẹ đổi được hiệu ứng chuyển động của từng câu và xem "Câu dùng trong ngày". Chi tiết ở [SPEC-v1.0.md](SPEC-v1.0.md).
+
 ## 6. Test
 
 ```bash
-npm test                      # test logic (node:test): 79 test
+npm test                      # test logic (node:test): 99 test
 npx playwright install chromium
-npm run test:ui               # test giao diện trên Chrome cỡ iPad: 18 test
+npm run test:ui               # test giao diện trên Chrome cỡ iPad: 25 test
 node scripts/screens.mjs      # chụp các màn hình cỡ iPhone/iPad vào test-results/screens/ (chạy server cổng 4173 trước)
 ```
 

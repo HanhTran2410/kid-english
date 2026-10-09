@@ -2,6 +2,7 @@
 // Lỗi nặng → từ chối bài. Lỗi nhẹ → tự sửa và trả về cảnh báo để hiện ở màn xem trước.
 
 import { normalizeWord, wordCount } from './text.js';
+import { validatePhraseLesson } from './phrase.js';
 
 export const LIMITS = {
   minWords: 2,
@@ -262,11 +263,15 @@ export function validateLesson(raw, { reviewWords = [] } = {}) {
   return { ok: true, lesson, errors, warnings };
 }
 
-/** Đọc đoạn văn bản bố mẹ dán vào thành bài học đã kiểm tra. */
+/** Đọc đoạn văn bản bố mẹ dán vào thành bài học đã kiểm tra (bài từ vựng hoặc bài câu). */
 export function parseLesson(text, options) {
   const extracted = extractJson(text);
   if (!extracted.ok) return { ok: false, lesson: null, errors: [extracted.error], warnings: [] };
-  return validateLesson(extracted.value, options);
+  const raw = extracted.value;
+  if (raw && typeof raw === 'object' && (raw.kind === 'phrases' || (Array.isArray(raw.phrases) && !Array.isArray(raw.words)))) {
+    return validatePhraseLesson(raw);
+  }
+  return validateLesson(raw, options);
 }
 
 /** Tạo bản ghi để lưu vào IndexedDB: id do app tạo, không dùng id của AI. */
@@ -302,7 +307,7 @@ export function overlapWithLessons(lesson, lessons, reviewWords = []) {
   const review = new Set(reviewWords.map(normalizeWord));
   const owner = new Map();
   for (const l of lessons) {
-    for (const w of l.words) if (!owner.has(normalizeWord(w.en))) owner.set(normalizeWord(w.en), l.title);
+    for (const w of l.words ?? []) if (!owner.has(normalizeWord(w.en))) owner.set(normalizeWord(w.en), l.title);
   }
   return lesson.words
     .map((w) => normalizeWord(w.en))

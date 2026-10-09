@@ -4,6 +4,7 @@
 > - draft2: video bố mẹ quay chuyển sang bản 1.1.
 > - draft3: sửa theo review — offline/giọng nói, từ khóa bắt buộc, định danh câu và lưu ảnh/khung hình, hiệu ứng theo loại hình, không trừ sao, thu nhỏ phạm vi 1.0-a, bổ sung test.
 > - Chốt 2026-10-09: các câu hỏi mục 13 theo đề xuất.
+> - **1.0-a đã làm xong (app 0.2.0)**: nút Phrases, danh sách bài câu, tạo bài câu, xem trước, trang bài câu (đổi hiệu ứng, Câu dùng trong ngày), cảnh Bông + emoji với 18 hiệu ứng, luồng A–D, tiến độ câu, bài mẫu Morning. Ghi chú kỹ thuật: 1.0-a chưa cần kho mới nên **chưa nâng cấp IndexedDB**; kho `phraseImages`/`frameSets` sẽ thêm cùng 1.0-b.
 
 **Phạm vi kỹ thuật:** đây là một **mục học mới bên trong web app hiện tại** (cùng link GitHub Pages, cùng app trên Màn hình chính), không phải app riêng. Dùng chung dữ liệu (tiến độ, sticker, giới hạn thời gian, Góc bố mẹ, sao lưu, chia sẻ bài) và dùng lại khung học, Bông, giọng đọc, mic, nút ▶, Học tiếp/Học lại, Hoan hô, cắt ảnh lưới.
 

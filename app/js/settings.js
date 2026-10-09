@@ -12,6 +12,7 @@ export const DEFAULT_SETTINGS = {
   lastBackupAt: null,
   firstUseAt: null,
   samplesSeeded: false,
+  phraseSamplesSeeded: false,
   lastPromptReviewWords: [],
   lastPromptTopic: '',
   importLog: [], // các file bài đã nhập gần đây: { file, at, summary, lessons }
