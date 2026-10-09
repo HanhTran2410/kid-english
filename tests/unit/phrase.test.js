@@ -179,7 +179,7 @@ test('prompt khung hình: lưới tuyệt đối, Bông nhất quán không bị
   assert.match(p, /### ROW 2 — WASH YOUR FACE\nKeep the same background and the same props/);
   assert.match(p, /No body part, prop, water drop, motion mark or shadow may touch or cross a divider line/);
   assert.match(p, /FINAL CHECK: exactly 6 equal cells in 3 columns and 2 rows/);
-  assert.doesNotMatch(p, /door\b.*in the same place/, 'không nhắc đồ vật không có trong bài');
+  assert.doesNotMatch(p, /\bdoor\b/, 'không nhắc đồ vật không có trong bài');
   const one = buildFramesPrompt([{ en: 'Wake up', steps: ['a', 'b', 'c'] }]);
   assert.match(one, /3-column × 1-row grid: 3 equal cells/);
   assert.match(one, /exactly 0 straight horizontal divider line/);
