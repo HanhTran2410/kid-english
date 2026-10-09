@@ -12,11 +12,20 @@
       "vi": "Thức dậy",
       "emoji": "⏰",
       "motion": "stand-up",
-      "requiredKeywords": ["wake up"],
+      "requiredKeywords": [
+        "wake up"
+      ],
       "keywords": [],
-      "chunks": ["Wake up"],
+      "chunks": [
+        "Wake up"
+      ],
       "imagePrompt": "Bông, a cute bunny with creamy white fur, light-pink inner ears, big glossy eyes and rosy cheeks, waking up and stretching in bed next to a ringing alarm clock, cute children's flashcard illustration, simple flat shapes, thick soft outlines, bright pastel colors, plain white background, one object centered, no text",
-      "framePrompts": ["Bông sleeps in bed", "The alarm clock rings", "Bông sits up and stretches"]
+      "framePrompts": [
+        "Bông sleeps peacefully in the bed under the pastel blanket, eyes closed; the alarm clock is clearly visible on the bedside table",
+        "The SAME alarm clock rings with small curved motion marks around it; Bông is still lying in the same bed and slowly opens her eyes",
+        "Bông sits up in the SAME bed and happily stretches both arms above her head, eyes open"
+      ],
+      "frameScene": "a bedroom with a bed, a pillow, a pastel blanket and an alarm clock on a small bedside table"
     },
     {
       "id": "p2",
@@ -24,11 +33,23 @@
       "vi": "Rửa mặt",
       "emoji": "🧼",
       "motion": "wash",
-      "requiredKeywords": ["wash"],
-      "keywords": ["face"],
-      "chunks": ["Wash", "your face"],
+      "requiredKeywords": [
+        "wash"
+      ],
+      "keywords": [
+        "face"
+      ],
+      "chunks": [
+        "Wash",
+        "your face"
+      ],
       "imagePrompt": "Bông, a cute bunny with creamy white fur, light-pink inner ears, big glossy eyes and rosy cheeks, washing her face with water and soap bubbles at a sink, cute children's flashcard illustration, simple flat shapes, thick soft outlines, bright pastel colors, plain white background, one object centered, no text",
-      "framePrompts": ["Bông turns on the tap", "Bông splashes water on her face", "Bông smiles with a clean face"]
+      "framePrompts": [
+        "Bông stands in front of the sink and reaches with one hand to turn on the faucet; a small clear stream of water flows",
+        "Bông splashes a little water onto her face with both hands; a few clear water drops around her cheeks and hands",
+        "Bông stands in the same place in front of the sink with her hands lowered, smiling with a fresh clean face"
+      ],
+      "frameScene": "a bathroom sink with a faucet and a small mirror"
     },
     {
       "id": "p3",
@@ -36,11 +57,23 @@
       "vi": "Đánh răng",
       "emoji": "🪥",
       "motion": "brush",
-      "requiredKeywords": ["brush"],
-      "keywords": ["teeth"],
-      "chunks": ["Brush", "your teeth"],
+      "requiredKeywords": [
+        "brush"
+      ],
+      "keywords": [
+        "teeth"
+      ],
+      "chunks": [
+        "Brush",
+        "your teeth"
+      ],
       "imagePrompt": "Bông, a cute bunny with creamy white fur, light-pink inner ears, big glossy eyes and rosy cheeks, brushing her teeth with a toothbrush and foam, cute children's flashcard illustration, simple flat shapes, thick soft outlines, bright pastel colors, plain white background, one object centered, no text",
-      "framePrompts": ["Bông holds a toothbrush", "Bông brushes her teeth", "Bông shows clean white teeth"]
+      "framePrompts": [
+        "Bông stands in front of the sink holding a big, clearly visible toothbrush in one hand, ready to brush",
+        "Bông brushes her teeth with the SAME toothbrush, mouth slightly open, a little simple white foam around her mouth",
+        "Bông holds the same toothbrush and smiles proudly, showing a row of clean white teeth; no foam"
+      ],
+      "frameScene": "a bathroom sink with a small mirror, a big toothbrush and a tube of toothpaste"
     },
     {
       "id": "p4",
@@ -48,12 +81,29 @@
       "vi": "Mặc áo vào",
       "emoji": "👕",
       "motion": "put-on",
-      "requiredKeywords": ["put on"],
-      "keywords": ["shirt"],
-      "chunks": ["Put on", "your shirt"],
+      "requiredKeywords": [
+        "put on"
+      ],
+      "keywords": [
+        "shirt"
+      ],
+      "chunks": [
+        "Put on",
+        "your shirt"
+      ],
       "imagePrompt": "Bông, a cute bunny with creamy white fur, light-pink inner ears, big glossy eyes and rosy cheeks, putting on a light-blue T-shirt, cute children's flashcard illustration, simple flat shapes, thick soft outlines, bright pastel colors, plain white background, one object centered, no text",
-      "framePrompts": ["Bông holds a T-shirt", "Bông pulls the T-shirt over her head", "Bông wears the T-shirt and smiles"]
+      "framePrompts": [
+        "Bông stands upright holding the light-blue T-shirt in front of her chest with both hands; the whole shirt is visible",
+        "Bông pulls the SAME T-shirt down over her head, both hands holding the lower hem, her head just coming out through the neckline",
+        "Bông wears the SAME T-shirt correctly, head, both arms and legs clearly visible, smiling and standing upright"
+      ],
+      "frameScene": "a simple bedroom background and ONE light-blue child-size T-shirt with a visible neckline and two sleeves"
     }
   ],
-  "commands": ["p1", "p2", "p3", "p4"]
+  "commands": [
+    "p1",
+    "p2",
+    "p3",
+    "p4"
+  ]
 }

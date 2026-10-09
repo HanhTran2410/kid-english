@@ -164,16 +164,32 @@ test('khung hình: chia nhóm 4 câu/ảnh, 3 bước, gán mặc định, gom t
   assert.equal(collectFrames(['p5:0', 'p5:0'], ['A', 'B']).duplicate, 'p5:0');
 });
 
-test('prompt khung hình: mỗi hàng 1 câu 3 bước, Bông cả người, cùng cảnh để thành phim', async () => {
+test('prompt khung hình: lưới tuyệt đối, Bông nhất quán không bị cắt, mỗi hàng 1 hoạt động 3 khung, bối cảnh giữ nguyên', async () => {
   const { buildFramesPrompt } = await import('../../app/js/prompts.js');
   const p = buildFramesPrompt([
-    { en: 'Wake up', steps: ['Bông sleeps in bed', 'The alarm rings', 'Bông sits up'] },
+    { en: 'Wake up', scene: 'a bedroom with a bed and an alarm clock', steps: ['Bông sleeps in bed', 'The alarm rings', 'Bông sits up'] },
     { en: 'Wash your face', steps: ['Bông turns on the tap', 'Bông splashes water', 'Bông smiles'] },
   ]);
-  assert.match(p, /exact 3-column × 2-row grid of 6 equal cells/);
-  assert.match(p, /ROW 1 — "Wake up".*\nCell 1: Bông sleeps in bed\.\nCell 2: The alarm rings\.\nCell 3: Bông sits up\./);
-  assert.match(p, /ROW 2 — "Wash your face"[^\n]*\nCell 4: Bông turns on the tap\./);
-  assert.match(p, /FULL BODY/);
-  assert.match(p, /never only the head/);
-  assert.match(p, /exactly 2 vertical line\(s\) and 1 horizontal line\(s\)/);
+  assert.match(p, /EXACT 3-column × 2-row grid: 6 equal cells in total/);
+  assert.match(p, /aspect ratio 3:2 \(width:height\) so that every cell is square/);
+  assert.match(p, /exactly 2 straight vertical divider line\(s\) and exactly 1 straight horizontal divider line\(s\)/);
+  assert.match(p, /never crop her head, ears, arms, legs or feet/);
+  assert.match(p, /exactly 3 consecutive frames \(NOT 2 steps of one activity\)/);
+  assert.match(p, /### ROW 1 — WAKE UP\nSetting that stays IDENTICAL in all 3 cells of this row \(same positions, same scale\): a bedroom with a bed and an alarm clock\.\nCell 1 — frame 1 of 3: Bông sleeps in bed\./);
+  assert.match(p, /### ROW 2 — WASH YOUR FACE\nKeep the same background and the same props/);
+  assert.match(p, /No body part, prop, water drop, motion mark or shadow may touch or cross a divider line/);
+  assert.match(p, /FINAL CHECK: exactly 6 equal cells in 3 columns and 2 rows/);
+  assert.doesNotMatch(p, /door\b.*in the same place/, 'không nhắc đồ vật không có trong bài');
+  const one = buildFramesPrompt([{ en: 'Wake up', steps: ['a', 'b', 'c'] }]);
+  assert.match(one, /3-column × 1-row grid: 3 equal cells/);
+  assert.match(one, /exactly 0 straight horizontal divider line/);
+  assert.match(one, /showing 1 separate 3-frame activity/);
+});
+
+test('bài câu giữ frameScene; nhóm làm từng câu là lưới 3×1', async () => {
+  const { singlePhraseGroup } = await import('../../app/js/phrase.js');
+  const r = validatePhraseLesson({ ...good, phrases: good.phrases.map((p) => ({ ...p, frameScene: 'a bathroom sink' })) });
+  assert.equal(r.lesson.phrases[0].frameScene, 'a bathroom sink');
+  const g = singlePhraseGroup(r.lesson, 1);
+  assert.deepEqual([g.from, g.to, g.shape.cols, g.shape.rows, g.phrases[0].id], [2, 2, 3, 1, 'p2']);
 });

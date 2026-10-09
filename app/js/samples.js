@@ -42,3 +42,33 @@ export async function seedSamplesOnce(app) {
     if (await addFrom(app, PHRASE_SAMPLE_FILES)) await app.setSetting('phraseSamplesSeeded', true);
   }
 }
+
+/**
+ * Bài câu mẫu đã có trên máy từ bản cũ: bổ sung mô tả khung hình chi tiết (frameScene, framePrompts) từ file mẫu mới,
+ * chỉ cho những câu còn thiếu frameScene. Không đổi gì khác (tên, tiến độ, khung hình đã lưu…).
+ */
+export async function upgradePhraseSamples(app) {
+  for (const file of PHRASE_SAMPLE_FILES) {
+    let sample;
+    try {
+      const parsed = parseLesson(await (await fetch(file)).text());
+      if (!parsed.ok) continue;
+      sample = parsed.lesson;
+    } catch {
+      continue;
+    }
+    const byEn = new Map(sample.phrases.map((p) => [p.en.toLowerCase(), p]));
+    for (const lesson of await app.db.getAll('lessons')) {
+      if (!Array.isArray(lesson.phrases)) continue;
+      let changed = false;
+      for (const p of lesson.phrases) {
+        const src = byEn.get(p.en.toLowerCase());
+        if (!src || p.frameScene || !src.frameScene) continue;
+        p.frameScene = src.frameScene;
+        p.framePrompts = src.framePrompts;
+        changed = true;
+      }
+      if (changed) await app.db.put('lessons', lesson);
+    }
+  }
+}

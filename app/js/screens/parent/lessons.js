@@ -6,7 +6,7 @@ const IMPORT_LOG_MAX = 30;
 import { listLessons, deleteLesson, setWordImage, removeWordImage, isQuotaError, mediaBlob, ensureLessonNumbers } from '../../db.js';
 import { normalizeWord } from '../../text.js';
 import { uniqueTitle, topicOf, formatLessonNo, lessonFileName } from '../../lesson.js';
-import { isPhraseLesson, MOTION_NAMES, frameGroups, frameSteps, defaultFrameMapping, collectFrames } from '../../phrase.js';
+import { isPhraseLesson, MOTION_NAMES, frameGroups, frameSteps, defaultFrameMapping, collectFrames, singlePhraseGroup } from '../../phrase.js';
 import { buildFramesPrompt } from '../../prompts.js';
 import { getFrameSets, setFrameSet, removeFrameSet, frameBlobs } from '../../db.js';
 import { createFlipbook } from '../../player/flipbook.js';
@@ -444,11 +444,10 @@ function phraseDetailSections(app, lesson, frameSets, urls) {
  */
 function framesSection(app, lesson, urls) {
   const groups = frameGroups(lesson);
-  const blocks = groups.map((group) => {
-    const prompt = buildFramesPrompt(group.phrases.map((p) => ({ en: p.en, steps: frameSteps(p) })));
+  const makeBlock = (group, title) => {
+    const prompt = buildFramesPrompt(group.phrases.map((p) => ({ en: p.en, steps: frameSteps(p), scene: p.frameScene })));
     const input = h('input', { type: 'file', accept: 'image/*', hidden: true });
     const work = h('div.grid-preview');
-    const title = groups.length > 1 ? `Ảnh ${group.index + 1}: câu ${group.from}–${group.to}` : `Cả bài: ${group.phrases.length} câu`;
 
     input.addEventListener('change', async () => {
       const file = input.files?.[0];
@@ -558,9 +557,17 @@ function framesSection(app, lesson, urls) {
         h('button.btn.primary', { type: 'button', text: 'Chọn ảnh khung hình', onclick: () => input.click() })),
       input,
       work);
-  });
+  };
+
+  const blocks = groups.map((group) => makeBlock(group,
+    groups.length > 1 ? `Ảnh ${group.index + 1}: câu ${group.from}–${group.to}` : `Cả bài: ${group.phrases.length} câu`));
+  const single = lesson.phrases.map((p, i) => makeBlock(singlePhraseGroup(lesson, i), `Câu ${i + 1}: ${p.en}`));
 
   return section('Khung hình (flipbook) — Bông làm hành động',
     notice('info', 'Bấm "Copy prompt khung hình", dán vào ChatGPT/Gemini để vẽ 1 ảnh lưới (mỗi hàng là một câu, 3 bước, Bông vẽ cả người). Lưu ảnh về máy rồi bấm "Chọn ảnh khung hình": app cắt ra và phát như phim hoạt hình khi bé học. Câu chưa có khung hình thì dùng hình Bông + emoji.'),
-    ...blocks);
+    ...blocks,
+    h('details.frames-single', {},
+      h('summary', { text: 'Làm từng câu (mỗi câu 1 ảnh 3 khung — AI dễ vẽ đúng hơn)' }),
+      notice('info', 'Dùng khi ảnh cả bài bị sai hoặc chỉ muốn làm lại một câu. Lưu khung của câu nào thì chỉ thay khung câu đó.'),
+      ...single));
 }

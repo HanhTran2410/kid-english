@@ -170,6 +170,7 @@ export function validatePhraseLesson(raw) {
     }
     const phrase = { id: str(p.id), en, vi, emoji, motion, requiredKeywords, keywords, chunks };
     if (str(p.imagePrompt)) phrase.imagePrompt = str(p.imagePrompt);
+    if (str(p.frameScene)) phrase.frameScene = str(p.frameScene);
     if (framePrompts.length) phrase.framePrompts = framePrompts;
     phrases.push(phrase);
   });
@@ -262,9 +263,9 @@ export function frameGroups(lesson) {
 export function frameSteps(phrase) {
   const given = (phrase.framePrompts ?? []).slice(0, FRAME_STEPS);
   const defaults = [
-    `Bông gets ready to: ${phrase.en.toLowerCase()}`,
-    `Bông is in the middle of the action: ${phrase.en.toLowerCase()}`,
-    'Bông has finished and smiles proudly',
+    `Bông gets ready to ${phrase.en.toLowerCase().replace(/[!.]+$/, '')}; all props are clearly visible`,
+    `Bông is in the middle of the action "${phrase.en.replace(/[!.]+$/, '')}", using the same props`,
+    'Bông has finished the action and smiles proudly; the props stay in the same place',
   ];
   while (given.length < FRAME_STEPS) given.push(defaults[given.length]);
   return given;
@@ -304,4 +305,10 @@ export function collectFrames(mapping, tiles) {
   }
   const sets = new Map([...byPhrase].map(([id, list]) => [id, list.sort((a, b) => a.step - b.step).map((x) => x.tile)]));
   return { ok: true, sets };
+}
+
+/** Một nhóm chỉ gồm một câu (làm từng câu: ảnh 3 khung, lưới 3×1 — AI dễ vẽ đúng hơn). */
+export function singlePhraseGroup(lesson, index) {
+  const phrase = lesson.phrases[index];
+  return { index, from: index + 1, to: index + 1, phrases: [phrase], shape: { cols: FRAME_STEPS, rows: 1 } };
 }

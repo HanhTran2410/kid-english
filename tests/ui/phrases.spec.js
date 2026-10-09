@@ -159,14 +159,16 @@ test('khung hình (flipbook): ảnh lưới 3×4 → cắt → xem trước → 
 
   const frames = page.locator('section', { hasText: 'Khung hình (flipbook)' });
   await expect(frames.getByText('Cả bài: 4 câu → lưới 3 cột × 4 hàng')).toBeVisible();
-  await frames.getByRole('button', { name: 'Copy prompt khung hình' }).click();
+  await frames.getByRole('button', { name: 'Copy prompt khung hình' }).first().click();
   const copied = await page.evaluate(() => navigator.clipboard.readText());
-  expect(copied).toMatch(/ROW 2 — "Wash your face"/);
-  expect(copied).toMatch(/FULL BODY/);
+  expect(copied).toMatch(/### ROW 2 — WASH YOUR FACE/);
+  expect(copied).toMatch(/Setting that stays IDENTICAL.*alarm clock/);
+  expect(copied).toMatch(/FINAL CHECK: exactly 12 equal cells/);
 
-  await frames.locator('input[type=file]').setInputFiles({ name: 'frames.png', mimeType: 'image/png', buffer: Buffer.from(png, 'base64') });
+  await frames.locator('input[type=file]').first().setInputFiles({ name: 'frames.png', mimeType: 'image/png', buffer: Buffer.from(png, 'base64') });
   await expect(page.getByLabel('Kiểu lưới khung hình')).toHaveValue('3x4');
   await expect(frames.locator('.grid-cell')).toHaveCount(12);
+  await expect(frames.locator('details.frames-single .frames-group')).toHaveCount(4);
   await expect(page.getByLabel('Khung cho ô 4')).toHaveValue('p2:0');
   await expect(frames.locator('.flip-preview')).toHaveCount(4);
   await frames.getByRole('button', { name: 'Lưu khung hình' }).click();

@@ -115,7 +115,8 @@ Bài JSON **chỉ chứa nội dung và hướng dẫn tạo hình** (prompt). �
 | `requiredKeywords` | Từ/cụm **bắt buộc** để tính "nói được câu" — thường là động từ hoặc cụm động từ (*wash*, *put on*). |
 | `keywords` | Từ bổ sung (danh từ…), chỉ làm kết quả "khớp" chắc chắn hơn, không đủ để tính "nói được". |
 | `chunks` | Các cụm để Bông đọc từng cụm; **ghép lại phải đúng bằng câu**, không thì app tự chia. |
-| `imagePrompt`, `framePrompts` | Chỉ là **hướng dẫn để bố mẹ nhờ AI vẽ**, không phải ảnh. |
+| `imagePrompt`, `framePrompts` | Chỉ là **hướng dẫn để bố mẹ nhờ AI vẽ**, không phải ảnh. `framePrompts`: đúng 3 khung liên tiếp, mỗi khung một câu mô tả tư thế Bông và điều gì thay đổi, dùng CÙNG đồ vật. |
+| `frameScene` | Bối cảnh và đồ vật **giữ nguyên trong cả 3 khung** (ví dụ "a bedroom with a bed, pillow, blanket and an alarm clock"), dùng cho prompt khung hình. |
 | `routine` | `true` khi các câu có thứ tự trước–sau. **Thứ tự = thứ tự trong mảng `phrases`** (prompt yêu cầu AI xếp đúng thứ tự). |
 | `commands` | Danh sách **mã câu** dùng cho trò "Bông says" (1.0-b); phải là mã có trong `phrases`. Không có thì dùng tất cả. |
 
@@ -190,7 +191,7 @@ Ngoài các luật chung (chỉ trả JSON, tránh câu đã có ở bài khác�
 - `imagePrompt`, `framePrompts`: Bông làm hành động, mô tả cụ thể, theo Character Bible.
 
 ### 7.2. Prompt khung hình (đã có từ app 0.2.1)
-Một ảnh lưới cho **tối đa 4 câu**: **mỗi hàng 1 câu, 3 cột = 3 bước** (lấy từ `framePrompts`, thiếu thì app bổ sung). Bông vẽ **cả người** (thân, tay, chân), không chỉ cái đầu. Dùng lại khuôn prompt ảnh lưới hiện có, thêm: mỗi ô là một bước của cùng một hành động; **cùng nhân vật, cùng góc nhìn, cùng khung cảnh, cùng màu**, chỉ tư thế đổi; mô tả Bông cố định; khi gộp cả bài thì mỗi hàng một câu.
+Một ảnh lưới cho **tối đa 4 câu**: **mỗi hàng 1 câu = 1 hoạt động gồm đúng 3 khung liên tiếp** (không phải nhiều bước của một hoạt động); khung lấy từ `framePrompts`, thiếu thì app bổ sung. Hoặc **làm từng câu**: mỗi câu 1 ảnh 3×1 (AI dễ vẽ đúng hơn). Prompt (app 0.2.2, theo review): lưới tuyệt đối (tỉ lệ canvas cột:hàng để ô vuông, đúng số đường kẻ, không viền ngoài), thiết kế Bông cố định và **không cắt tai/đầu/chân**, mỗi hàng ghi **bối cảnh giữ nguyên** (`frameScene`), hình chiếm 60–70% ô và không chạm đường kẻ (kể cả giọt nước, vệt chuyển động), quy tắc cấm, câu FINAL CHECK. Ngoài ra: mỗi ô là một bước của cùng một hành động; **cùng nhân vật, cùng góc nhìn, cùng khung cảnh, cùng màu**, chỉ tư thế đổi; mô tả Bông cố định; khi gộp cả bài thì mỗi hàng một câu.
 
 ### 7.3. Prompt "cô giáo" cho câu (1.0-c)
 Dùng câu của bài; mời bé làm động tác ("Show me! Wash your face!"), dùng câu trong tình huống giả vờ.

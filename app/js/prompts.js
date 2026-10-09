@@ -292,7 +292,8 @@ export function buildPhraseLessonPrompt({ situation, count = 4, level = 'beginne
       "keywords": ["face"],
       "chunks": ["Wash", "your face"],
       "imagePrompt": "${BONG_DESCRIPTION}, washing her face with water and bubbles, ${IMAGE_STYLE}",
-      "framePrompts": ["Bông turns on the tap", "Bông splashes water on her face", "Bông smiles with a clean face"]
+      "frameScene": "a bathroom sink with a faucet and a small mirror",
+      "framePrompts": ["Bông stands at the sink and turns on the faucet; a small stream of water flows", "Bông splashes water on her face with both hands; a few water drops around her cheeks", "Bông stands in the same place with lowered hands, smiling with a clean face"]
     }
   ],
   "commands": ["p1"]
@@ -316,7 +317,8 @@ export function buildPhraseLessonPrompt({ situation, count = 4, level = 'beginne
     '- "requiredKeywords": the main verb or phrasal verb that MUST be said (e.g. ["put on"], ["wash"]). "keywords": the main noun(s) (e.g. ["shirt"]).',
     '- "chunks": split the phrase into 1–3 short parts that, joined with spaces, give EXACTLY the phrase (e.g. ["Put on", "your shirt"]).',
     `- "imagePrompt": ${BONG_DESCRIPTION}, doing the action, concrete and clear. Always end with: "${IMAGE_STYLE}".`,
-    '- "framePrompts": 2 to 4 very short steps of Bông doing the action, like a tiny comic strip.',
+    '- "frameScene": the place and the props that stay exactly the same in all frames of this action (e.g. "a bedroom with a bed, pillow, blanket and an alarm clock on a bedside table").',
+    '- "framePrompts": exactly 3 consecutive animation frames of Bông doing the action. Each frame is one clear sentence about Bông\'s pose and what changes, using the SAME props (e.g. "Bông sleeps in the bed under the blanket, eyes closed", "The alarm clock rings with small motion marks; Bông opens her eyes", "Bông sits up in the same bed and stretches both arms").',
     '- "commands": the ids of phrases that are easy to act out with the body (for a "Bông says" game).',
     ...(avoid.length ? [`- The child ALREADY LEARNED these phrases. Do NOT repeat them: ${avoid.join('; ')}.`] : []),
     '- Use simple, positive, child-friendly language only.',
@@ -326,41 +328,78 @@ export function buildPhraseLessonPrompt({ situation, count = 4, level = 'beginne
 /** Bông vẽ CẢ NGƯỜI cho ảnh hành động (không chỉ cái đầu). */
 export const BONG_FULL_BODY = "Bông, a cute bunny character with a FULL BODY: creamy white fur, light-pink inner ears, big glossy eyes, rosy cheeks, a small round body with short arms and short legs, standing upright like a little child";
 
+const BONG_DESIGN = [
+  '- Creamy white fur.',
+  '- Long upright bunny ears with light-pink inner ears.',
+  '- Big glossy dark eyes, rosy cheeks and a small cute nose.',
+  '- Small, rounded, childlike body with short arms and short legs.',
+  '- Cute, friendly preschool proportions; clean simple shapes with thick, soft, dark outlines.',
+];
+
 /**
- * Prompt khung hình (flipbook) cho một nhóm câu: mỗi HÀNG là một câu, mỗi CỘT là một bước (SPEC-v1.0 mục 7.2).
- * @param {Array<{ en: string, steps: string[] }>} rows
+ * Prompt khung hình (flipbook) cho một nhóm câu: mỗi HÀNG là một hoạt động gồm đúng 3 khung liên tiếp,
+ * mỗi CỘT là một bước (SPEC-v1.0 mục 7.2). Dùng chung cho mọi bài; bối cảnh và mô tả khung lấy từ bài câu.
+ * @param {Array<{ en: string, steps: string[], scene?: string }>} rows
  */
 export function buildFramesPrompt(rows) {
   const cols = rows[0]?.steps.length ?? 3;
   const n = rows.length;
   const cells = cols * n;
-  const lines = [];
+  const sentence = (t) => (/[.!?]$/.test(t) ? t : `${t}.`);
+  const rowWord = n === 1 ? 'row' : 'rows';
+
+  const storyboard = [];
   rows.forEach((row, r) => {
-    lines.push('', `ROW ${r + 1} — "${row.en}" (a tiny ${cols}-step animation, left to right)`);
-    row.steps.forEach((step, c) => lines.push(`Cell ${r * cols + c + 1}: ${/[.!?]$/.test(step) ? step : `${step}.`}`));
+    storyboard.push('', `### ROW ${r + 1} — ${row.en.toUpperCase()}`);
+    storyboard.push(row.scene
+      ? `Setting that stays IDENTICAL in all ${cols} cells of this row (same positions, same scale): ${sentence(row.scene)}`
+      : `Keep the same background and the same props in the same positions and at the same scale in all ${cols} cells of this row.`);
+    row.steps.forEach((step, c) => {
+      storyboard.push(`Cell ${r * cols + c + 1} — frame ${c + 1} of ${cols}: ${sentence(step)}`);
+    });
   });
+
   return [
-    `Create ONE image containing an exact ${cols}-column × ${n}-row grid of ${cells} equal cells. The grid must fill the entire canvas. Every cell has exactly the same width and height.`,
+    `Create ONE single image containing an EXACT ${cols}-column × ${n}-row grid: ${cells} equal cells in total.`,
+    `Use a canvas with aspect ratio ${cols}:${n} (width:height) so that every cell is square.`,
     '',
-    `Separate adjacent cells with thin, straight, light-gray divider lines that run across the whole image: exactly ${cols - 1} vertical line(s) and ${n - 1} horizontal line(s). Do not draw an outer border around the canvas.`,
+    '## GRID LAYOUT — ABSOLUTE REQUIREMENTS',
+    `- The canvas is divided into exactly ${cols} equal columns and ${n} equal ${rowWord}; all ${cells} cells have identical width and height.`,
+    '- The grid fills the entire canvas edge to edge.',
+    `- Draw exactly ${cols - 1} straight vertical divider line(s) and exactly ${n - 1} straight horizontal divider line(s): thin, uniform, light gray, running continuously across the canvas.`,
+    '- No outer border, no individual cell borders, no rounded corners, no gaps between cells.',
+    '- Every cell contains exactly one clearly readable animation frame. Read the cells left to right, then top to bottom.',
+    '- Do not merge cells, omit cells, add extra panels or change the grid layout.',
     '',
-    `Each ROW is a short animation of ONE everyday action, shown in ${cols} steps from left to right. The cells of a row will be played one after another like a flipbook, so they must look like frames of the same scene.`,
+    '## MAIN CHARACTER — BÔNG',
+    'Bông is the same adorable little bunny in every cell:',
+    ...BONG_DESIGN,
+    'Consistency:',
+    `- Keep Bông's face, eyes, ears, fur color, body proportions and scale identical in all ${cells} cells.`,
+    '- Always show Bông as a complete character: never crop her head, ears, arms, legs or feet. For lying, sitting, washing, brushing or dressing poses, adjust the pose naturally but keep the same design.',
+    '- No duplicate bunnies and no other characters.',
     '',
-    'CHARACTER (identical in every cell)',
-    `${BONG_FULL_BODY}. Always draw her whole body from head to feet, never only the head.`,
+    '## ANIMATION STORYBOARD',
+    `Each row is ONE separate everyday activity made of exactly ${cols} consecutive frames (NOT ${n} steps of one activity). The frames of a row are played one after another like a flipbook, so only Bông's pose, expression and the action details change between them.`,
+    ...storyboard,
     '',
-    'CELLS — LEFT TO RIGHT, TOP TO BOTTOM',
-    ...lines,
+    '## VISUAL STYLE',
+    "- Cute preschool flashcard illustrations for a 3-year-old: simple flat vector shapes, thick soft dark outlines, bright but gentle pastel colors.",
+    '- Pure white background with minimal, uncluttered scenery; friendly expressions; clear silhouettes and recognizable objects.',
+    '- Consistent line thickness, color palette, lighting and camera angle across the whole image. No photorealism, no 3D, no complex textures, no dramatic shadows.',
     '',
-    'STYLE',
-    "Cute children's flashcard illustration for a 3-year-old: simple flat vector shapes, thick soft dark outlines, bright gentle pastel colors, plain pure-white background.",
+    '## COMPOSITION AND CONTINUITY',
+    '- Within each row: same camera angle, same character scale, same background layout and prop placement.',
+    '- Bông and the essential props occupy about 60–70% of each cell, centered, with visible white space around them.',
+    '- The object of the action (shirt, toothbrush, cup, door…) is big and clearly recognizable.',
+    '- No body part, prop, water drop, motion mark or shadow may touch or cross a divider line.',
     '',
-    'STRICT RULES',
-    '- Same character design, size, colors and camera angle in every cell.',
-    '- Inside one row, keep the same objects (bed, sink, door, shirt…) in the same place and size; only Bông\'s pose and the action change, so the frames animate smoothly.',
-    '- The object of the action (door, shirt, toothbrush, cup…) must be big and clearly visible.',
-    '- Bông and the objects fill about 70% of each cell and never touch or cross a divider line.',
-    `- Only thin light-gray divider lines between cells: exactly ${cols - 1} vertical and ${n - 1} horizontal. No outer border, no frames, no rounded corners.`,
-    '- No text, letters, numbers, speech bubbles, labels or watermarks.',
+    '## STRICT NEGATIVE RULES',
+    '- No text, words, letters, numbers, captions, labels, speech bubbles, logos or watermarks.',
+    '- No extra panels, frames or grid lines; no missing or duplicated cells.',
+    '- No inconsistent character design, no extra limbs, no malformed hands, no distorted faces, no duplicated props.',
+    '- No cropped ears, heads, feet or essential objects. No scene change within a row except the described action.',
+    '',
+    `FINAL CHECK: exactly ${cells} equal cells in ${cols} columns and ${n} ${rowWord}, showing ${n} separate ${cols}-frame ${n === 1 ? 'activity' : 'activities'} in the order above.`,
   ].join('\n');
 }
