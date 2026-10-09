@@ -6,7 +6,10 @@ const IMPORT_LOG_MAX = 30;
 import { listLessons, deleteLesson, setWordImage, removeWordImage, isQuotaError, mediaBlob, ensureLessonNumbers } from '../../db.js';
 import { normalizeWord } from '../../text.js';
 import { uniqueTitle, topicOf, formatLessonNo, lessonFileName } from '../../lesson.js';
-import { isPhraseLesson, MOTION_NAMES } from '../../phrase.js';
+import { isPhraseLesson, MOTION_NAMES, frameGroups, frameSteps, defaultFrameMapping, collectFrames } from '../../phrase.js';
+import { buildFramesPrompt } from '../../prompts.js';
+import { getFrameSets, setFrameSet, removeFrameSet, frameBlobs } from '../../db.js';
+import { createFlipbook } from '../../player/flipbook.js';
 import { createScene } from '../../player/scene.js';
 import { speakButton } from './common.js';
 import { resizeImage, sliceGrid, gridShape, loadGridImage, GRID_OPTIONS, ImageError } from '../../image.js';
@@ -117,7 +120,8 @@ export function lessonDetailView(app, { lessonId }) {
     // Đổi tên và chủ đề
     const rename = renameSection(app, lesson);
     if (isPhraseLesson(lesson)) {
-      body.append(...phraseDetailSections(app, lesson), shareSection(app, lesson), section(null, deleteButton(app, lesson)));
+      const frameSets = await getFrameSets(app.db, lesson.id);
+      body.append(...phraseDetailSections(app, lesson, frameSets, urls), shareSection(app, lesson), section(null, deleteButton(app, lesson)));
       return;
     }
     // Ảnh từng từ
@@ -370,9 +374,18 @@ function deleteButton(app, lesson) {
 }
 
 /** Trang bài câu (SPEC-v1.0 mục 6.3): xem trước từng câu, đổi hiệu ứng, "Câu dùng trong ngày". */
-function phraseDetailSections(app, lesson) {
+function phraseDetailSections(app, lesson, frameSets, urls) {
+  const reload = () => goParent(app, 'lesson', { lessonId: lesson.id });
   const rows = lesson.phrases.map((p, i) => {
-    let scene = createScene({ emoji: p.emoji, motion: p.motion, small: true });
+    const set = frameSets.get(p.id);
+    let scene;
+    if (set) {
+      const list = frameBlobs(set).map((b) => URL.createObjectURL(b));
+      urls.push(...list);
+      scene = createFlipbook(list, { small: true });
+    } else {
+      scene = createScene({ emoji: p.emoji, motion: p.motion, small: true });
+    }
     const sceneBox = h('div.scene-box', {}, scene.el);
     const motionSel = h('select', { 'aria-label': `Hiệu ứng của câu ${i + 1}` },
       ...MOTION_NAMES.map((m) => h('option', { value: m, text: m, selected: m === p.motion })));
@@ -390,9 +403,22 @@ function phraseDetailSections(app, lesson) {
       h('div.grow', {},
         h('b', { text: p.en }), speakButton(app, p.en),
         h('div.muted', { text: p.vi }),
-        h('div.row', {},
-          h('span.field-hint', { text: 'Hiệu ứng:' }), motionSel,
-          h('button.btn.small', { type: 'button', text: '▶ Xem', onclick: () => scene.play(1) }))));
+        set
+          ? h('div.row', {},
+            h('span.field-hint', { text: `🎞️ ${set.frames.length} khung hình` }),
+            h('button.btn.small', { type: 'button', text: '▶ Xem', onclick: () => scene.play(1) }),
+            h('button.btn.small', {
+              type: 'button',
+              text: 'Xóa khung hình',
+              onclick: async () => {
+                if (!(await confirmDialog(`Xóa khung hình của câu "${p.en}"? Câu sẽ dùng lại hình Bông + emoji.`, { okText: 'Xóa', danger: true }))) return;
+                await removeFrameSet(app.db, lesson.id, p.id);
+                reload();
+              },
+            }))
+          : h('div.row', {},
+            h('span.field-hint', { text: 'Hiệu ứng:' }), motionSel,
+            h('button.btn.small', { type: 'button', text: '▶ Xem', onclick: () => scene.play(1) }))));
   });
 
   const daily = lesson.phrases.map((p) => `${p.en} — ${p.vi}`).join('\n');
@@ -400,6 +426,7 @@ function phraseDetailSections(app, lesson) {
     renameSection(app, lesson),
     section(`Các câu (${lesson.phrases.length})${lesson.routine ? ' — theo thứ tự trong ngày' : ''}`,
       h('ul.phrase-admin-list', {}, ...rows)),
+    framesSection(app, lesson, urls),
     section('Câu dùng trong ngày',
       h('p.field-hint', { text: 'Bố mẹ nói đúng các câu này khi bé làm thật (lúc mặc áo, rửa mặt…) để bé nhớ lâu.' }),
       h('pre.daily-phrases', { text: daily }),
@@ -409,4 +436,131 @@ function phraseDetailSections(app, lesson) {
         onclick: () => copyText(daily).then((ok) => toast(ok ? 'Đã copy.' : 'Không copy được.')),
       })),
   ];
+}
+
+/**
+ * Khung hình (flipbook) cho bài câu (SPEC-v1.0 mục 2.3): AI vẽ 1 ảnh lưới, mỗi hàng 1 câu, mỗi cột 1 bước;
+ * app cắt ảnh, bố mẹ gán ô ↔ câu/bước, xem trước flipbook rồi mới lưu.
+ */
+function framesSection(app, lesson, urls) {
+  const groups = frameGroups(lesson);
+  const blocks = groups.map((group) => {
+    const prompt = buildFramesPrompt(group.phrases.map((p) => ({ en: p.en, steps: frameSteps(p) })));
+    const input = h('input', { type: 'file', accept: 'image/*', hidden: true });
+    const work = h('div.grid-preview');
+    const title = groups.length > 1 ? `Ảnh ${group.index + 1}: câu ${group.from}–${group.to}` : `Cả bài: ${group.phrases.length} câu`;
+
+    input.addEventListener('change', async () => {
+      const file = input.files?.[0];
+      if (!file) return;
+      work.replaceChildren(h('p.muted', { text: 'Đang đọc ảnh…' }));
+      let image;
+      try {
+        image = await loadGridImage(file);
+      } catch (err) {
+        work.replaceChildren(notice('error', imageErrorMessage(err)));
+        return;
+      } finally {
+        input.value = '';
+      }
+      const key = ({ cols, rows }) => `${cols}x${rows}`;
+      const options = [...GRID_OPTIONS];
+      if (image.detected && !options.some((o) => key(o) === key(image.detected))) options.push(image.detected);
+      if (!options.some((o) => key(o) === key(group.shape))) options.push(group.shape);
+      const shapeSel = h('select', { 'aria-label': 'Kiểu lưới khung hình' }, ...options.map((o) => h('option', {
+        value: key(o),
+        text: `${o.cols} cột × ${o.rows} hàng${image.detected && key(o) === key(image.detected) ? ' (app đoán)' : ''}`,
+      })));
+      shapeSel.value = key(image.detected ?? group.shape);
+      const cellsBox = h('div.grid-cells');
+      const previewBox = h('div.flip-previews');
+      const choices = [['', '— bỏ qua —'], ...group.phrases.flatMap((p, r) => frameSteps(p).map((_, c) => [`${p.id}:${c}`, `Câu ${group.from + r}·B${c + 1}`]))];
+      let tiles = [];
+      let pickers = [];
+      let tileUrls = [];
+
+      const renderPreview = () => {
+        const { ok, duplicate, sets } = collectFrames(pickers.map((p) => p.value), tileUrls);
+        if (!ok) {
+          previewBox.replaceChildren(notice('error', `"${choices.find(([v]) => v === duplicate)?.[1]}" đang được chọn cho 2 ô.`));
+          return;
+        }
+        previewBox.replaceChildren(...group.phrases.filter((p) => sets.has(p.id)).map((p) => {
+          const fb = createFlipbook(sets.get(p.id), { small: true });
+          return h('div.flip-preview', {}, fb.el, h('div', { text: p.en }),
+            h('button.btn.small', { type: 'button', text: '▶ Xem', onclick: () => fb.play(1) }));
+        }));
+      };
+
+      const render = async () => {
+        const [cols, rows] = shapeSel.value.split('x').map(Number);
+        cellsBox.replaceChildren(h('p.muted', { text: 'Đang cắt ảnh…' }));
+        try {
+          tiles = await sliceGrid(image, { cols, rows });
+        } catch (err) {
+          cellsBox.replaceChildren(notice('error', imageErrorMessage(err)));
+          return;
+        }
+        tileUrls = tiles.map((t) => URL.createObjectURL(t.blob));
+        urls.push(...tileUrls);
+        const defaults = defaultFrameMapping(group, { cols, rows });
+        pickers = tiles.map((_, i) => {
+          const sel = h('select', { 'aria-label': `Khung cho ô ${i + 1}` }, ...choices.map(([v, t]) => h('option', { value: v, text: t })));
+          sel.value = defaults[i] ?? '';
+          sel.addEventListener('change', renderPreview);
+          return sel;
+        });
+        cellsBox.style.setProperty('--cols', String(cols));
+        cellsBox.replaceChildren(...tiles.map((_, i) => h('figure.grid-cell', {}, h('img', { src: tileUrls[i], alt: `Ô ${i + 1}` }), pickers[i])));
+        renderPreview();
+      };
+      shapeSel.addEventListener('change', render);
+
+      const save = async () => {
+        const { ok, duplicate, sets } = collectFrames(pickers.map((p) => p.value), tiles);
+        if (!ok) {
+          toast(`"${choices.find(([v]) => v === duplicate)?.[1]}" đang được chọn cho 2 ô. Hãy chọn lại.`, 4000);
+          return;
+        }
+        if (!sets.size) {
+          toast('Chưa gán ô nào cho câu nào.');
+          return;
+        }
+        try {
+          for (const [phraseId, frames] of sets) await setFrameSet(app.db, { lessonId: lesson.id, phraseId, frames });
+          toast(`Đã lưu khung hình cho ${sets.size} câu.`);
+          goParent(app, 'lesson', { lessonId: lesson.id });
+        } catch (err) {
+          toast(imageErrorMessage(err), 4000);
+        }
+      };
+
+      work.replaceChildren(
+        notice('info', 'Mỗi hàng là một câu, mỗi cột là một bước (B1, B2, B3). Kiểm tra từng ô; ô vẽ thừa chọn "— bỏ qua —". Xem trước flipbook bên dưới rồi bấm Lưu.'),
+        h('label.field', {}, h('span.field-label', { text: 'Kiểu lưới' }), shapeSel),
+        cellsBox,
+        h('h3', { text: 'Xem trước' }),
+        previewBox,
+        h('div.actions', {},
+          h('button.btn.primary', { type: 'button', text: 'Lưu khung hình', onclick: save }),
+          h('button.btn', { type: 'button', text: 'Hủy', onclick: () => work.replaceChildren() })));
+      await render();
+    });
+
+    return h('div.frames-group', {},
+      h('b', { text: `${title} → lưới ${group.shape.cols} cột × ${group.shape.rows} hàng` }),
+      h('div.actions', {},
+        h('button.btn', {
+          type: 'button',
+          text: 'Copy prompt khung hình',
+          onclick: () => copyText(prompt).then((ok) => toast(ok ? 'Đã copy prompt khung hình.' : 'Không copy được.')),
+        }),
+        h('button.btn.primary', { type: 'button', text: 'Chọn ảnh khung hình', onclick: () => input.click() })),
+      input,
+      work);
+  });
+
+  return section('Khung hình (flipbook) — Bông làm hành động',
+    notice('info', 'Bấm "Copy prompt khung hình", dán vào ChatGPT/Gemini để vẽ 1 ảnh lưới (mỗi hàng là một câu, 3 bước, Bông vẽ cả người). Lưu ảnh về máy rồi bấm "Chọn ảnh khung hình": app cắt ra và phát như phim hoạt hình khi bé học. Câu chưa có khung hình thì dùng hình Bông + emoji.'),
+    ...blocks);
 }

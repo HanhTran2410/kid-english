@@ -6,15 +6,37 @@ import { RESULT } from '../speech/listen.js';
 import { scaled, abortError } from '../timing.js';
 import { phraseKey } from '../phrase.js';
 import { createScene } from './scene.js';
+import { createFlipbook } from './flipbook.js';
 import { pickChoices } from './plan.js';
 import { waitAdvance } from './stage-kit.js';
 import { markPracticed, markSpoke, markDid, markPhrasePick } from './track.js';
 
 const DO_WAIT_MS = 15_000; // không chạm ✔ sau 15 giây thì Bông làm mẫu lại rồi đi tiếp
 
+/**
+ * Hình của câu: flipbook nếu bố mẹ đã thêm khung hình, không thì cảnh Bông + emoji có hiệu ứng.
+ * Khung hình hỏng thì tự quay về cảnh emoji.
+ */
+export function phraseVisual(ctx, phrase, { small = false, label = '' } = {}) {
+  const urls = ctx.frameUrls?.get(phrase.id);
+  const scene = () => createScene({ emoji: phrase.emoji, motion: phrase.motion, small, label });
+  if (!urls?.length) return scene();
+  const visual = createFlipbook(urls, {
+    small,
+    label,
+    onError: () => {
+      const fallback = scene();
+      visual.el.replaceWith(fallback.el);
+      visual.el = fallback.el;
+      visual.play = fallback.play;
+    },
+  });
+  return visual;
+}
+
 /** Cảnh + chữ của câu, cụm đang đọc được tô màu. */
 function phraseCard(ctx, phrase) {
-  const scene = createScene({ emoji: phrase.emoji, motion: phrase.motion, label: phrase.en });
+  const scene = phraseVisual(ctx, phrase, { label: phrase.en });
   const chunks = phrase.chunks.map((c) => h('span.chunk', { text: c }));
   const text = h('div.phrase-text', {}, ...chunks.flatMap((c, i) => (i ? [' ', c] : [c])));
   ctx.stage.replaceChildren(h('div.phrase-card', {}, scene.el, text));
@@ -141,7 +163,7 @@ export async function runPick(ctx, phrase) {
   const scenes = [];
   const buttons = choices.map((id) => {
     const p = byId.get(id);
-    const scene = createScene({ emoji: p.emoji, motion: p.motion, small: true });
+    const scene = phraseVisual(ctx, p, { small: true });
     scenes.push(scene);
     return h('button.choice.phrase-choice', { type: 'button', 'aria-label': p.en, dataset: { id } }, scene.el);
   });

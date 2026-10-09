@@ -8,7 +8,8 @@ import { mergeProgress } from './progress.js';
 import { mergeSticker } from './stickers.js';
 import { dayKey } from './text.js';
 
-export const BACKUP_FORMAT = 1;
+// format 2 (SPEC-v1.0): thêm bộ khung hình của câu (frameSets). File format 1 vẫn đọc được.
+export const BACKUP_FORMAT = 2;
 const APP_ID = 'kid-english';
 
 const EXT = {
@@ -41,7 +42,8 @@ export async function estimateBackupSize(db, { includeRecordings = true } = {}) 
   const blobs = (list) => list.reduce((sum, r) => sum + mediaSize(r), 0);
   const json = JSON.stringify([data.lessons, data.progress, data.stickers, data.settings,
     data.images.map(withoutBlob), data.recordings.map(withoutBlob)]).length;
-  return json + blobs(data.images) + (includeRecordings ? blobs(data.recordings) : 0);
+  const frames = data.frameSets.reduce((sum, set) => sum + set.frames.reduce((t, f) => t + (f.data?.byteLength ?? 0), 0), 0);
+  return json + blobs(data.images) + frames + (includeRecordings ? blobs(data.recordings) : 0);
 }
 
 /**
@@ -55,6 +57,7 @@ export async function createBackup(db, { includeRecordings = true, now = Date.no
     const ids = new Set(lessonIds);
     data.lessons = data.lessons.filter((l) => ids.has(l.id)).map((l) => ({ ...l, timesCompleted: 0, resume: null }));
     data.images = data.images.filter((img) => ids.has(img.lessonId));
+    data.frameSets = data.frameSets.filter((f) => ids.has(f.lessonId));
     data.progress = [];
     data.stickers = [];
     data.settings = [];
@@ -66,6 +69,7 @@ export async function createBackup(db, { includeRecordings = true, now = Date.no
   const counts = {
     lessons: data.lessons.length,
     images: data.images.length,
+    frameSets: data.frameSets.length,
     recordings: recordings.length,
     progress: data.progress.length,
     stickers: data.stickers.length,
@@ -87,6 +91,18 @@ export async function createBackup(db, { includeRecordings = true, now = Date.no
   };
   await media('images', data.images);
   await media('recordings', recordings);
+
+  // Bộ khung hình: mỗi khung một file frameSets/<id>-<thứ tự>.<ext>, thông tin chung ở frameSets.json.
+  const frameMeta = [];
+  for (const set of data.frameSets) {
+    const frames = set.frames.map((f, k) => {
+      const file = `frameSets/${set.id}-${k}.${extensionFor(f.mimeType)}`;
+      zip.file(file, new Uint8Array(f.data));
+      return { file, mimeType: f.mimeType, width: f.width, height: f.height };
+    });
+    frameMeta.push({ ...set, frames });
+  }
+  zip.file('frameSets.json', JSON.stringify(frameMeta, null, 2));
 
   zip.file('progress.json', JSON.stringify(data.progress, null, 2));
   zip.file('stickers.json', JSON.stringify(data.stickers, null, 2));
@@ -167,9 +183,22 @@ export async function readBackup(input, { JSZip = globalThis.JSZip } = {}) {
     return v;
   };
 
+  const frameSets = [];
+  for (const set of asArray(await readJson('frameSets.json', false), 'frameSets.json')) {
+    if (!set?.id || !set.lessonId || !set.phraseId || !Array.isArray(set.frames)) throw new BackupError('File sao lưu bị hỏng (frameSets.json).');
+    const frames = [];
+    for (const f of set.frames) {
+      const file = zip.file(f.file ?? '');
+      if (!file) throw new BackupError(`File sao lưu bị hỏng (thiếu ${f.file ?? 'khung hình'}).`);
+      frames.push({ data: await file.async('arraybuffer'), mimeType: f.mimeType, width: f.width, height: f.height });
+    }
+    frameSets.push({ ...set, frames });
+  }
+
   return {
     manifest,
     lessons,
+    frameSets,
     images: await media('images'),
     recordings: await media('recordings'),
     progress: asArray(await readJson('progress.json', false), 'progress.json'),
@@ -181,10 +210,6 @@ export async function readBackup(input, { JSZip = globalThis.JSZip } = {}) {
 /**
  * Ghi dữ liệu sao lưu vào máy trong một transaction.
  * @param {'merge'|'replace'} mode gộp với dữ liệu hiện có, hoặc thay thế toàn bộ
- */
-/**
- * Ghi dữ liệu sao lưu vào máy trong một transaction.
- * @param {'merge'|'replace'} mode gộp với dữ liệu hiện có, hoặc thay thế toàn bộ
  * @param {{ updateLessons?: boolean }} [options] updateLessons: bài đã có (cùng id) thì cập nhật nội dung theo file
  *   (dùng khi nhập "file bài" chia sẻ từ máy khác), giữ số lần học xong và chỗ đang học dở của máy này.
  * @returns {Promise<{ added: number, updated: number }>} số bài thêm mới / cập nhật
@@ -193,7 +218,7 @@ export async function applyBackup(db, payload, mode, { updateLessons = false } =
   if (mode === 'replace') {
     await db.write(STORES, (tx) => {
       for (const s of STORES) tx.objectStore(s).clear();
-      for (const s of STORES) for (const item of payload[s]) tx.objectStore(s).put(item);
+      for (const s of STORES) for (const item of payload[s] ?? []) tx.objectStore(s).put(item);
     });
     return { added: payload.lessons.length, updated: 0 };
   }
@@ -201,8 +226,8 @@ export async function applyBackup(db, payload, mode, { updateLessons = false } =
   // Gộp: đọc dữ liệu hiện có trước, tính kết quả, rồi ghi một lần.
   const current = await readAll(db);
   const byKey = (list, key) => new Map(list.map((x) => [x[key], x]));
-  const writes = { lessons: [], images: [], recordings: [], progress: [], stickers: [], settings: [] };
-  const deletes = { images: [] };
+  const writes = { lessons: [], images: [], recordings: [], progress: [], stickers: [], settings: [], frameSets: [] };
+  const deletes = { images: [], frameSets: [] };
   let added = 0;
   let updated = 0;
 
@@ -229,6 +254,7 @@ export async function applyBackup(db, payload, mode, { updateLessons = false } =
     }
   }
   for (const img of payloadImages) if (idMap.has(img.lessonId)) img.lessonId = idMap.get(img.lessonId);
+  const payloadFrames = (payload.frameSets ?? []).map((f) => ({ ...f, lessonId: idMap.get(f.lessonId) ?? f.lessonId }));
 
   // Ảnh: mỗi từ của mỗi bài chỉ giữ MỘT ảnh — ảnh mới hơn thắng.
   const imageKey = (img) => `${img.lessonId}|${img.word}`;
@@ -243,6 +269,19 @@ export async function applyBackup(db, payload, mode, { updateLessons = false } =
     writes.images.push(img);
     if (lessons.has(img.lessonId)) touched.add(img.lessonId);
   }
+  // Khung hình: mỗi câu của mỗi bài chỉ giữ MỘT bộ — bộ mới hơn thắng (giống ảnh).
+  const frameKey = (f) => `${f.lessonId}|${f.phraseId}`;
+  const frameIds = byKey(current.frameSets, 'id');
+  const framesByPhrase = new Map(current.frameSets.map((f) => [frameKey(f), f]));
+  for (const set of payloadFrames) {
+    if (frameIds.has(set.id)) continue;
+    const mine = framesByPhrase.get(frameKey(set));
+    if (mine && (mine.createdAt ?? 0) >= (set.createdAt ?? 0)) continue;
+    if (mine) deletes.frameSets.push(mine.id);
+    framesByPhrase.set(frameKey(set), set);
+    writes.frameSets.push(set);
+    if (lessons.has(set.lessonId)) touched.add(set.lessonId);
+  }
   if (updateLessons) updated = touched.size;
 
   const recordings = byKey(current.recordings, 'id');
@@ -256,6 +295,7 @@ export async function applyBackup(db, payload, mode, { updateLessons = false } =
 
   await db.write(STORES, (tx) => {
     for (const id of deletes.images) tx.objectStore('images').delete(id);
+    for (const id of deletes.frameSets) tx.objectStore('frameSets').delete(id);
     for (const s of STORES) for (const item of writes[s]) tx.objectStore(s).put(item);
   });
   return { added, updated };

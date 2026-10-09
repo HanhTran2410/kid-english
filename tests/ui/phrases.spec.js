@@ -132,3 +132,61 @@ test('Góc bố mẹ: tạo bài câu (copy prompt), dán bài, xem trước, l�
   await page.getByRole('button', { name: 'Câu nói' }).click();
   await expect(page.locator('.topic-tab')).toHaveText(['⭐All', '🚪Going out', '🌅Morning']);
 });
+
+test('khung hình (flipbook): ảnh lưới 3×4 → cắt → xem trước → lưu → khi học phát flipbook thay cho cảnh emoji', async ({ page, context }) => {
+  await context.grantPermissions(['clipboard-read', 'clipboard-write']);
+  await startApp(page);
+  // Ảnh lưới giống AI vẽ: 3 cột (bước) × 4 hàng (câu), nền trắng, đường kẻ xám; mỗi ô một màu riêng.
+  const png = await page.evaluate(() => {
+    const c = document.createElement('canvas');
+    c.width = 900; c.height = 1200;
+    const g = c.getContext('2d');
+    g.fillStyle = '#fff'; g.fillRect(0, 0, 900, 1200);
+    g.strokeStyle = '#e4e4e4'; g.lineWidth = 6;
+    for (const x of [300, 600]) { g.beginPath(); g.moveTo(x, 0); g.lineTo(x, 1200); g.stroke(); }
+    for (const y of [300, 600, 900]) { g.beginPath(); g.moveTo(0, y); g.lineTo(900, y); g.stroke(); }
+    for (let r = 0; r < 4; r++) {
+      for (let col = 0; col < 3; col++) {
+        g.fillStyle = `hsl(${r * 90}, 70%, ${35 + col * 15}%)`;
+        g.beginPath(); g.arc(col * 300 + 150, r * 300 + 150, 90, 0, Math.PI * 2); g.fill();
+      }
+    }
+    return c.toDataURL('image/png').split(',')[1];
+  });
+  await openParent(page);
+  await page.getByRole('button', { name: 'Quản lý bài' }).click();
+  await page.getByRole('button', { name: /Morning/ }).click();
+
+  const frames = page.locator('section', { hasText: 'Khung hình (flipbook)' });
+  await expect(frames.getByText('Cả bài: 4 câu → lưới 3 cột × 4 hàng')).toBeVisible();
+  await frames.getByRole('button', { name: 'Copy prompt khung hình' }).click();
+  const copied = await page.evaluate(() => navigator.clipboard.readText());
+  expect(copied).toMatch(/ROW 2 — "Wash your face"/);
+  expect(copied).toMatch(/FULL BODY/);
+
+  await frames.locator('input[type=file]').setInputFiles({ name: 'frames.png', mimeType: 'image/png', buffer: Buffer.from(png, 'base64') });
+  await expect(page.getByLabel('Kiểu lưới khung hình')).toHaveValue('3x4');
+  await expect(frames.locator('.grid-cell')).toHaveCount(12);
+  await expect(page.getByLabel('Khung cho ô 4')).toHaveValue('p2:0');
+  await expect(frames.locator('.flip-preview')).toHaveCount(4);
+  await frames.getByRole('button', { name: 'Lưu khung hình' }).click();
+  await expect(page.getByText('🎞️ 3 khung hình')).toHaveCount(4);
+
+  const stored = await page.evaluate(async () => {
+    const lesson = (await window.kidEnglish.db.getAll('lessons')).find((l) => l.title === 'Morning');
+    const sets = await window.kidEnglish.db.getAllByIndex('frameSets', 'lessonId', lesson.id);
+    return sets.map((s) => [s.phraseId, s.frames.length]).sort();
+  });
+  expect(stored).toEqual([['p1', 3], ['p2', 3], ['p3', 3], ['p4', 3]]);
+
+  // Khi bé học: phát flipbook (3 khung ảnh) thay cho cảnh Bông + emoji.
+  await page.getByRole('button', { name: '← Quay lại' }).click();
+  await page.getByRole('button', { name: '← Quay lại' }).click();
+  await page.getByRole('button', { name: 'Về màn hình của bé' }).click();
+  await page.getByRole('button', { name: 'Câu nói' }).click();
+  await page.getByRole('button', { name: 'Morning', exact: true }).click();
+  await expect(page.locator('.scene.flipbook .flip-frame')).toHaveCount(3);
+  await expect(page.locator('.scene-object')).toHaveCount(0);
+  await playThrough(page);
+  await expect(page.locator('.prize-sticker')).toBeVisible();
+});

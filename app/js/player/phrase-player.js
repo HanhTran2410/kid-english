@@ -3,6 +3,7 @@
 
 import { isAbort } from '../timing.js';
 import { buildPhraseSteps } from '../phrase.js';
+import { getFrameSets, frameBlobs } from '../db.js';
 import { activityLayout } from './layout.js';
 import { Teacher } from './teacher.js';
 import { startIndexFor, resumeAfter } from './plan.js';
@@ -18,6 +19,7 @@ const RUNNERS = { watch: runWatch, do: runDo, say: runSay, pick: runPick };
 export function phraseLessonScreen(app, { lessonId, start = 'begin', continueDirectly = false }) {
   const layout = activityLayout(app, 'phrase-lesson');
   const signal = app.startActivity();
+  const urls = [];
 
   const saveLesson = async (lesson) => {
     try {
@@ -41,9 +43,17 @@ export function phraseLessonScreen(app, { lessonId, start = 'begin', continueDir
       await saveLesson(lesson);
     }
 
+    // Khung hình (flipbook) bố mẹ đã thêm cho từng câu.
+    const frameUrls = new Map();
+    for (const [phraseId, set] of await getFrameSets(app.db, lesson.id)) {
+      const list = frameBlobs(set).map((b) => URL.createObjectURL(b));
+      urls.push(...list);
+      frameUrls.set(phraseId, list);
+    }
+
     const teacher = new Teacher(app, { signal, bunny: layout.bunny, stage: layout.stage });
     const ctx = {
-      app, teacher, lesson, signal,
+      app, teacher, lesson, signal, frameUrls,
       stage: layout.stage,
       nextBtn: layout.nextBtn,
       pickedThisRun: new Set(),
@@ -74,5 +84,8 @@ export function phraseLessonScreen(app, { lessonId, start = 'begin', continueDir
     app.go('home');
   });
 
-  return () => layout.bunny.destroy();
+  return () => {
+    layout.bunny.destroy();
+    urls.forEach((u) => URL.revokeObjectURL(u));
+  };
 }

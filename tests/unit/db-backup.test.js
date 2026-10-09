@@ -5,7 +5,7 @@ import JSZip from 'jszip';
 import {
   openDatabase, deleteLesson, setWordImage, getWordImage, latestImageForWord, addRecording,
   hasRecordingToday, queryRecordings, deleteRecordings, recordingStats, updateProgress, getStickers,
-  mediaBlob, migrateMedia,
+  mediaBlob, migrateMedia, setFrameSet, getFrameSets, frameBlobs,
 } from '../../app/js/db.js';
 import { createBackup, readBackup, applyBackup, estimateBackupSize, BackupError } from '../../app/js/backup.js';
 import { onPracticed } from '../../app/js/progress.js';
@@ -97,7 +97,7 @@ test('sao lưu rồi khôi phục (thay thế) thì dữ liệu giống hệt, k
   await seed(src);
   const { blob: zipBlob, filename, counts } = await createBackup(src, { now: new Date(2026, 9, 8).getTime(), JSZip });
   assert.equal(filename, 'kid-english-backup-2026-10-08.zip');
-  assert.deepEqual(counts, { lessons: 2, images: 2, recordings: 3, progress: 1, stickers: 1 });
+  assert.deepEqual(counts, { lessons: 2, images: 2, frameSets: 0, recordings: 3, progress: 1, stickers: 1 });
 
   const dst = await open();
   await dst.put('lessons', lesson('OLD', 'Sẽ bị thay'));
@@ -251,4 +251,48 @@ test('nhập file bài: bài trên máy này có cùng danh sách từ (khác m�
   assert.equal((await phone.get('lessons', 'PHONE')).timesCompleted, 2);
   assert.equal(await mediaBlob(await getWordImage(phone, 'PHONE', 'dog')).text(), 'dog-pc');
   assert.equal(await mediaBlob(await getWordImage(phone, 'PHONE', 'cow')).text(), 'img1');
+});
+
+test('khung hình: lưu cả bộ, thay bộ cũ; xóa bài xóa khung; chia sẻ bài mang theo khung, bộ mới hơn thắng', async () => {
+  const pc = await open();
+  await pc.put('lessons', { id: 'P', title: 'Morning', kind: 'phrases', createdAt: 1, phrases: [{ id: 'p1', en: 'Wake up' }, { id: 'p2', en: 'Wash your face' }] });
+  await setFrameSet(pc, { lessonId: 'P', phraseId: 'p1', frames: [blob('f0', 'image/jpeg'), blob('f1', 'image/jpeg')].map((b) => ({ blob: b })) }, 10);
+  await setFrameSet(pc, { lessonId: 'P', phraseId: 'p1', frames: [blob('n0', 'image/jpeg'), blob('n1', 'image/jpeg'), blob('n2', 'image/jpeg')].map((b) => ({ blob: b })) }, 20);
+  const sets = await getFrameSets(pc, 'P');
+  assert.equal(sets.size, 1, 'thay bộ cũ');
+  assert.deepEqual(await Promise.all(frameBlobs(sets.get('p1')).map((b) => b.text())), ['n0', 'n1', 'n2'], 'đúng thứ tự khung');
+
+  // Chia sẻ sang "điện thoại" có bài cùng nội dung (khác mã bài) → khung gắn đúng bài trên điện thoại.
+  const pack = await readBackup((await createBackup(pc, { lessonIds: ['P'], JSZip })).blob, { JSZip });
+  assert.equal(pack.manifest.format, 2);
+  assert.equal(pack.frameSets.length, 1);
+  const phone = await open();
+  await phone.put('lessons', { id: 'Q', title: 'Morning', kind: 'phrases', createdAt: 5, phrases: [{ id: 'p1', en: 'Wake up' }, { id: 'p2', en: 'Wash your face' }] });
+  assert.deepEqual(await applyBackup(phone, pack, 'merge', { updateLessons: true }), { added: 0, updated: 1 });
+  const onPhone = await getFrameSets(phone, 'Q');
+  assert.deepEqual(await Promise.all(frameBlobs(onPhone.get('p1')).map((b) => b.text())), ['n0', 'n1', 'n2']);
+
+  await deleteLesson(phone, 'Q');
+  assert.equal((await getFrameSets(phone, 'Q')).size, 0);
+});
+
+test('nâng cấp cơ sở dữ liệu từ phiên bản 1 lên 2 không mất bài cũ', async () => {
+  const factory = new IDBFactory();
+  // Tạo DB phiên bản 1 như app cũ.
+  await new Promise((resolve, reject) => {
+    const req = factory.open('upgrade', 1);
+    req.onupgradeneeded = () => {
+      const db = req.result;
+      db.createObjectStore('lessons', { keyPath: 'id' }).put({ id: 'old', title: 'Animals', words: [] });
+      for (const [name, key] of [['images', 'id'], ['recordings', 'id'], ['progress', 'word'], ['stickers', 'id'], ['settings', 'key']]) {
+        const store = db.createObjectStore(name, { keyPath: key });
+        if (name === 'images' || name === 'recordings') { store.createIndex('lessonId', 'lessonId'); store.createIndex('word', 'word'); }
+      }
+    };
+    req.onsuccess = () => { req.result.close(); resolve(); };
+    req.onerror = () => reject(req.error);
+  });
+  const db = await openDatabase('upgrade', factory);
+  assert.equal((await db.get('lessons', 'old')).title, 'Animals');
+  assert.deepEqual(await db.getAll('frameSets'), []);
 });

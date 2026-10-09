@@ -147,3 +147,33 @@ test('các bước bài câu: A–B–C cho từng câu rồi D cho từng câu'
   const steps = buildPhraseSteps({ phrases: [{}, {}] });
   assert.deepEqual(steps.map((s) => `${s.stage}${s.index}`), ['watch0', 'do0', 'say0', 'watch1', 'do1', 'say1', 'pick0', 'pick1']);
 });
+
+test('khung hình: chia nhóm 4 câu/ảnh, 3 bước, gán mặc định, gom theo thứ tự bước, phát hiện trùng', async () => {
+  const { frameGroups, frameSteps, defaultFrameMapping, collectFrames } = await import('../../app/js/phrase.js');
+  const lesson = { phrases: Array.from({ length: 6 }, (_, i) => ({ id: `p${i + 1}`, en: `Do ${i + 1}`, framePrompts: i === 0 ? ['a', 'b', 'c', 'd'] : ['x'] })) };
+  const groups = frameGroups(lesson);
+  assert.deepEqual(groups.map((g) => [g.from, g.to, g.shape.cols, g.shape.rows]), [[1, 4, 3, 4], [5, 6, 3, 2]]);
+  assert.deepEqual(frameSteps(lesson.phrases[0]), ['a', 'b', 'c']);
+  assert.equal(frameSteps(lesson.phrases[1]).length, 3);
+  const mapping = defaultFrameMapping(groups[1], { cols: 3, rows: 3 });
+  assert.deepEqual(mapping, ['p5:0', 'p5:1', 'p5:2', 'p6:0', 'p6:1', 'p6:2', '', '', '']);
+  const swapped = ['p5:2', 'p5:0', 'p5:1', '', '', '', '', '', ''];
+  const { ok, sets } = collectFrames(swapped, ['T0', 'T1', 'T2']);
+  assert.equal(ok, true);
+  assert.deepEqual(sets.get('p5'), ['T1', 'T2', 'T0'], 'theo thứ tự bước');
+  assert.equal(collectFrames(['p5:0', 'p5:0'], ['A', 'B']).duplicate, 'p5:0');
+});
+
+test('prompt khung hình: mỗi hàng 1 câu 3 bước, Bông cả người, cùng cảnh để thành phim', async () => {
+  const { buildFramesPrompt } = await import('../../app/js/prompts.js');
+  const p = buildFramesPrompt([
+    { en: 'Wake up', steps: ['Bông sleeps in bed', 'The alarm rings', 'Bông sits up'] },
+    { en: 'Wash your face', steps: ['Bông turns on the tap', 'Bông splashes water', 'Bông smiles'] },
+  ]);
+  assert.match(p, /exact 3-column × 2-row grid of 6 equal cells/);
+  assert.match(p, /ROW 1 — "Wake up".*\nCell 1: Bông sleeps in bed\.\nCell 2: The alarm rings\.\nCell 3: Bông sits up\./);
+  assert.match(p, /ROW 2 — "Wash your face"[^\n]*\nCell 4: Bông turns on the tap\./);
+  assert.match(p, /FULL BODY/);
+  assert.match(p, /never only the head/);
+  assert.match(p, /exactly 2 vertical line\(s\) and 1 horizontal line\(s\)/);
+});

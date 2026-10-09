@@ -322,3 +322,45 @@ export function buildPhraseLessonPrompt({ situation, count = 4, level = 'beginne
     '- Use simple, positive, child-friendly language only.',
   ].join('\n');
 }
+
+/** Bông vẽ CẢ NGƯỜI cho ảnh hành động (không chỉ cái đầu). */
+export const BONG_FULL_BODY = "Bông, a cute bunny character with a FULL BODY: creamy white fur, light-pink inner ears, big glossy eyes, rosy cheeks, a small round body with short arms and short legs, standing upright like a little child";
+
+/**
+ * Prompt khung hình (flipbook) cho một nhóm câu: mỗi HÀNG là một câu, mỗi CỘT là một bước (SPEC-v1.0 mục 7.2).
+ * @param {Array<{ en: string, steps: string[] }>} rows
+ */
+export function buildFramesPrompt(rows) {
+  const cols = rows[0]?.steps.length ?? 3;
+  const n = rows.length;
+  const cells = cols * n;
+  const lines = [];
+  rows.forEach((row, r) => {
+    lines.push('', `ROW ${r + 1} — "${row.en}" (a tiny ${cols}-step animation, left to right)`);
+    row.steps.forEach((step, c) => lines.push(`Cell ${r * cols + c + 1}: ${/[.!?]$/.test(step) ? step : `${step}.`}`));
+  });
+  return [
+    `Create ONE image containing an exact ${cols}-column × ${n}-row grid of ${cells} equal cells. The grid must fill the entire canvas. Every cell has exactly the same width and height.`,
+    '',
+    `Separate adjacent cells with thin, straight, light-gray divider lines that run across the whole image: exactly ${cols - 1} vertical line(s) and ${n - 1} horizontal line(s). Do not draw an outer border around the canvas.`,
+    '',
+    `Each ROW is a short animation of ONE everyday action, shown in ${cols} steps from left to right. The cells of a row will be played one after another like a flipbook, so they must look like frames of the same scene.`,
+    '',
+    'CHARACTER (identical in every cell)',
+    `${BONG_FULL_BODY}. Always draw her whole body from head to feet, never only the head.`,
+    '',
+    'CELLS — LEFT TO RIGHT, TOP TO BOTTOM',
+    ...lines,
+    '',
+    'STYLE',
+    "Cute children's flashcard illustration for a 3-year-old: simple flat vector shapes, thick soft dark outlines, bright gentle pastel colors, plain pure-white background.",
+    '',
+    'STRICT RULES',
+    '- Same character design, size, colors and camera angle in every cell.',
+    '- Inside one row, keep the same objects (bed, sink, door, shirt…) in the same place and size; only Bông\'s pose and the action change, so the frames animate smoothly.',
+    '- The object of the action (door, shirt, toothbrush, cup…) must be big and clearly visible.',
+    '- Bông and the objects fill about 70% of each cell and never touch or cross a divider line.',
+    `- Only thin light-gray divider lines between cells: exactly ${cols - 1} vertical and ${n - 1} horizontal. No outer border, no frames, no rounded corners.`,
+    '- No text, letters, numbers, speech bubbles, labels or watermarks.',
+  ].join('\n');
+}

@@ -5,7 +5,7 @@ import { emptyProgress, progressKey } from './progress.js';
 import { assignLessonNumbers } from './lesson.js';
 
 export const DB_NAME = 'kid-english';
-export const STORES = ['lessons', 'images', 'recordings', 'progress', 'stickers', 'settings'];
+export const STORES = ['lessons', 'images', 'recordings', 'progress', 'stickers', 'settings', 'frameSets'];
 
 // Mỗi phần tử là một bước nâng cấp cấu trúc. Thêm bước mới vào cuối khi đổi cấu trúc;
 // dữ liệu cũ được chuyển tự động khi mở app (SPEC mục 4.9).
@@ -21,6 +21,11 @@ const MIGRATIONS = [
     db.createObjectStore('progress', { keyPath: 'word' });
     db.createObjectStore('stickers', { keyPath: 'id' });
     db.createObjectStore('settings', { keyPath: 'key' });
+  },
+  // Phiên bản 2 (SPEC-v1.0 mục 9): bộ khung hình (flipbook) của câu, mỗi bài + mã câu một bộ.
+  (db) => {
+    const frameSets = db.createObjectStore('frameSets', { keyPath: 'id' });
+    frameSets.createIndex('lessonId', 'lessonId');
   },
 ];
 
@@ -148,16 +153,59 @@ export function isQuotaError(err) {
 
 /** Xóa bài cùng ảnh và ghi âm của bài; giữ tiến độ (SPEC mục 4.6). */
 export async function deleteLesson(db, lessonId) {
-  const [images, recordings] = await Promise.all([
+  const [images, recordings, frameSets] = await Promise.all([
     db.getAllByIndex('images', 'lessonId', lessonId),
     db.getAllByIndex('recordings', 'lessonId', lessonId),
+    db.getAllByIndex('frameSets', 'lessonId', lessonId),
   ]);
-  await db.write(['lessons', 'images', 'recordings'], (tx) => {
+  await db.write(['lessons', 'images', 'recordings', 'frameSets'], (tx) => {
     tx.objectStore('lessons').delete(lessonId);
     for (const img of images) tx.objectStore('images').delete(img.id);
     for (const rec of recordings) tx.objectStore('recordings').delete(rec.id);
+    for (const set of frameSets) tx.objectStore('frameSets').delete(set.id);
   });
 }
+
+// ---------- Khung hình của câu (flipbook, SPEC-v1.0 mục 2.3) ----------
+
+/** Các bộ khung hình của một bài, theo mã câu: Map phraseId → bộ khung. */
+export async function getFrameSets(db, lessonId) {
+  const sets = await db.getAllByIndex('frameSets', 'lessonId', lessonId);
+  return new Map(sets.map((s) => [s.phraseId, s]));
+}
+
+/**
+ * Lưu (thay) bộ khung hình của một câu. Cả bộ nằm trong MỘT bản ghi nên không bao giờ lưu dở.
+ * @param {{ lessonId: string, phraseId: string, frames: Array<{ blob: Blob, mimeType?: string, width?: number, height?: number }> }} set
+ */
+export async function setFrameSet(db, { lessonId, phraseId, frames }, now = Date.now()) {
+  const stored = [];
+  for (const f of frames) {
+    stored.push({ data: await f.blob.arrayBuffer(), mimeType: f.mimeType || f.blob.type, width: f.width, height: f.height });
+  }
+  const old = await db.getAllByIndex('frameSets', 'lessonId', lessonId);
+  const lesson = await db.get('lessons', lessonId);
+  const record = { id: crypto.randomUUID(), lessonId, phraseId, frames: stored, createdAt: now };
+  await db.write(['frameSets', 'lessons'], (tx) => {
+    for (const s of old) if (s.phraseId === phraseId) tx.objectStore('frameSets').delete(s.id);
+    tx.objectStore('frameSets').put(record);
+    if (lesson) tx.objectStore('lessons').put({ ...lesson, updatedAt: now });
+  });
+  return record;
+}
+
+export async function removeFrameSet(db, lessonId, phraseId, now = Date.now()) {
+  const old = (await db.getAllByIndex('frameSets', 'lessonId', lessonId)).filter((s) => s.phraseId === phraseId);
+  const lesson = await db.get('lessons', lessonId);
+  if (!old.length) return;
+  await db.write(['frameSets', 'lessons'], (tx) => {
+    for (const s of old) tx.objectStore('frameSets').delete(s.id);
+    if (lesson) tx.objectStore('lessons').put({ ...lesson, updatedAt: now });
+  });
+}
+
+/** Blob của từng khung để hiển thị. */
+export const frameBlobs = (set) => (set?.frames ?? []).map((f) => new Blob([f.data], { type: f.mimeType || 'image/jpeg' }));
 
 /** Đánh số thứ tự cho các bài chưa có số (bài cũ, bài mẫu, bài nhập từ file cũ). */
 export async function ensureLessonNumbers(db) {

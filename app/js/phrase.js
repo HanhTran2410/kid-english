@@ -242,3 +242,66 @@ export function buildPhraseSteps(lesson) {
   if (lesson.phrases.length >= 2) lesson.phrases.forEach((_, index) => steps.push({ stage: 'pick', index }));
   return steps;
 }
+
+// ---------- Khung hình (flipbook) từ ảnh lưới (SPEC-v1.0 mục 2.3) ----------
+
+export const FRAME_STEPS = 3; // mỗi câu 3 bước = 3 cột
+export const FRAME_ROWS_PER_IMAGE = 4; // tối đa 4 câu (4 hàng) mỗi ảnh lưới
+
+/** Chia bài thành các nhóm câu, mỗi nhóm vẽ trong 1 ảnh lưới (mỗi hàng 1 câu). */
+export function frameGroups(lesson) {
+  const groups = [];
+  for (let i = 0; i < lesson.phrases.length; i += FRAME_ROWS_PER_IMAGE) {
+    const phrases = lesson.phrases.slice(i, i + FRAME_ROWS_PER_IMAGE);
+    groups.push({ index: groups.length, from: i + 1, to: i + phrases.length, phrases, shape: { cols: FRAME_STEPS, rows: phrases.length } });
+  }
+  return groups;
+}
+
+/** 3 bước của hành động: lấy từ `framePrompts`, thiếu thì bổ sung bước mặc định. */
+export function frameSteps(phrase) {
+  const given = (phrase.framePrompts ?? []).slice(0, FRAME_STEPS);
+  const defaults = [
+    `Bông gets ready to: ${phrase.en.toLowerCase()}`,
+    `Bông is in the middle of the action: ${phrase.en.toLowerCase()}`,
+    'Bông has finished and smiles proudly',
+  ];
+  while (given.length < FRAME_STEPS) given.push(defaults[given.length]);
+  return given;
+}
+
+/**
+ * Gán mặc định cho từng ô của ảnh lưới: hàng r → câu thứ r của nhóm, cột c → bước c.
+ * Ô thừa (ngoài số câu/bước) là '' (bỏ qua). Giá trị dạng "<phraseId>:<bước>".
+ */
+export function defaultFrameMapping(group, { cols, rows }) {
+  const out = [];
+  for (let r = 0; r < rows; r++) {
+    for (let c = 0; c < cols; c++) {
+      const phrase = group.phrases[r];
+      out.push(phrase && c < FRAME_STEPS ? `${phrase.id}:${c}` : '');
+    }
+  }
+  return out;
+}
+
+/**
+ * Gom các ô đã gán thành bộ khung của từng câu, theo thứ tự bước.
+ * @param {string[]} mapping giá trị "<phraseId>:<bước>" hoặc '' cho từng ô
+ * @param {T[]} tiles ảnh của từng ô (cùng thứ tự)
+ * @returns {{ ok: boolean, duplicate?: string, sets: Map<string, T[]> }}
+ */
+export function collectFrames(mapping, tiles) {
+  const seen = new Set();
+  const byPhrase = new Map();
+  for (const [i, value] of mapping.entries()) {
+    if (!value) continue;
+    if (seen.has(value)) return { ok: false, duplicate: value, sets: new Map() };
+    seen.add(value);
+    const [phraseId, step] = [value.slice(0, value.lastIndexOf(':')), Number(value.slice(value.lastIndexOf(':') + 1))];
+    if (!byPhrase.has(phraseId)) byPhrase.set(phraseId, []);
+    byPhrase.get(phraseId).push({ step, tile: tiles[i] });
+  }
+  const sets = new Map([...byPhrase].map(([id, list]) => [id, list.sort((a, b) => a.step - b.step).map((x) => x.tile)]));
+  return { ok: true, sets };
+}

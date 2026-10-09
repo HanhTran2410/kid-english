@@ -4,6 +4,7 @@
 > - draft2: video bố mẹ quay chuyển sang bản 1.1.
 > - draft3: sửa theo review — offline/giọng nói, từ khóa bắt buộc, định danh câu và lưu ảnh/khung hình, hiệu ứng theo loại hình, không trừ sao, thu nhỏ phạm vi 1.0-a, bổ sung test.
 > - Chốt 2026-10-09: các câu hỏi mục 13 theo đề xuất.
+> - **Flipbook làm sớm (app 0.2.1)** theo góp ý sau khi thử 1.0-a (cảnh Bông chỉ có cái đầu + emoji khó hiểu): khung hình từ ảnh lưới (mỗi hàng 1 câu, 3 bước, Bông vẽ **cả người**), xem trước, lưu, phát khi học; nâng cấp IndexedDB lên phiên bản 2 (kho `frameSets`); chia sẻ bài / sao lưu mang theo khung hình (format 2). **Không làm kho `phraseImages` riêng**: ảnh tĩnh của câu = bộ khung 1 khung. Trò E, F và ảnh tĩnh riêng vẫn ở 1.0-b.
 > - **1.0-a đã làm xong (app 0.2.0)**: nút Phrases, danh sách bài câu, tạo bài câu, xem trước, trang bài câu (đổi hiệu ứng, Câu dùng trong ngày), cảnh Bông + emoji với 18 hiệu ứng, luồng A–D, tiến độ câu, bài mẫu Morning. Ghi chú kỹ thuật: 1.0-a chưa cần kho mới nên **chưa nâng cấp IndexedDB**; kho `phraseImages`/`frameSets` sẽ thêm cùng 1.0-b.
 
 **Phạm vi kỹ thuật:** đây là một **mục học mới bên trong web app hiện tại** (cùng link GitHub Pages, cùng app trên Màn hình chính), không phải app riêng. Dùng chung dữ liệu (tiến độ, sticker, giới hạn thời gian, Góc bố mẹ, sao lưu, chia sẻ bài) và dùng lại khung học, Bông, giọng đọc, mic, nút ▶, Học tiếp/Học lại, Hoan hô, cắt ảnh lưới.
@@ -188,8 +189,8 @@ Ngoài các luật chung (chỉ trả JSON, tránh câu đã có ở bài khác�
 - `emoji`: emoji của **vật** (🚪, 👕, 🥛…) để hiệu ứng có vật dùng được.
 - `imagePrompt`, `framePrompts`: Bông làm hành động, mô tả cụ thể, theo Character Bible.
 
-### 7.2. Prompt khung hình (1.0-b)
-Dùng lại khuôn prompt ảnh lưới hiện có, thêm: mỗi ô là một bước của cùng một hành động; **cùng nhân vật, cùng góc nhìn, cùng khung cảnh, cùng màu**, chỉ tư thế đổi; mô tả Bông cố định; khi gộp cả bài thì mỗi hàng một câu.
+### 7.2. Prompt khung hình (đã có từ app 0.2.1)
+Một ảnh lưới cho **tối đa 4 câu**: **mỗi hàng 1 câu, 3 cột = 3 bước** (lấy từ `framePrompts`, thiếu thì app bổ sung). Bông vẽ **cả người** (thân, tay, chân), không chỉ cái đầu. Dùng lại khuôn prompt ảnh lưới hiện có, thêm: mỗi ô là một bước của cùng một hành động; **cùng nhân vật, cùng góc nhìn, cùng khung cảnh, cùng màu**, chỉ tư thế đổi; mô tả Bông cố định; khi gộp cả bài thì mỗi hàng một câu.
 
 ### 7.3. Prompt "cô giáo" cho câu (1.0-c)
 Dùng câu của bài; mời bé làm động tác ("Show me! Wash your face!"), dùng câu trong tình huống giả vờ.
@@ -210,8 +211,7 @@ Dùng câu của bài; mời bé làm động tác ("Show me! Wash your face!"),
 | Kho | Nội dung |
 |---|---|
 | `lessons` | Thêm `kind`. Bài câu có `phrases[]` (mỗi câu có `id`), `routine`, `commands`. |
-| `phraseImages` (mới, 1.0-b) | Ảnh tĩnh của câu: `id`, `lessonId`, `phraseId`, `data` (ArrayBuffer), `mimeType`, `width`, `height`, `createdAt`. Mỗi `lessonId + phraseId` một ảnh. |
-| `frameSets` (mới, 1.0-b) | Bộ khung hình của câu: `id`, `lessonId`, `phraseId`, `frames: [{ data, mimeType, width, height }]` theo đúng thứ tự phát, `createdAt`. Lưu **cả bộ trong một bản ghi** nên không bao giờ có bộ khung lưu dở. Mỗi `lessonId + phraseId` một bộ. |
+| `frameSets` (mới, **đã có từ app 0.2.1**) | Bộ khung hình của câu: `id`, `lessonId`, `phraseId`, `frames: [{ data, mimeType, width, height }]` theo đúng thứ tự phát, `createdAt`. Lưu **cả bộ trong một bản ghi** nên không bao giờ có bộ khung lưu dở. Mỗi `lessonId + phraseId` một bộ. |
 | `progress` | Dùng chung; câu có khóa `phrase:…` và thêm `attempts`. |
 
 - Kho `images` hiện tại **chỉ dùng cho từ vựng**, không dùng cho câu (tránh lẫn câu với từ).
@@ -220,7 +220,7 @@ Dùng câu của bài; mời bé làm động tác ("Show me! Wash your face!"),
 - Ảnh/khung hình không đọc được → hiện emoji + hiệu ứng (giống cách xử lý ảnh lỗi hiện có).
 - Không thiết kế trước kho video (bản 1.1 sẽ có spec riêng).
 
-**Sao lưu và chia sẻ (1.0-c):** thêm `phraseImages/`, `frameSets/` vào file zip; file mới `format: 2`. File sao lưu và file bài cũ (format 1) vẫn khôi phục/nhập được; app cũ gặp file mới thì báo cần cập nhật (đã có).
+**Sao lưu và chia sẻ (đã có từ app 0.2.1):** thêm `frameSets.json` + `frameSets/<id>-<thứ tự>.<ext>` vào file zip; file mới `format: 2`. Nhập file bài: bộ khung gắn đúng bài trên máy nhận (kể cả khi bài trùng nội dung nhưng khác mã), mỗi câu giữ bộ mới hơn. File sao lưu và file bài cũ (format 1) vẫn khôi phục/nhập được; app cũ gặp file mới thì báo cần cập nhật (đã có).
 
 ## 10. Rủi ro
 

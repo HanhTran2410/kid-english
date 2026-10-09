@@ -1060,3 +1060,15 @@ a.btn { text-decoration: none; }
 .phrase-admin { display: flex; gap: 12px; align-items: center; padding: 8px 0; border-bottom: 1px solid #f1ebe3; flex-wrap: wrap; }
 .scene-box .scene.small { width: 130px; font-size: 26px; }
 .daily-phrases { font-family: inherit; white-space: pre-wrap; background: #fff; border: 1px solid #ece4d8; border-radius: 12px; padding: 10px; font-size: 15px; }
+
+/* Flipbook: các khung chồng lên nhau, khung đang phát hiện rõ */
+.scene.flipbook { background: #fff; }
+.flip-frame { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; opacity: 0; transition: opacity 180ms linear; }
+.flip-frame.on { opacity: 1; }
+.flipbook-thumbs { display: flex; gap: 4px; }
+.flipbook-thumbs img { width: 44px; height: 44px; object-fit: cover; border-radius: 8px; background: #f6f1ea; }
+
+.frames-group { display: grid; gap: 8px; padding: 10px 0; border-top: 1px solid #f1ebe3; }
+.flip-previews { display: flex; flex-wrap: wrap; gap: 12px; }
+.flip-preview { display: grid; gap: 4px; justify-items: center; font-weight: 700; font-size: 14px; }
+.flip-preview .scene.small { width: 140px; }
