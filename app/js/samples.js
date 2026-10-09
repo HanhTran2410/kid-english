@@ -1,6 +1,7 @@
 // 2 bài mẫu có sẵn (SPEC mục 4.6). Chỉ thêm một lần ở lần chạy đầu; có nút "Thêm lại bài mẫu".
 
 import { parseLesson, createLessonRecord } from './lesson.js';
+import { ensureLessonNumbers } from './db.js';
 
 export const SAMPLE_FILES = ['lessons/animals.json', 'lessons/colors.json'];
 
@@ -13,13 +14,14 @@ export async function addSampleLessons(app) {
       const res = await fetch(file);
       const parsed = parseLesson(await res.text());
       if (!parsed.ok) continue;
-      // Bài đầu tiên hiện trước trong danh sách (mới nhất trước).
-      await app.db.put('lessons', createLessonRecord(parsed.lesson, now - i));
+      // Đánh số theo thứ tự tạo: Animals #01, Colors #02.
+      await app.db.put('lessons', createLessonRecord(parsed.lesson, now - SAMPLE_FILES.length + i));
       added++;
     } catch (err) {
       console.error('Không thêm được bài mẫu', file, err);
     }
   }
+  await ensureLessonNumbers(app.db);
   return added;
 }
 

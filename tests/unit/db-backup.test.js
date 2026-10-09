@@ -175,8 +175,9 @@ test('gói bài để chia sẻ: chỉ bài được chọn và ảnh của bài
   const db = await open();
   await seed(db);
   await db.put('lessons', { ...(await db.get('lessons', 'L1')), timesCompleted: 5, resume: { stage: 'quiz', index: 1 } });
+  await db.put('lessons', { ...(await db.get('lessons', 'L1')), no: 7 });
   const { blob: zipBlob, filename } = await createBackup(db, { lessonIds: ['L1'], now: new Date(2026, 9, 9).getTime(), JSZip });
-  assert.equal(filename, 'kid-english-bai-farm-2026-10-09.zip');
+  assert.equal(filename, '07-farm.zip');
   const p = await readBackup(zipBlob, { JSZip });
   assert.equal(p.manifest.kind, 'lessons');
   assert.deepEqual(p.lessons.map((l) => l.id), ['L1']);

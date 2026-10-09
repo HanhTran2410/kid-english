@@ -428,7 +428,7 @@ test('chia sẻ bài: xuất file bài rồi nhập lại trên máy khác', asy
   const download = page.waitForEvent('download');
   await page.getByRole('button', { name: '2. Gửi file' }).click();
   const file = await (await download).path();
-  expect((await download).suggestedFilename()).toMatch(/^kid-english-bai-colors-\d{4}-\d{2}-\d{2}\.zip$/);
+  expect((await download).suggestedFilename()).toBe('02-colors.zip');
 
   // "Máy khác": context mới, xóa bài Colors có sẵn rồi nhập file.
   const other = await (await browser.newContext({ reducedMotion: 'reduce' })).newPage();
@@ -441,9 +441,17 @@ test('chia sẻ bài: xuất file bài rồi nhập lại trên máy khác', asy
   await openParent(other);
   await other.getByRole('button', { name: 'Quản lý bài' }).click();
   await expect(other.getByRole('button', { name: /Colors/ })).toHaveCount(0);
-  await other.locator('input[type=file]').setInputFiles(file);
+  // Đưa file vào với đúng tên đã tải về (Playwright lưu file tạm dưới tên ngẫu nhiên).
+  const { readFile } = await import('node:fs/promises');
+  await other.locator('input[type=file]').setInputFiles({ name: '02-colors.zip', mimeType: 'application/zip', buffer: await readFile(file) });
   await expect(other.getByRole('status')).toContainText('Đã nhập 1 bài mới');
   await expect(other.getByRole('button', { name: /Colors/ })).toBeVisible();
+  // Số bài đi theo file; danh sách "Đã nhập gần đây" ghi lại file đã nhập.
+  await expect(other.locator('.lesson-row', { hasText: 'Colors' }).locator('.lesson-no')).toHaveText('#02');
+  await other.getByRole('button', { name: '← Quay lại' }).click();
+  await other.getByRole('button', { name: 'Quản lý bài' }).click();
+  await expect(other.locator('.import-log li').first()).toContainText('02-colors.zip');
+  await expect(other.locator('.import-log li').first()).toContainText('#02 Colors');
 
   // Sửa bài trên máy đầu (đổi tên) rồi chia sẻ lại → máy kia cập nhật bài đã có, không tạo bài trùng.
   await page.getByLabel('Tên bài').fill('Colors đẹp');

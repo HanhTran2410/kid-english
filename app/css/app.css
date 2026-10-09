@@ -886,3 +886,8 @@ a.btn { text-decoration: none; }
 .review-chip input { width: 20px; height: 20px; }
 .review-chip:has(input:checked) { background: #e6defc; }
 .review-chip:has(input:disabled) { opacity: 0.45; }
+
+.lesson-no { font-weight: 800; color: #6c4ad6; min-width: 40px; }
+.import-log { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; font-size: 14px; }
+.import-log li { padding-bottom: 6px; border-bottom: 1px solid #f1ebe3; }
+.lesson-meta { display: block; font-size: 13px; color: #7a6f86; font-weight: 600; margin-top: 2px; }

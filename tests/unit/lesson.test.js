@@ -210,3 +210,17 @@ test('chia chủ đề: theo topic bố mẹ chọn, không có thì theo tên b
   ]);
   assert.deepEqual(groups.map((g) => [g.topic, g.emoji, g.lessons.length]), [['Animals', '🐸', 2], ['Colors', '🌈', 1]]);
 });
+
+test('số thứ tự bài: đánh số theo thứ tự tạo, không đổi số đã có; tên file chia sẻ có số đứng đầu', async () => {
+  const { assignLessonNumbers, nextLessonNo, lessonFileName, formatLessonNo } = await import('../../app/js/lesson.js');
+  const lessons = [
+    { id: 'c', title: 'C', createdAt: 30 },
+    { id: 'a', title: 'A', createdAt: 10, no: 5 },
+    { id: 'b', title: 'B', createdAt: 20 },
+  ];
+  assert.deepEqual(assignLessonNumbers(lessons).map((l) => [l.id, l.no]), [['b', 6], ['c', 7]]);
+  assert.equal(nextLessonNo([]), 1);
+  assert.equal(formatLessonNo(3), '03');
+  assert.equal(lessonFileName({ no: 3, title: 'Con vật ở nông trại 2' }), '03-con-vat-o-nong-trai-2.zip');
+  assert.equal(lessonFileName({ no: 12, title: 'Animals' }), '12-animals.zip');
+});

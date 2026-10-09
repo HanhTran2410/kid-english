@@ -2,6 +2,7 @@
 
 import { normalizeWord, dayKey } from './text.js';
 import { emptyProgress, progressKey } from './progress.js';
+import { assignLessonNumbers } from './lesson.js';
 
 export const DB_NAME = 'kid-english';
 export const STORES = ['lessons', 'images', 'recordings', 'progress', 'stickers', 'settings'];
@@ -156,6 +157,13 @@ export async function deleteLesson(db, lessonId) {
     for (const img of images) tx.objectStore('images').delete(img.id);
     for (const rec of recordings) tx.objectStore('recordings').delete(rec.id);
   });
+}
+
+/** Đánh số thứ tự cho các bài chưa có số (bài cũ, bài mẫu, bài nhập từ file cũ). */
+export async function ensureLessonNumbers(db) {
+  const updates = assignLessonNumbers(await db.getAll('lessons'));
+  if (updates.length) await db.write(['lessons'], (tx) => updates.forEach((l) => tx.objectStore('lessons').put(l)));
+  return updates.length;
 }
 
 export async function listLessons(db) {

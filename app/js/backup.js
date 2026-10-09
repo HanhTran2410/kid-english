@@ -3,6 +3,7 @@
 
 import { STORES, mediaSize } from './db.js';
 import { normalizeWord } from './text.js';
+import { lessonFileName } from './lesson.js';
 import { mergeProgress } from './progress.js';
 import { mergeSticker } from './stickers.js';
 import { dayKey } from './text.js';
@@ -26,9 +27,6 @@ const editedAt = (lesson) => lesson.updatedAt ?? lesson.createdAt ?? 0;
 
 /** "Chữ ký" của bài theo danh sách từ (không phân biệt thứ tự, hoa/thường). */
 const wordSignature = (lesson) => (lesson.words ?? []).map((w) => normalizeWord(w.en)).sort().join('|');
-
-const slug = (text) => String(text).normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/đ/gi, 'd')
-  .toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'bai-hoc';
 
 const withoutBlob = ({ blob, data, ...meta }) => meta;
 
@@ -95,10 +93,12 @@ export async function createBackup(db, { includeRecordings = true, now = Date.no
   zip.file('settings.json', JSON.stringify(data.settings, null, 2));
 
   const bytes = await zip.generateAsync({ type: 'uint8array', compression: 'STORE' });
-  const name = lessonIds ? `kid-english-bai-${slug(data.lessons[0]?.title ?? 'bai-hoc')}` : 'kid-english-backup';
   return {
     blob: new Blob([bytes], { type: 'application/zip' }),
-    filename: `${name}-${dayKey(new Date(now))}.zip`,
+    // Gói 1 bài: "03-animals.zip" (số đứng đầu, ngắn gọn). Sao lưu toàn bộ: "kid-english-backup-2026-10-09.zip".
+    filename: lessonIds && data.lessons.length === 1
+      ? lessonFileName(data.lessons[0])
+      : `kid-english-${lessonIds ? 'bai' : 'backup'}-${dayKey(new Date(now))}.zip`,
     counts,
   };
 }

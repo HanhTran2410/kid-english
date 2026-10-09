@@ -1,9 +1,11 @@
 // Quản lý bài: xem, đổi tên, xóa, thêm/đổi ảnh từng từ, copy imagePrompt (SPEC 4.6).
 
 import { h, toast, copyText, confirmDialog, formatDateTime } from '../../ui.js';
-import { listLessons, deleteLesson, setWordImage, removeWordImage, isQuotaError, mediaBlob } from '../../db.js';
+
+const IMPORT_LOG_MAX = 30;
+import { listLessons, deleteLesson, setWordImage, removeWordImage, isQuotaError, mediaBlob, ensureLessonNumbers } from '../../db.js';
 import { normalizeWord } from '../../text.js';
-import { uniqueTitle, topicOf } from '../../lesson.js';
+import { uniqueTitle, topicOf, formatLessonNo, lessonFileName } from '../../lesson.js';
 import { resizeImage, sliceGrid, gridShape, loadGridImage, GRID_OPTIONS, ImageError } from '../../image.js';
 import { addSampleLessons } from '../../samples.js';
 import { buildGridImagePrompt } from '../../prompts.js';
@@ -42,10 +44,20 @@ export function lessonsView(app) {
       // Bài đã có trên máy này (cùng bài, chia sẻ lại sau khi sửa) thì cập nhật nội dung và ảnh mới hơn.
       const { added, updated } = await applyBackup(app.db,
         { ...payload, recordings: [], progress: [], stickers: [], settings: [] }, 'merge', { updateLessons: true });
+      await ensureLessonNumbers(app.db);
       const parts = [];
       if (added) parts.push(`nhập ${added} bài mới`);
       if (updated) parts.push(`cập nhật ${updated} bài đã có`);
-      toast(parts.length ? `Đã ${parts.join(', ')}.` : 'Không có gì thay đổi.', 3500);
+      const summary = parts.length ? `Đã ${parts.join(', ')}` : 'Không có gì thay đổi';
+      toast(`${summary}.`, 3500);
+      // Ghi lại đã nhập file nào, để biết file nào nhập rồi / chưa nhập.
+      const entry = {
+        file: file.name,
+        at: Date.now(),
+        summary,
+        lessons: payload.lessons.map((l) => `${l.no ? `#${formatLessonNo(l.no)} ` : ''}${l.title}`),
+      };
+      await app.setSetting('importLog', [entry, ...(app.settings.importLog ?? [])].slice(0, IMPORT_LOG_MAX));
       goParent(app, 'lessons');
     } catch (err) {
       toast(err instanceof BackupError ? err.message : 'Không đọc được file bài học.', 4000);
@@ -66,13 +78,22 @@ export function lessonsView(app) {
       },
     })));
 
+  const log = app.settings.importLog ?? [];
+  if (log.length) {
+    body.append(section('Đã nhập gần đây', h('ul.import-log', {}, ...log.map((e) => h('li', {},
+      h('b', { text: e.file }),
+      h('span.muted', { text: ` · ${formatDateTime(e.at)} · ${e.summary}` }),
+      e.lessons?.length ? h('div.muted', { text: e.lessons.join(', ') }) : null)))));
+  }
+
   listLessons(app.db).then((lessons) => {
     if (!lessons.length) list.append(h('li', { text: 'Chưa có bài nào. Vào "Tạo bài học" để tạo bài đầu tiên.' }));
     for (const l of lessons) {
       list.append(h('li', {}, h('button.lesson-row', { type: 'button', onclick: () => goParent(app, 'lesson', { lessonId: l.id }) },
+        h('span.lesson-no', { text: `#${formatLessonNo(l.no)}` }),
         h('span.p-emoji', { text: l.emoji }),
-        h('span.grow', {}, h('b', { text: l.title }), h('span.muted', { text: ` · ${topicOf(l)} · ${l.words.length} từ · học xong ${l.timesCompleted ?? 0} lần` })),
-        h('span.muted', { text: formatDateTime(l.createdAt) }))));
+        h('span.grow', {}, h('b', { text: l.title }),
+          h('span.lesson-meta', { text: `${topicOf(l)} · ${l.words.length} từ · học xong ${l.timesCompleted ?? 0} lần · ${formatDateTime(l.createdAt).slice(0, 10)}` })))));
     }
   });
 }
@@ -92,8 +113,10 @@ export function lessonDetailView(app, { lessonId }) {
 
     // Đổi tên và chủ đề
     const name = h('input', { type: 'text', value: lesson.title, 'aria-label': 'Tên bài' });
+    const noInput = h('input', { type: 'number', min: '1', max: '999', value: String(lesson.no ?? ''), 'aria-label': 'Số bài' });
     const topicInput = h('input', { type: 'text', value: topicOf(lesson), 'aria-label': 'Chủ đề' });
     const rename = section('Tên bài và chủ đề',
+      h('label.field', {}, h('span.field-label', { text: 'Số bài (đứng đầu tên file khi chia sẻ)' }), noInput),
       h('label.field', {}, h('span.field-label', { text: 'Tên bài' }), name),
       h('label.field', {}, h('span.field-label', { text: 'Chủ đề (tab ở màn hình Bài học của bé)' }), topicInput),
       h('button.btn', {
@@ -105,6 +128,7 @@ export function lessonDetailView(app, { lessonId }) {
           const others = (await listLessons(app.db)).filter((l) => l.id !== lesson.id).map((l) => l.title);
           lesson.title = uniqueTitle(title, others);
           lesson.topic = topicInput.value.trim();
+          if (Number(noInput.value) > 0) lesson.no = Math.round(Number(noInput.value));
           lesson.updatedAt = Date.now();
           await app.db.put('lessons', lesson);
           name.value = lesson.title;
@@ -325,7 +349,7 @@ function shareSection(app, lesson) {
     },
   });
   return section('Chia sẻ bài sang máy khác',
-    h('p', { text: 'File gồm nội dung bài và ảnh (không có ghi âm, tiến độ của bé). Trên máy kia: Góc bố mẹ → Quản lý bài → "Nhập bài từ file".' }),
+    h('p', { text: `File ${lessonFileName(lesson)} gồm nội dung bài và ảnh (không có ghi âm, tiến độ của bé). Trên máy kia: Góc bố mẹ → Quản lý bài → "Nhập bài từ file".` }),
     h('div.actions', {}, makeBtn, sendBtn),
     status);
 }

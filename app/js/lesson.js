@@ -348,3 +348,30 @@ export function groupByTopic(lessons) {
   }
   return [...groups.values()];
 }
+
+/** Số thứ tự bài dạng 2 chữ số: 3 → "03". */
+export const formatLessonNo = (no) => String(no ?? 0).padStart(2, '0');
+
+/** Số tiếp theo cho bài mới (lớn nhất hiện có + 1). */
+export function nextLessonNo(lessons) {
+  return lessons.reduce((max, l) => Math.max(max, Number(l.no) || 0), 0) + 1;
+}
+
+/**
+ * Đánh số cho các bài chưa có số, theo thứ tự tạo (cũ trước). Không đổi số của bài đã có.
+ * @returns {object[]} các bài vừa được đánh số (cần lưu lại)
+ */
+export function assignLessonNumbers(lessons) {
+  let next = nextLessonNo(lessons);
+  return lessons
+    .filter((l) => !(Number(l.no) > 0))
+    .sort((a, b) => (a.createdAt ?? 0) - (b.createdAt ?? 0))
+    .map((l) => ({ ...l, no: next++ }));
+}
+
+/** Tên file chia sẻ bài: số đứng đầu, ngắn gọn để không bị cắt "…": "03-animals.zip". */
+export function lessonFileName(lesson) {
+  const slug = String(lesson.title ?? '').normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/đ/gi, 'd')
+    .toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 24).replace(/-$/, '') || 'bai-hoc';
+  return `${formatLessonNo(lesson.no)}-${slug}.zip`;
+}

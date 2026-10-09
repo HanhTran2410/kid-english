@@ -14,6 +14,7 @@ export const DEFAULT_SETTINGS = {
   samplesSeeded: false,
   lastPromptReviewWords: [],
   lastPromptTopic: '',
+  importLog: [], // các file bài đã nhập gần đây: { file, at, summary, lessons }
   reviewUsedAt: {}, // từ → lần gần nhất được đưa vào prompt tạo bài (xoay vòng từ cần ôn)
   session: null,
 };

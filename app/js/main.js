@@ -1,7 +1,7 @@
 // Khởi động app và đăng ký các màn hình.
 
 import { App } from './app.js';
-import { openDatabase, migrateMedia } from './db.js';
+import { openDatabase, migrateMedia, ensureLessonNumbers } from './db.js';
 import { loadSettings } from './settings.js';
 import { seedSamplesOnce } from './samples.js';
 import { startScreen, homeScreen, lessonsScreen, stickersScreen, sleepScreen } from './screens/child.js';
@@ -55,6 +55,7 @@ async function boot() {
 
   navigator.storage?.persist?.().catch(() => {});
   await seedSamplesOnce(app);
+  await ensureLessonNumbers(app.db);
   // Chuyển ảnh/ghi âm cũ (lưu dạng Blob) sang dạng Safari đọc lại ổn định hơn.
   migrateMedia(app.db).catch((err) => console.warn('migrateMedia', err));
   await app.speaker.init({ voiceURI: app.settings.voiceURI, rate: app.settings.rate });

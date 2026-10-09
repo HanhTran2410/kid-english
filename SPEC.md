@@ -43,7 +43,7 @@ Bố mẹ → ChatGPT/Gemini (miễn phí) → JSON → copy/dán → App (iPad)
 
 | Kho dữ liệu | Nội dung chính |
 |---|---|
-| `lessons` | `id` (app tự tạo bằng `crypto.randomUUID()`), `createdAt`, `updatedAt` (lần bố mẹ sửa gần nhất: tên, chủ đề, ảnh), `timesCompleted`, `topic` (chủ đề để chia tab; không có thì lấy theo tên bài), `resume` (chỗ đang học dở: `{ stage, index, savedAt }`, hoặc `null`), cùng toàn bộ nội dung bài (mục 3.1) |
+| `lessons` | `id` (app tự tạo bằng `crypto.randomUUID()`), `createdAt`, `updatedAt` (lần bố mẹ sửa gần nhất: tên, chủ đề, ảnh), `no` (số thứ tự bài), `timesCompleted`, `topic` (chủ đề để chia tab; không có thì lấy theo tên bài), `resume` (chỗ đang học dở: `{ stage, index, savedAt }`, hoặc `null`), cùng toàn bộ nội dung bài (mục 3.1) |
 | `images` | `id`, `lessonId`, `word`, `data` (ArrayBuffer), `mimeType`, `width`, `height`, `createdAt`. Mỗi từ của mỗi bài chỉ một ảnh (ảnh mới nhất) |
 | `recordings` | `id`, `lessonId`, `word`, `date`, `data` (ArrayBuffer), `mimeType`, `durationMs` |
 | `progress` | khóa là từ tiếng Anh (viết thường): `mastery` (0–5), `practiceCount`, `lastPracticedAt`, `lastVoiceDay` (ngày gần nhất được cộng điểm vì lên tiếng), `emoji` |
@@ -74,8 +74,9 @@ Bố mẹ → ChatGPT/Gemini (miễn phí) → JSON → copy/dán → App (iPad)
      - Mỗi ô có **ô chọn từ** (mặc định theo thứ tự; ô thừa là "bỏ qua"), để sửa khi AI xếp lộn thứ tự hoặc vẽ thừa. Chọn trùng một từ cho 2 ô thì app báo lỗi.
      - Xem trước rồi mới lưu.
      - Prompt ảnh lưới viết **theo hàng** (Row 1, Row 2…), **ghi rõ vị trí ô trống** (hàng, cột), **mỗi từ kèm mô tả hình** lấy từ `imagePrompt` của bài, có luật **"mỗi ô chỉ vẽ vật của ô đó"** (tránh vẽ lẫn như mây trong ô "rain"), và chỉ có **đường xám giữa các ô, không viền ngoài**. Prompt tạo bài dặn AI viết `imagePrompt` là **mô tả cụ thể, phân biệt với các từ khác** trong bài.
-6. **(Tùy chọn) Tạo bài trên máy tính rồi chuyển sang iPad/iPhone:** mở cùng link app trên máy tính, tạo bài và thêm ảnh (dễ thao tác hơn), bấm **"Chia sẻ bài"** để xuất file `kid-english-bai-<tên>-<ngày>.zip` (chỉ gồm bài và ảnh, không có ghi âm hay tiến độ), gửi sang máy của bé (AirDrop, iCloud, Zalo…), rồi trên máy đó vào **Quản lý bài → "Nhập bài từ file"**.
+6. **(Tùy chọn) Tạo bài trên máy tính rồi chuyển sang iPad/iPhone:** mở cùng link app trên máy tính, tạo bài và thêm ảnh (dễ thao tác hơn), bấm **"Chia sẻ bài"** để xuất file **`<số bài>-<tên>.zip`**, ví dụ `03-animals.zip` (số đứng đầu, tên ngắn để không bị cắt "…"; chỉ gồm bài và ảnh, không có ghi âm hay tiến độ), gửi sang máy của bé (AirDrop, iCloud, Zalo…), rồi trên máy đó vào **Quản lý bài → "Nhập bài từ file"**.
    - **Chia sẻ lại sau khi sửa** (đổi tên, chủ đề, thay ảnh): nhập file trên máy kia sẽ **cập nhật bài đã có** (không tạo bài trùng). "Bài đã có" là bài cùng mã, **hoặc cùng danh sách từ** (ví dụ bài đã tạo riêng trên máy kia bằng cách dán lại đoạn trả lời của AI); giữ số ⭐ và chỗ đang học dở của máy đó. Chỉ bản sửa **mới hơn** mới ghi đè; mỗi từ chỉ giữ **một ảnh — ảnh mới hơn**; nhập lại file cũ thì không đổi gì.
+   - **Số bài:** mỗi bài có số thứ tự (#01, #02…) do app tự đánh theo thứ tự tạo, bố mẹ sửa được; số đi theo file sang máy kia. **"Đã nhập gần đây"** trong Quản lý bài ghi tên file, thời gian, kết quả và bài nào — để biết file nào đã nhập.
    - Dữ liệu **không tự đồng bộ** giữa các máy (không có server): mỗi máy, và cả tab Safari với app trên Màn hình chính, giữ dữ liệu riêng.
    - **Nếu không có ảnh, app hiển thị emoji to.** Bài học dùng được ngay mà không cần tạo ảnh.
 

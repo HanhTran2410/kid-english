@@ -3,7 +3,7 @@
 import { h, toast, copyText } from '../../ui.js';
 import { buildLessonPrompt, DURATIONS, MAX_AVOID_WORDS } from '../../prompts.js';
 import { pickWordsForPrompt, markUsedInPrompt, isUnknown, KNOWN_MASTERY } from '../../progress.js';
-import { parseLesson, createLessonRecord, overlapWithLessons, uniqueTitle, baseTitle } from '../../lesson.js';
+import { parseLesson, createLessonRecord, overlapWithLessons, uniqueTitle, baseTitle, nextLessonNo } from '../../lesson.js';
 import { listLessons } from '../../db.js';
 import { quizQuestions } from '../../player/plan.js';
 import { parentLayout, goParent, section, notice, speakButton, field } from './common.js';
@@ -180,6 +180,7 @@ export function pasteView(app) {
         const record = createLessonRecord({ ...parsed.lesson, title: finalTitle });
         // Chủ đề (để chia tab): chủ đề đã chọn lúc tạo prompt, không có thì theo tên bài.
         record.topic = app.settings.lastPromptTopic || baseTitle(parsed.lesson.title);
+        record.no = nextLessonNo(await listLessons(app.db));
         await app.db.put('lessons', record);
         await app.setSetting('lastPromptReviewWords', []);
         await app.setSetting('lastPromptTopic', '');
