@@ -1,6 +1,7 @@
 // Thỏ Bông: nói, nghe, khen, chờ bé chạm, gọi bé khi bé bỏ đi (SPEC mục 4.3, 4.9).
 
 import { h } from '../ui.js';
+import { bongElement } from '../bong.js';
 import { listen, RESULT } from '../speech/listen.js';
 import { play } from '../speech/sfx.js';
 import { sleep, scaled, abortError } from '../timing.js';
@@ -12,7 +13,7 @@ const SILENT_STREAK_CHECK = 3; // 3 lượt im lặng liên tiếp → kiểm tr
 export function createBunny(app) {
   const el = h('div.bunny', { 'aria-hidden': 'true', dataset: { state: 'idle' } },
     h('span.bunny-wave'),
-    h('span.bunny-face', { text: '🐰' }));
+    bongElement('bunny-face'));
   const off = app.speaker.onChange((speaking) => el.classList.toggle('talk', speaking));
   return {
     el,

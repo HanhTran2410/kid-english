@@ -14,6 +14,7 @@ import { lessonsView, lessonDetailView } from './lessons.js';
 import { recordingsView } from './recordings.js';
 import { settingsView } from './settings.js';
 import { backupView } from './backup.js';
+import { bongElement } from '../../bong.js';
 import { stickersAdminView } from './stickers.js';
 
 const VIEWS = {
@@ -58,7 +59,7 @@ function menuView(app) {
       item('🎁', 'Sticker của bé', () => goParent(app, 'stickers')),
       item('⚙️', 'Cài đặt & chẩn đoán', () => goParent(app, 'settings'))),
     h('button.exit-to-child', { type: 'button', onclick: () => app.go('home') },
-      h('span.menu-emoji', { text: '🐰' }), h('span', { text: 'Về màn hình của bé' })),
+      bongElement('menu-bong'), h('span', { text: 'Về màn hình của bé' })),
   );
 
   // Cảnh báo cho bố mẹ (SPEC 4.9).

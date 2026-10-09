@@ -1,6 +1,6 @@
 # SPEC — App học tiếng Anh cho bé (iPad, dùng cá nhân)
 
-> Phiên bản: 0.11 (sửa theo góp ý sau lần chạy thử thứ hai) · Ngày: 2026-10-08
+> Phiên bản: 0.12 (sửa theo góp ý sau lần chạy thử thứ ba) · Ngày: 2026-10-08
 
 ## 1. Mục tiêu
 
@@ -43,7 +43,7 @@ Bố mẹ → ChatGPT/Gemini (miễn phí) → JSON → copy/dán → App (iPad)
 
 | Kho dữ liệu | Nội dung chính |
 |---|---|
-| `lessons` | `id` (app tự tạo bằng `crypto.randomUUID()`), `createdAt`, `timesCompleted`, `resume` (chỗ đang học dở: `{ stage, index, savedAt }`, hoặc `null`), cùng toàn bộ nội dung bài (mục 3.1) |
+| `lessons` | `id` (app tự tạo bằng `crypto.randomUUID()`), `createdAt`, `timesCompleted`, `topic` (chủ đề để chia tab; không có thì lấy theo tên bài), `resume` (chỗ đang học dở: `{ stage, index, savedAt }`, hoặc `null`), cùng toàn bộ nội dung bài (mục 3.1) |
 | `images` | `id`, `lessonId`, `word`, `blob`, `mimeType`, `width`, `height` |
 | `recordings` | `id`, `lessonId`, `word`, `date`, `blob`, `mimeType`, `durationMs` |
 | `progress` | khóa là từ tiếng Anh (viết thường): `mastery` (0–5), `practiceCount`, `lastPracticedAt`, `lastVoiceDay` (ngày gần nhất được cộng điểm vì lên tiếng), `emoji` |
@@ -147,13 +147,15 @@ Prompt yêu cầu AI:
 ## 4. Màn hình
 
 ### 4.1. Màn hình chính (bé)
-- 3 nút rất to, có hình **và chữ giải thích**: **📚 Bài học**, **⭐ Ôn tập**, **🐰 Học cùng Bông**.
+- 3 nút rất to, có hình **và chữ giải thích**: tiếng Anh to ở trên, tiếng Việt nhỏ ở dưới — **📚 Lessons / Bài học**, **⭐ Review / Ôn tập**, **🐰 Learn with Bông / Học cùng Bông**; nút **🎁 My Stickers / Sticker của bé**.
 - 1 nút **🎁 Bộ sưu tập sticker** (mục 4.8), nhỏ hơn 3 nút chính nhưng vẫn đủ to cho bé bấm.
 - Góc trên có biểu tượng ⚙️ nhỏ (kèm chữ "Bố mẹ (giữ 3 giây)") dẫn vào **Góc bố mẹ**, mở bằng cách **nhấn giữ 3 giây** để bé không vào nhầm. Bấm nhẹ thì hiện dòng nhắc cách mở.
 - Phần của bé không có: cài đặt, xóa, tạo bài, chữ "AI" hay bất kỳ chi tiết kỹ thuật nào.
 
 ### 4.2. Danh sách bài học
-- Lưới thẻ to: emoji hoặc ảnh bìa và tên bài.
+- Lưới thẻ to: emoji hoặc ảnh bìa, tên bài và **hàng emoji các từ trong bài** (để bé chưa biết đọc vẫn phân biệt được các bài cùng chủ đề).
+- **Tên bài không trùng:** bài mới trùng tên bài đang có thì app tự đặt **"Animals 2"**, **"Animals 3"**… (khi lưu bài, nhập bài, đổi tên).
+- **Tab chủ đề:** một hàng tab ở trên, **⭐ All** + mỗi chủ đề **đã có bài** (emoji + tên, ví dụ 🐶 Animals). Nhiều chủ đề thì **vuốt ngang**, không xuống dòng. Chỉ có 1 chủ đề thì ẩn hàng tab. Chủ đề lấy từ ô "Chủ đề" lúc tạo bài; bố mẹ sửa được trong Quản lý bài. App nhớ tab đang chọn trong buổi.
 - Mỗi thẻ có số ⭐ cho biết bé đã học xong bài này mấy lần.
 - Bài đang học dở có thanh tiến độ nhỏ trên thẻ. Bấm vào bài đó thì hiện **2 nút to, chỉ có hình**:
   - ▶️ **Học tiếp**: vào lại đúng phần và câu đang dừng.
@@ -166,7 +168,7 @@ Prompt yêu cầu AI:
 
 Phần nào bài không có (không có `conversation`, `questions` hoặc `story`) thì bỏ qua. Riêng phần C: nếu không có `questions`, app tự tạo câu *"Where is the cow?"* từ các từ trong bài (bài về màu sắc thì *"Which one is red?"*).
 
-Cả bài có **nhân vật dẫn dắt cố định**: thỏ **Bông** 🐰 (tên đổi được trong Cài đặt). Bông xuất hiện ở góc màn hình, nhún nhảy khi "nói" và vỗ tay khi khen. Khi nói tiếng Anh, Bông xưng **"I"** và không tự gọi tên mình (giọng tiếng Anh đọc "Bông" thành "Bong"); tên chỉ hiện trên màn hình.
+Cả bài có **nhân vật dẫn dắt cố định**: thỏ **Bông** 🐰 (tên đổi được trong Cài đặt). Bông được **vẽ riêng bằng SVG** theo Character Bible (lông trắng kem, tai trong hồng nhạt, mắt to long lanh, má hồng, miệng cười; vẫy tai khi vui), không dùng emoji 🐰 vì emoji trên iOS màu xám. Icon app cũng dùng hình này. Bông xuất hiện ở góc màn hình, nhún nhảy khi "nói" và vỗ tay khi khen. Khi nói tiếng Anh, Bông xưng **"I"** và không tự gọi tên mình (giọng tiếng Anh đọc "Bông" thành "Bong"); tên chỉ hiện trên màn hình.
 
 #### 4.3.1. Cách app "nghe" bé (dùng chung cho mọi phần có mic)
 
@@ -349,7 +351,8 @@ Phân biệt hai trường hợp:
 | Nhận dạng giọng nói và ghi âm cùng dùng mic có thể tranh nhau | Kiểm tra trong lần tự kiểm tra đầu buổi. Nếu xung đột thì ưu tiên ghi âm và đo âm lượng |
 | iPad có thể hỏi quyền mic mỗi lần mở app | Chỉ xin quyền mic **một lần** sau nút "Bắt đầu" và **giữ mic mở suốt buổi**, không mở/đóng theo từng câu. Ghi vào hướng dẫn: bố mẹ bấm "Cho phép" ở lần đầu mỗi buổi |
 | Khi mic đang mở, **iPhone có thể phát tiếng qua loa thoại** (rất nhỏ) | Test sớm trên iPhone. Nếu gặp thì bỏ việc giữ mic suốt buổi, chỉ mở mic trong lúc nghe bé |
-| iOS chặn phát âm thanh nếu chưa có thao tác chạm | Màn hình đầu có nút **"Bắt đầu"** to để "mở khóa" âm thanh và mic |
+| iOS chặn phát âm thanh nếu chưa có thao tác chạm | Màn hình đầu có nút **"Bắt đầu"** to để "mở khóa" âm thanh và mic. Giọng đọc được mở khóa **ngay trong lúc chạm, trước mọi bước chờ** |
+| Giọng đọc iOS thỉnh thoảng bị kẹt, không phát tiếng | Không gọi `cancel()` ngay trước `speak()` khi không có câu nào đang đọc (Safari hay nuốt câu mới); câu không bắt đầu sau 1,5 giây thì gỡ kẹt (`cancel` + `resume`) và đọc lại một lần; quay lại từ nền thì gỡ kẹt; cập nhật lại giọng khi `voiceschanged` |
 | Tên và chất lượng giọng đọc khác nhau tùy iPad | Chọn giọng theo ngôn ngữ, không ghi cứng tên. Hướng dẫn tải giọng Enhanced/Premium miễn phí trong Cài đặt iPad → Trợ năng → Nội dung được đọc |
 | Định dạng ghi âm khác nhau tùy phiên bản iPadOS | Chọn định dạng lúc chạy, lưu kèm `mimeType` |
 | Dữ liệu trong trình duyệt không được coi là lưu trữ vĩnh viễn | Gọi `navigator.storage.persist()` lúc khởi động. Sao lưu ra file zip và nhắc sao lưu mỗi tuần |
@@ -373,6 +376,7 @@ D:\kid-english\
 │   ├── lessons\                 ← 2 bài mẫu (animals.json, colors.json)
 │   ├── vendor\jszip.min.js
 │   └── js│       ├── main.js              ← khởi động, đăng ký màn hình
+│       ├── bong.js              ← thỏ Bông vẽ bằng SVG
 │       ├── app.js               ← trạng thái chung, điều hướng, thời gian buổi học, giữ màn hình sáng, app bị chuyển sang nền
 │       ├── db.js                ← IndexedDB
 │       ├── settings.js          ← cài đặt mặc định, nhắc sao lưu
@@ -550,6 +554,16 @@ D:\kid-english\
 | Cải thiện tạo bài, ảnh đẹp hơn trên máy tính | ✅ Ảnh lưới (1 lần tạo ảnh cho cả bài, app tự cắt); Chia sẻ bài / Nhập bài từ file để tạo trên máy tính rồi chuyển sang |
 | Hộp quà mở nắp, sticker chui vào | ✅ Mục 4.3 |
 | Bỏ đọc tiếng Việt, rút ngắn thời gian trước khi bé nói | ✅ Mặc định chỉ tiếng Anh; đọc từ xong bật mic ngay, chỉ hỏi "Can you say…?" khi bé chưa nói |
+
+### 9.8. Góp ý sau lần chạy thử thứ ba (v0.12)
+
+| Góp ý | Quyết định |
+|---|---|
+| Icon thỏ màu xám, muốn sáng và vui hơn | ✅ Vẽ Bông bằng SVG theo Character Bible (trắng kem, tai hồng, mặt cười); thay ở mọi chỗ và icon app |
+| Thỉnh thoảng mở bài không có tiếng | ✅ Mở khóa giọng đọc ngay khi chạm; gỡ kẹt và đọc lại khi câu không bắt đầu; không `cancel()` thừa (mục 6) |
+| Menu: tiếng Anh ở trên, tiếng Việt ở dưới | ✅ Mục 4.1 |
+| Bài cùng chủ đề bị trùng tên | ✅ Tự đặt "Animals 2", "Animals 3"; thẻ bài có hàng emoji các từ |
+| Tab theo chủ đề ở danh sách bài | ✅ Một hàng tab vuốt ngang, chỉ chủ đề đã có bài, ẩn khi chỉ có 1 chủ đề |
 
 ## 10. Quyết định đã chốt (2026-10-08)
 

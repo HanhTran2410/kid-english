@@ -74,9 +74,9 @@ Nếu AI trả bài bị cắt ngang, nhắn cho AI chữ `continue` rồi copy 
 ## 6. Test
 
 ```bash
-npm test                      # test logic (node:test): 76 test
+npm test                      # test logic (node:test): 79 test
 npx playwright install chromium
-npm run test:ui               # test giao diện trên Chrome cỡ iPad: 17 test
+npm run test:ui               # test giao diện trên Chrome cỡ iPad: 18 test
 node scripts/screens.mjs      # chụp các màn hình cỡ iPhone/iPad vào test-results/screens/ (chạy server cổng 4173 trước)
 ```
 

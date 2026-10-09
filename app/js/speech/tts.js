@@ -82,11 +82,18 @@ export class Speaker {
   }
 
   async init({ voiceURI = null, rate = 0.8 } = {}) {
+    this.voiceURI = voiceURI;
     this.voices = await loadVoices();
     this.configure({ voiceURI, rate });
+    // iOS có lúc trả danh sách giọng muộn (hoặc đổi sau khi tải giọng mới): cập nhật lại khi có thay đổi.
+    synth()?.addEventListener?.('voiceschanged', () => {
+      this.voices = synth().getVoices();
+      this.configure({ voiceURI: this.voiceURI, rate: this.rate });
+    });
   }
 
   configure({ voiceURI = null, rate = this.rate } = {}) {
+    this.voiceURI = voiceURI;
     this.en = pickVoice(this.voices, 'en-US', voiceURI);
     this.vi = pickVoice(this.voices, 'vi-VN');
     this.rate = rate;
@@ -112,17 +119,28 @@ export class Speaker {
     for (const fn of this.listeners) fn(value);
   }
 
-  /** Mở khóa âm thanh trên iOS: phải gọi trong lúc chạm. */
+  /** Mở khóa giọng đọc trên iOS: PHẢI gọi ngay trong lúc chạm, trước mọi `await`. */
   unlock() {
     const s = synth();
     if (!s) return;
+    if (s.paused) s.resume();
     const u = new SpeechSynthesisUtterance(' ');
     u.volume = 0;
     s.speak(u);
   }
 
+  /** Gỡ kẹt khi app quay lại từ nền (iOS hay để hàng đợi giọng đọc ở trạng thái kẹt). */
+  reset() {
+    const s = synth();
+    if (!s) return;
+    s.cancel();
+    if (s.paused) s.resume();
+    this.setSpeaking(false);
+  }
+
   /**
    * Đọc một câu. Luôn kết thúc: nếu iOS không báo đã đọc xong thì hết thời gian chờ sẽ tự đi tiếp.
+   * Nếu câu không bắt đầu được (giọng đọc bị kẹt) thì gỡ kẹt và thử lại một lần.
    * @param {string} text
    * @param {{ lang?: 'en'|'vi', signal?: AbortSignal, rate?: number }} [options]
    */
@@ -133,17 +151,19 @@ export class Speaker {
     if (signal?.aborted) return Promise.reject(abortError());
 
     return new Promise((resolve, reject) => {
-      const u = new SpeechSynthesisUtterance(text);
-      if (voice) u.voice = voice;
-      u.lang = voice?.lang ?? (lang === 'vi' ? 'vi-VN' : 'en-US');
-      u.rate = rate ?? (lang === 'vi' ? Math.max(this.rate, 0.9) : this.rate);
-
+      const speed = rate ?? (lang === 'vi' ? Math.max(this.rate, 0.9) : this.rate);
       let finished = false;
-      const maxMs = scaled((1200 + text.length * 110) / u.rate + 1500);
+      let current = null;
+      let started = false;
+      let retried = false;
+      let startTimer = null;
+      const maxMs = scaled((1200 + text.length * 110) / speed + 3000);
+
       const finish = (err) => {
         if (finished) return;
         finished = true;
         clearTimeout(timer);
+        clearTimeout(startTimer);
         signal?.removeEventListener('abort', onAbort);
         this.setSpeaking(false);
         if (err) reject(err);
@@ -155,12 +175,36 @@ export class Speaker {
         finish(abortError());
       };
       signal?.addEventListener('abort', onAbort, { once: true });
-      u.onend = () => finish();
-      u.onerror = () => finish();
 
-      s.cancel(); // tránh hàng đợi bị kẹt trên iOS
+      const attempt = () => {
+        const u = new SpeechSynthesisUtterance(text);
+        if (voice) u.voice = voice;
+        u.lang = voice?.lang ?? (lang === 'vi' ? 'vi-VN' : 'en-US');
+        u.rate = speed;
+        current = u;
+        // Chỉ xử lý sự kiện của câu đang đọc (câu bị hủy khi thử lại sẽ báo lỗi "canceled").
+        u.onstart = () => {
+          if (u === current) started = true;
+        };
+        u.onend = () => u === current && finish();
+        u.onerror = () => u === current && finish();
+        if (s.paused) s.resume();
+        s.speak(u);
+        // Không bắt đầu được sau 1,5 giây → giọng đọc bị kẹt: gỡ kẹt và thử lại một lần.
+        startTimer = setTimeout(() => {
+          if (finished || started || retried) return;
+          retried = true;
+          current = null;
+          s.cancel();
+          if (s.paused) s.resume();
+          attempt();
+        }, scaled(1500));
+      };
+
+      // Chỉ hủy khi thật sự còn câu đang đọc: gọi cancel() ngay trước speak() trên Safari đôi khi làm mất câu mới.
+      if (s.speaking || s.pending) s.cancel();
       this.setSpeaking(true);
-      s.speak(u);
+      attempt();
     });
   }
 

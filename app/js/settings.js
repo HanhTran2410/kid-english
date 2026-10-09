@@ -13,6 +13,7 @@ export const DEFAULT_SETTINGS = {
   firstUseAt: null,
   samplesSeeded: false,
   lastPromptReviewWords: [],
+  lastPromptTopic: '',
   session: null,
 };
 

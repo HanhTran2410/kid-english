@@ -64,3 +64,34 @@ test('không chọn giọng robot của iOS (Albert, Bad News, Eloquence…) dù
   // Chỉ có giọng en-GB tốt và en-US robot → chọn en-GB.
   assert.equal(pickVoice([ios[0], ios[4]], 'en-US').name, 'Daniel');
 });
+
+test('giọng đọc bị kẹt (câu không bắt đầu) thì gỡ kẹt và đọc lại một lần; không hủy câu khi không có gì đang đọc', async () => {
+  const log = [];
+  let swallowFirst = true;
+  globalThis.SpeechSynthesisUtterance = class { constructor(text) { this.text = text; } };
+  globalThis.speechSynthesis = {
+    speaking: false, pending: false, paused: false,
+    getVoices: () => [],
+    cancel() { log.push('cancel'); },
+    resume() { log.push('resume'); },
+    speak(u) {
+      log.push(`speak:${u.text}`);
+      if (swallowFirst) { swallowFirst = false; return; } // iOS nuốt mất câu đầu
+      setTimeout(() => { u.onstart?.(); u.onend?.(); }, 10);
+    },
+  };
+  try {
+    const { Speaker } = await import('../../app/js/speech/tts.js');
+    const speaker = new Speaker();
+    const t0 = Date.now();
+    await speaker.speak('Cow!');
+    assert.deepEqual(log, ['speak:Cow!', 'cancel', 'speak:Cow!']);
+    assert.ok(Date.now() - t0 < 3000);
+    log.length = 0;
+    await speaker.speak('Dog!');
+    assert.deepEqual(log, ['speak:Dog!'], 'không gọi cancel() trước speak() khi không có câu nào đang đọc');
+  } finally {
+    delete globalThis.speechSynthesis;
+    delete globalThis.SpeechSynthesisUtterance;
+  }
+});

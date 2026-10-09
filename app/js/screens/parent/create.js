@@ -3,7 +3,7 @@
 import { h, toast, copyText } from '../../ui.js';
 import { buildLessonPrompt, DURATIONS, MAX_AVOID_WORDS } from '../../prompts.js';
 import { pickWordsForPrompt } from '../../progress.js';
-import { parseLesson, createLessonRecord, overlapWithLessons } from '../../lesson.js';
+import { parseLesson, createLessonRecord, overlapWithLessons, uniqueTitle, baseTitle } from '../../lesson.js';
 import { listLessons } from '../../db.js';
 import { quizQuestions } from '../../player/plan.js';
 import { parentLayout, goParent, section, notice, speakButton, field } from './common.js';
@@ -81,6 +81,7 @@ export function createView(app) {
         result.scrollIntoView({ behavior: 'smooth', block: 'start' });
       });
       app.setSetting('lastPromptReviewWords', words);
+      app.setSetting('lastPromptTopic', topic.value.trim());
     },
   },
   section('📚 Chủ đề', chips, field('Hoặc tự gõ', topic)),
@@ -130,8 +131,10 @@ export function pasteView(app) {
       return;
     }
     const lessons = await listLessons(app.db);
-    if (lessons.some((l) => l.title.trim().toLowerCase() === parsed.lesson.title.toLowerCase())) {
-      parsed.warnings.push(`Đã có bài tên "${parsed.lesson.title}". Vẫn lưu được.`);
+    const titles = lessons.map((l) => l.title);
+    const finalTitle = uniqueTitle(parsed.lesson.title, titles);
+    if (finalTitle !== parsed.lesson.title) {
+      parsed.warnings.push(`Đã có bài tên "${parsed.lesson.title}" — bài này sẽ được lưu là "${finalTitle}".`);
     }
     const overlap = overlapWithLessons(parsed.lesson, lessons, app.settings.lastPromptReviewWords ?? []);
     if (overlap.length) {
@@ -146,9 +149,12 @@ export function pasteView(app) {
       text: 'Lưu bài',
       onclick: async () => {
         save.disabled = true;
-        const record = createLessonRecord(parsed.lesson);
+        const record = createLessonRecord({ ...parsed.lesson, title: finalTitle });
+        // Chủ đề (để chia tab): chủ đề đã chọn lúc tạo prompt, không có thì theo tên bài.
+        record.topic = app.settings.lastPromptTopic || baseTitle(parsed.lesson.title);
         await app.db.put('lessons', record);
         await app.setSetting('lastPromptReviewWords', []);
+        await app.setSetting('lastPromptTopic', '');
         toast('Đã lưu bài. Bé đã thấy bài này trong 📚.');
         goParent(app, 'lesson', { lessonId: record.id });
       },

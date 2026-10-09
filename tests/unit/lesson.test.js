@@ -191,3 +191,22 @@ test('cảnh báo từ trùng với bài khác, không tính từ cần ôn', as
   const lesson = { words: [{ en: 'cow' }, { en: 'dog' }, { en: 'apple' }] };
   assert.deepEqual(overlapWithLessons(lesson, others, ['dog']), [{ word: 'cow', lessonTitle: 'Animals' }]);
 });
+
+test('tên bài không trùng: Animals → Animals 2 → Animals 3', async () => {
+  const { uniqueTitle, baseTitle } = await import('../../app/js/lesson.js');
+  assert.equal(uniqueTitle('Fruits', ['Animals']), 'Fruits');
+  assert.equal(uniqueTitle('Animals', ['animals']), 'Animals 2');
+  assert.equal(uniqueTitle('Animals', ['Animals', 'Animals 2']), 'Animals 3');
+  assert.equal(uniqueTitle('Animals 2', ['Animals', 'Animals 2']), 'Animals 3');
+  assert.equal(baseTitle('Farm Animals 12'), 'Farm Animals');
+});
+
+test('chia chủ đề: theo topic bố mẹ chọn, không có thì theo tên bài bỏ số', async () => {
+  const { groupByTopic, topicOf } = await import('../../app/js/lesson.js');
+  assert.equal(topicOf({ title: 'Animals 2' }), 'Animals');
+  assert.equal(topicOf({ title: 'Farm Animals', topic: 'animals' }), 'Animals');
+  const groups = groupByTopic([
+    { title: 'Animals 2', emoji: '🐸' }, { title: 'Colors', emoji: '🌈' }, { title: 'Animals', emoji: '🐶' },
+  ]);
+  assert.deepEqual(groups.map((g) => [g.topic, g.emoji, g.lessons.length]), [['Animals', '🐸', 2], ['Colors', '🌈', 1]]);
+});

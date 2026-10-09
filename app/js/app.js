@@ -7,8 +7,9 @@ import { unlockAudio, isAudioLocked } from './speech/sfx.js';
 import { saveSetting } from './settings.js';
 import { resumeSession, addTime, extend, isTimeUp } from './session.js';
 import { h } from './ui.js';
+import { bongElement } from './bong.js';
 
-export const APP_VERSION = '0.1.4';
+export const APP_VERSION = '0.1.5';
 
 const SESSION_SAVE_EVERY_MS = 15000;
 
@@ -100,8 +101,9 @@ export class App {
 
   /** Gọi trong lúc bé/bố mẹ chạm nút "Bắt đầu": mở khóa âm thanh, xin mic một lần mỗi buổi. */
   async unlock() {
-    await unlockAudio();
+    // Giọng đọc phải được mở khóa NGAY trong lúc chạm (trước mọi await), không thì iOS có lúc im lặng.
     this.speaker.unlock();
+    await unlockAudio();
     if (this.mic.status !== MIC.OK || !this.mic.stream?.active) {
       if (this.mic.status !== MIC.DENIED) await this.mic.start();
     }
@@ -185,7 +187,8 @@ export class App {
       }
       return;
     }
-    // Quay lại app: iOS đã tắt âm thanh/mic → cần một lần chạm "Bắt đầu".
+    // Quay lại app: gỡ kẹt giọng đọc; iOS đã tắt âm thanh/mic → cần một lần chạm "Bắt đầu".
+    this.speaker.reset();
     if (this.interruptedScreen || (this.isChildScreen() && this.audioLocked)) this.showResumeOverlay();
     else if (this.inActivity) this.keepAwake(true);
   }
@@ -207,7 +210,7 @@ export class App {
           await this.unlock();
           if (target) this.go(target.name, { ...target.params, continueDirectly: true });
         },
-      }, h('span.start-bunny', { text: '🐰' }), h('span.start-label', { text: '▶' })));
+      }, bongElement('start-bunny'), h('span.start-label', { text: '▶' })));
     document.body.append(overlay);
   }
 }

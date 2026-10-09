@@ -309,3 +309,42 @@ export function overlapWithLessons(lesson, lessons, reviewWords = []) {
     .filter((k) => owner.has(k) && !review.has(k))
     .map((k) => ({ word: k, lessonTitle: owner.get(k) }));
 }
+
+const capitalize = (s) => s.charAt(0).toUpperCase() + s.slice(1);
+
+/** Bỏ số thứ tự ở cuối tên: "Animals 2" → "Animals". */
+export function baseTitle(title) {
+  return String(title ?? '').trim().replace(/\s+\d+$/, '').trim();
+}
+
+/** Chủ đề của bài (để chia tab): `topic` do bố mẹ chọn lúc tạo bài, không có thì lấy theo tên bài. */
+export function topicOf(lesson) {
+  const t = String(lesson.topic ?? '').trim() || baseTitle(lesson.title) || 'Other';
+  return capitalize(t.replace(/\s+/g, ' '));
+}
+
+/** Tên không trùng: "Animals" đã có → "Animals 2", "Animals 3"… (so sánh không phân biệt hoa/thường). */
+export function uniqueTitle(title, existingTitles) {
+  const taken = new Set(existingTitles.map((t) => String(t).trim().toLowerCase()));
+  const wanted = String(title).trim();
+  if (!taken.has(wanted.toLowerCase())) return wanted;
+  const base = baseTitle(wanted) || wanted;
+  for (let n = 2; ; n++) {
+    const candidate = `${base} ${n}`;
+    if (!taken.has(candidate.toLowerCase())) return candidate;
+  }
+}
+
+/**
+ * Nhóm bài theo chủ đề (giữ thứ tự bài mới nhất trước).
+ * @returns {{ topic: string, emoji: string, lessons: object[] }[]}
+ */
+export function groupByTopic(lessons) {
+  const groups = new Map();
+  for (const l of lessons) {
+    const key = topicOf(l);
+    if (!groups.has(key)) groups.set(key, { topic: key, emoji: l.emoji, lessons: [] });
+    groups.get(key).lessons.push(l);
+  }
+  return [...groups.values()];
+}

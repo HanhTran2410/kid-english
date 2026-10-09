@@ -10,6 +10,10 @@ import { homeButton } from '../player/layout.js';
 import { createBunny } from '../player/teacher.js';
 import { MIC } from '../speech/microphone.js';
 import { normalizeWord } from '../text.js';
+import { groupByTopic } from '../lesson.js';
+
+const ALL = '__all__';
+import { bongElement } from '../bong.js';
 
 export const PARENT_HOLD_MS = 3000;
 
@@ -54,7 +58,7 @@ export function startScreen(app) {
       play('pop');
       app.go(app.timeUp ? 'sleep' : 'home');
     },
-  }, h('span.start-bunny', { text: '🐰' }), h('span.start-label', { text: '▶' }));
+  }, bongElement('start-bunny'), h('span.start-label', { text: '▶' }));
 
   app.root.append(h('div.start-wrap', {}, btn));
   if (notes.length) app.root.append(h('div.start-notes', {}, ...notes.map((n) => h('p', { text: n }))));
@@ -70,16 +74,19 @@ export function homeScreen(app) {
   app.root.className = 'child-screen home';
   const due = isBackupDue(app.settings) || Boolean(app.settings.storageFullAt);
 
-  const big = (emoji, label, onTap, cls = '') => h(`button.home-btn${cls}`, {
+  // icon: emoji hoặc phần tử (Bông); en: chữ to; vi: chữ nhỏ bên dưới (cũng là tên nút cho trình đọc màn hình).
+  const big = (icon, en, vi, onTap, cls = '') => h(`button.home-btn${cls}`, {
     type: 'button',
-    'aria-label': label,
+    'aria-label': vi,
     onclick: () => {
       play('tap');
       onTap();
     },
-  }, h('span.home-emoji', { text: emoji }), h('span.home-label', { text: label }));
+  },
+  typeof icon === 'string' ? h('span.home-emoji', { text: icon }) : icon,
+  h('span.home-text', {}, h('span.home-en', { text: en }), h('span.home-vi', { text: vi })));
 
-  const reviewBtn = big('⭐', 'Ôn tập', () => {
+  const reviewBtn = big('⭐', 'Review', 'Ôn tập', () => {
     if (reviewBtn.classList.contains('disabled')) say(app, "Let's learn a lesson first!");
     else app.go('review');
   }, '.review');
@@ -88,10 +95,10 @@ export function homeScreen(app) {
   app.root.append(
     h('header.home-top', {}, parentButton(app, { dot: due })),
     h('div.home-grid', {},
-      big('📚', 'Bài học', () => app.go('lessons'), '.lessons'),
+      big('📚', 'Lessons', 'Bài học', () => app.go('lessons'), '.lessons'),
       reviewBtn,
-      big('🐰', 'Học cùng Bông', () => app.go('learn'), '.learn')),
-    h('div.home-bottom', {}, big('🎁', 'Sticker của bé', () => app.go('stickers'), '.stickers')),
+      big(bongElement('home-bong'), 'Learn with Bông', 'Học cùng Bông', () => app.go('learn'), '.learn')),
+    h('div.home-bottom', {}, big('🎁', 'My Stickers', 'Sticker của bé', () => app.go('stickers'), '.stickers')),
     bunny.el,
   );
 
@@ -137,27 +144,64 @@ export function lessonsScreen(app) {
     say(app, 'Continue? Or start again?');
   };
 
+  const tabs = h('nav.topic-tabs', { 'aria-label': 'Chủ đề' });
+  grid.before(tabs);
+
+  const card = async (lesson) => {
+    const images = await app.db.getAllByIndex('images', 'lessonId', lesson.id);
+    const firstKey = normalizeWord(lesson.words[0]?.en ?? '');
+    const cover = images.find((img) => img.word === firstKey) ?? null;
+    let url = null;
+    if (cover) {
+      url = URL.createObjectURL(cover.blob);
+      urls.push(url);
+    }
+    const n = lesson.timesCompleted ?? 0;
+    return h('button.lesson-card', {
+      type: 'button', 'aria-label': lesson.title, onclick: () => open(lesson),
+    },
+    wordVisual({ url, emoji: lesson.emoji, word: lesson.title }, 'cover'),
+    h('span.lesson-title', { text: lesson.title }),
+    // Hàng emoji các từ trong bài: bé chưa biết đọc vẫn phân biệt được "Animals" và "Animals 2".
+    h('span.lesson-words', { text: lesson.words.slice(0, 4).map((w) => w.emoji).join('') }),
+    h('span.lesson-stars', { text: n ? (n <= 5 ? '⭐'.repeat(n) : `⭐×${n}`) : '' }),
+    lesson.resume ? h('span.resume-bar', {}, h('span', { style: { width: `${Math.round((lesson.resume.progress ?? 0) * 100)}%` } })) : null);
+  };
+
   (async () => {
     const lessons = await listLessons(app.db);
-    for (const lesson of lessons) {
-      const images = await app.db.getAllByIndex('images', 'lessonId', lesson.id);
-      const firstKey = normalizeWord(lesson.words[0]?.en ?? '');
-      const cover = images.find((img) => img.word === firstKey) ?? null;
-      let url = null;
-      if (cover) {
-        url = URL.createObjectURL(cover.blob);
-        urls.push(url);
-      }
-      const n = lesson.timesCompleted ?? 0;
-      grid.append(h('button.lesson-card', {
-        type: 'button', 'aria-label': lesson.title, onclick: () => open(lesson),
-      },
-      wordVisual({ url, emoji: lesson.emoji, word: lesson.title }, 'cover'),
-      h('span.lesson-title', { text: lesson.title }),
-      h('span.lesson-stars', { text: n ? (n <= 5 ? '⭐'.repeat(n) : `⭐×${n}`) : '' }),
-      lesson.resume ? h('span.resume-bar', {}, h('span', { style: { width: `${Math.round((lesson.resume.progress ?? 0) * 100)}%` } })) : null));
+    if (!lessons.length) {
+      grid.append(h('div.empty', { text: '📭' }));
+      return;
     }
-    if (!lessons.length) grid.append(h('div.empty', { text: '📭' }));
+    const cards = new Map();
+    for (const l of lessons) cards.set(l.id, await card(l));
+    const groups = groupByTopic(lessons);
+
+    const show = (topic) => {
+      app.lessonTab = topic;
+      for (const t of tabs.children) t.classList.toggle('active', t.dataset.topic === topic);
+      const visible = topic === ALL ? lessons : groups.find((g) => g.topic === topic)?.lessons ?? lessons;
+      grid.replaceChildren(...visible.map((l) => cards.get(l.id)));
+    };
+    const tab = (topic, emoji, label) => h('button.topic-tab', {
+      type: 'button',
+      dataset: { topic },
+      onclick: () => {
+        play('tap');
+        show(topic);
+        tabs.querySelector('.active')?.scrollIntoView({ inline: 'center', block: 'nearest', behavior: 'smooth' });
+      },
+    }, h('span.topic-emoji', { text: emoji }), h('span', { text: label }));
+
+    // Chỉ hiện tab khi có từ 2 chủ đề; chỉ có tab cho chủ đề đã có bài; nhiều thì vuốt ngang.
+    if (groups.length >= 2) {
+      tabs.append(tab(ALL, '⭐', 'All'), ...groups.map((g) => tab(g.topic, g.emoji, g.topic)));
+    } else {
+      tabs.hidden = true;
+    }
+    const remembered = app.lessonTab && groups.some((g) => g.topic === app.lessonTab) ? app.lessonTab : ALL;
+    show(groups.length >= 2 ? remembered : ALL);
   })();
 
   return () => urls.forEach((u) => URL.revokeObjectURL(u));
@@ -210,7 +254,7 @@ export function sleepScreen(app) {
   });
   app.root.append(
     h('header.home-top', {}, parentButton(app)),
-    h('div.sleep-wrap', {}, h('div.sleep-bunny', { text: '🐰' }), h('div.sleep-z', { text: '💤' })),
+    h('div.sleep-wrap', {}, bongElement('sleep-bunny', { mood: 'sleep' }), h('div.sleep-z', { text: '💤' })),
     h('div.sleep-moon', {}, moon),
   );
   say(app, "I'm sleepy! Bye-bye!");

@@ -3,6 +3,7 @@
 import { matches } from '../match.js';
 import { sleep, checkAbort, scaled } from '../timing.js';
 import { VoiceRecorder, canRecord } from './recorder.js';
+import { audioContext } from './sfx.js';
 
 export const RESULT = {
   MATCH: 'match',
@@ -36,6 +37,10 @@ export async function listen({ mic, recognizer, keywords, record = false, maxMs 
     await sleep(3000, signal);
     return { result: RESULT.LISTEN_ONLY, recording: null };
   }
+
+  // AudioContext bị iOS tạm dừng (sau cuộc gọi, khi mic vừa bật…) thì đo âm lượng luôn ra 0: thử bật lại.
+  const ctx = audioContext();
+  if (ctx && ctx.state !== 'running') ctx.resume().catch(() => {});
 
   // Chờ một chút sau khi Bông nói xong để mic không thu nhầm tiếng Bông.
   await sleep(300, signal);
