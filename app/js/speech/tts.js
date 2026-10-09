@@ -74,6 +74,8 @@ export class Speaker {
     this.vi = null;
     this.rate = 0.8;
     this.speaking = false;
+    /** Số câu đã gửi cho giọng đọc (để biết có câu mới sau khi hủy). */
+    this.spokenCount = 0;
     this.listeners = new Set();
   }
 
@@ -189,6 +191,7 @@ export class Speaker {
         u.onend = () => u === current && finish();
         u.onerror = () => u === current && finish();
         if (s.paused) s.resume();
+        this.spokenCount++;
         s.speak(u);
         // Không bắt đầu được sau 1,5 giây → giọng đọc bị kẹt: gỡ kẹt và thử lại một lần.
         startTimer = setTimeout(() => {
@@ -209,7 +212,17 @@ export class Speaker {
   }
 
   cancel() {
-    synth()?.cancel();
+    const s = synth();
     this.setSpeaking(false);
+    if (!s) return;
+    s.cancel();
+    // Safari iOS: cancel() đôi khi không dừng câu vừa bắt đầu đọc (rời bài rồi Bông vẫn nói).
+    // Hủy lại vài lần sau đó, chỉ khi chưa có câu mới để không cắt nhầm câu của màn hình sau.
+    const mark = this.spokenCount;
+    for (const ms of [100, 350, 900]) {
+      setTimeout(() => {
+        if (this.spokenCount === mark) s.cancel();
+      }, ms);
+    }
   }
 }
