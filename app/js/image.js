@@ -64,9 +64,42 @@ export function countBands(profile, { minInk = 0.01, minBand = 0.06, mergeGap = 
   return merged.filter(([a, b]) => b - a >= minBand * n).length;
 }
 
-/** Đoán lưới của ảnh: đếm số cột/hàng có hình (nền trắng và đường kẻ xám nhạt không tính là hình). */
+/**
+ * Tìm các đường kẻ chia ô theo một chiều.
+ * @param {number[]} lineFrac tỉ lệ điểm "giống đường kẻ" (xám, không phải nền trắng) trên mỗi vạch (0..1)
+ * @returns {number[]} vị trí (chỉ số vạch) tâm các đường kẻ BÊN TRONG, bỏ viền ngoài sát mép ảnh
+ */
+export function findDividerLines(lineFrac, { minFrac = 0.8, edge = 0.04 } = {}) {
+  const n = lineFrac.length;
+  const lines = [];
+  let start = -1;
+  for (let i = 0; i <= n; i++) {
+    const on = i < n && lineFrac[i] >= minFrac;
+    if (on && start < 0) start = i;
+    if (!on && start >= 0) {
+      lines.push((start + i - 1) / 2);
+      start = -1;
+    }
+  }
+  return lines.filter((c) => c > edge * n && c < (1 - edge) * n);
+}
+
+/** Đường kẻ chia ô phải cách đều tương đối (ô gần bằng nhau), không thì bỏ qua. */
+function evenlySpaced(lines, n) {
+  const edges = [0, ...lines, n];
+  const sizes = edges.slice(1).map((e, i) => e - edges[i]);
+  const avg = n / sizes.length;
+  return sizes.every((sz) => Math.abs(sz - avg) < avg * 0.25);
+}
+
+/**
+ * Đoán lưới của ảnh.
+ * Cách 1 (chính xác): tìm các đường kẻ xám chạy suốt ảnh → biết số ô và VỊ TRÍ ranh giới thật để cắt.
+ * Cách 2 (dự phòng, ảnh không có đường kẻ): đếm số cột/hàng có hình (nền trắng không tính).
+ * @returns {{ cols: number, rows: number, xs?: number[], ys?: number[] } | null} xs/ys: ranh giới (theo ảnh gốc)
+ */
 function detectGrid(source, w0, h0) {
-  const size = 240;
+  const size = 400;
   const scale = size / Math.max(w0, h0);
   const w = Math.max(1, Math.round(w0 * scale));
   const hgt = Math.max(1, Math.round(h0 * scale));
@@ -78,6 +111,8 @@ function detectGrid(source, w0, h0) {
   const { data } = ctx.getImageData(0, 0, w, hgt);
   const colInk = new Array(w).fill(0);
   const rowInk = new Array(hgt).fill(0);
+  const colLine = new Array(w).fill(0);
+  const rowLine = new Array(hgt).fill(0);
   for (let y = 0; y < hgt; y++) {
     for (let x = 0; x < w; x++) {
       const i = (y * w + x) * 4;
@@ -90,12 +125,31 @@ function detectGrid(source, w0, h0) {
         colInk[x]++;
         rowInk[y]++;
       }
+      // Điểm "giống đường kẻ": xám (ít màu), không phải nền trắng.
+      if (lum < 242 && sat < 28) {
+        colLine[x]++;
+        rowLine[y]++;
+      }
     }
   }
-  const cols = countBands(colInk.map((c) => c / hgt));
-  const rows = countBands(rowInk.map((c) => c / w));
-  if (cols < 1 || rows < 1 || cols > 5 || rows > 5 || cols * rows < 2) return null;
-  return { cols, rows };
+
+  const vLines = findDividerLines(colLine.map((c) => c / hgt));
+  const hLines = findDividerLines(rowLine.map((c) => c / w));
+  const cols = vLines.length + 1;
+  const rows = hLines.length + 1;
+  if (cols * rows >= 2 && cols <= 5 && rows <= 5 && evenlySpaced(vLines, w) && evenlySpaced(hLines, hgt)) {
+    return {
+      cols,
+      rows,
+      xs: [0, ...vLines.map((x) => x / scale), w0],
+      ys: [0, ...hLines.map((y) => y / scale), h0],
+    };
+  }
+
+  const bandCols = countBands(colInk.map((c) => c / hgt));
+  const bandRows = countBands(rowInk.map((c) => c / w));
+  if (bandCols < 1 || bandRows < 1 || bandCols > 5 || bandRows > 5 || bandCols * bandRows < 2) return null;
+  return { cols: bandCols, rows: bandRows };
 }
 
 async function decode(file) {
@@ -166,15 +220,19 @@ export async function loadGridImage(file) {
  * Cắt ảnh lưới thành MỌI ô (trái → phải, trên → dưới), bỏ một chút viền mỗi ô để không dính đường kẻ.
  * @returns {Promise<Array<{ blob: Blob, width: number, height: number, mimeType: string }>>}
  */
-export async function sliceGrid({ source, w0, h0 }, { cols, rows }, max = MAX_IMAGE_SIZE) {
-  const cw = w0 / cols;
-  const ch = h0 / rows;
-  const inset = Math.min(cw, ch) * 0.04;
+export async function sliceGrid({ source, w0, h0, detected }, { cols, rows }, max = MAX_IMAGE_SIZE) {
+  // Cắt theo đúng vị trí đường kẻ nếu đã tìm thấy và khớp kiểu lưới; không thì chia đều.
+  const useLines = detected?.xs && detected.cols === cols && detected.rows === rows;
+  const xs = useLines ? detected.xs : Array.from({ length: cols + 1 }, (_, i) => (w0 * i) / cols);
+  const ys = useLines ? detected.ys : Array.from({ length: rows + 1 }, (_, i) => (h0 * i) / rows);
   const tiles = [];
   for (let i = 0; i < cols * rows; i++) {
     const c = i % cols;
     const r = Math.floor(i / cols);
-    tiles.push(await crop(source, c * cw + inset, r * ch + inset, cw - 2 * inset, ch - 2 * inset, max));
+    const cw = xs[c + 1] - xs[c];
+    const ch = ys[r + 1] - ys[r];
+    const inset = Math.min(cw, ch) * 0.04;
+    tiles.push(await crop(source, xs[c] + inset, ys[r] + inset, cw - 2 * inset, ch - 2 * inset, max));
   }
   return tiles;
 }

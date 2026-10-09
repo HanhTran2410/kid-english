@@ -146,7 +146,8 @@ export function visualHint(word) {
     .replace(/^[\s,.;:—-]+|[\s,.;:—-]+$/g, '')
     .trim();
   if (!t || t.toLowerCase() === String(word?.en ?? '').toLowerCase()) return '';
-  return t.length > 140 ? `${t.slice(0, 140).replace(/\s+\S*$/, '')}…` : t;
+  // Không cắt cụt mô tả (cắt giữa câu làm AI hiểu sai, ví dụ "no…"); chỉ giới hạn rất dài.
+  return t.length > 400 ? `${t.slice(0, 400).replace(/[,;]?\s+\S*$/, '')}.` : t;
 }
 
 const capitalize = (s) => s.charAt(0).toUpperCase() + s.slice(1);
@@ -164,43 +165,46 @@ export function buildGridImagePrompt(words, { cols, rows }) {
   const filled = items.length;
   const emptyCells = Array.from({ length: cells - filled }, (_, k) => filled + k);
   const where = (i) => `row ${Math.floor(i / cols) + 1}, column ${(i % cols) + 1}`;
+  const fraction = (n) => (n === 2 ? 'half' : n === 3 ? 'one third' : `1/${n}`);
+  const sentence = (t) => (/[.!?]$/.test(t) ? t : `${t}.`);
 
   const placement = [];
   for (let r = 0; r < rows; r++) {
-    placement.push(`Row ${r + 1}:`);
+    placement.push('', `ROW ${r + 1}`);
     for (let c = 0; c < cols; c++) {
       const i = r * cols + c;
       const item = items[i];
       if (item) {
         const hint = visualHint(item);
-        placement.push(`${i + 1}. ${capitalize(item.en)}${hint ? ` — ${hint}` : ''}`);
+        placement.push(`Cell ${i + 1} — ${capitalize(item.en)}: ${hint ? sentence(hint) : `One ${item.en}.`} Only this one subject in the cell.`);
       } else {
-        placement.push(`${i + 1}. EMPTY CELL — plain pure white, absolutely no drawing, no object, no icon, no shadow, no decoration.`);
+        placement.push(`Cell ${i + 1} — EMPTY CELL: completely blank, uniform pure white (#FFFFFF). Absolutely nothing inside: no illustration, no object, no icon, no pattern, no shadow, no texture, no decoration, no stray marks.`);
       }
     }
   }
 
-  const strict = [
-    `- Exactly ${cells} equal cells in a ${cols} × ${rows} grid.`,
-    `- Exactly ${filled} illustrations, in the order above.`,
-    ...emptyCells.map((i) => `- Cell ${i + 1} (${where(i)}) must remain completely empty and pure white.`),
-    '- Each cell shows ONLY its own item. Never add objects that belong to another cell (for example, if one cell is "rain" and another is "cloud", the rain cell has raindrops only).',
-    '- Thin light-gray divider lines ONLY between cells. NO outer border around the whole image.',
-    '- NO text, letters, numbers, labels or watermarks.',
-    '- Do not merge cells; objects must not cross cell boundaries.',
-    `- ${cols === rows ? 'Square canvas' : `Canvas ${cols}:${rows}`}, consistent spacing, clean and balanced composition.`,
-  ];
-
   return [
-    `Create ONE ${cols === rows ? 'square ' : ''}image with an exact ${cols}-column × ${rows}-row grid, containing ${cells} EQUAL ${cols === rows ? 'square ' : ''}cells. Separate neighbouring cells with thin light-gray lines.`,
+    `Create ONE ${cols === rows ? 'square ' : ''}image containing an exact ${cols}-column × ${rows}-row grid of ${cells} equal ${cols === rows ? 'square ' : ''}cells. The grid must fill the entire canvas. Every cell has exactly the same width (${fraction(cols)} of the image width) and height (${fraction(rows)} of the image height).`,
     '',
-    'OBJECT PLACEMENT — follow this exact order, left to right, then top to bottom:',
+    `Separate adjacent cells with thin, straight, light-gray divider lines that run across the whole image: exactly ${cols - 1} vertical line(s) and ${rows - 1} horizontal line(s), perfectly aligned. Do not draw an outer border around the canvas.`,
+    '',
+    'EXACT CELL ORDER — LEFT TO RIGHT, TOP TO BOTTOM',
     ...placement,
     '',
-    'ILLUSTRATION STYLE:',
-    "Cute children's English-learning flashcards for a 3-year-old child. Simple flat vector shapes, thick soft dark outlines, bright pastel colors, friendly and instantly recognizable objects. Each object is large, centered, fully visible, and entirely inside its own cell. Plain white background in every cell.",
+    'ILLUSTRATION STYLE',
+    "Cute children's English-learning flashcards for a 3-year-old child. Simple flat vector illustrations, clean shapes, thick soft dark outlines, bright gentle pastel colors, friendly expressions, instantly recognizable subjects.",
+    `Use the same consistent style, outline thickness, color palette and simplicity in all ${filled} illustrated cells.`,
+    'Each subject is centered in its cell and fills about 70% of the cell, with comfortable white space on every side. No subject may touch or cross a divider line or the edge of the image (people: show them smaller if needed so they do not touch the line below).',
+    'Plain pure-white background in every cell.',
     '',
-    'STRICT REQUIREMENTS:',
-    ...strict,
+    'STRICT GRID AND CONTENT RULES',
+    `- Exactly one ${cols === rows ? 'square ' : ''}canvas with exactly ${cols} columns × ${rows} rows = ${cells} equal cells.`,
+    `- Exactly ${filled} illustrations, in the order above.`,
+    ...emptyCells.map((i) => `- Cell ${i + 1} (${where(i)}) must remain completely empty and pure white.`),
+    '- Every illustrated cell contains only the single subject specified for that cell. Never add objects, characters or details that belong to another cell.',
+    '- If a description gives a number (for example "five fingers" or "six teeth"), draw exactly that number.',
+    `- Only thin light-gray divider lines between adjacent cells: exactly ${cols - 1} vertical and ${rows - 1} horizontal. No outer border, no extra frames, no rounded cell corners, no additional grid lines.`,
+    '- No text, letters, numbers, captions, labels, logos or watermarks.',
+    '- Do not merge cells, resize individual cells, or let illustrations cross cell boundaries.',
   ].join('\n');
 }

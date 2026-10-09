@@ -103,12 +103,16 @@ test('prompt ảnh lưới liệt kê đúng thứ tự từ và số ô', async
   assert.deepEqual(gridShape(8), { cols: 3, rows: 3 });
   assert.deepEqual(gridShape(10), { cols: 4, rows: 3 });
   const p = buildGridImagePrompt(['cow', 'dog', 'cat', 'pig', 'duck'], gridShape(5));
-  assert.match(p, /square image with an exact 3-column × 3-row grid, containing 9 EQUAL square cells/);
-  assert.match(p, /Row 1:\n1\. Cow\n2\. Dog\n3\. Cat\nRow 2:\n4\. Pig\n5\. Duck\n6\. EMPTY CELL/);
+  assert.match(p, /square image containing an exact 3-column × 3-row grid of 9 equal square cells\. The grid must fill the entire canvas/);
+  assert.match(p, /one third of the image width/);
+  assert.match(p, /ROW 1\nCell 1 — Cow: One cow\. Only this one subject in the cell\.\nCell 2 — Dog/);
+  assert.match(p, /ROW 2\nCell 4 — Pig.*\nCell 5 — Duck.*\nCell 6 — EMPTY CELL: completely blank/);
   assert.match(p, /Cell 9 \(row 3, column 3\) must remain completely empty/);
   assert.match(p, /Exactly 5 illustrations/);
-  // Không còn mâu thuẫn: có đường kẻ giữa các ô, chỉ không có viền ngoài.
-  assert.match(p, /divider lines ONLY between cells\. NO outer border/);
+  // Đường kẻ: đúng số đường, chỉ giữa các ô, không viền ngoài; hình không chạm đường kẻ.
+  assert.match(p, /exactly 2 vertical line\(s\) and 2 horizontal line\(s\)/);
+  assert.match(p, /No outer border/);
+  assert.match(p, /No subject may touch or cross a divider line/);
   assert.doesNotMatch(p, /no borders around the image/);
 });
 
@@ -135,8 +139,20 @@ test('prompt ảnh lưới: mỗi từ kèm mô tả hình lấy từ imagePromp
   assert.equal(visualHint(words[0]), 'Several blue raindrops falling, no cloud');
   assert.equal(visualHint(words[1]), 'one fluffy white cloud');
   assert.equal(visualHint(words[2]), '');
+  const long = { en: 'teeth', imagePrompt: `${'Six small white teeth in a row, '.repeat(5)}no gums, no lips, no tongue, ${IMAGE_STYLE}` };
+  assert.match(visualHint(long), /no gums, no lips, no tongue$/, 'không cắt cụt mô tả');
   const p = buildGridImagePrompt(words, { cols: 2, rows: 2 });
-  assert.match(p, /1\. Rain — Several blue raindrops falling, no cloud\n2\. Cloud — one fluffy white cloud\nRow 2:\n3\. Sun\n4\. EMPTY CELL/);
-  assert.match(p, /Each cell shows ONLY its own item/);
+  assert.match(p, /Cell 1 — Rain: Several blue raindrops falling, no cloud\. Only this one subject in the cell\.\nCell 2 — Cloud: one fluffy white cloud\./);
+  assert.match(p, /ROW 2\nCell 3 — Sun: One sun\.[^\n]*\nCell 4 — EMPTY CELL/);
+  assert.match(p, /half of the image width/);
+  assert.match(p, /Never add objects, characters or details that belong to another cell/);
   assert.match(buildLessonPrompt({ topic: 'Weather' }), /concrete description of exactly what to draw.*clearly different/);
+});
+
+test('tìm đường kẻ chia ô: bỏ viền ngoài sát mép, gộp đường dày thành một', async () => {
+  const { findDividerLines } = await import('../../app/js/image.js');
+  const frac = new Array(300).fill(0.1);
+  for (const i of [0, 1, 99, 100, 101, 199, 200, 298, 299]) frac[i] = 0.95; // viền ngoài + 2 đường kẻ dày 2–3 vạch
+  frac[150] = 0.5; // nét vẽ không chạy suốt ảnh: không phải đường kẻ
+  assert.deepEqual(findDividerLines(frac), [100, 199.5]);
 });
