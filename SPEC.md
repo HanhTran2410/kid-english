@@ -1,6 +1,6 @@
 # SPEC — App học tiếng Anh cho bé (iPad, dùng cá nhân)
 
-> Phiên bản: 0.10 (sửa theo góp ý sau lần chạy thử đầu tiên) · Ngày: 2026-10-08
+> Phiên bản: 0.11 (sửa theo góp ý sau lần chạy thử thứ hai) · Ngày: 2026-10-08
 
 ## 1. Mục tiêu
 
@@ -61,13 +61,16 @@ Bố mẹ → ChatGPT/Gemini (miễn phí) → JSON → copy/dán → App (iPad)
    - 🎯 **Trình độ**: Mới bắt đầu / Đã biết ít.
    - 🎨 **Kiểu bài**: Vui nhộn / Kể chuyện.
    - ☑️ **Ôn lại từ chưa thuộc** (bật sẵn): app tự đưa tối đa 2 từ bé chưa thuộc (mục 4.7) vào yêu cầu. Các từ này được **thêm vào `words`** ngoài N từ mới, nên bài có tối đa N+2 từ.
-2. Bấm **"Copy prompt"**. App ghép các lựa chọn thành một prompt hoàn chỉnh. Mở ChatGPT hoặc Gemini và dán vào.
+2. Bấm **"Copy prompt"**. App ghép các lựa chọn thành một prompt hoàn chỉnh và copy **ngay trong lúc chạm** (Safari iOS chặn copy nếu đã qua một bước chờ). Prompt cũng hiện trong một ô để copy tay nếu cần, kèm nút **Mở ChatGPT** / **Mở Gemini**.
+   - Để **không trùng từ** giữa các bài, prompt liệt kê các từ bé đã có ở bài khác (tối đa 80 từ, trừ từ cần ôn) và dặn AI không dùng lại. Khi dán bài, nếu vẫn có từ trùng thì app cảnh báo (vẫn cho lưu).
 3. AI trả về một đoạn JSON. Copy toàn bộ.
 4. Quay lại app, bấm **"Dán bài"**, dán vào. App hiện **bản xem trước** (mục 4.6), bố mẹ bấm **Lưu**.
    - App tự bỏ các ký tự thừa mà AI hay thêm (` ```json `, lời chào...).
    - Nếu sai định dạng, app báo lỗi dễ hiểu, ví dụ *"Từ số 3 thiếu nghĩa tiếng Việt"*.
 5. **(Tùy chọn)** Thêm hình cho từng từ: tạo hình bằng ChatGPT/Gemini, lưu vào Ảnh của iPad, sau đó trong app bấm vào từ → **"Chọn ảnh"**.
    - App tự thu nhỏ ảnh xuống 512px và lưu dạng Blob.
+   - **Ảnh lưới (khuyên dùng):** bản AI miễn phí giới hạn số lần tạo ảnh, nên app có nút **"Copy prompt ảnh lưới"**: nhờ AI vẽ **1 ảnh** chứa tất cả các từ theo lưới (4 từ → 2×2, 6 từ → 3×2, 8 từ → 4×2…), sau đó **"Chọn ảnh lưới"**: app tự cắt ra từng ô theo thứ tự từ, cho xem trước rồi mới lưu.
+6. **(Tùy chọn) Tạo bài trên máy tính rồi chuyển sang iPad/iPhone:** mở cùng link app trên máy tính, tạo bài và thêm ảnh (dễ thao tác hơn), bấm **"Chia sẻ bài"** để xuất file `kid-english-bai-<tên>-<ngày>.zip` (chỉ gồm bài và ảnh, không có ghi âm hay tiến độ), gửi sang máy của bé (AirDrop, iCloud, Zalo…), rồi trên máy đó vào **Quản lý bài → "Nhập bài từ file"**.
    - **Nếu không có ảnh, app hiển thị emoji to.** Bài học dùng được ngay mà không cần tạo ảnh.
 
 ### 3.1. Định dạng bài học (JSON do AI trả về)
@@ -191,10 +194,10 @@ Mọi trường hợp: Bông **nói lại câu chuẩn** để bé nghe, rồi �
 - Nhận dạng giọng nói có công tắc trong Cài đặt (mặc định bật). Trên iOS, nhận dạng gửi giọng bé lên máy chủ Apple để xử lý; tắt đi thì app chỉ đo âm lượng.
 
 **A. Thẻ từ (nghe và nói lại)**, lặp cho từng từ:
-1. Hiện hình hoặc emoji to toàn màn hình, chữ tiếng Anh ở dưới.
-2. App đọc *"Cow!"*. Nếu đây là lần đầu từ này xuất hiện trong bài và có giọng vi-VN, app đọc thêm *"con bò!"*. Nghỉ một chút rồi đọc *"Can you say cow?"*.
-3. Bật mic, Bông làm động tác "đang nghe", vòng sóng âm chuyển động theo giọng bé. Kết quả xử lý theo mục 4.3.1.
-4. Sau khi Bông đọc lại từ, **tự sang thẻ tiếp sau khoảng 2 giây**. Bé chạm vào hình thì app đọc lại từ và chờ thêm.
+1. Hiện hình hoặc emoji to toàn màn hình, chữ tiếng Anh ở dưới. Thẻ đầu tiên của bài: Bông nói *"Listen and say!"* một lần.
+2. App đọc *"Cow!"* rồi **bật mic ngay** để bé nói theo (bé hay nói luôn sau khi nghe từ). Nếu bố mẹ bật đọc nghĩa tiếng Việt trong Cài đặt thì app đọc *"con bò!"* trước khi bật mic (mặc định **tắt**).
+3. Bông làm động tác "đang nghe", vòng sóng âm chuyển động theo giọng bé. **Bé chưa nói gì** thì Bông mới hỏi *"Can you say cow?"* và nghe thêm một lần. Kết quả xử lý theo mục 4.3.1.
+4. Sau khi Bông đọc lại từ, **tự sang thẻ tiếp sau khoảng 1 giây**. Bé chạm vào hình thì app đọc lại từ và chờ thêm.
 5. Giọng bé được ghi lại: tối đa 1 bản ghi cho mỗi từ mỗi ngày, lưu **bản ghi đầu tiên có tiếng**. Lượt bé im lặng thì không lưu.
 
 **B. Hội thoại cùng Bông (theo kịch bản có sẵn)**
@@ -216,7 +219,7 @@ AI đã viết sẵn kịch bản lúc soạn bài, app chỉ diễn lại, nên
 - **Không bắt bé nói lại cả câu.** Chỉ những câu có `repeat` mới bật mic: *"The cow says moo! … Your turn: Moo moo!"*. Bé nói theo cụm ngắn đó, kết quả xử lý theo mục 4.3.1.
 - Câu không có `repeat` thì bé chỉ nghe, rồi tự sang câu tiếp.
 
-Kết thúc bài: màn hình **"Hoan hô!"** kèm 1 sticker tặng bé, sticker bay vào hộp quà 🎁 (mục 4.8). Màn "Hoan hô!" của Ôn tập và Học cùng Bông cũng tặng sticker như vậy.
+Kết thúc bài: màn hình **"Hoan hô!"** kèm 1 sticker tặng bé. **Hộp quà mở nắp, sticker bay vào hộp, nắp đóng lại và hộp lắc lắc**, sau đó mới hiện nút ✔ (mục 4.8). Màn "Hoan hô!" của Ôn tập và Học cùng Bông cũng tặng sticker như vậy.
 
 ### 4.4. Ôn tập
 - "Từ đã học" là từ có `practiceCount > 0`. Chưa có từ nào thì nút ⭐ hiện mờ, bấm vào Bông nói *"Let's learn a lesson first!"*.
@@ -238,7 +241,7 @@ Kết thúc bài: màn hình **"Hoan hô!"** kèm 1 sticker tặng bé, sticker 
 - **＋ Tạo bài học**: form tạo prompt (mục 3) → **Dán bài** → **Xem trước** → Lưu.
 - **Xem trước**: danh sách từ kèm emoji hoặc ảnh, hội thoại, trò chơi, truyện. Mỗi câu có nút 🔊 để nghe thử. Chỉ sau khi Lưu bài mới hiện cho bé.
 - **Copy prompt "cô giáo"**: để bố mẹ dùng với ChatGPT/Gemini Voice, ngoài app. Prompt gồm: vai cô giáo dạy bé 3 tuổi, nói chậm, câu ngắn, khen nhiều; danh sách từ của bài gần nhất và các từ chưa thuộc.
-- **Quản lý bài**: xem, đổi tên, xóa, thêm hoặc đổi ảnh từng từ, copy `imagePrompt` của từng từ.
+- **Quản lý bài**: xem, đổi tên, xóa, thêm hoặc đổi ảnh từng từ, copy `imagePrompt` của từng từ, **ảnh lưới** (1 ảnh cho cả bài, app tự cắt), **Chia sẻ bài** (xuất file bài kèm ảnh) và **Nhập bài từ file** (mục 3).
   - **Xóa bài**: hỏi xác nhận, sau đó xóa bài cùng **ảnh và ghi âm** của bài đó. **Giữ nguyên tiến độ** (`progress`), vì tiến độ tính theo từ và từ đó có thể có ở bài khác.
 - **Bé đã học**: bảng tiến độ từng từ (mục 4.7).
 - **Nghe lại giọng bé**: danh sách bản ghi, bấm ▶️ để nghe. Ghi âm **không tự xóa**, bố mẹ tự quản lý:
@@ -250,7 +253,7 @@ Kết thúc bài: màn hình **"Hoan hô!"** kèm 1 sticker tặng bé, sticker 
 - **Cài đặt**:
   - Tên nhân vật (mặc định Bông).
   - Chọn giọng đọc tiếng Anh, lọc theo ngôn ngữ trong danh sách giọng của máy.
-  - Bật hoặc tắt việc đọc nghĩa tiếng Việt (mặc định: bật).
+  - Bật hoặc tắt việc đọc nghĩa tiếng Việt (mặc định: **tắt**, chỉ đọc tiếng Anh).
   - Tốc độ đọc (mặc định 0.8, chậm hơn bình thường).
   - Bật hoặc tắt ghi âm.
   - Bật hoặc tắt nhận dạng giọng nói (mặc định: bật; xem mục 4.3.1).
@@ -538,10 +541,20 @@ D:\kid-english\
 | Sao khen đúng hiện cố định một chỗ | ✅ Sao bay ra từ chính hình bé chọn đúng (hoặc hình đang hiện khi bé nói đúng) |
 | Tiếng Anh bị rè | ✅ Không chọn giọng robot của iOS; Cài đặt xếp giọng tốt lên đầu; thêm tùy chọn "Chỉ bật mic khi đang nghe bé" |
 
+### 9.7. Góp ý sau lần chạy thử thứ hai (v0.11)
+
+| Góp ý | Quyết định |
+|---|---|
+| Không copy được prompt tạo bài | ✅ Lỗi do Safari iOS chặn copy sau một bước chờ: copy ngay trong lúc chạm, có ô prompt để copy tay, nút Mở ChatGPT/Gemini |
+| Tạo bài mới có thể trùng từ | ✅ Prompt liệt kê từ đã có để AI tránh; cảnh báo khi dán bài có từ trùng |
+| Cải thiện tạo bài, ảnh đẹp hơn trên máy tính | ✅ Ảnh lưới (1 lần tạo ảnh cho cả bài, app tự cắt); Chia sẻ bài / Nhập bài từ file để tạo trên máy tính rồi chuyển sang |
+| Hộp quà mở nắp, sticker chui vào | ✅ Mục 4.3 |
+| Bỏ đọc tiếng Việt, rút ngắn thời gian trước khi bé nói | ✅ Mặc định chỉ tiếng Anh; đọc từ xong bật mic ngay, chỉ hỏi "Can you say…?" khi bé chưa nói |
+
 ## 10. Quyết định đã chốt (2026-10-08)
 
 1. **Thời lượng mặc định của một bài:** 10 phút, 6 từ.
 2. **Nhân vật:** thỏ **Bông** 🐰.
-3. **Tiếng Việt:** app **đọc nghĩa tiếng Việt một lần** khi bé gặp từ lần đầu trong bài, ví dụ *"Cow… con bò!"*. Màn hình của bé không hiện chữ tiếng Việt; nghĩa tiếng Việt chỉ hiện trong Góc bố mẹ. Bố mẹ tắt được trong Cài đặt.
+3. **Tiếng Việt:** mặc định **chỉ đọc tiếng Anh** (đổi ngày 2026-10-09 vì đọc thêm tiếng Việt làm thẻ từ quá lâu, bé hay nói trước khi Bông mời). Bố mẹ bật lại được trong Cài đặt: khi bật, app đọc nghĩa tiếng Việt một lần khi bé gặp từ lần đầu trong bài. Màn hình của bé không hiện chữ tiếng Việt; nghĩa tiếng Việt chỉ hiện trong Góc bố mẹ.
 4. **Giới hạn mỗi buổi:** mặc định 15 phút nhưng là giới hạn mềm. Hết giờ vẫn cho học hết bài đang dở; bố mẹ cho học thêm mỗi lần 15 phút (có thể lên 30 phút hoặc hơn), hoặc tắt hẳn giới hạn trong Cài đặt (mục 4.6).
 5. **Host:** **GitHub Pages** trên tài khoản `HanhTran2410`, link dự kiến `https://hanhtran2410.github.io/kid-english/`. Gói miễn phí yêu cầu repo **public**; việc này không sao vì repo chỉ chứa code, không có dữ liệu của bé. Giai đoạn test đầu có thể dùng link tạm (Cloudflare quick tunnel).

@@ -484,9 +484,13 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
   line-height: 1;
   animation: pop 0.6s ease-in-out 3;
 }
-.prize-sticker.fly { animation: fly 1.2s ease-in forwards; }
 .prize-count { font-size: 36px; color: var(--ink-soft); }
-.prize-box { font-size: 80px; font-family: var(--emoji); }
+.gift { width: clamp(110px, 18vmin, 160px); aspect-ratio: 1; overflow: visible; }
+.gift svg { overflow: visible; }
+.gift-lid { transform-box: view-box; transform-origin: 14px 74px; transition: transform 420ms cubic-bezier(.3, 1.6, .5, 1); }
+.gift.open .gift-lid { transform: translate(-4px, -30px) rotate(-18deg); }
+.gift.wiggle { animation: wiggle 0.5s ease-in-out 2; }
+@keyframes wiggle { 25% { transform: rotate(-8deg) scale(1.05); } 75% { transform: rotate(8deg) scale(1.05); } }
 .done-btn {
   width: 140px;
   height: 140px;
@@ -506,7 +510,6 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
   font-family: var(--emoji);
   animation: fall 2.6s linear calc(var(--i) * 0.12s) 2 both;
 }
-@keyframes fly { to { transform: translate(0, 28vmin) scale(0.2); opacity: 0; } }
 @keyframes fall { from { transform: translateY(0) rotate(0); opacity: 1; } to { transform: translateY(120vh) rotate(360deg); opacity: 0; } }
 
 /* ---------- Danh sách bài học ---------- */
@@ -801,9 +804,20 @@ textarea.paste-area { width: 100%; min-height: 200px; font-family: ui-monospace,
   .menu { grid-template-columns: 1fr; }
   .home .bunny { display: none; }
   .diag { grid-template-columns: 1fr; gap: 2px; }
+  .word-admin .row-actions { flex-basis: 100%; }
   .diag dd { margin-bottom: 8px; }
 }
 
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; }
 }
+
+.prompt-result { display: grid; gap: 10px; }
+textarea.prompt-area { width: 100%; font-family: ui-monospace, Menlo, monospace; font-size: 13px; }
+a.btn { text-decoration: none; }
+
+.grid-preview { display: grid; gap: 10px; margin-top: 10px; }
+.grid-cells { display: grid; grid-template-columns: repeat(var(--cols, 3), 1fr); gap: 8px; }
+.grid-cell { margin: 0; display: grid; gap: 4px; justify-items: center; }
+.grid-cell img { width: 100%; aspect-ratio: 1; object-fit: contain; border-radius: 10px; background: #f6f1ea; }
+.grid-cell figcaption { font-weight: 800; }

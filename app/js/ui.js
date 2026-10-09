@@ -126,23 +126,39 @@ export function formatDateTime(ts) {
   return `${pad(d.getDate())}/${pad(d.getMonth() + 1)}/${d.getFullYear()} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
 
-/** Copy chữ vào bộ nhớ tạm, có cách dự phòng khi Clipboard API không dùng được. */
-export async function copyText(text) {
+/** Copy kiểu cũ (execCommand), làm được cả trên Safari iOS nếu gọi ngay trong lúc chạm. */
+function legacyCopy(text) {
+  const area = document.createElement('textarea');
+  area.value = text;
+  area.style.cssText = 'position:fixed;top:0;left:0;width:1px;height:1px;opacity:0;font-size:16px;';
+  document.body.append(area);
+  let ok = false;
   try {
-    await navigator.clipboard.writeText(text);
-    return true;
+    // iOS chỉ chọn được chữ trong ô có thể sửa, và cần chọn bằng Range + setSelectionRange.
+    area.contentEditable = 'true';
+    area.readOnly = false;
+    const range = document.createRange();
+    range.selectNodeContents(area);
+    const selection = window.getSelection();
+    selection.removeAllRanges();
+    selection.addRange(range);
+    area.setSelectionRange(0, text.length);
+    ok = document.execCommand('copy');
+    selection.removeAllRanges();
   } catch {
-    const area = h('textarea', { style: { position: 'fixed', opacity: '0' } });
-    area.value = text;
-    document.body.append(area);
-    area.select();
-    let ok = false;
-    try {
-      ok = document.execCommand('copy');
-    } catch {
-      ok = false;
-    }
-    area.remove();
-    return ok;
+    ok = false;
   }
+  area.remove();
+  return ok;
+}
+
+/**
+ * Copy chữ vào bộ nhớ tạm. PHẢI gọi ngay trong hàm xử lý chạm, trước mọi `await`
+ * (Safari iOS chặn copy nếu đã qua một bước chờ).
+ * @returns {Promise<boolean>}
+ */
+export function copyText(text) {
+  const legacyOk = legacyCopy(text);
+  if (!navigator.clipboard?.writeText) return Promise.resolve(legacyOk);
+  return navigator.clipboard.writeText(text).then(() => true, () => legacyOk);
 }

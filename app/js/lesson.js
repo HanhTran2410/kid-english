@@ -293,3 +293,19 @@ export function findWord(lesson, en) {
   const key = normalizeWord(en);
   return lesson.words.find((w) => normalizeWord(w.en) === key) ?? null;
 }
+
+/**
+ * Các từ của bài mới đã có ở bài khác (không tính từ cần ôn, vì cố ý đưa vào).
+ * @returns {{ word: string, lessonTitle: string }[]}
+ */
+export function overlapWithLessons(lesson, lessons, reviewWords = []) {
+  const review = new Set(reviewWords.map(normalizeWord));
+  const owner = new Map();
+  for (const l of lessons) {
+    for (const w of l.words) if (!owner.has(normalizeWord(w.en))) owner.set(normalizeWord(w.en), l.title);
+  }
+  return lesson.words
+    .map((w) => normalizeWord(w.en))
+    .filter((k) => owner.has(k) && !review.has(k))
+    .map((k) => ({ word: k, lessonTitle: owner.get(k) }));
+}

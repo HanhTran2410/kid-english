@@ -6,7 +6,8 @@ import { loadSettings } from '../../settings.js';
 import { APP_VERSION } from '../../app.js';
 import { parentLayout, goParent, section, notice } from './common.js';
 
-async function saveFile(blob, filename) {
+/** Lưu file: mở bảng Chia sẻ (iOS) nếu được, không thì tải về. */
+export async function saveFile(blob, filename) {
   const file = new File([blob], filename, { type: 'application/zip' });
   if (navigator.canShare?.({ files: [file] })) {
     try {

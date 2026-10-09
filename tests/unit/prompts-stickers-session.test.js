@@ -87,3 +87,21 @@ test('nghỉ quá 1 tiếng thì bắt đầu buổi mới', () => {
   assert.equal(resumeSession(s, NEW_SESSION_GAP_MS - 1).usedMs, 10 * 60_000);
   assert.equal(resumeSession(s, NEW_SESSION_GAP_MS + 1).usedMs, 0);
 });
+
+test('prompt yêu cầu AI tránh các từ bé đã có ở bài khác (trừ từ cần ôn)', () => {
+  const p = buildLessonPrompt({ topic: 'Animals', reviewWords: ['dog'], avoidWords: ['Dog', 'cat', 'cow', 'cat'] });
+  assert.match(p, /ALREADY LEARNED.*Do NOT use them as new words: cat, cow\./);
+  assert.doesNotMatch(buildLessonPrompt({ topic: 'Animals' }), /ALREADY LEARNED/);
+});
+
+test('prompt ảnh lưới liệt kê đúng thứ tự từ và số ô', async () => {
+  const { buildGridImagePrompt } = await import('../../app/js/prompts.js');
+  const { gridShape } = await import('../../app/js/image.js');
+  assert.deepEqual(gridShape(6), { cols: 3, rows: 2 });
+  assert.deepEqual(gridShape(4), { cols: 2, rows: 2 });
+  assert.deepEqual(gridShape(8), { cols: 4, rows: 2 });
+  assert.deepEqual(gridShape(10), { cols: 4, rows: 3 });
+  const p = buildGridImagePrompt(['cow', 'dog', 'cat', 'pig', 'duck'], gridShape(5));
+  assert.match(p, /3 columns × 2 rows/);
+  assert.match(p, /1\. cow\n2\. dog\n3\. cat\n4\. pig\n5\. duck\nLeave the last 1 cell/);
+});

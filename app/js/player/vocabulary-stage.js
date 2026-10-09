@@ -1,4 +1,6 @@
 // Phần A: Thẻ từ — nghe và nói lại (SPEC 4.3 A).
+// Nhịp nhanh: hiện hình → Bông đọc "Cow!" → mic mở ngay để bé nói theo.
+// Bé chưa nói thì Bông mới hỏi "Can you say cow?" và nghe thêm một lần.
 
 import { h, wordVisual } from '../ui.js';
 import { normalizeWord } from '../text.js';
@@ -14,18 +16,31 @@ export async function runWordStep(ctx, word) {
 
   await markPracticed(app, word.en, word.emoji);
 
+  // Thẻ đầu tiên của bài: dặn bé một lần.
+  if (!ctx.introDone) {
+    ctx.introDone = true;
+    await teacher.say('Listen and say!');
+  }
+
   await teacher.say(`${word.en}!`);
   const key = normalizeWord(word.en);
   if (!ctx.viSpoken.has(key) && app.settings.readVietnamese && app.speaker.hasVietnamese) {
     ctx.viSpoken.add(key);
     await teacher.sayVi(`${word.vi}!`);
   }
-  await teacher.pause(400);
-  await teacher.say(`Can you say ${word.en}?`);
 
-  const record = app.settings.recordVoice && app.mic.ready && !(await hasRecordingToday(app.db, word.en));
-  const { result, recording } = await teacher.hear([word.en], { record });
-  if (recording) await saveRecording(app, lesson.id, word.en, recording);
+  let record = app.settings.recordVoice && app.mic.ready && !(await hasRecordingToday(app.db, word.en));
+  let { result, recording } = await teacher.hear([word.en], { record });
+  if (recording) {
+    await saveRecording(app, lesson.id, word.en, recording);
+    record = false;
+  }
+  if (result === RESULT.SILENT) {
+    // Bé chưa nói: lúc này Bông mới mời bé nói.
+    await teacher.say(`Can you say ${word.en}?`);
+    ({ result, recording } = await teacher.hear([word.en], { record }));
+    if (recording) await saveRecording(app, lesson.id, word.en, recording);
+  }
   if (spoke(result)) await markSpoke(app, word.en, word.emoji);
 
   await teacher.praise(result, picture);
@@ -33,5 +48,5 @@ export async function runWordStep(ctx, word) {
   if (result === RESULT.LISTEN_ONLY) await teacher.say('Good!');
   await teacher.checkPresence();
 
-  await waitAdvance(ctx, { ms: 2000, picture, onPicture: () => teacher.say(`${word.en}!`) });
+  await waitAdvance(ctx, { ms: 1200, picture, onPicture: () => teacher.say(`${word.en}!`) });
 }

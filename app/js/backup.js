@@ -20,6 +20,9 @@ export function extensionFor(mimeType) {
 
 export class BackupError extends Error {}
 
+const slug = (text) => String(text).normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/đ/gi, 'd')
+  .toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'bai-hoc';
+
 const withoutBlob = ({ blob, ...meta }) => meta;
 
 async function readAll(db) {
@@ -40,8 +43,18 @@ export async function estimateBackupSize(db, { includeRecordings = true } = {}) 
  * Tạo file sao lưu.
  * @returns {Promise<{ blob: Blob, filename: string, counts: object }>}
  */
-export async function createBackup(db, { includeRecordings = true, now = Date.now(), appVersion = '', JSZip = globalThis.JSZip } = {}) {
+export async function createBackup(db, { includeRecordings = true, now = Date.now(), appVersion = '', JSZip = globalThis.JSZip, lessonIds = null } = {}) {
   const data = await readAll(db);
+  if (lessonIds) {
+    // Gói bài để chia sẻ sang máy khác: chỉ bài và ảnh của bài, không có ghi âm, tiến độ, sticker, cài đặt.
+    const ids = new Set(lessonIds);
+    data.lessons = data.lessons.filter((l) => ids.has(l.id)).map((l) => ({ ...l, timesCompleted: 0, resume: null }));
+    data.images = data.images.filter((img) => ids.has(img.lessonId));
+    data.progress = [];
+    data.stickers = [];
+    data.settings = [];
+    includeRecordings = false;
+  }
   const recordings = includeRecordings ? data.recordings : [];
   const zip = new JSZip();
 
@@ -53,7 +66,7 @@ export async function createBackup(db, { includeRecordings = true, now = Date.no
     stickers: data.stickers.length,
   };
   zip.file('manifest.json', JSON.stringify({
-    app: APP_ID, format: BACKUP_FORMAT, appVersion, exportedAt: now, includeRecordings, counts,
+    app: APP_ID, format: BACKUP_FORMAT, kind: lessonIds ? 'lessons' : 'backup', appVersion, exportedAt: now, includeRecordings, counts,
   }, null, 2));
 
   for (const lesson of data.lessons) zip.file(`lessons/${lesson.id}.json`, JSON.stringify(lesson, null, 2));
@@ -75,9 +88,10 @@ export async function createBackup(db, { includeRecordings = true, now = Date.no
   zip.file('settings.json', JSON.stringify(data.settings, null, 2));
 
   const bytes = await zip.generateAsync({ type: 'uint8array', compression: 'STORE' });
+  const name = lessonIds ? `kid-english-bai-${slug(data.lessons[0]?.title ?? 'bai-hoc')}` : 'kid-english-backup';
   return {
     blob: new Blob([bytes], { type: 'application/zip' }),
-    filename: `kid-english-backup-${dayKey(new Date(now))}.zip`,
+    filename: `${name}-${dayKey(new Date(now))}.zip`,
     counts,
   };
 }

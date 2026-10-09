@@ -184,3 +184,10 @@ test('extractJson bỏ qua dấu ngoặc nằm trong chuỗi', () => {
   assert.equal(r.ok, true);
   assert.equal(r.value.title, 'a } b');
 });
+
+test('cảnh báo từ trùng với bài khác, không tính từ cần ôn', async () => {
+  const { overlapWithLessons } = await import('../../app/js/lesson.js');
+  const others = [{ title: 'Animals', words: [{ en: 'dog' }, { en: 'Cow' }] }];
+  const lesson = { words: [{ en: 'cow' }, { en: 'dog' }, { en: 'apple' }] };
+  assert.deepEqual(overlapWithLessons(lesson, others, ['dog']), [{ word: 'cow', lessonTitle: 'Animals' }]);
+});

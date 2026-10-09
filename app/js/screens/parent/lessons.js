@@ -3,15 +3,46 @@
 import { h, toast, copyText, confirmDialog, formatDateTime } from '../../ui.js';
 import { listLessons, deleteLesson, setWordImage, removeWordImage, isQuotaError } from '../../db.js';
 import { normalizeWord } from '../../text.js';
-import { resizeImage, ImageError } from '../../image.js';
+import { resizeImage, sliceGrid, gridShape, ImageError } from '../../image.js';
 import { addSampleLessons } from '../../samples.js';
+import { buildGridImagePrompt } from '../../prompts.js';
+import { createBackup, readBackup, applyBackup, BackupError } from '../../backup.js';
+import { APP_VERSION } from '../../app.js';
 import { parentLayout, goParent, section, notice } from './common.js';
 import { lessonPreview } from './create.js';
+import { saveFile } from './backup.js';
+
+function imageErrorMessage(err) {
+  if (err instanceof ImageError) return err.message;
+  if (isQuotaError(err)) return 'Bộ nhớ đầy, không lưu được ảnh. Hãy xóa bớt ghi âm cũ.';
+  return 'Không đọc được ảnh này, hãy chọn ảnh khác.';
+}
 
 export function lessonsView(app) {
   const body = parentLayout(app, { title: 'Quản lý bài', back: () => goParent(app) });
   const list = h('ul.lesson-admin-list');
-  body.append(section(null, list), h('div.actions', {},
+  const importInput = h('input', { type: 'file', accept: '.zip,application/zip', hidden: true });
+  importInput.addEventListener('change', async () => {
+    const file = importInput.files?.[0];
+    if (!file) return;
+    try {
+      const payload = await readBackup(file);
+      if (!payload.lessons.length) throw new BackupError('File này không có bài học nào.');
+      const before = new Set((await listLessons(app.db)).map((l) => l.id));
+      // Chỉ lấy bài và ảnh; không đụng tới tiến độ, sticker, cài đặt, ghi âm của máy này.
+      await applyBackup(app.db, { ...payload, recordings: [], progress: [], stickers: [], settings: [] }, 'merge');
+      const added = payload.lessons.filter((l) => !before.has(l.id)).length;
+      toast(added ? `Đã nhập ${added} bài.` : 'Các bài trong file đã có sẵn trên máy này.', 3500);
+      goParent(app, 'lessons');
+    } catch (err) {
+      toast(err instanceof BackupError ? err.message : 'Không đọc được file bài học.', 4000);
+    }
+  });
+  body.append(
+    notice('info', 'Tạo bài và thêm ảnh trên máy tính (mở cùng link app), bấm "Chia sẻ bài" để xuất file, gửi sang iPhone/iPad (AirDrop, iCloud, Zalo…) rồi bấm "Nhập bài từ file" ở đây.'),
+    section(null, list), h('div.actions', {},
+    h('button.btn.primary', { type: 'button', text: 'Nhập bài từ file', onclick: () => importInput.click() }),
+    importInput,
     h('button.btn', {
       type: 'button',
       text: 'Thêm lại bài mẫu',
@@ -81,9 +112,7 @@ export function lessonDetailView(app, { lessonId }) {
           toast(`Đã thêm ảnh cho "${w.en}".`);
           goParent(app, 'lesson', { lessonId });
         } catch (err) {
-          if (err instanceof ImageError) toast(err.message, 4000);
-          else if (isQuotaError(err)) toast('Bộ nhớ đầy, không lưu được ảnh. Hãy xóa bớt ghi âm cũ.', 4000);
-          else toast('Không đọc được ảnh này, hãy chọn ảnh khác.', 4000);
+          toast(imageErrorMessage(err), 4000);
         }
       });
       return h('li.word-admin', {},
@@ -126,12 +155,108 @@ export function lessonDetailView(app, { lessonId }) {
 
     body.append(
       rename,
+      gridSection(app, lesson, urls),
       section('Ảnh cho từng từ',
-        notice('info', 'Tạo hình bằng ChatGPT/Gemini (bấm "Copy prompt ảnh"), lưu vào Ảnh của máy, rồi bấm "Chọn ảnh". Không có ảnh thì bé thấy emoji.'),
+        notice('info', 'Hoặc tạo từng hình (bấm "Copy prompt ảnh"), lưu vào Ảnh của máy, rồi bấm "Chọn ảnh". Không có ảnh thì bé thấy emoji.'),
         h('ul.word-admin-list', {}, ...rows)),
       preview,
+      shareSection(app, lesson),
       section(null, remove));
   })();
 
   return () => urls.forEach((u) => URL.revokeObjectURL(u));
+}
+
+/** Ảnh lưới: AI vẽ 1 ảnh cho cả bài, app cắt ra từng ô theo thứ tự từ. */
+function gridSection(app, lesson, urls) {
+  const words = lesson.words.map((w) => w.en);
+  const shape = gridShape(words.length);
+  const prompt = buildGridImagePrompt(words, shape);
+  const input = h('input', { type: 'file', accept: 'image/*', hidden: true });
+  const previewBox = h('div.grid-preview');
+
+  input.addEventListener('change', async () => {
+    const file = input.files?.[0];
+    if (!file) return;
+    previewBox.replaceChildren(h('p.muted', { text: 'Đang cắt ảnh…' }));
+    let tiles;
+    try {
+      tiles = await sliceGrid(file, { ...shape, count: words.length });
+    } catch (err) {
+      previewBox.replaceChildren(notice('error', imageErrorMessage(err)));
+      return;
+    }
+    const cells = tiles.map((t, i) => {
+      const url = URL.createObjectURL(t.blob);
+      urls.push(url);
+      return h('figure.grid-cell', {}, h('img', { src: url, alt: words[i] }), h('figcaption', { text: words[i] }));
+    });
+    previewBox.replaceChildren(
+      notice('info', 'Kiểm tra mỗi hình khớp với chữ bên dưới. Nếu lệch, hãy nhờ AI vẽ lại hoặc chọn ảnh riêng cho từ đó sau.'),
+      h('div.grid-cells', { style: { '--cols': String(shape.cols) } }, ...cells),
+      h('div.actions', {},
+        h('button.btn.primary', {
+          type: 'button',
+          text: 'Lưu các ảnh này',
+          onclick: async () => {
+            try {
+              for (const [i, t] of tiles.entries()) {
+                await setWordImage(app.db, { lessonId: lesson.id, word: words[i], ...t });
+              }
+              toast(`Đã lưu ${tiles.length} ảnh.`);
+              goParent(app, 'lesson', { lessonId: lesson.id });
+            } catch (err) {
+              toast(imageErrorMessage(err), 4000);
+            }
+          },
+        }),
+        h('button.btn', { type: 'button', text: 'Hủy', onclick: () => previewBox.replaceChildren() })));
+  });
+
+  return section(`Ảnh lưới — 1 ảnh cho cả bài (${shape.cols}×${shape.rows} ô)`,
+    notice('info', 'Bản AI miễn phí giới hạn số lần tạo ảnh. Cách này chỉ cần 1 lần: bấm "Copy prompt ảnh lưới", dán vào ChatGPT/Gemini, lưu ảnh về máy, rồi bấm "Chọn ảnh lưới" — app tự cắt ra từng từ.'),
+    h('div.actions', {},
+      h('button.btn', {
+        type: 'button',
+        text: 'Copy prompt ảnh lưới',
+        onclick: () => copyText(prompt).then((ok) => toast(ok ? 'Đã copy prompt ảnh lưới.' : 'Không copy được.')),
+      }),
+      h('button.btn.primary', { type: 'button', text: 'Chọn ảnh lưới', onclick: () => input.click() })),
+    input,
+    previewBox);
+}
+
+/** Chia sẻ bài (kèm ảnh) sang máy khác. 2 bước vì iOS chỉ cho mở bảng Chia sẻ ngay sau một lần chạm. */
+function shareSection(app, lesson) {
+  const status = h('p.muted');
+  let made = null;
+  const sendBtn = h('button.btn.primary', {
+    type: 'button',
+    text: '2. Gửi file',
+    hidden: true,
+    onclick: async () => {
+      if (made && await saveFile(made.blob, made.filename)) toast('Đã xuất file bài học.');
+    },
+  });
+  const makeBtn = h('button.btn', {
+    type: 'button',
+    text: '1. Tạo file bài',
+    onclick: async () => {
+      makeBtn.disabled = true;
+      try {
+        made = await createBackup(app.db, { lessonIds: [lesson.id], appVersion: APP_VERSION });
+        status.textContent = `Đã tạo ${made.filename}. Bấm "Gửi file" để lưu vào Files/iCloud hoặc gửi AirDrop, Zalo…`;
+        sendBtn.hidden = false;
+      } catch (err) {
+        console.error(err);
+        status.textContent = 'Không tạo được file bài học.';
+      } finally {
+        makeBtn.disabled = false;
+      }
+    },
+  });
+  return section('Chia sẻ bài sang máy khác',
+    h('p', { text: 'File gồm nội dung bài và ảnh (không có ghi âm, tiến độ của bé). Trên máy kia: Góc bố mẹ → Quản lý bài → "Nhập bài từ file".' }),
+    h('div.actions', {}, makeBtn, sendBtn),
+    status);
 }

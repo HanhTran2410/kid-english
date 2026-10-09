@@ -63,19 +63,20 @@ Repo chỉ chứa code, icon, font và 2 bài mẫu. Không có dữ liệu nào
 ## 5. Tạo bài học
 
 1. Nhấn giữ ⚙️ ở góc màn hình chính **3 giây** để vào **Góc bố mẹ**.
-2. **Tạo bài học** → chọn chủ đề, thời lượng, kiểu bài → **Copy prompt**.
+2. **Tạo bài học** → chọn chủ đề, thời lượng, kiểu bài → **Copy prompt** (prompt tự dặn AI tránh các từ bé đã có ở bài khác).
 3. Mở ChatGPT hoặc Gemini, dán prompt vào và gửi. Sau đó copy **toàn bộ** câu trả lời.
 4. Quay lại app → **Dán bài** → **Kiểm tra bài** → xem trước (mỗi câu có 🔊) → **Lưu bài**.
-5. (Tùy chọn) Thêm ảnh cho từng từ: bấm **Copy prompt ảnh**, nhờ ChatGPT/Gemini vẽ, lưu ảnh vào thư viện Ảnh, rồi bấm **Chọn ảnh**.
+5. (Tùy chọn) Thêm ảnh: trong **Quản lý bài → tên bài**, bấm **Copy prompt ảnh lưới** để AI vẽ **1 ảnh cho cả bài**, lưu về máy, rồi **Chọn ảnh lưới**: app tự cắt ra từng từ. Hoặc làm từng từ với **Copy prompt ảnh** / **Chọn ảnh**.
+6. (Tùy chọn) Tạo bài trên máy tính cho tiện: mở link app trên máy tính, tạo bài và thêm ảnh, bấm **Chia sẻ bài** (2 bước: Tạo file bài → Gửi file), gửi file sang iPhone/iPad rồi vào **Quản lý bài → Nhập bài từ file**.
 
 Nếu AI trả bài bị cắt ngang, nhắn cho AI chữ `continue` rồi copy lại toàn bộ.
 
 ## 6. Test
 
 ```bash
-npm test                      # test logic (node:test): 71 test
+npm test                      # test logic (node:test): 76 test
 npx playwright install chromium
-npm run test:ui               # test giao diện trên Chrome cỡ iPad: 9 test
+npm run test:ui               # test giao diện trên Chrome cỡ iPad: 17 test
 node scripts/screens.mjs      # chụp các màn hình cỡ iPhone/iPad vào test-results/screens/ (chạy server cổng 4173 trước)
 ```
 

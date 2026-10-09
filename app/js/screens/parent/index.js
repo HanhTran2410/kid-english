@@ -38,6 +38,9 @@ function menuView(app) {
   const body = parentLayout(app, { title: 'Góc bố mẹ' });
   const warnings = h('div.warnings');
   const due = isBackupDue(app.settings);
+  // Ghép sẵn prompt "cô giáo" để lúc bấm copy được ngay (iOS chặn copy sau một bước chờ).
+  let teacherPrompt = '';
+  buildTeacherPromptFor(app).then((p) => { teacherPrompt = p; });
 
   const item = (emoji, label, onClick, badge = false) => h('button.menu-item', { type: 'button', onclick: onClick },
     h('span.menu-emoji', { text: emoji }), h('span', { text: label }), badge ? h('span.badge', { text: '!' }) : null);
@@ -50,7 +53,7 @@ function menuView(app) {
       item('📚', 'Quản lý bài', () => goParent(app, 'lessons')),
       item('📈', 'Bé đã học', () => goParent(app, 'progress')),
       item('🎙️', 'Nghe lại giọng bé', () => goParent(app, 'recordings')),
-      item('👩‍🏫', 'Copy prompt "cô giáo"', () => copyTeacherPrompt(app)),
+      item('👩‍🏫', 'Copy prompt "cô giáo"', () => copyTeacherPrompt(teacherPrompt)),
       item('💾', 'Sao lưu / Khôi phục', () => goParent(app, 'backup'), due),
       item('🎁', 'Sticker của bé', () => goParent(app, 'stickers')),
       item('⚙️', 'Cài đặt & chẩn đoán', () => goParent(app, 'settings'))),
@@ -97,13 +100,20 @@ function menuView(app) {
   body.append(footer);
 }
 
-async function copyTeacherPrompt(app) {
+async function buildTeacherPromptFor(app) {
   const lessons = await listLessons(app.db);
   const progress = await app.db.getAll('progress');
   const words = lessons[0]?.words.map((w) => w.en) ?? [];
   const weakWords = pickWordsForPrompt(progress, 5).map((r) => r.word);
-  const ok = await copyText(buildTeacherPrompt({ words, weakWords }));
-  toast(ok ? 'Đã copy prompt "cô giáo". Mở ChatGPT/Gemini Voice và dán vào.' : 'Không copy được, hãy thử lại.');
+  return buildTeacherPrompt({ words, weakWords });
+}
+
+function copyTeacherPrompt(prompt) {
+  if (!prompt) {
+    toast('Đang chuẩn bị prompt, bấm lại sau giây lát.');
+    return;
+  }
+  copyText(prompt).then((ok) => toast(ok ? 'Đã copy prompt "cô giáo". Mở ChatGPT/Gemini Voice và dán vào.' : 'Không copy được, hãy thử lại.'));
 }
 
 function progressView(app) {

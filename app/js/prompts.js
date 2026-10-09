@@ -14,6 +14,8 @@ export const STYLES = { fun: 'fun', story: 'story' };
 export const IMAGE_STYLE =
   "cute children's flashcard illustration, simple flat shapes, thick soft outlines, bright pastel colors, plain white background, one object centered, no text";
 
+export const MAX_AVOID_WORDS = 80;
+
 export function wordsForDuration(minutes) {
   return DURATIONS[minutes] ?? DURATIONS[DEFAULT_DURATION];
 }
@@ -42,7 +44,8 @@ const JSON_SHAPE = `{
 /**
  * Prompt tạo bài học.
  * @param {{ topic: string, age?: number, duration?: number, level?: 'beginner'|'some',
- *           style?: 'fun'|'story', reviewWords?: string[] }} options
+ *           style?: 'fun'|'story', reviewWords?: string[], avoidWords?: string[] }} options
+ *   avoidWords: các từ bé đã có ở bài khác, để AI không tạo trùng
  */
 export function buildLessonPrompt({
   topic,
@@ -51,6 +54,7 @@ export function buildLessonPrompt({
   level = 'beginner',
   style = 'fun',
   reviewWords = [],
+  avoidWords = [],
 }) {
   const n = wordsForDuration(duration);
   const total = n + reviewWords.length;
@@ -72,6 +76,12 @@ export function buildLessonPrompt({
       `- REVIEW WORDS: also add these ${reviewWords.length} words to "words" (keep the exact spelling): ${reviewWords.join(', ')}.`,
       `  So "words" has ${total} words in total. Use the review words naturally in the conversation or the story.`,
     );
+  }
+
+  const reviewSet = new Set(reviewWords.map((w) => w.toLowerCase()));
+  const avoid = [...new Set(avoidWords.map((w) => w.toLowerCase()))].filter((w) => !reviewSet.has(w)).slice(0, MAX_AVOID_WORDS);
+  if (avoid.length) {
+    lines.push(`- The child ALREADY LEARNED these words in other lessons. Do NOT use them as new words: ${avoid.join(', ')}.`);
   }
 
   lines.push(
@@ -120,4 +130,22 @@ export function buildTeacherPrompt({ words, weakWords = [], age = 3 }) {
     'If the child answers in Vietnamese or stays quiet, gently say the English word and ask them to repeat.',
     'Keep the whole talk under 10 minutes, then say goodbye happily.',
   ].filter(Boolean).join('\n');
+}
+
+/**
+ * Prompt nhờ AI vẽ MỘT ảnh lưới cho cả bài (tiết kiệm lượt tạo ảnh miễn phí); app tự cắt ra từng ô.
+ * @param {string[]} words theo đúng thứ tự trong bài
+ * @param {{ cols: number, rows: number }} shape
+ */
+export function buildGridImagePrompt(words, { cols, rows }) {
+  const cells = cols * rows;
+  const list = words.slice(0, cells).map((w, i) => `${i + 1}. ${w}`).join('\n');
+  const empty = cells > words.length ? `\nLeave the last ${cells - words.length} cell(s) empty (plain white).` : '';
+  return [
+    `Create ONE square-ish landscape image: a grid of ${cols} columns × ${rows} rows of EQUAL cells, separated by thin white gaps.`,
+    'Each cell shows exactly one object, large and centered, in this order (left to right, then top to bottom):',
+    list + empty,
+    `Style for every cell: ${IMAGE_STYLE}.`,
+    'No text, no letters, no numbers, no borders around the image. Keep every object fully inside its own cell.',
+  ].join('\n');
 }

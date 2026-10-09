@@ -1,9 +1,9 @@
 // Tạo bài: form → Copy prompt → Dán bài → Xem trước → Lưu (SPEC mục 3).
 
 import { h, toast, copyText } from '../../ui.js';
-import { buildLessonPrompt, DURATIONS } from '../../prompts.js';
+import { buildLessonPrompt, DURATIONS, MAX_AVOID_WORDS } from '../../prompts.js';
 import { pickWordsForPrompt } from '../../progress.js';
-import { parseLesson, createLessonRecord } from '../../lesson.js';
+import { parseLesson, createLessonRecord, overlapWithLessons } from '../../lesson.js';
 import { listLessons } from '../../db.js';
 import { quizQuestions } from '../../player/plan.js';
 import { parentLayout, goParent, section, notice, speakButton, field } from './common.js';
@@ -27,16 +27,40 @@ export function createView(app) {
   const age = h('input', { type: 'number', min: '2', max: '8', value: '3' });
   const review = h('input', { type: 'checkbox', checked: true });
   const reviewInfo = h('span.field-hint');
-  const promptBox = h('details.prompt-box', { hidden: true }, h('summary', { text: 'Xem prompt' }), h('pre'));
+  const avoidInfo = h('p.field-hint');
 
+  // Đọc dữ liệu trước, để lúc bấm "Copy prompt" ghép prompt và copy ngay (iOS chặn copy sau một bước chờ).
   let reviewWords = [];
+  let avoidWords = [];
   app.db.getAll('progress').then((list) => {
     reviewWords = pickWordsForPrompt(list, 2).map((r) => r.word);
     reviewInfo.textContent = reviewWords.length ? `Từ sẽ ôn: ${reviewWords.join(', ')}` : 'Chưa có từ nào cần ôn.';
   });
+  listLessons(app.db).then((lessons) => {
+    avoidWords = [...new Set(lessons.flatMap((l) => l.words.map((w) => w.en.toLowerCase())))];
+    avoidInfo.textContent = avoidWords.length
+      ? `Để không trùng, prompt dặn AI tránh ${Math.min(avoidWords.length, MAX_AVOID_WORDS)} từ bé đã có ở các bài khác.`
+      : '';
+  });
+
+  const promptArea = h('textarea.prompt-area', { rows: '8', readonly: true, 'aria-label': 'Prompt' });
+  const result = h('div.prompt-result', { hidden: true },
+    notice('info', 'Nếu chưa copy được: chạm vào ô dưới → "Chọn tất cả" → "Sao chép".'),
+    promptArea,
+    h('div.actions', {},
+      h('button.btn', {
+        type: 'button',
+        text: 'Copy lại',
+        onclick: () => {
+          copyText(promptArea.value).then((ok) => toast(ok ? 'Đã copy prompt.' : 'Chưa copy được, hãy copy tay trong ô trên.'));
+        },
+      }),
+      h('a.btn', { href: 'https://chatgpt.com/', target: '_blank', rel: 'noopener', text: 'Mở ChatGPT' }),
+      h('a.btn', { href: 'https://gemini.google.com/app', target: '_blank', rel: 'noopener', text: 'Mở Gemini' })),
+    h('button.btn.primary.big', { type: 'button', text: 'Đã có bài từ AI → Dán bài', onclick: () => goParent(app, 'paste') }));
 
   const form = h('form.form', {
-    onsubmit: async (e) => {
+    onsubmit: (e) => {
       e.preventDefault();
       const words = review.checked ? reviewWords : [];
       const prompt = buildLessonPrompt({
@@ -46,13 +70,17 @@ export function createView(app) {
         level: radioValue(form, 'level'),
         style: radioValue(form, 'style'),
         reviewWords: words,
+        avoidWords,
       });
-      await app.setSetting('lastPromptReviewWords', words);
-      promptBox.querySelector('pre').textContent = prompt;
-      promptBox.hidden = false;
-      const ok = await copyText(prompt);
-      toast(ok ? 'Đã copy prompt. Mở ChatGPT hoặc Gemini, dán vào và gửi.' : 'Không copy được tự động — hãy mở "Xem prompt" và copy tay.');
-      nextBtn.hidden = false;
+      // Copy NGAY, trước mọi bước chờ.
+      const copied = copyText(prompt);
+      promptArea.value = prompt;
+      result.hidden = false;
+      copied.then((ok) => {
+        toast(ok ? 'Đã copy prompt. Mở ChatGPT hoặc Gemini, dán vào và gửi.' : 'Chưa copy được tự động — hãy copy tay trong ô prompt.', 4000);
+        result.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      });
+      app.setSetting('lastPromptReviewWords', words);
     },
   },
   section('📚 Chủ đề', chips, field('Hoặc tự gõ', topic)),
@@ -62,13 +90,13 @@ export function createView(app) {
     field('🎯 Trình độ', radios('level', [['beginner', 'Mới bắt đầu'], ['some', 'Đã biết ít']], 'beginner')),
     field('🎨 Kiểu bài', radios('style', [['fun', 'Vui nhộn'], ['story', 'Kể chuyện']], 'fun')),
     h('label.check', {}, review, h('span', { text: '☑️ Ôn lại từ chưa thuộc (tối đa 2 từ)' })),
-    reviewInfo),
+    reviewInfo,
+    avoidInfo),
   h('div.actions', {}, h('button.btn.primary.big', { type: 'submit', text: 'Copy prompt' })));
 
-  const nextBtn = h('button.btn.big', { type: 'button', text: 'Đã có bài từ AI → Dán bài', hidden: true, onclick: () => goParent(app, 'paste') });
   body.append(
     notice('info', '1. Chọn thông tin rồi bấm "Copy prompt". 2. Mở ChatGPT hoặc Gemini, dán vào và gửi. 3. Copy toàn bộ câu trả lời rồi quay lại bấm "Dán bài".'),
-    form, promptBox, nextBtn);
+    form, result);
 }
 
 /** Bản xem trước bài học: từ, hội thoại, trò chơi, truyện; mỗi câu có 🔊. */
@@ -104,6 +132,11 @@ export function pasteView(app) {
     const lessons = await listLessons(app.db);
     if (lessons.some((l) => l.title.trim().toLowerCase() === parsed.lesson.title.toLowerCase())) {
       parsed.warnings.push(`Đã có bài tên "${parsed.lesson.title}". Vẫn lưu được.`);
+    }
+    const overlap = overlapWithLessons(parsed.lesson, lessons, app.settings.lastPromptReviewWords ?? []);
+    if (overlap.length) {
+      parsed.warnings.push(`${overlap.length}/${parsed.lesson.words.length} từ đã có ở bài khác: `
+        + `${overlap.map((o) => `${o.word} (${o.lessonTitle})`).join(', ')}. Vẫn lưu được; muốn bài mới hoàn toàn thì nhờ AI đổi từ.`);
     }
     if (parsed.warnings.length) {
       result.append(notice('warn', h('b', { text: 'App đã tự sửa một số chỗ:' }), h('ul', {}, ...parsed.warnings.map((w) => h('li', { text: w })))));

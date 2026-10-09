@@ -169,3 +169,18 @@ test('file hỏng hoặc phiên bản mới hơn thì từ chối, dữ liệu h
   other.file('manifest.json', JSON.stringify({ app: 'other' }));
   await assert.rejects(readBackup(await other.generateAsync({ type: 'uint8array' }), { JSZip }), /không phải file sao lưu/);
 });
+
+test('gói bài để chia sẻ: chỉ bài được chọn và ảnh của bài, không có ghi âm/tiến độ/sticker/cài đặt', async () => {
+  const db = await open();
+  await seed(db);
+  await db.put('lessons', { ...(await db.get('lessons', 'L1')), timesCompleted: 5, resume: { stage: 'quiz', index: 1 } });
+  const { blob: zipBlob, filename } = await createBackup(db, { lessonIds: ['L1'], now: new Date(2026, 9, 9).getTime(), JSZip });
+  assert.equal(filename, 'kid-english-bai-farm-2026-10-09.zip');
+  const p = await readBackup(zipBlob, { JSZip });
+  assert.equal(p.manifest.kind, 'lessons');
+  assert.deepEqual(p.lessons.map((l) => l.id), ['L1']);
+  assert.equal(p.lessons[0].timesCompleted, 0);
+  assert.equal(p.lessons[0].resume, null);
+  assert.equal(p.images.length, 1);
+  assert.deepEqual([p.recordings.length, p.progress.length, p.stickers.length, p.settings.length], [0, 0, 0, 0]);
+});

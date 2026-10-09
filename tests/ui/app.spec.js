@@ -70,7 +70,8 @@ test('nhập bài → xem trước → lưu → bài có trong danh sách → h�
 
   const spoken = await page.evaluate(() => window.__spoken);
   expect(spoken).toContain('apple!');
-  expect(spoken).toContain('quả táo!'); // đọc nghĩa tiếng Việt lần đầu
+  expect(spoken).not.toContain('quả táo!'); // mặc định không đọc nghĩa tiếng Việt
+  expect(spoken).toContain('Listen and say!');
   expect(spoken).toContain('Which one is yellow?');
   expect(spoken).toContain('Hooray! You did it!');
   expect(spoken).not.toContain('Wrong'); // không bao giờ nói "sai"
@@ -294,24 +295,134 @@ test('chọn đúng hình thì sao bay ra ngay trên hình đó', async ({ page 
   await page.getByRole('button', { name: 'Bài học' }).click();
   await page.getByRole('button', { name: 'Animals' }).click();
   const next = page.getByRole('button', { name: 'Tiếp' });
-  // Bấm ▶ để sang nhanh tới phần trò chơi (câu đầu: "Which one says woof?" → dog).
+  // Bấm ▶ để sang nhanh tới phần trò chơi.
   for (let i = 0; i < 40 && !(await page.locator('.choice').first().isVisible()); i++) {
     await next.click();
     await page.waitForTimeout(80);
   }
-  const dog = page.locator('.choice[data-word="dog"]');
-  await expect(dog).toBeVisible();
   await expect.poll(() => page.evaluate(() => window.kidEnglish.speaker.speaking)).toBe(false);
-  await dog.click();
-  const burst = page.locator('.star-burst.on-target');
-  await expect(burst).toBeAttached();
-  const [b, d] = await Promise.all([
-    burst.evaluate((el) => el.getBoundingClientRect().toJSON()),
-    dog.evaluate((el) => el.getBoundingClientRect().toJSON()),
-  ]);
+  // Chọn đúng đáp án của câu Bông vừa hỏi.
+  const answers = { woof: 'dog', meow: 'cat', moo: 'cow', quack: 'duck', oink: 'pig', fly: 'bird' };
+  const ask = await page.evaluate(() => window.__spoken.filter((t) => t.startsWith('Which one')).at(-1));
+  const answer = answers[Object.keys(answers).find((k) => ask.includes(k))];
+  const dog = page.locator(`.choice[data-word="${answer}"]`);
+  await expect(dog).toBeVisible();
+  // Ghi lại vị trí chùm sao ngay lúc nó xuất hiện (ở chế độ chạy nhanh, câu tiếp theo hiện ra rất sớm).
+  await page.evaluate(() => {
+    window.__burst = null;
+    new MutationObserver((records) => {
+      for (const r of records) {
+        for (const n of r.addedNodes) {
+          if (n.classList?.contains('star-burst') && n.classList.contains('on-target')) {
+            const correct = document.querySelector('.choice.correct');
+            window.__burst = { b: n.getBoundingClientRect().toJSON(), d: correct?.getBoundingClientRect().toJSON() };
+          }
+        }
+      }
+    }).observe(document.body, { childList: true, subtree: true });
+  });
+  for (let i = 0; i < 10 && !(await page.evaluate(() => window.__burst)); i++) {
+    await page.locator('.idle-pause').click({ timeout: 300 }).catch(() => {});
+    await dog.click({ timeout: 1000 }).catch(() => {});
+    await page.waitForTimeout(100);
+  }
+  const { b, d } = await page.evaluate(() => window.__burst);
   const center = (r) => [r.x + r.width / 2, r.y + r.height / 2];
   const [bx, by] = center(b);
   const [dx, dy] = center(d);
   expect(Math.abs(bx - dx)).toBeLessThan(20);
   expect(Math.abs(by - dy)).toBeLessThan(20);
+});
+
+test('tạo bài: bấm Copy prompt là copy được ngay, prompt dặn AI tránh từ đã có', async ({ page, context }) => {
+  await context.grantPermissions(['clipboard-read', 'clipboard-write']);
+  await startApp(page);
+  await openParent(page);
+  await page.getByRole('button', { name: 'Tạo bài học' }).click();
+  await expect(page.getByText(/tránh \d+ từ bé đã có/)).toBeVisible();
+  await page.getByRole('button', { name: 'Copy prompt' }).click();
+  await expect(page.getByRole('status')).toContainText('Đã copy prompt');
+  // Clipboard trên Windows đổi xuống dòng thành \r\n.
+  const copied = (await page.evaluate(() => navigator.clipboard.readText())).replace(/\r\n/g, '\n');
+  expect(copied).toContain('Create one short English lesson about the topic: "Animals"');
+  expect(copied).toMatch(/ALREADY LEARNED.*dog/);
+  await expect(page.getByLabel('Prompt')).toHaveValue(copied);
+  await expect(page.getByRole('link', { name: 'Mở ChatGPT' })).toBeVisible();
+});
+
+test('ảnh lưới: chọn 1 ảnh, app cắt ra từng từ và lưu', async ({ page }) => {
+  await startApp(page);
+  // Tạo ảnh lưới 3×2 mỗi ô một màu khác nhau.
+  const png = await page.evaluate(async () => {
+    const c = document.createElement('canvas');
+    c.width = 600; c.height = 400;
+    const g = c.getContext('2d');
+    ['#f00', '#0f0', '#00f', '#ff0', '#0ff', '#f0f'].forEach((color, i) => {
+      g.fillStyle = color;
+      g.fillRect((i % 3) * 200, Math.floor(i / 3) * 200, 200, 200);
+    });
+    return c.toDataURL('image/png').split(',')[1];
+  });
+  await openParent(page);
+  await page.getByRole('button', { name: 'Quản lý bài' }).click();
+  await page.getByRole('button', { name: /Animals/ }).click();
+  await expect(page.getByRole('heading', { name: /Ảnh lưới.*3×2/ })).toBeVisible();
+  await page.locator('section', { hasText: 'Ảnh lưới' }).locator('input[type=file]')
+    .setInputFiles({ name: 'grid.png', mimeType: 'image/png', buffer: Buffer.from(png, 'base64') });
+  await expect(page.locator('.grid-cell')).toHaveCount(6);
+  await page.getByRole('button', { name: 'Lưu các ảnh này' }).click();
+  await expect(page.locator('img.thumb')).toHaveCount(6);
+  // Ô thứ 2 (cat) phải là màu xanh lá.
+  const color = await page.evaluate(async () => {
+    const lessons = await window.kidEnglish.db.getAll('lessons');
+    const id = lessons.find((l) => l.title === 'Animals').id;
+    const imgs = await window.kidEnglish.db.getAllByIndex('images', 'lessonId', id);
+    const bmp = await createImageBitmap(imgs.find((i) => i.word === 'cat').blob);
+    const c = document.createElement('canvas');
+    c.width = bmp.width; c.height = bmp.height;
+    const g = c.getContext('2d');
+    g.drawImage(bmp, 0, 0);
+    return Array.from(g.getImageData(bmp.width / 2, bmp.height / 2, 1, 1).data.slice(0, 3));
+  });
+  expect(color[1]).toBeGreaterThan(200);
+  expect(color[0]).toBeLessThan(60);
+});
+
+test('chia sẻ bài: xuất file bài rồi nhập lại trên máy khác', async ({ page, browser }) => {
+  await startApp(page);
+  await openParent(page);
+  await page.getByRole('button', { name: 'Quản lý bài' }).click();
+  await page.getByRole('button', { name: /Colors/ }).click();
+  await page.getByRole('button', { name: '1. Tạo file bài' }).click();
+  const download = page.waitForEvent('download');
+  await page.getByRole('button', { name: '2. Gửi file' }).click();
+  const file = await (await download).path();
+  expect((await download).suggestedFilename()).toMatch(/^kid-english-bai-colors-\d{4}-\d{2}-\d{2}\.zip$/);
+
+  // "Máy khác": context mới, xóa bài Colors có sẵn rồi nhập file.
+  const other = await (await browser.newContext({ reducedMotion: 'reduce' })).newPage();
+  await fakeSpeech(other);
+  await startApp(other);
+  await other.evaluate(async () => {
+    const app = window.kidEnglish;
+    for (const l of await app.db.getAll('lessons')) if (l.title === 'Colors') await app.db.delete('lessons', l.id);
+  });
+  await openParent(other);
+  await other.getByRole('button', { name: 'Quản lý bài' }).click();
+  await expect(other.getByRole('button', { name: /Colors/ })).toHaveCount(0);
+  await other.locator('input[type=file]').setInputFiles(file);
+  await expect(other.getByRole('status')).toContainText('Đã nhập 1 bài');
+  await expect(other.getByRole('button', { name: /Colors/ })).toBeVisible();
+  await other.context().close();
+});
+
+test('học xong: hộp quà mở nắp, sticker bay vào, rồi mới hiện nút ✔', async ({ page }) => {
+  await startApp(page);
+  await page.getByRole('button', { name: 'Bài học' }).click();
+  await page.getByRole('button', { name: 'Colors' }).click();
+  await playThrough(page);
+  await expect(page.locator('.gift')).toBeVisible();
+  await expect(page.locator('.gift.wiggle')).toBeAttached();
+  const opacity = await page.locator('.prize-sticker').evaluate((el) => getComputedStyle(el).opacity);
+  expect(Number(opacity)).toBeLessThan(0.1);
 });
