@@ -104,9 +104,12 @@ function menuView(app) {
 async function buildTeacherPromptFor(app) {
   const lessons = await listLessons(app.db);
   const progress = await app.db.getAll('progress');
-  const words = lessons[0]?.words.map((w) => w.en) ?? [];
-  const weakWords = pickWordsForPrompt(progress, 5).map((r) => r.word);
-  return buildTeacherPrompt({ words, weakWords });
+  const latest = lessons[0];
+  return buildTeacherPrompt({
+    words: latest?.words.map((w) => w.en) ?? [],
+    lessonTitle: latest?.title ?? '',
+    weakWords: pickWordsForPrompt(progress, 5).map((r) => r.word),
+  });
 }
 
 function copyTeacherPrompt(prompt) {

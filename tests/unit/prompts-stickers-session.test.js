@@ -36,10 +36,19 @@ test('prompt có chủ đề, tuổi và trình độ', () => {
   assert.match(p, /already knows a few/);
 });
 
-test('prompt cô giáo có từ của bài và từ chưa thuộc', () => {
-  const p = buildTeacherPrompt({ words: ['cow', 'dog'], weakWords: ['red'] });
-  assert.match(p, /cow, dog, red/);
-  assert.match(p, /extra time on: red/);
+test('prompt cô giáo: tách từ của bài và từ cần ôn, ưu tiên từ cần ôn, có cách xử lý khi bé im lặng', () => {
+  const p = buildTeacherPrompt({ words: ['Apple', 'banana', 'frog'], weakWords: ['frog', 'bee'], lessonTitle: 'Food' });
+  assert.match(p, /Practise only these 4 target words: apple, banana, frog, bee\./);
+  assert.match(p, /Practise the words from the lesson "Food": apple, banana\./);
+  assert.match(p, /review words the child still finds hard: frog, bee\. Spend MORE time/);
+  assert.match(p, /may use other simple English words for instructions/);
+  assert.match(p, /wait about 5–7 seconds/);
+  assert.match(p, /Never invent sounds for food or objects/);
+  assert.match(p, /never more than 10 minutes/);
+  assert.doesNotMatch(p, /\n\n\n/);
+  const noReview = buildTeacherPrompt({ words: ['cow'] });
+  assert.doesNotMatch(noReview, /review words/);
+  assert.match(noReview, /the latest lesson: cow/);
 });
 
 // --- stickers ---

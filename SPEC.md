@@ -249,7 +249,13 @@ Kết thúc bài: màn hình **"Hoan hô!"** kèm 1 sticker tặng bé. **Hộp 
 ### 4.6. Góc bố mẹ
 - **＋ Tạo bài học**: form tạo prompt (mục 3) → **Dán bài** → **Xem trước** → Lưu.
 - **Xem trước**: danh sách từ kèm emoji hoặc ảnh, hội thoại, trò chơi, truyện. Mỗi câu có nút 🔊 để nghe thử. Chỉ sau khi Lưu bài mới hiện cho bé.
-- **Copy prompt "cô giáo"**: để bố mẹ dùng với ChatGPT/Gemini Voice, ngoài app. Prompt gồm: vai cô giáo dạy bé 3 tuổi, nói chậm, câu ngắn, khen nhiều; danh sách từ của bài gần nhất và các từ chưa thuộc.
+- **Copy prompt "cô giáo"**: để bố mẹ dùng với ChatGPT/Gemini Voice, ngoài app. Prompt gồm:
+  - Vai cô giáo dạy bé 3 tuổi người Việt; **từ mục tiêu** = từ của bài gần nhất (kèm tên bài) + **từ cần ôn** (chưa thuộc, tối đa 5) được **luyện nhiều hơn**; được dùng từ đơn giản khác để hướng dẫn/khen.
+  - Cách nói: chậm, câu 2–5 từ, mỗi lần một câu hỏi, khen nỗ lực, không bao giờ nói "wrong".
+  - Trình tự: chào → từ của bài → từ cần ôn → ôn 2–3 từ khó nhất → tạm biệt.
+  - Câu hỏi hợp loại từ: con vật hỏi tiếng kêu/động tác; đồ ăn, đồ vật hỏi màu sắc, sở thích, không bịa tiếng kêu.
+  - Khi bé trả lời bằng tiếng Việt, nói thiếu, im lặng (chờ 5–7 giây rồi mới gợi ý), không muốn nhắc lại, bối rối; không hỏi một câu quá 2 lần liên tiếp; điều chỉnh độ khó theo bé.
+  - Thời lượng 5–7 phút, tối đa 10 phút; bé mệt thì dừng sớm.
 - **Quản lý bài**: xem, đổi tên, xóa, thêm hoặc đổi ảnh từng từ, copy `imagePrompt` của từng từ, **ảnh lưới** (1 ảnh cho cả bài, app tự cắt), **Chia sẻ bài** (xuất file bài kèm ảnh) và **Nhập bài từ file** (mục 3).
   - **Xóa bài**: hỏi xác nhận, sau đó xóa bài cùng **ảnh và ghi âm** của bài đó. **Giữ nguyên tiến độ** (`progress`), vì tiến độ tính theo từ và từ đó có thể có ở bài khác.
 - **Bé đã học**: bảng tiến độ từng từ (mục 4.7).
