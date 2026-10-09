@@ -196,7 +196,7 @@ export function lessonDetailView(app, { lessonId }) {
 function gridSection(app, lesson, urls) {
   const words = lesson.words.map((w) => w.en);
   const expected = gridShape(words.length);
-  const prompt = buildGridImagePrompt(words, expected);
+  const prompt = buildGridImagePrompt(lesson.words, expected);
   const input = h('input', { type: 'file', accept: 'image/*', hidden: true });
   const previewBox = h('div.grid-preview');
   const SKIP = '';

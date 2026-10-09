@@ -103,8 +103,13 @@ test('prompt ảnh lưới liệt kê đúng thứ tự từ và số ô', async
   assert.deepEqual(gridShape(8), { cols: 3, rows: 3 });
   assert.deepEqual(gridShape(10), { cols: 4, rows: 3 });
   const p = buildGridImagePrompt(['cow', 'dog', 'cat', 'pig', 'duck'], gridShape(5));
-  assert.match(p, /square image: a grid of exactly 3 columns × 3 rows = 9 EQUAL cells/);
-  assert.match(p, /1\. cow\n2\. dog\n3\. cat\n4\. pig\n5\. duck\nThe last 4 cell\(s\) must stay COMPLETELY EMPTY/);
+  assert.match(p, /square image with an exact 3-column × 3-row grid, containing 9 EQUAL square cells/);
+  assert.match(p, /Row 1:\n1\. Cow\n2\. Dog\n3\. Cat\nRow 2:\n4\. Pig\n5\. Duck\n6\. EMPTY CELL/);
+  assert.match(p, /Cell 9 \(row 3, column 3\) must remain completely empty/);
+  assert.match(p, /Exactly 5 illustrations/);
+  // Không còn mâu thuẫn: có đường kẻ giữa các ô, chỉ không có viền ngoài.
+  assert.match(p, /divider lines ONLY between cells\. NO outer border/);
+  assert.doesNotMatch(p, /no borders around the image/);
 });
 
 test('đếm số dải hình để đoán lưới: gộp hai mắt trong cùng ô, bỏ vệt nhỏ', async () => {
@@ -118,4 +123,20 @@ test('đếm số dải hình để đoán lưới: gộp hai mắt trong cùng 
   assert.equal(countBands(profile([[3, 30], [37, 48], [49, 62], [70, 96], [98, 99]])), 3);
   assert.equal(countBands(profile([[5, 45], [55, 95]])), 2);
   assert.equal(countBands(new Array(50).fill(0)), 0);
+});
+
+test('prompt ảnh lưới: mỗi từ kèm mô tả hình lấy từ imagePrompt; prompt tạo bài dặn mô tả phân biệt', async () => {
+  const { buildGridImagePrompt, visualHint, IMAGE_STYLE, buildLessonPrompt } = await import('../../app/js/prompts.js');
+  const words = [
+    { en: 'rain', imagePrompt: `Several blue raindrops falling, no cloud, ${IMAGE_STYLE}` },
+    { en: 'cloud', imagePrompt: `Cute children's flashcard illustration of one fluffy white cloud, ${IMAGE_STYLE}` },
+    { en: 'sun' },
+  ];
+  assert.equal(visualHint(words[0]), 'Several blue raindrops falling, no cloud');
+  assert.equal(visualHint(words[1]), 'one fluffy white cloud');
+  assert.equal(visualHint(words[2]), '');
+  const p = buildGridImagePrompt(words, { cols: 2, rows: 2 });
+  assert.match(p, /1\. Rain — Several blue raindrops falling, no cloud\n2\. Cloud — one fluffy white cloud\nRow 2:\n3\. Sun\n4\. EMPTY CELL/);
+  assert.match(p, /Each cell shows ONLY its own item/);
+  assert.match(buildLessonPrompt({ topic: 'Weather' }), /concrete description of exactly what to draw.*clearly different/);
 });

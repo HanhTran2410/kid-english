@@ -87,7 +87,10 @@ export function buildLessonPrompt({
   lines.push(
     '- Every word needs "en", "vi" (Vietnamese meaning), and one "emoji". Do not repeat a word.',
     '- Every sentence has at most 6 words.',
-    `- "imagePrompt": always end with this same style: "${IMAGE_STYLE}".`,
+    '- "imagePrompt": first a short, concrete description of exactly what to draw for this word, clearly different',
+    '  from the other words in this lesson (for example "rain": "several blue raindrops falling, no cloud";',
+    '  "wind": "three curved light-blue wind lines, no other objects").',
+    `  Then always end with this same style: "${IMAGE_STYLE}".`,
     '- "conversation": 2 turns for each word. "word" must be one of the words. "teacher" asks a very simple question.',
     '  "child" is the short answer (at most 5 words) and contains the word or its sound.',
     '  Pattern: "What\'s this?" → "It\'s a ___!", then "What does it say?" / "What color is it?" → a short answer.',
@@ -133,21 +136,71 @@ export function buildTeacherPrompt({ words, weakWords = [], age = 3 }) {
 }
 
 /**
+ * Mô tả hình của một từ, lấy từ `imagePrompt` AI đã viết lúc tạo bài (bỏ phần phong cách chung).
+ * "A happy puppy, cute children's flashcard illustration, …" → "A happy puppy".
+ */
+export function visualHint(word) {
+  let t = String(word?.imagePrompt ?? '');
+  t = t.replace(IMAGE_STYLE, '')
+    .replace(/cute children'?s flashcard illustration( of)?/i, '')
+    .replace(/^[\s,.;:—-]+|[\s,.;:—-]+$/g, '')
+    .trim();
+  if (!t || t.toLowerCase() === String(word?.en ?? '').toLowerCase()) return '';
+  return t.length > 140 ? `${t.slice(0, 140).replace(/\s+\S*$/, '')}…` : t;
+}
+
+const capitalize = (s) => s.charAt(0).toUpperCase() + s.slice(1);
+
+/**
  * Prompt nhờ AI vẽ MỘT ảnh lưới cho cả bài (tiết kiệm lượt tạo ảnh miễn phí); app tự cắt ra từng ô.
- * @param {string[]} words theo đúng thứ tự trong bài
+ * Viết theo hàng, ghi rõ vị trí ô trống, mỗi từ kèm mô tả hình, và luật "mỗi ô chỉ vẽ vật của ô đó"
+ * để AI không vẽ lẫn (ví dụ mây trong ô "rain").
+ * @param {Array<string|{ en: string, imagePrompt?: string }>} words theo đúng thứ tự trong bài
  * @param {{ cols: number, rows: number }} shape
  */
 export function buildGridImagePrompt(words, { cols, rows }) {
   const cells = cols * rows;
-  const list = words.slice(0, cells).map((w, i) => `${i + 1}. ${w}`).join('\n');
-  const empty = cells > words.length
-    ? `\nThe last ${cells - words.length} cell(s) must stay COMPLETELY EMPTY (plain white, no drawing).`
-    : '';
+  const items = words.slice(0, cells).map((w) => (typeof w === 'string' ? { en: w } : w));
+  const filled = items.length;
+  const emptyCells = Array.from({ length: cells - filled }, (_, k) => filled + k);
+  const where = (i) => `row ${Math.floor(i / cols) + 1}, column ${(i % cols) + 1}`;
+
+  const placement = [];
+  for (let r = 0; r < rows; r++) {
+    placement.push(`Row ${r + 1}:`);
+    for (let c = 0; c < cols; c++) {
+      const i = r * cols + c;
+      const item = items[i];
+      if (item) {
+        const hint = visualHint(item);
+        placement.push(`${i + 1}. ${capitalize(item.en)}${hint ? ` — ${hint}` : ''}`);
+      } else {
+        placement.push(`${i + 1}. EMPTY CELL — plain pure white, absolutely no drawing, no object, no icon, no shadow, no decoration.`);
+      }
+    }
+  }
+
+  const strict = [
+    `- Exactly ${cells} equal cells in a ${cols} × ${rows} grid.`,
+    `- Exactly ${filled} illustrations, in the order above.`,
+    ...emptyCells.map((i) => `- Cell ${i + 1} (${where(i)}) must remain completely empty and pure white.`),
+    '- Each cell shows ONLY its own item. Never add objects that belong to another cell (for example, if one cell is "rain" and another is "cloud", the rain cell has raindrops only).',
+    '- Thin light-gray divider lines ONLY between cells. NO outer border around the whole image.',
+    '- NO text, letters, numbers, labels or watermarks.',
+    '- Do not merge cells; objects must not cross cell boundaries.',
+    `- ${cols === rows ? 'Square canvas' : `Canvas ${cols}:${rows}`}, consistent spacing, clean and balanced composition.`,
+  ];
+
   return [
-    `Create ONE ${cols === rows ? 'square ' : ''}image: a grid of exactly ${cols} columns × ${rows} rows = ${cells} EQUAL cells, separated by thin light-gray lines.`,
-    'Each cell shows exactly one object, large and centered, in this order (left to right, then top to bottom):',
-    list + empty,
-    `Style for every cell: ${IMAGE_STYLE}.`,
-    'No text, no letters, no numbers, no borders around the image. Keep every object fully inside its own cell.',
+    `Create ONE ${cols === rows ? 'square ' : ''}image with an exact ${cols}-column × ${rows}-row grid, containing ${cells} EQUAL ${cols === rows ? 'square ' : ''}cells. Separate neighbouring cells with thin light-gray lines.`,
+    '',
+    'OBJECT PLACEMENT — follow this exact order, left to right, then top to bottom:',
+    ...placement,
+    '',
+    'ILLUSTRATION STYLE:',
+    "Cute children's English-learning flashcards for a 3-year-old child. Simple flat vector shapes, thick soft dark outlines, bright pastel colors, friendly and instantly recognizable objects. Each object is large, centered, fully visible, and entirely inside its own cell. Plain white background in every cell.",
+    '',
+    'STRICT REQUIREMENTS:',
+    ...strict,
   ].join('\n');
 }
