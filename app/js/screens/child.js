@@ -231,7 +231,10 @@ export function stickersScreen(app) {
             play('pop');
             say(app, `${s.name.charAt(0).toUpperCase()}${s.name.slice(1)}!`);
           },
-        }, h('span.sticker-emoji', { text: s.emoji }), rec.count > 1 ? h('span.sticker-times', { text: `×${rec.count}` }) : null)
+        },
+        h('span.sticker-emoji', { text: s.emoji }),
+        h('span.sticker-name', { text: s.name.charAt(0).toUpperCase() + s.name.slice(1) }),
+        rec.count > 1 ? h('span.sticker-times', { text: `×${rec.count}` }) : null)
         : h('div.sticker.missing', { 'aria-label': 'Chưa có' }, h('span.sticker-emoji', { text: s.emoji }), h('span.sticker-q', { text: '❓' }));
       grid.append(cell);
     }

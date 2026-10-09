@@ -570,25 +570,32 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 }
 .sticker {
   position: relative;
-  display: grid;
-  place-items: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
   aspect-ratio: 1;
   min-width: 104px;
   border-radius: 24px;
   background: var(--card);
   box-shadow: var(--shadow);
 }
-.sticker-emoji { font-size: 64px; }
+.sticker-emoji { font-size: 60px; line-height: 1; }
+.sticker-name { font-size: 16px; font-weight: 800; color: var(--ink); line-height: 1.1; text-align: center; padding: 0 4px; }
 .sticker.missing { background: #f3ebe1; box-shadow: none; }
 .sticker.missing .sticker-emoji { filter: grayscale(1) brightness(0.2); opacity: 0.18; }
 .sticker-q { position: absolute; font-size: 36px; opacity: 0.5; font-family: var(--emoji); }
 .sticker-times {
   position: absolute;
+  top: 6px;
   right: 6px;
-  bottom: 4px;
-  font-size: 18px;
+  padding: 1px 7px;
+  border-radius: 999px;
+  background: var(--yellow);
+  font-size: 15px;
   font-weight: 800;
-  color: var(--ink-soft);
+  color: var(--ink);
 }
 .sticker.bounce { animation: pop 0.45s; }
 

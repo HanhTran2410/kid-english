@@ -309,7 +309,7 @@ Phân biệt hai trường hợp:
 ### 4.8. Bộ sưu tập sticker
 - Bộ sticker có sẵn khoảng **40 sticker** dạng emoji to (con vật, đồ ăn, xe cộ, ngôi sao...). Đi kèm trong code nên chạy offline và không lo bản quyền. Mỗi sticker có tên tiếng Anh, ví dụ 🦁 *"lion"*.
 - Mỗi lần được tặng, app **ưu tiên sticker bé chưa có**. Có đủ bộ rồi thì tặng ngẫu nhiên, sticker đó hiện số ×2, ×3...
-- Màn hình bộ sưu tập: lưới sticker to. Sticker đã có thì có màu; chưa có thì hiện bóng xám kèm dấu ❓ để bé tò mò.
+- Màn hình bộ sưu tập: lưới sticker to. Sticker đã có thì có màu, **hiện tên tiếng Anh bên dưới** (ví dụ *Lion*) và số lần nhận ở góc (×3); chưa có thì hiện bóng xám kèm dấu ❓ để bé tò mò, không hiện tên.
 - Bé chạm vào sticker đã có: sticker nảy lên và Bông đọc tên tiếng Anh, ví dụ *"Lion!"*. Bé học thêm từ mới khi chơi.
 - Bé không xóa được sticker. Trong Góc bố mẹ → **Sticker của bé**: xem bé có những sticker nào, **bớt từng sticker** hoặc **xóa hết** (có hỏi xác nhận), dùng khi bố mẹ lỡ học thử thay bé.
 
