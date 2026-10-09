@@ -377,7 +377,8 @@ test('ảnh lưới: chọn 1 ảnh, app cắt ra từng từ và lưu', async (
     const lessons = await window.kidEnglish.db.getAll('lessons');
     const id = lessons.find((l) => l.title === 'Animals').id;
     const imgs = await window.kidEnglish.db.getAllByIndex('images', 'lessonId', id);
-    const bmp = await createImageBitmap(imgs.find((i) => i.word === 'cat').blob);
+    const cat = imgs.find((i) => i.word === 'cat');
+    const bmp = await createImageBitmap(new Blob([cat.data], { type: cat.mimeType }));
     const c = document.createElement('canvas');
     c.width = bmp.width; c.height = bmp.height;
     const g = c.getContext('2d');
@@ -467,4 +468,21 @@ test('bài cùng tên được đặt "Animals 2"; danh sách bài chia tab theo
   await page.locator('.topic-tab', { hasText: 'Animals' }).click();
   await expect(page.locator('.lesson-card .lesson-title')).toHaveText(['Animals 2', 'Animals']);
   await expect(page.getByRole('button', { name: 'Animals 2' }).locator('.lesson-words')).toHaveText('🐸🦁');
+});
+
+test('ảnh không đọc được thì hiện emoji thay vì biểu tượng ảnh hỏng', async ({ page }) => {
+  await startApp(page);
+  await page.evaluate(async () => {
+    const db = window.kidEnglish.db;
+    const animals = (await db.getAll('lessons')).find((l) => l.title === 'Animals');
+    await db.put('images', {
+      id: 'broken', lessonId: animals.id, word: 'dog', data: new TextEncoder().encode('không phải ảnh').buffer,
+      mimeType: 'image/jpeg', createdAt: Date.now(),
+    });
+  });
+  await page.getByRole('button', { name: 'Bài học' }).click();
+  await page.getByRole('button', { name: 'Animals', exact: true }).click();
+  await expect(page.locator('.word-label')).toHaveText('dog');
+  await expect(page.locator('.visual.big .emoji')).toHaveText('🐶');
+  await expect(page.locator('.visual.big img')).toHaveCount(0);
 });

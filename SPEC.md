@@ -32,7 +32,7 @@ Bố mẹ → ChatGPT/Gemini (miễn phí) → JSON → copy/dán → App (iPad)
 | Giọng đọc | Web Speech API `speechSynthesis` | Lấy danh sách giọng qua `getVoices()`, **chọn theo ngôn ngữ** (en-US, vi-VN), không ghi cứng tên giọng. **Loại các giọng hiệu ứng/robot của iOS** (Albert, Bad News, Zarvox…, giọng Eloquence như Eddy, Grandpa…), ưu tiên giọng Premium → Enhanced → Siri → giọng thường. Không có giọng vi-VN thì bỏ qua phần đọc nghĩa tiếng Việt. Không có giọng en-US thì dùng giọng `en-*` bất kỳ. Thường chạy offline, nhưng còn tùy giọng nào đã cài trên iPad |
 | Nghe bé nói | **Lõi:** đo âm lượng mic (`getUserMedia` + Web Audio) để biết bé có lên tiếng hay không. **Bổ sung:** `SpeechRecognition` nếu trình duyệt có và chạy được | Xem mục 4.3.1. App phải học được trọn vẹn khi **không có** nhận dạng giọng nói |
 | Ghi âm giọng bé | `MediaRecorder`, **chọn định dạng lúc chạy** bằng `isTypeSupported` theo thứ tự `audio/mp4` → `audio/webm;codecs=opus` → `audio/webm` | Lưu kèm `mimeType` cùng bản ghi |
-| Lưu dữ liệu | **IndexedDB**. Ảnh và ghi âm lưu dạng **Blob** (không dùng base64) | Mô hình dữ liệu ở mục 2.1 |
+| Lưu dữ liệu | **IndexedDB**. Ảnh và ghi âm lưu dạng **ArrayBuffer** + `mimeType` (không dùng base64, **không lưu Blob** vì Safari iOS có lúc không đọc lại được Blob trong IndexedDB); khi hiển thị/phát mới dựng lại Blob | Mô hình dữ liệu ở mục 2.1. Bản ghi cũ dạng Blob tự chuyển đổi khi mở app |
 | Chạy offline | Service Worker cache toàn bộ phần code | |
 | Font, âm thanh, icon | Font tròn miễn phí **Nunito** hoặc **Baloo 2** (giấy phép OFL, có tiếng Việt), đặt sẵn trong `app/fonts/`. Tiếng "ding", vỗ tay... **tạo bằng Web Audio** nên không cần file. Icon vẽ bằng SVG | Không tải gì từ mạng, không lo bản quyền |
 | Sao lưu | File `.zip`, tạo bằng thư viện **JSZip** đặt sẵn trong `app/vendor/` (không tải từ mạng) | Mục 4.6 |
@@ -44,8 +44,8 @@ Bố mẹ → ChatGPT/Gemini (miễn phí) → JSON → copy/dán → App (iPad)
 | Kho dữ liệu | Nội dung chính |
 |---|---|
 | `lessons` | `id` (app tự tạo bằng `crypto.randomUUID()`), `createdAt`, `updatedAt` (lần bố mẹ sửa gần nhất: tên, chủ đề, ảnh), `timesCompleted`, `topic` (chủ đề để chia tab; không có thì lấy theo tên bài), `resume` (chỗ đang học dở: `{ stage, index, savedAt }`, hoặc `null`), cùng toàn bộ nội dung bài (mục 3.1) |
-| `images` | `id`, `lessonId`, `word`, `blob`, `mimeType`, `width`, `height` |
-| `recordings` | `id`, `lessonId`, `word`, `date`, `blob`, `mimeType`, `durationMs` |
+| `images` | `id`, `lessonId`, `word`, `data` (ArrayBuffer), `mimeType`, `width`, `height`, `createdAt`. Mỗi từ của mỗi bài chỉ một ảnh (ảnh mới nhất) |
+| `recordings` | `id`, `lessonId`, `word`, `date`, `data` (ArrayBuffer), `mimeType`, `durationMs` |
 | `progress` | khóa là từ tiếng Anh (viết thường): `mastery` (0–5), `practiceCount`, `lastPracticedAt`, `lastVoiceDay` (ngày gần nhất được cộng điểm vì lên tiếng), `emoji` |
 | `stickers` | khóa là mã sticker: `firstEarnedAt`, `count` (số lần nhận được) |
 | `settings` | dạng `{ key, value }`: tên nhân vật, giọng đọc, tốc độ, bật/tắt tiếng Việt, bật/tắt ghi âm, bật/tắt nhận dạng giọng nói, giới hạn thời gian, lần sao lưu gần nhất, ngày dùng app lần đầu, đã thêm bài mẫu chưa, trạng thái buổi học, lần báo bộ nhớ đầy |
@@ -71,7 +71,7 @@ Bố mẹ → ChatGPT/Gemini (miễn phí) → JSON → copy/dán → App (iPad)
    - App tự thu nhỏ ảnh xuống 512px và lưu dạng Blob.
    - **Ảnh lưới (khuyên dùng):** bản AI miễn phí giới hạn số lần tạo ảnh, nên app có nút **"Copy prompt ảnh lưới"**: nhờ AI vẽ **1 ảnh** chứa tất cả các từ theo lưới (4 từ → 2×2, 6 từ → 3×2, 8 từ → 4×2…), sau đó **"Chọn ảnh lưới"**: app tự cắt ra từng ô theo thứ tự từ, cho xem trước rồi mới lưu.
 6. **(Tùy chọn) Tạo bài trên máy tính rồi chuyển sang iPad/iPhone:** mở cùng link app trên máy tính, tạo bài và thêm ảnh (dễ thao tác hơn), bấm **"Chia sẻ bài"** để xuất file `kid-english-bai-<tên>-<ngày>.zip` (chỉ gồm bài và ảnh, không có ghi âm hay tiến độ), gửi sang máy của bé (AirDrop, iCloud, Zalo…), rồi trên máy đó vào **Quản lý bài → "Nhập bài từ file"**.
-   - **Chia sẻ lại sau khi sửa** (đổi tên, chủ đề, thay ảnh): nhập file trên máy kia sẽ **cập nhật bài đã có** (không tạo bài trùng), giữ số ⭐ và chỗ đang học dở của máy đó. Chỉ bản sửa **mới hơn** mới ghi đè; mỗi từ chỉ giữ **một ảnh — ảnh mới hơn**; nhập lại file cũ thì không đổi gì.
+   - **Chia sẻ lại sau khi sửa** (đổi tên, chủ đề, thay ảnh): nhập file trên máy kia sẽ **cập nhật bài đã có** (không tạo bài trùng). "Bài đã có" là bài cùng mã, **hoặc cùng danh sách từ** (ví dụ bài đã tạo riêng trên máy kia bằng cách dán lại đoạn trả lời của AI); giữ số ⭐ và chỗ đang học dở của máy đó. Chỉ bản sửa **mới hơn** mới ghi đè; mỗi từ chỉ giữ **một ảnh — ảnh mới hơn**; nhập lại file cũ thì không đổi gì.
    - Dữ liệu **không tự đồng bộ** giữa các máy (không có server): mỗi máy, và cả tab Safari với app trên Màn hình chính, giữ dữ liệu riêng.
    - **Nếu không có ảnh, app hiển thị emoji to.** Bài học dùng được ngay mà không cần tạo ảnh.
 
@@ -357,6 +357,7 @@ Phân biệt hai trường hợp:
 | Giọng đọc iOS thỉnh thoảng bị kẹt, không phát tiếng | Không gọi `cancel()` ngay trước `speak()` khi không có câu nào đang đọc (Safari hay nuốt câu mới); câu không bắt đầu sau 1,5 giây thì gỡ kẹt (`cancel` + `resume`) và đọc lại một lần; quay lại từ nền thì gỡ kẹt; cập nhật lại giọng khi `voiceschanged` |
 | Tên và chất lượng giọng đọc khác nhau tùy iPad | Chọn giọng theo ngôn ngữ, không ghi cứng tên. Hướng dẫn tải giọng Enhanced/Premium miễn phí trong Cài đặt iPad → Trợ năng → Nội dung được đọc |
 | Định dạng ghi âm khác nhau tùy phiên bản iPadOS | Chọn định dạng lúc chạy, lưu kèm `mimeType` |
+| Safari iOS có lúc không đọc lại được Blob đã lưu trong IndexedDB (ảnh hiện thành biểu tượng hỏng) | Lưu ảnh/ghi âm dạng ArrayBuffer; ảnh vẫn lỗi thì hiện emoji thay thế |
 | Dữ liệu trong trình duyệt không được coi là lưu trữ vĩnh viễn | Gọi `navigator.storage.persist()` lúc khởi động. Sao lưu ra file zip và nhắc sao lưu mỗi tuần |
 
 ## 7. Cấu trúc thư mục

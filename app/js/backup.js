@@ -1,7 +1,8 @@
 // Sao lưu / khôi phục ra file .zip (SPEC mục 4.6).
 // JSZip được nạp sẵn từ app/vendor/jszip.min.js (biến toàn cục JSZip); test trong Node truyền vào qua tham số.
 
-import { STORES } from './db.js';
+import { STORES, mediaSize } from './db.js';
+import { normalizeWord } from './text.js';
 import { mergeProgress } from './progress.js';
 import { mergeSticker } from './stickers.js';
 import { dayKey } from './text.js';
@@ -23,10 +24,13 @@ export class BackupError extends Error {}
 /** Lần sửa gần nhất của bài (đổi tên, chủ đề, ảnh…). */
 const editedAt = (lesson) => lesson.updatedAt ?? lesson.createdAt ?? 0;
 
+/** "Chữ ký" của bài theo danh sách từ (không phân biệt thứ tự, hoa/thường). */
+const wordSignature = (lesson) => (lesson.words ?? []).map((w) => normalizeWord(w.en)).sort().join('|');
+
 const slug = (text) => String(text).normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/đ/gi, 'd')
   .toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'bai-hoc';
 
-const withoutBlob = ({ blob, ...meta }) => meta;
+const withoutBlob = ({ blob, data, ...meta }) => meta;
 
 async function readAll(db) {
   const entries = await Promise.all(STORES.map(async (s) => [s, await db.getAll(s)]));
@@ -36,7 +40,7 @@ async function readAll(db) {
 /** Dung lượng ước tính của file sao lưu (byte), để hiện trước cho bố mẹ. */
 export async function estimateBackupSize(db, { includeRecordings = true } = {}) {
   const data = await readAll(db);
-  const blobs = (list) => list.reduce((sum, r) => sum + (r.blob?.size ?? 0), 0);
+  const blobs = (list) => list.reduce((sum, r) => sum + mediaSize(r), 0);
   const json = JSON.stringify([data.lessons, data.progress, data.stickers, data.settings,
     data.images.map(withoutBlob), data.recordings.map(withoutBlob)]).length;
   return json + blobs(data.images) + (includeRecordings ? blobs(data.recordings) : 0);
@@ -78,7 +82,7 @@ export async function createBackup(db, { includeRecordings = true, now = Date.no
     const meta = [];
     for (const item of list) {
       const file = `${folder}/${item.id}.${extensionFor(item.mimeType)}`;
-      zip.file(file, new Uint8Array(await item.blob.arrayBuffer()));
+      zip.file(file, new Uint8Array(item.data ?? await item.blob.arrayBuffer()));
       meta.push({ ...withoutBlob(item), file });
     }
     zip.file(`${folder}.json`, JSON.stringify(meta, null, 2));
@@ -152,7 +156,7 @@ export async function readBackup(input, { JSZip = globalThis.JSZip } = {}) {
       const file = zip.file(item.file ?? '');
       if (!item.id || !file) throw new BackupError(`File sao lưu bị hỏng (thiếu ${item.file ?? folder}).`);
       const { file: _path, ...rest } = item;
-      list.push({ ...rest, blob: new Blob([await file.async('uint8array')], { type: item.mimeType }) });
+      list.push({ ...rest, data: await file.async('arraybuffer') });
     }
     return list;
   };
@@ -203,31 +207,43 @@ export async function applyBackup(db, payload, mode, { updateLessons = false } =
   let updated = 0;
 
   // Bài: trùng id thì giữ bản đang có, trừ khi được yêu cầu cập nhật.
+  // Khi cập nhật, bài có CÙNG DANH SÁCH TỪ cũng coi là cùng một bài (ví dụ bài đã tạo riêng trên máy này
+  // bằng cách dán lại đoạn trả lời của AI, nên mã bài khác với máy kia).
   const lessons = byKey(current.lessons, 'id');
+  const bySignature = new Map(current.lessons.map((l) => [wordSignature(l), l]));
+  const idMap = new Map(); // id trong file → id bài trên máy này
+  const touched = new Set();
+  const payloadImages = payload.images.map((img) => ({ ...img }));
   for (const l of payload.lessons) {
-    const mine = lessons.get(l.id);
+    const mine = lessons.get(l.id) ?? (updateLessons ? bySignature.get(wordSignature(l)) : null);
     if (!mine) {
       writes.lessons.push(l);
       added++;
-    } else if (updateLessons && editedAt(l) > editedAt(mine)) {
+      continue;
+    }
+    idMap.set(l.id, mine.id);
+    if (updateLessons && editedAt(l) > editedAt(mine)) {
       // Chỉ bản sửa mới hơn mới ghi đè (nhập lại file cũ thì không làm mất chỗ đã sửa).
-      writes.lessons.push({ ...l, createdAt: mine.createdAt, timesCompleted: mine.timesCompleted ?? 0, resume: mine.resume ?? null });
-      updated++;
+      writes.lessons.push({ ...l, id: mine.id, createdAt: mine.createdAt, timesCompleted: mine.timesCompleted ?? 0, resume: mine.resume ?? null });
+      touched.add(mine.id);
     }
   }
+  for (const img of payloadImages) if (idMap.has(img.lessonId)) img.lessonId = idMap.get(img.lessonId);
 
   // Ảnh: mỗi từ của mỗi bài chỉ giữ MỘT ảnh — ảnh mới hơn thắng.
   const imageKey = (img) => `${img.lessonId}|${img.word}`;
   const images = byKey(current.images, 'id');
   const imagesByWord = new Map(current.images.map((img) => [imageKey(img), img]));
-  for (const img of payload.images) {
+  for (const img of payloadImages) {
     if (images.has(img.id)) continue;
     const mine = imagesByWord.get(imageKey(img));
     if (mine && (mine.createdAt ?? 0) >= (img.createdAt ?? 0)) continue;
     if (mine) deletes.images.push(mine.id);
     imagesByWord.set(imageKey(img), img);
     writes.images.push(img);
+    if (lessons.has(img.lessonId)) touched.add(img.lessonId);
   }
+  if (updateLessons) updated = touched.size;
 
   const recordings = byKey(current.recordings, 'id');
   writes.recordings = payload.recordings.filter((x) => !recordings.has(x.id));

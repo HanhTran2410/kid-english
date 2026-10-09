@@ -89,6 +89,56 @@ export async function openDatabase(name = DB_NAME, factory = globalThis.indexedD
   return new Database(await request(req));
 }
 
+// Ảnh và ghi âm lưu dạng ArrayBuffer (`data`) + `mimeType`, KHÔNG lưu Blob:
+// Safari iOS có lúc không đọc lại được Blob đã lưu trong IndexedDB (ảnh hiện thành biểu tượng hỏng).
+// Bản ghi cũ (có `blob`) vẫn đọc được và được chuyển dần sang `data` bởi migrateMedia().
+
+/** Blob để hiển thị / phát / xuất file, dựng từ dữ liệu đã lưu. */
+export function mediaBlob(rec) {
+  if (!rec) return null;
+  if (rec.data) return new Blob([rec.data], { type: rec.mimeType || '' });
+  return rec.blob ?? null;
+}
+
+/** Dung lượng (byte) của ảnh/ghi âm. */
+export const mediaSize = (rec) => rec?.data?.byteLength ?? rec?.blob?.size ?? 0;
+
+/** Chuyển bản ghi cũ đang lưu Blob sang ArrayBuffer. Bản không đọc được thì để nguyên (app hiện emoji thay thế). */
+export async function migrateMedia(db) {
+  const result = { converted: 0, broken: 0 };
+  for (const store of ['images', 'recordings']) {
+    const updates = [];
+    for (const rec of await db.getAll(store)) {
+      if (rec.data || !rec.blob) continue;
+      try {
+        const { blob, ...rest } = rec;
+        updates.push({ ...rest, data: await blob.arrayBuffer(), mimeType: rec.mimeType || blob.type });
+      } catch {
+        result.broken++;
+      }
+    }
+    if (updates.length) {
+      await db.write([store], (tx) => updates.forEach((u) => tx.objectStore(store).put(u)));
+      result.converted += updates.length;
+    }
+  }
+  // Dọn ảnh trùng (do bản cũ nhập lại file bài): mỗi từ của mỗi bài chỉ giữ ảnh mới nhất.
+  const newest = new Map();
+  const extra = [];
+  for (const img of await db.getAll('images')) {
+    const key = `${img.lessonId}|${img.word}`;
+    const kept = newest.get(key);
+    if (!kept) newest.set(key, img);
+    else if ((img.createdAt ?? 0) > (kept.createdAt ?? 0)) {
+      extra.push(kept.id);
+      newest.set(key, img);
+    } else extra.push(img.id);
+  }
+  if (extra.length) await db.write(['images'], (tx) => extra.forEach((id) => tx.objectStore('images').delete(id)));
+  result.duplicates = extra.length;
+  return result;
+}
+
 export function isQuotaError(err) {
   return err?.name === 'QuotaExceededError' || /quota/i.test(err?.message ?? '');
 }
@@ -118,7 +168,8 @@ export async function listLessons(db) {
 export async function getWordImage(db, lessonId, word) {
   const key = normalizeWord(word);
   const images = await db.getAllByIndex('images', 'lessonId', lessonId);
-  return images.find((img) => img.word === key) ?? null;
+  // Nếu có nhiều ảnh cho một từ thì lấy ảnh mới nhất.
+  return images.filter((img) => img.word === key).sort((a, b) => (b.createdAt ?? 0) - (a.createdAt ?? 0))[0] ?? null;
 }
 
 /** Ảnh mới nhất của một từ trong mọi bài (dùng khi ôn tập). */
@@ -131,7 +182,8 @@ export async function latestImageForWord(db, word) {
 export async function setWordImage(db, { lessonId, word, blob, mimeType, width, height }, now = Date.now()) {
   const key = normalizeWord(word);
   const old = await db.getAllByIndex('images', 'lessonId', lessonId);
-  const record = { id: crypto.randomUUID(), lessonId, word: key, blob, mimeType, width, height, createdAt: now };
+  const data = await blob.arrayBuffer();
+  const record = { id: crypto.randomUUID(), lessonId, word: key, data, mimeType: mimeType || blob.type, width, height, createdAt: now };
   const lesson = await db.get('lessons', lessonId);
   await db.write(['images', 'lessons'], (tx) => {
     for (const img of old) if (img.word === key) tx.objectStore('images').delete(img.id);
@@ -155,7 +207,8 @@ export async function removeWordImage(db, lessonId, word, now = Date.now()) {
 // ---------- Ghi âm ----------
 
 export async function addRecording(db, { lessonId, word, blob, mimeType, durationMs }, now = Date.now()) {
-  const record = { id: crypto.randomUUID(), lessonId, word: normalizeWord(word), date: now, blob, mimeType, durationMs };
+  const data = await blob.arrayBuffer();
+  const record = { id: crypto.randomUUID(), lessonId, word: normalizeWord(word), date: now, data, mimeType: mimeType || blob.type, durationMs };
   await db.put('recordings', record);
   return record;
 }
@@ -192,7 +245,7 @@ export async function deleteRecordings(db, ids) {
 }
 
 export function recordingStats(records) {
-  return { count: records.length, bytes: records.reduce((sum, r) => sum + (r.blob?.size ?? 0), 0) };
+  return { count: records.length, bytes: records.reduce((sum, r) => sum + mediaSize(r), 0) };
 }
 
 // ---------- Tiến độ ----------

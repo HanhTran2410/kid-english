@@ -1,7 +1,7 @@
 // Nghe lại giọng bé: lọc, nghe, xóa từng bản, chọn nhiều / chọn tất cả (SPEC 4.6).
 
 import { h, confirmDialog, formatBytes, formatDateTime, toast } from '../../ui.js';
-import { listLessons, filterRecordings, deleteRecordings, recordingStats } from '../../db.js';
+import { listLessons, filterRecordings, deleteRecordings, recordingStats, mediaBlob } from '../../db.js';
 import { parentLayout, goParent, section } from './common.js';
 
 const DAY = 86400000;
@@ -95,7 +95,7 @@ export function recordingsView(app) {
       player.pause();
       URL.revokeObjectURL(player.src);
     }
-    player = new Audio(URL.createObjectURL(r.blob));
+    player = new Audio(URL.createObjectURL(mediaBlob(r)));
     player.play().catch(() => toast('Máy không phát được bản ghi này.'));
   }
 

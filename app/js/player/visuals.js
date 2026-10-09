@@ -1,7 +1,7 @@
 // Hình của từ: ảnh bố mẹ thêm (Blob → object URL) hoặc emoji.
 
 import { normalizeWord } from '../text.js';
-import { latestImageForWord } from '../db.js';
+import { latestImageForWord, mediaBlob } from '../db.js';
 
 export class VisualSet {
   constructor() {
@@ -32,7 +32,8 @@ export class VisualSet {
 /** Hình cho mọi từ của một bài. */
 export async function loadLessonVisuals(db, lesson, into = new VisualSet()) {
   const images = await db.getAllByIndex('images', 'lessonId', lesson.id);
-  const byWord = new Map(images.map((img) => [img.word, img.blob]));
+  // Ảnh mới nhất của mỗi từ (sắp xếp cũ → mới, ảnh sau ghi đè ảnh trước).
+  const byWord = new Map([...images].sort((a, b) => (a.createdAt ?? 0) - (b.createdAt ?? 0)).map((img) => [img.word, mediaBlob(img)]));
   for (const w of lesson.words) into.add(w.en, w.emoji, byWord.get(normalizeWord(w.en)));
   return into;
 }
@@ -40,5 +41,5 @@ export async function loadLessonVisuals(db, lesson, into = new VisualSet()) {
 /** Hình cho một từ bất kỳ (ôn tập): ảnh mới nhất trong mọi bài, không có thì emoji. */
 export async function loadWordVisual(db, visuals, word, emoji) {
   const img = await latestImageForWord(db, word);
-  visuals.add(word, emoji, img?.blob);
+  visuals.add(word, emoji, mediaBlob(img));
 }

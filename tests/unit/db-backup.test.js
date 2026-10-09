@@ -5,6 +5,7 @@ import JSZip from 'jszip';
 import {
   openDatabase, deleteLesson, setWordImage, getWordImage, latestImageForWord, addRecording,
   hasRecordingToday, queryRecordings, deleteRecordings, recordingStats, updateProgress, getStickers,
+  mediaBlob, migrateMedia,
 } from '../../app/js/db.js';
 import { createBackup, readBackup, applyBackup, estimateBackupSize, BackupError } from '../../app/js/backup.js';
 import { onPracticed } from '../../app/js/progress.js';
@@ -50,7 +51,7 @@ test('đặt lại ảnh thay ảnh cũ; ảnh mới nhất của từ trong m�
   await seed(db);
   await setWordImage(db, { lessonId: 'L1', word: 'cow', blob: blob('new', 'image/jpeg'), mimeType: 'image/jpeg' }, 30);
   assert.equal((await db.getAllByIndex('images', 'lessonId', 'L1')).length, 1);
-  assert.equal(await (await getWordImage(db, 'L1', 'cow')).blob.text(), 'new');
+  assert.equal(await mediaBlob(await getWordImage(db, 'L1', 'cow')).text(), 'new');
   assert.equal((await latestImageForWord(db, 'COW')).createdAt, 30);
 });
 
@@ -105,11 +106,11 @@ test('sao lưu rồi khôi phục (thay thế) thì dữ liệu giống hệt, k
   assert.equal(await dst.get('lessons', 'OLD'), undefined);
   assert.deepEqual(await dst.get('lessons', 'L1'), await src.get('lessons', 'L1'));
   const img = await getWordImage(dst, 'L1', 'cow');
-  assert.equal(await img.blob.text(), 'img1');
+  assert.equal(await mediaBlob(img).text(), 'img1');
   assert.equal(img.mimeType, 'image/jpeg');
   const recs = await queryRecordings(dst, {});
   assert.deepEqual(recs.map((r) => r.durationMs), [900, 900, 900]);
-  assert.equal(await recs[0].blob.text(), 'rec-ccc');
+  assert.equal(await mediaBlob(recs[0]).text(), 'rec-ccc');
   assert.equal(recs[0].mimeType, 'audio/webm');
   assert.deepEqual(await dst.get('progress', 'cow'), await src.get('progress', 'cow'));
   assert.deepEqual(await getStickers(dst), await getStickers(src));
@@ -207,11 +208,46 @@ test('nhập lại file bài đã sửa: cập nhật nội dung và ảnh mới
   assert.deepEqual(lesson.resume, { stage: 'quiz', index: 0 });
   const imgs = await phone.getAllByIndex('images', 'lessonId', 'L1');
   assert.equal(imgs.length, 2, 'mỗi từ chỉ một ảnh');
-  assert.equal(await (await getWordImage(phone, 'L1', 'cow')).blob.text(), 'cow-new');
-  assert.equal(await (await getWordImage(phone, 'L1', 'dog')).blob.text(), 'dog-new');
+  assert.equal(await mediaBlob(await getWordImage(phone, 'L1', 'cow')).text(), 'cow-new');
+  assert.equal(await mediaBlob(await getWordImage(phone, 'L1', 'dog')).text(), 'dog-new');
 
   // Nhập lại file CŨ thì không ghi đè tên và ảnh mới hơn.
   assert.deepEqual(await applyBackup(phone, first, 'merge', { updateLessons: true }), { added: 0, updated: 0 });
   assert.equal((await phone.get('lessons', 'L1')).title, 'Farm (mới)');
-  assert.equal(await (await getWordImage(phone, 'L1', 'cow')).blob.text(), 'cow-new');
+  assert.equal(await mediaBlob(await getWordImage(phone, 'L1', 'cow')).text(), 'cow-new');
+});
+
+test('ảnh/ghi âm lưu dạng ArrayBuffer (không lưu Blob); bản ghi cũ dạng Blob được chuyển đổi', async () => {
+  const db = await open();
+  await seed(db);
+  const img = await getWordImage(db, 'L1', 'cow');
+  assert.ok(img.data instanceof ArrayBuffer);
+  assert.equal('blob' in img, false);
+  assert.equal(await mediaBlob(img).text(), 'img1');
+  assert.equal(mediaBlob(img).type, 'image/jpeg');
+
+  await db.put('images', { id: 'old', lessonId: 'L2', word: 'dog', blob: blob('old-img', 'image/png'), mimeType: 'image/png', createdAt: 1 });
+  await db.put('images', { id: 'dup-old', lessonId: 'L1', word: 'cow', data: new ArrayBuffer(1), mimeType: 'image/jpeg', createdAt: 0 });
+  assert.deepEqual(await migrateMedia(db), { converted: 1, broken: 0, duplicates: 1 });
+  assert.equal(await db.get('images', 'dup-old'), undefined, 'ảnh trùng cũ hơn bị dọn');
+  const migrated = await db.get('images', 'old');
+  assert.equal('blob' in migrated, false);
+  assert.equal(await mediaBlob(migrated).text(), 'old-img');
+});
+
+test('nhập file bài: bài trên máy này có cùng danh sách từ (khác mã bài) thì cập nhật, không tạo bài mới', async () => {
+  const pc = await open();
+  await seed(pc);
+  await setWordImage(pc, { lessonId: 'L1', word: 'dog', blob: blob('dog-pc', 'image/jpeg'), mimeType: 'image/jpeg' }, 900);
+  const pack = await readBackup((await createBackup(pc, { lessonIds: ['L1'], JSZip })).blob, { JSZip });
+
+  const phone = await open();
+  // Bài cùng nội dung nhưng tạo riêng trên điện thoại (dán lại JSON) → mã bài khác.
+  await phone.put('lessons', { ...lesson('PHONE'), timesCompleted: 2 });
+  const r = await applyBackup(phone, pack, 'merge', { updateLessons: true });
+  assert.deepEqual(r, { added: 0, updated: 1 });
+  assert.equal((await phone.getAll('lessons')).length, 1);
+  assert.equal((await phone.get('lessons', 'PHONE')).timesCompleted, 2);
+  assert.equal(await mediaBlob(await getWordImage(phone, 'PHONE', 'dog')).text(), 'dog-pc');
+  assert.equal(await mediaBlob(await getWordImage(phone, 'PHONE', 'cow')).text(), 'img1');
 });

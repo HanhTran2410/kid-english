@@ -1,7 +1,7 @@
 // Quản lý bài: xem, đổi tên, xóa, thêm/đổi ảnh từng từ, copy imagePrompt (SPEC 4.6).
 
 import { h, toast, copyText, confirmDialog, formatDateTime } from '../../ui.js';
-import { listLessons, deleteLesson, setWordImage, removeWordImage, isQuotaError } from '../../db.js';
+import { listLessons, deleteLesson, setWordImage, removeWordImage, isQuotaError, mediaBlob } from '../../db.js';
 import { normalizeWord } from '../../text.js';
 import { uniqueTitle, topicOf } from '../../lesson.js';
 import { resizeImage, sliceGrid, gridShape, ImageError } from '../../image.js';
@@ -117,7 +117,7 @@ export function lessonDetailView(app, { lessonId }) {
       const img = imageOf(w.en);
       let thumb;
       if (img) {
-        const url = URL.createObjectURL(img.blob);
+        const url = URL.createObjectURL(mediaBlob(img));
         urls.push(url);
         thumb = h('img.thumb', { src: url, alt: w.en });
       } else {

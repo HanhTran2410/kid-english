@@ -64,8 +64,15 @@ export function holdButton({ label, title, ms = 3000, className = '', onHold, on
 /** Hình của một từ: ảnh nếu có, không thì emoji to. */
 export function wordVisual(visual, className = '') {
   const box = h('div.visual', { class: className });
-  if (visual?.url) box.append(h('img', { src: visual.url, alt: visual.word ?? '', draggable: 'false' }));
-  else box.append(h('span.emoji', { text: visual?.emoji || '❓' }));
+  const emoji = () => h('span.emoji', { text: visual?.emoji || '❓' });
+  if (visual?.url) {
+    const img = h('img', { src: visual.url, alt: visual.word ?? '', draggable: 'false' });
+    // Ảnh không đọc được (lỗi lưu trữ của Safari…) → hiện emoji thay vì biểu tượng ảnh hỏng.
+    img.addEventListener('error', () => img.replaceWith(emoji()), { once: true });
+    box.append(img);
+  } else {
+    box.append(emoji());
+  }
   return box;
 }
 

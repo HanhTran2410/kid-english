@@ -2,7 +2,7 @@
 
 import { h, holdButton, wordVisual, toast } from '../ui.js';
 import { play } from '../speech/sfx.js';
-import { listLessons, getStickers } from '../db.js';
+import { listLessons, getStickers, mediaBlob } from '../db.js';
 import { isLearned } from '../progress.js';
 import { isBackupDue } from '../settings.js';
 import { STICKERS } from '../stickers.js';
@@ -153,7 +153,7 @@ export function lessonsScreen(app) {
     const cover = images.find((img) => img.word === firstKey) ?? null;
     let url = null;
     if (cover) {
-      url = URL.createObjectURL(cover.blob);
+      url = URL.createObjectURL(mediaBlob(cover));
       urls.push(url);
     }
     const n = lesson.timesCompleted ?? 0;
