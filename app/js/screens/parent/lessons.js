@@ -4,7 +4,7 @@ import { h, toast, copyText, confirmDialog, formatDateTime } from '../../ui.js';
 import { listLessons, deleteLesson, setWordImage, removeWordImage, isQuotaError, mediaBlob } from '../../db.js';
 import { normalizeWord } from '../../text.js';
 import { uniqueTitle, topicOf } from '../../lesson.js';
-import { resizeImage, sliceGrid, gridShape, ImageError } from '../../image.js';
+import { resizeImage, sliceGrid, gridShape, loadGridImage, GRID_OPTIONS, ImageError } from '../../image.js';
 import { addSampleLessons } from '../../samples.js';
 import { buildGridImagePrompt } from '../../prompts.js';
 import { createBackup, readBackup, applyBackup, BackupError } from '../../backup.js';
@@ -188,54 +188,102 @@ export function lessonDetailView(app, { lessonId }) {
   return () => urls.forEach((u) => URL.revokeObjectURL(u));
 }
 
-/** Ảnh lưới: AI vẽ 1 ảnh cho cả bài, app cắt ra từng ô theo thứ tự từ. */
+/**
+ * Ảnh lưới: AI vẽ 1 ảnh cho cả bài, app cắt ra từng ô.
+ * AI hay vẽ sai số cột/hàng, xếp lộn thứ tự hoặc vẽ thừa ô, nên: app tự đoán lưới thật trong ảnh,
+ * bố mẹ chọn lại được kiểu lưới, và chọn từ cho từng ô (ô thừa thì bỏ qua).
+ */
 function gridSection(app, lesson, urls) {
   const words = lesson.words.map((w) => w.en);
-  const shape = gridShape(words.length);
-  const prompt = buildGridImagePrompt(words, shape);
+  const expected = gridShape(words.length);
+  const prompt = buildGridImagePrompt(words, expected);
   const input = h('input', { type: 'file', accept: 'image/*', hidden: true });
   const previewBox = h('div.grid-preview');
+  const SKIP = '';
+  const shapeKey = ({ cols, rows }) => `${cols}x${rows}`;
 
   input.addEventListener('change', async () => {
     const file = input.files?.[0];
     if (!file) return;
-    previewBox.replaceChildren(h('p.muted', { text: 'Đang cắt ảnh…' }));
-    let tiles;
+    previewBox.replaceChildren(h('p.muted', { text: 'Đang đọc ảnh…' }));
+    let image;
     try {
-      tiles = await sliceGrid(file, { ...shape, count: words.length });
+      image = await loadGridImage(file);
     } catch (err) {
       previewBox.replaceChildren(notice('error', imageErrorMessage(err)));
       return;
+    } finally {
+      input.value = '';
     }
-    const cells = tiles.map((t, i) => {
-      const url = URL.createObjectURL(t.blob);
-      urls.push(url);
-      return h('figure.grid-cell', {}, h('img', { src: url, alt: words[i] }), h('figcaption', { text: words[i] }));
-    });
+
+    const options = [...GRID_OPTIONS];
+    if (image.detected && !options.some((o) => shapeKey(o) === shapeKey(image.detected))) options.push(image.detected);
+    const shapeSel = h('select', { 'aria-label': 'Kiểu lưới' }, ...options.map((o) => h('option', {
+      value: shapeKey(o),
+      text: `${o.cols} cột × ${o.rows} hàng${image.detected && shapeKey(o) === shapeKey(image.detected) ? ' (app đoán)' : ''}`,
+    })));
+    shapeSel.value = shapeKey(image.detected ?? expected);
+    const cellsBox = h('div.grid-cells');
+    let tiles = [];
+    let pickers = [];
+
+    const render = async () => {
+      const [cols, rows] = shapeSel.value.split('x').map(Number);
+      cellsBox.replaceChildren(h('p.muted', { text: 'Đang cắt ảnh…' }));
+      try {
+        tiles = await sliceGrid(image, { cols, rows });
+      } catch (err) {
+        cellsBox.replaceChildren(notice('error', imageErrorMessage(err)));
+        return;
+      }
+      cellsBox.style.setProperty('--cols', String(cols));
+      pickers = tiles.map((t, i) => {
+        const sel = h('select', { 'aria-label': `Từ cho ô ${i + 1}` },
+          h('option', { value: SKIP, text: '— bỏ qua —' }),
+          ...words.map((w) => h('option', { value: w, text: w })));
+        sel.value = words[i] ?? SKIP; // mặc định theo thứ tự; ô thừa thì bỏ qua
+        return sel;
+      });
+      cellsBox.replaceChildren(...tiles.map((t, i) => {
+        const url = URL.createObjectURL(t.blob);
+        urls.push(url);
+        return h('figure.grid-cell', {}, h('img', { src: url, alt: `Ô ${i + 1}` }), pickers[i]);
+      }));
+    };
+    shapeSel.addEventListener('change', render);
+
+    const save = async () => {
+      const chosen = pickers.map((p, i) => [p.value, tiles[i]]).filter(([w]) => w !== SKIP);
+      const dup = chosen.map(([w]) => w).find((w, i, all) => all.indexOf(w) !== i);
+      if (dup) {
+        toast(`Từ "${dup}" đang được chọn cho 2 ô. Hãy chọn lại.`, 4000);
+        return;
+      }
+      if (!chosen.length) {
+        toast('Chưa chọn từ cho ô nào.');
+        return;
+      }
+      try {
+        for (const [word, t] of chosen) await setWordImage(app.db, { lessonId: lesson.id, word, ...t });
+        toast(`Đã lưu ${chosen.length} ảnh.`);
+        goParent(app, 'lesson', { lessonId: lesson.id });
+      } catch (err) {
+        toast(imageErrorMessage(err), 4000);
+      }
+    };
+
     previewBox.replaceChildren(
-      notice('info', 'Kiểm tra mỗi hình khớp với chữ bên dưới. Nếu lệch, hãy nhờ AI vẽ lại hoặc chọn ảnh riêng cho từ đó sau.'),
-      h('div.grid-cells', { style: { '--cols': String(shape.cols) } }, ...cells),
+      notice('info', 'Kiểm tra từng ô: nếu ảnh bị cắt lệch thì đổi "Kiểu lưới" cho đúng với ảnh. Mỗi ô chọn đúng từ; ô vẽ thừa thì chọn "— bỏ qua —".'),
+      h('label.field', {}, h('span.field-label', { text: 'Kiểu lưới' }), shapeSel),
+      cellsBox,
       h('div.actions', {},
-        h('button.btn.primary', {
-          type: 'button',
-          text: 'Lưu các ảnh này',
-          onclick: async () => {
-            try {
-              for (const [i, t] of tiles.entries()) {
-                await setWordImage(app.db, { lessonId: lesson.id, word: words[i], ...t });
-              }
-              toast(`Đã lưu ${tiles.length} ảnh.`);
-              goParent(app, 'lesson', { lessonId: lesson.id });
-            } catch (err) {
-              toast(imageErrorMessage(err), 4000);
-            }
-          },
-        }),
+        h('button.btn.primary', { type: 'button', text: 'Lưu các ảnh này', onclick: save }),
         h('button.btn', { type: 'button', text: 'Hủy', onclick: () => previewBox.replaceChildren() })));
+    await render();
   });
 
-  return section(`Ảnh lưới — 1 ảnh cho cả bài (${shape.cols}×${shape.rows} ô)`,
-    notice('info', 'Bản AI miễn phí giới hạn số lần tạo ảnh. Cách này chỉ cần 1 lần: bấm "Copy prompt ảnh lưới", dán vào ChatGPT/Gemini, lưu ảnh về máy, rồi bấm "Chọn ảnh lưới" — app tự cắt ra từng từ.'),
+  return section(`Ảnh lưới — 1 ảnh cho cả bài (${expected.cols}×${expected.rows} ô)`,
+    notice('info', 'Bản AI miễn phí giới hạn số lần tạo ảnh. Cách này chỉ cần 1 lần: bấm "Copy prompt ảnh lưới", dán vào ChatGPT/Gemini, lưu ảnh về máy, rồi bấm "Chọn ảnh lưới" — app tự cắt ra từng ô, bố mẹ kiểm tra rồi lưu.'),
     h('div.actions', {},
       h('button.btn', {
         type: 'button',

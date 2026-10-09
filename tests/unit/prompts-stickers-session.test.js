@@ -97,11 +97,25 @@ test('prompt yêu cầu AI tránh các từ bé đã có ở bài khác (trừ t
 test('prompt ảnh lưới liệt kê đúng thứ tự từ và số ô', async () => {
   const { buildGridImagePrompt } = await import('../../app/js/prompts.js');
   const { gridShape } = await import('../../app/js/image.js');
-  assert.deepEqual(gridShape(6), { cols: 3, rows: 2 });
+  // Lưới vuông vì AI tạo ảnh thường vẽ ảnh vuông.
   assert.deepEqual(gridShape(4), { cols: 2, rows: 2 });
-  assert.deepEqual(gridShape(8), { cols: 4, rows: 2 });
+  assert.deepEqual(gridShape(6), { cols: 3, rows: 3 });
+  assert.deepEqual(gridShape(8), { cols: 3, rows: 3 });
   assert.deepEqual(gridShape(10), { cols: 4, rows: 3 });
   const p = buildGridImagePrompt(['cow', 'dog', 'cat', 'pig', 'duck'], gridShape(5));
-  assert.match(p, /3 columns × 2 rows/);
-  assert.match(p, /1\. cow\n2\. dog\n3\. cat\n4\. pig\n5\. duck\nLeave the last 1 cell/);
+  assert.match(p, /square image: a grid of exactly 3 columns × 3 rows = 9 EQUAL cells/);
+  assert.match(p, /1\. cow\n2\. dog\n3\. cat\n4\. pig\n5\. duck\nThe last 4 cell\(s\) must stay COMPLETELY EMPTY/);
+});
+
+test('đếm số dải hình để đoán lưới: gộp hai mắt trong cùng ô, bỏ vệt nhỏ', async () => {
+  const { countBands } = await import('../../app/js/image.js');
+  const profile = (spec, n = 100) => {
+    const p = new Array(n).fill(0);
+    for (const [a, b] of spec) for (let i = a; i < b; i++) p[i] = 0.3;
+    return p;
+  };
+  // 3 ô: ô giữa có hai mắt cách nhau 1 vạch (gộp), thêm một vệt bụi rất hẹp ở cuối (bỏ).
+  assert.equal(countBands(profile([[3, 30], [37, 48], [49, 62], [70, 96], [98, 99]])), 3);
+  assert.equal(countBands(profile([[5, 45], [55, 95]])), 2);
+  assert.equal(countBands(new Array(50).fill(0)), 0);
 });

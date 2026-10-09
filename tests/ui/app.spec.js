@@ -350,29 +350,59 @@ test('tạo bài: bấm Copy prompt là copy được ngay, prompt dặn AI trá
   await expect(page.getByRole('link', { name: 'Mở ChatGPT' })).toBeVisible();
 });
 
-test('ảnh lưới: chọn 1 ảnh, app cắt ra từng từ và lưu', async ({ page }) => {
+test('ảnh lưới: app tự đoán lưới thật (AI vẽ 3×3 thay vì yêu cầu), chọn từ cho từng ô, bỏ ô thừa', async ({ page }) => {
   await startApp(page);
-  // Tạo ảnh lưới 3×2 mỗi ô một màu khác nhau.
-  const png = await page.evaluate(async () => {
+  // Giống ảnh AI vẽ: nền trắng, đường kẻ xám nhạt, mỗi ô một hình màu ở giữa; 3×3 = 9 ô (bài có 6 từ).
+  const colors = ['#f00', '#0a0', '#00f', '#fa0', '#0aa', '#a0a', '#888', '#888', '#888'];
+  const png = await page.evaluate(async (colors) => {
     const c = document.createElement('canvas');
-    c.width = 600; c.height = 400;
+    c.width = 900; c.height = 900;
     const g = c.getContext('2d');
-    ['#f00', '#0f0', '#00f', '#ff0', '#0ff', '#f0f'].forEach((color, i) => {
+    g.fillStyle = '#fff';
+    g.fillRect(0, 0, 900, 900);
+    g.strokeStyle = '#e4e4e4';
+    g.lineWidth = 6;
+    for (const v of [300, 600]) {
+      g.beginPath(); g.moveTo(v, 0); g.lineTo(v, 900); g.stroke();
+      g.beginPath(); g.moveTo(0, v); g.lineTo(900, v); g.stroke();
+    }
+    colors.forEach((color, i) => {
       g.fillStyle = color;
-      g.fillRect((i % 3) * 200, Math.floor(i / 3) * 200, 200, 200);
+      g.beginPath();
+      g.arc((i % 3) * 300 + 150, Math.floor(i / 3) * 300 + 150, 90, 0, Math.PI * 2);
+      g.fill();
     });
     return c.toDataURL('image/png').split(',')[1];
-  });
+  }, colors);
   await openParent(page);
   await page.getByRole('button', { name: 'Quản lý bài' }).click();
   await page.getByRole('button', { name: /Animals/ }).click();
-  await expect(page.getByRole('heading', { name: /Ảnh lưới.*3×2/ })).toBeVisible();
+  await expect(page.getByRole('heading', { name: /Ảnh lưới.*3×3/ })).toBeVisible();
   await page.locator('section', { hasText: 'Ảnh lưới' }).locator('input[type=file]')
     .setInputFiles({ name: 'grid.png', mimeType: 'image/png', buffer: Buffer.from(png, 'base64') });
-  await expect(page.locator('.grid-cell')).toHaveCount(6);
+
+  await expect(page.getByLabel('Kiểu lưới')).toHaveValue('3x3');
+  await expect(page.getByLabel('Kiểu lưới').locator('option:checked')).toContainText('app đoán');
+  await expect(page.locator('.grid-cell')).toHaveCount(9);
+  // Mặc định theo thứ tự; 3 ô thừa ở cuối là "bỏ qua".
+  await expect(page.getByLabel('Từ cho ô 1')).toHaveValue('dog');
+  await expect(page.getByLabel('Từ cho ô 7')).toHaveValue('');
+
+  // Chọn trùng từ thì báo lỗi.
+  await page.getByLabel('Từ cho ô 7').selectOption('dog');
+  await page.getByRole('button', { name: 'Lưu các ảnh này' }).click();
+  await expect(page.getByRole('status').filter({ hasText: 'đang được chọn cho 2 ô' })).toBeVisible();
+  await page.getByLabel('Từ cho ô 7').selectOption('');
+
+  // Đổi kiểu lưới thì cắt lại.
+  await page.getByLabel('Kiểu lưới').selectOption('2x2');
+  await expect(page.locator('.grid-cell')).toHaveCount(4);
+  await page.getByLabel('Kiểu lưới').selectOption('3x3');
+  await expect(page.locator('.grid-cell')).toHaveCount(9);
+
   await page.getByRole('button', { name: 'Lưu các ảnh này' }).click();
   await expect(page.locator('img.thumb')).toHaveCount(6);
-  // Ô thứ 2 (cat) phải là màu xanh lá.
+  // Ô thứ 2 (cat) phải là hình tròn màu xanh lá ở giữa.
   const color = await page.evaluate(async () => {
     const lessons = await window.kidEnglish.db.getAll('lessons');
     const id = lessons.find((l) => l.title === 'Animals').id;
@@ -385,7 +415,7 @@ test('ảnh lưới: chọn 1 ảnh, app cắt ra từng từ và lưu', async (
     g.drawImage(bmp, 0, 0);
     return Array.from(g.getImageData(bmp.width / 2, bmp.height / 2, 1, 1).data.slice(0, 3));
   });
-  expect(color[1]).toBeGreaterThan(200);
+  expect(color[1]).toBeGreaterThan(120);
   expect(color[0]).toBeLessThan(60);
 });
 

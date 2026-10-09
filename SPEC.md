@@ -69,7 +69,10 @@ Bố mẹ → ChatGPT/Gemini (miễn phí) → JSON → copy/dán → App (iPad)
    - Nếu sai định dạng, app báo lỗi dễ hiểu, ví dụ *"Từ số 3 thiếu nghĩa tiếng Việt"*.
 5. **(Tùy chọn)** Thêm hình cho từng từ: tạo hình bằng ChatGPT/Gemini, lưu vào Ảnh của iPad, sau đó trong app bấm vào từ → **"Chọn ảnh"**.
    - App tự thu nhỏ ảnh xuống 512px và lưu dạng Blob.
-   - **Ảnh lưới (khuyên dùng):** bản AI miễn phí giới hạn số lần tạo ảnh, nên app có nút **"Copy prompt ảnh lưới"**: nhờ AI vẽ **1 ảnh** chứa tất cả các từ theo lưới (4 từ → 2×2, 6 từ → 3×2, 8 từ → 4×2…), sau đó **"Chọn ảnh lưới"**: app tự cắt ra từng ô theo thứ tự từ, cho xem trước rồi mới lưu.
+   - **Ảnh lưới (khuyên dùng):** bản AI miễn phí giới hạn số lần tạo ảnh, nên app có nút **"Copy prompt ảnh lưới"**: nhờ AI vẽ **1 ảnh** chứa tất cả các từ theo **lưới vuông** (tối đa 4 từ → 2×2, tối đa 9 từ → 3×3, 10–12 từ → 4×3; ô thừa để trống) vì AI thường vẽ ảnh vuông, sau đó **"Chọn ảnh lưới"**:
+     - App **tự đoán lưới thật trong ảnh** (đếm số cột/hàng có hình), vì AI hay vẽ khác số cột yêu cầu. Bố mẹ **đổi được "Kiểu lưới"** nếu app đoán sai.
+     - Mỗi ô có **ô chọn từ** (mặc định theo thứ tự; ô thừa là "bỏ qua"), để sửa khi AI xếp lộn thứ tự hoặc vẽ thừa. Chọn trùng một từ cho 2 ô thì app báo lỗi.
+     - Xem trước rồi mới lưu.
 6. **(Tùy chọn) Tạo bài trên máy tính rồi chuyển sang iPad/iPhone:** mở cùng link app trên máy tính, tạo bài và thêm ảnh (dễ thao tác hơn), bấm **"Chia sẻ bài"** để xuất file `kid-english-bai-<tên>-<ngày>.zip` (chỉ gồm bài và ảnh, không có ghi âm hay tiến độ), gửi sang máy của bé (AirDrop, iCloud, Zalo…), rồi trên máy đó vào **Quản lý bài → "Nhập bài từ file"**.
    - **Chia sẻ lại sau khi sửa** (đổi tên, chủ đề, thay ảnh): nhập file trên máy kia sẽ **cập nhật bài đã có** (không tạo bài trùng). "Bài đã có" là bài cùng mã, **hoặc cùng danh sách từ** (ví dụ bài đã tạo riêng trên máy kia bằng cách dán lại đoạn trả lời của AI); giữ số ⭐ và chỗ đang học dở của máy đó. Chỉ bản sửa **mới hơn** mới ghi đè; mỗi từ chỉ giữ **một ảnh — ảnh mới hơn**; nhập lại file cũ thì không đổi gì.
    - Dữ liệu **không tự đồng bộ** giữa các máy (không có server): mỗi máy, và cả tab Safari với app trên Màn hình chính, giữ dữ liệu riêng.

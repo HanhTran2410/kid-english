@@ -140,9 +140,11 @@ export function buildTeacherPrompt({ words, weakWords = [], age = 3 }) {
 export function buildGridImagePrompt(words, { cols, rows }) {
   const cells = cols * rows;
   const list = words.slice(0, cells).map((w, i) => `${i + 1}. ${w}`).join('\n');
-  const empty = cells > words.length ? `\nLeave the last ${cells - words.length} cell(s) empty (plain white).` : '';
+  const empty = cells > words.length
+    ? `\nThe last ${cells - words.length} cell(s) must stay COMPLETELY EMPTY (plain white, no drawing).`
+    : '';
   return [
-    `Create ONE square-ish landscape image: a grid of ${cols} columns × ${rows} rows of EQUAL cells, separated by thin white gaps.`,
+    `Create ONE ${cols === rows ? 'square ' : ''}image: a grid of exactly ${cols} columns × ${rows} rows = ${cells} EQUAL cells, separated by thin light-gray lines.`,
     'Each cell shows exactly one object, large and centered, in this order (left to right, then top to bottom):',
     list + empty,
     `Style for every cell: ${IMAGE_STYLE}.`,

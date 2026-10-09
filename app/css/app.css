@@ -830,6 +830,7 @@ a.btn { text-decoration: none; }
 .grid-cell { margin: 0; display: grid; gap: 4px; justify-items: center; }
 .grid-cell img { width: 100%; aspect-ratio: 1; object-fit: contain; border-radius: 10px; background: #f6f1ea; }
 .grid-cell figcaption { font-weight: 800; }
+.grid-cell select { width: 100%; min-height: 40px; font-size: 15px; }
 
 /* ---------- Thỏ Bông (SVG) ---------- */
 .bong { display: inline-grid; place-items: center; }
