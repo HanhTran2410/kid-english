@@ -79,9 +79,23 @@ export function pickReviewWords(records, { count = 6, now = Date.now(), rng = Ma
   return [...unknown, ...stale, ...rest].slice(0, count);
 }
 
-/** Chọn tối đa `count` từ chưa thuộc để đưa vào prompt tạo bài: mastery thấp nhất, rồi lâu chưa gặp nhất. */
-export function pickWordsForPrompt(records, count = 2) {
-  return records.filter(isUnknown).sort(byWeakest).slice(0, count);
+/**
+ * Chọn từ chưa thuộc để đưa vào prompt tạo bài, có XOAY VÒNG: từ vừa được đưa vào prompt gần đây
+ * thì nhường cho từ khác; sau đó mới xét mastery thấp nhất, rồi lâu chưa gặp nhất.
+ * @param {Record<string, number>} [usedAt] lần gần nhất mỗi từ được đưa vào prompt (khóa là từ)
+ */
+export function pickWordsForPrompt(records, count = 2, usedAt = {}) {
+  return records
+    .filter(isUnknown)
+    .sort((a, b) => (usedAt[a.word] ?? 0) - (usedAt[b.word] ?? 0) || byWeakest(a, b))
+    .slice(0, count);
+}
+
+/** Ghi nhận các từ vừa được đưa vào prompt (để lần sau xoay sang từ khác). */
+export function markUsedInPrompt(usedAt, words, now = Date.now()) {
+  const next = { ...usedAt };
+  for (const w of words) next[progressKey(w)] = now;
+  return next;
 }
 
 /** Gộp tiến độ khi khôi phục: lấy số cao hơn, ngày mới hơn. */

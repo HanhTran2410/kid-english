@@ -516,3 +516,37 @@ test('ảnh không đọc được thì hiện emoji thay vì biểu tượng �
   await expect(page.locator('.visual.big .emoji')).toHaveText('🐶');
   await expect(page.locator('.visual.big img')).toHaveCount(0);
 });
+
+test('từ cần ôn: tích sẵn 2 từ chưa thuộc, xoay vòng lần sau, chọn được từ khác, tối đa 2', async ({ page, context }) => {
+  await context.grantPermissions(['clipboard-read', 'clipboard-write']);
+  await startApp(page);
+  await page.evaluate(async () => {
+    const db = window.kidEnglish.db;
+    const base = { emoji: '', practiceCount: 1, lastPracticedAt: 1, lastVoiceDay: null };
+    for (const [word, mastery] of [['frog', 0], ['monkey', 0], ['nose', 1], ['eyes', 2], ['dog', 4]]) {
+      await db.put('progress', { ...base, word, mastery });
+    }
+  });
+  await openParent(page);
+  await page.getByRole('button', { name: 'Tạo bài học' }).click();
+  const chip = (w) => page.locator('.review-chip', { hasText: new RegExp(`^${w}`) }).locator('input');
+  await expect(chip('frog')).toBeChecked();
+  await expect(chip('monkey')).toBeChecked();
+  await expect(chip('nose')).toBeDisabled(); // đã chọn đủ 2
+  await page.getByRole('button', { name: 'Copy prompt' }).click();
+  expect(await page.evaluate(() => navigator.clipboard.readText())).toMatch(/REVIEW WORDS.*frog, monkey/);
+
+  // Lần sau: xoay sang 2 từ chưa thuộc khác.
+  await page.getByRole('button', { name: '← Quay lại' }).click();
+  await page.getByRole('button', { name: 'Tạo bài học' }).click();
+  await expect(chip('nose')).toBeChecked();
+  await expect(chip('eyes')).toBeChecked();
+  await expect(chip('frog')).not.toBeChecked();
+
+  // Tự chọn: bỏ "eyes", chọn từ khác trong các bài ("cat" của bài mẫu).
+  await chip('eyes').uncheck();
+  await page.getByText(/Chọn từ khác trong các bài/).click();
+  await chip('cat').check();
+  await page.getByRole('button', { name: 'Copy prompt' }).click();
+  expect(await page.evaluate(() => navigator.clipboard.readText())).toMatch(/REVIEW WORDS.*nose, cat/);
+});

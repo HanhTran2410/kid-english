@@ -2,7 +2,7 @@
 
 import { h, toast, copyText } from '../../ui.js';
 import { buildLessonPrompt, DURATIONS, MAX_AVOID_WORDS } from '../../prompts.js';
-import { pickWordsForPrompt } from '../../progress.js';
+import { pickWordsForPrompt, markUsedInPrompt, isUnknown, KNOWN_MASTERY } from '../../progress.js';
 import { parseLesson, createLessonRecord, overlapWithLessons, uniqueTitle, baseTitle } from '../../lesson.js';
 import { listLessons } from '../../db.js';
 import { quizQuestions } from '../../player/plan.js';
@@ -25,16 +25,44 @@ export function createView(app) {
     type: 'button', text: t, onclick: () => { topic.value = t; },
   })));
   const age = h('input', { type: 'number', min: '2', max: '8', value: '3' });
-  const review = h('input', { type: 'checkbox', checked: true });
-  const reviewInfo = h('span.field-hint');
+  const MAX_REVIEW = 2;
+  const reviewBox = h('div.review-picker');
   const avoidInfo = h('p.field-hint');
 
   // Đọc dữ liệu trước, để lúc bấm "Copy prompt" ghép prompt và copy ngay (iOS chặn copy sau một bước chờ).
-  let reviewWords = [];
   let avoidWords = [];
-  app.db.getAll('progress').then((list) => {
-    reviewWords = pickWordsForPrompt(list, 2).map((r) => r.word);
-    reviewInfo.textContent = reviewWords.length ? `Từ sẽ ôn: ${reviewWords.join(', ')}` : 'Chưa có từ nào cần ôn.';
+  const selectedReview = () => [...reviewBox.querySelectorAll('input:checked')].map((i) => i.value);
+
+  // Từ cần ôn: bố mẹ tự chọn (tối đa 2). App tích sẵn 2 từ chưa thuộc theo cách XOAY VÒNG.
+  Promise.all([app.db.getAll('progress'), listLessons(app.db)]).then(([progress, lessons]) => {
+    const weak = progress.filter(isUnknown);
+    const suggested = new Set(pickWordsForPrompt(progress, MAX_REVIEW, app.settings.reviewUsedAt ?? {}).map((r) => r.word));
+    const starsOf = new Map(progress.map((r) => [r.word, r.mastery]));
+    const weakKeys = new Set(weak.map((r) => r.word));
+    const others = [...new Set(lessons.flatMap((l) => l.words.map((w) => w.en.toLowerCase())))]
+      .filter((w) => !weakKeys.has(w)).sort();
+
+    const onChange = () => {
+      const full = selectedReview().length >= MAX_REVIEW;
+      for (const input of reviewBox.querySelectorAll('input')) input.disabled = full && !input.checked;
+    };
+    const chip = (word, note) => h('label.review-chip', {},
+      h('input', { type: 'checkbox', value: word, checked: suggested.has(word), onchange: onChange }),
+      h('span', { text: word }), note ? h('span.muted', { text: note }) : null);
+
+    reviewBox.replaceChildren(
+      weak.length
+        ? h('div.review-group', {}, h('span.field-hint', { text: `Từ chưa thuộc (dưới ${KNOWN_MASTERY}⭐) — app đã tích sẵn ${suggested.size} từ, lần sau sẽ xoay sang từ khác:` }),
+          h('div.review-chips', {}, ...weak
+            .sort((a, b) => a.mastery - b.mastery || a.word.localeCompare(b.word))
+            .map((r) => chip(r.word, '⭐'.repeat(starsOf.get(r.word) ?? 0) || '☆'))))
+        : h('p.field-hint', { text: 'Máy này chưa có từ nào "chưa thuộc" (tiến độ của bé nằm trên máy bé học). Có thể chọn từ bất kỳ bên dưới.' }),
+      others.length
+        ? h('details.review-group', {}, h('summary', { text: `Chọn từ khác trong các bài (${others.length} từ)` }),
+          h('div.review-chips', {}, ...others.map((w) => chip(w))))
+        : null,
+    );
+    onChange();
   });
   listLessons(app.db).then((lessons) => {
     avoidWords = [...new Set(lessons.flatMap((l) => l.words.map((w) => w.en.toLowerCase())))];
@@ -62,7 +90,7 @@ export function createView(app) {
   const form = h('form.form', {
     onsubmit: (e) => {
       e.preventDefault();
-      const words = review.checked ? reviewWords : [];
+      const words = selectedReview();
       const prompt = buildLessonPrompt({
         topic: topic.value.trim() || 'Animals',
         age: Number(age.value) || 3,
@@ -81,6 +109,7 @@ export function createView(app) {
         result.scrollIntoView({ behavior: 'smooth', block: 'start' });
       });
       app.setSetting('lastPromptReviewWords', words);
+      if (words.length) app.setSetting('reviewUsedAt', markUsedInPrompt(app.settings.reviewUsedAt ?? {}, words));
       app.setSetting('lastPromptTopic', topic.value.trim());
     },
   },
@@ -90,8 +119,7 @@ export function createView(app) {
     field('⏱️ Thời lượng', radios('duration', Object.entries(DURATIONS).map(([m, n]) => [m, `${m} phút (${n} từ)`]), 10)),
     field('🎯 Trình độ', radios('level', [['beginner', 'Mới bắt đầu'], ['some', 'Đã biết ít']], 'beginner')),
     field('🎨 Kiểu bài', radios('style', [['fun', 'Vui nhộn'], ['story', 'Kể chuyện']], 'fun')),
-    h('label.check', {}, review, h('span', { text: '☑️ Ôn lại từ chưa thuộc (tối đa 2 từ)' })),
-    reviewInfo,
+    h('div.field', {}, h('span.field-label', { text: `☑️ Từ cần ôn (tối đa ${MAX_REVIEW} từ, AI thêm vào bài)` }), reviewBox),
     avoidInfo),
   h('div.actions', {}, h('button.btn.primary.big', { type: 'submit', text: 'Copy prompt' })));
 

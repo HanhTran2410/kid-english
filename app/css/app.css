@@ -875,3 +875,14 @@ a.btn { text-decoration: none; }
 .topic-tab.active { background: var(--sky); color: #fff; }
 .topic-emoji { font-size: 32px; font-family: var(--emoji); line-height: 1; }
 .lesson-words { font-family: var(--emoji); font-size: 22px; letter-spacing: 2px; min-height: 1.2em; }
+
+.review-picker { display: grid; gap: 8px; }
+.review-group { display: grid; gap: 6px; }
+.review-chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.review-chip {
+  display: inline-flex; align-items: center; gap: 6px;
+  min-height: 40px; padding: 4px 12px 4px 8px; border-radius: 999px; background: #f6f1ea;
+}
+.review-chip input { width: 20px; height: 20px; }
+.review-chip:has(input:checked) { background: #e6defc; }
+.review-chip:has(input:disabled) { opacity: 0.45; }

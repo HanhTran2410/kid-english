@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   emptyProgress, onPickedCorrectFirstTry, onPickedWrong, onSpoke, onPracticed,
-  pickReviewWords, pickWordsForPrompt, mergeProgress, progressKey,
+  pickReviewWords, pickWordsForPrompt, mergeProgress, progressKey, markUsedInPrompt,
 } from '../../app/js/progress.js';
 import { DAY_MS } from '../../app/js/text.js';
 
@@ -75,4 +75,17 @@ test('gộp tiến độ: lấy số cao hơn, ngày mới hơn', () => {
   assert.equal(m.practiceCount, 5);
   assert.equal(m.lastPracticedAt, 100);
   assert.equal(m.lastVoiceDay, '2026-10-05');
+});
+
+test('từ cần ôn xoay vòng: từ vừa đưa vào prompt thì nhường cho từ chưa thuộc khác', () => {
+  const records = [rec('frog', 0, 1, 10), rec('monkey', 0, 1, 20), rec('nose', 1, 1, 5), rec('eyes', 2, 1, 5), rec('dog', 4, 1, 5)];
+  let used = {};
+  const first = pickWordsForPrompt(records, 2, used).map((r) => r.word);
+  assert.deepEqual(first, ['frog', 'monkey']);
+  used = markUsedInPrompt(used, first, 100);
+  const second = pickWordsForPrompt(records, 2, used).map((r) => r.word);
+  assert.deepEqual(second, ['nose', 'eyes']);
+  used = markUsedInPrompt(used, second, 200);
+  assert.deepEqual(pickWordsForPrompt(records, 2, used).map((r) => r.word), ['frog', 'monkey'], 'hết vòng thì quay lại');
+  assert.ok(!pickWordsForPrompt(records, 5, used).some((r) => r.word === 'dog'), 'từ đã thuộc không được gợi ý');
 });

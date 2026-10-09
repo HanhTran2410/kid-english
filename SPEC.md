@@ -48,7 +48,7 @@ Bố mẹ → ChatGPT/Gemini (miễn phí) → JSON → copy/dán → App (iPad)
 | `recordings` | `id`, `lessonId`, `word`, `date`, `data` (ArrayBuffer), `mimeType`, `durationMs` |
 | `progress` | khóa là từ tiếng Anh (viết thường): `mastery` (0–5), `practiceCount`, `lastPracticedAt`, `lastVoiceDay` (ngày gần nhất được cộng điểm vì lên tiếng), `emoji` |
 | `stickers` | khóa là mã sticker: `firstEarnedAt`, `count` (số lần nhận được) |
-| `settings` | dạng `{ key, value }`: tên nhân vật, giọng đọc, tốc độ, bật/tắt tiếng Việt, bật/tắt ghi âm, bật/tắt nhận dạng giọng nói, giới hạn thời gian, lần sao lưu gần nhất, ngày dùng app lần đầu, đã thêm bài mẫu chưa, trạng thái buổi học, lần báo bộ nhớ đầy |
+| `settings` | dạng `{ key, value }`: lần gần nhất mỗi từ được đưa vào prompt (`reviewUsedAt`, để xoay vòng từ cần ôn), tên nhân vật, giọng đọc, tốc độ, bật/tắt tiếng Việt, bật/tắt ghi âm, bật/tắt nhận dạng giọng nói, giới hạn thời gian, lần sao lưu gần nhất, ngày dùng app lần đầu, đã thêm bài mẫu chưa, trạng thái buổi học, lần báo bộ nhớ đầy |
 
 **Không dùng `id` do AI tạo.** Khi nhập bài, app kiểm tra JSON, tự tạo UUID mới rồi mới lưu.
 
@@ -60,7 +60,7 @@ Bố mẹ → ChatGPT/Gemini (miễn phí) → JSON → copy/dán → App (iPad)
    - ⏱️ **Thời lượng**: 5 / **10** / 15 phút, tương ứng **4 / 6 / 8 từ** (gọi là N).
    - 🎯 **Trình độ**: Mới bắt đầu / Đã biết ít.
    - 🎨 **Kiểu bài**: Vui nhộn / Kể chuyện.
-   - ☑️ **Ôn lại từ chưa thuộc** (bật sẵn): app tự đưa tối đa 2 từ bé chưa thuộc (mục 4.7) vào yêu cầu. Các từ này được **thêm vào `words`** ngoài N từ mới, nên bài có tối đa N+2 từ.
+   - ☑️ **Từ cần ôn** (tối đa 2 từ): app **tích sẵn 2 từ chưa thuộc** (mục 4.7) theo cách **xoay vòng** — từ vừa đưa vào prompt gần đây thì nhường cho từ chưa thuộc khác, hết vòng thì quay lại. Bố mẹ **bỏ tích / tích từ khác** được, kể cả **bất kỳ từ nào trong các bài đã có** (hữu ích khi tạo bài trên máy tính, nơi không có tiến độ học thật của bé; muốn có thì khôi phục "Gộp" file sao lưu từ máy bé học). Các từ này được **thêm vào `words`** ngoài N từ mới, nên bài có tối đa N+2 từ.
 2. Bấm **"Copy prompt"**. App ghép các lựa chọn thành một prompt hoàn chỉnh và copy **ngay trong lúc chạm** (Safari iOS chặn copy nếu đã qua một bước chờ). Prompt cũng hiện trong một ô để copy tay nếu cần, kèm nút **Mở ChatGPT** / **Mở Gemini**.
    - Để **không trùng từ** giữa các bài, prompt liệt kê các từ bé đã có ở bài khác (tối đa 80 từ, trừ từ cần ôn) và dặn AI không dùng lại. Khi dán bài, nếu vẫn có từ trùng thì app cảnh báo (vẫn cho lưu).
 3. AI trả về một đoạn JSON. Copy toàn bộ.
