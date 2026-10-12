@@ -111,3 +111,46 @@ test('hết phiên đăng nhập (401): báo lỗi rõ và xóa vé để lần 
   const offline = new DriveClient(async () => 'good', async () => { throw new TypeError('Failed to fetch'); });
   await assert.rejects(offline.ensureFolder('Kid English'), (err) => err.code === 'offline');
 });
+
+test('link nhập bài: tạo và đọc lại; đọc được link Google Drive thường và mã file', async () => {
+  const { importLink, parseDriveLink } = await import('../../app/js/drive.js');
+  const id = '1AbCdEfGhIjKlMnOpQrStUvWxYz_-12345';
+  const link = importLink(id, 'AIzaKEY-123', 'https://hanhtran2410.github.io/kid-english/');
+  assert.equal(link, `https://hanhtran2410.github.io/kid-english/#drive=${id}&key=AIzaKEY-123`);
+  assert.deepEqual(parseDriveLink(link), { id, key: 'AIzaKEY-123' });
+  assert.deepEqual(parseDriveLink(`  https://drive.google.com/file/d/${id}/view?usp=sharing `), { id, key: null });
+  assert.deepEqual(parseDriveLink(`https://drive.google.com/open?id=${id}`), { id, key: null });
+  assert.deepEqual(parseDriveLink(`https://drive.google.com/uc?export=download&id=${id}`), { id, key: null });
+  assert.deepEqual(parseDriveLink(id), { id, key: null });
+  assert.equal(parseDriveLink('xin chào'), null);
+  assert.equal(parseDriveLink(''), null);
+});
+
+test('tải file công khai bằng API key (không đăng nhập); file chưa chia sẻ / key sai thì báo rõ', async () => {
+  const { downloadPublicFile } = await import('../../app/js/drive.js');
+  const seen = [];
+  const fetchFn = async (url, opts) => {
+    const u = new URL(url);
+    seen.push({ auth: opts?.headers?.Authorization, key: u.searchParams.get('key') });
+    if (!u.pathname.endsWith('/files/pub123456789012345678')) return { ok: false, status: 404 };
+    if (u.searchParams.get('key') !== 'K') return { ok: false, status: 403 };
+    if (u.searchParams.get('alt') === 'media') return { ok: true, status: 200, blob: async () => 'ZIP' };
+    return { ok: true, status: 200, json: async () => ({ name: '01-animals.zip' }) };
+  };
+  assert.deepEqual(await downloadPublicFile('pub123456789012345678', 'K', fetchFn), { name: '01-animals.zip', blob: 'ZIP' });
+  assert.ok(seen.every((x) => x.auth === undefined && x.key === 'K'), 'không gửi vé đăng nhập');
+  await assert.rejects(downloadPublicFile('pub123456789012345678', 'sai', fetchFn), (err) => err.code === 'denied');
+  await assert.rejects(downloadPublicFile('khac12345678901234567', 'K', fetchFn), (err) => err.code === 'notfound');
+});
+
+test('bật "ai có link đều xem được": quyền xem cho mọi người', async () => {
+  const sent = [];
+  const c = new DriveClient(async () => 'good', async (url, opts) => {
+    sent.push({ url, opts });
+    return { ok: true, status: 200, json: async () => ({ id: 'p1' }) };
+  });
+  await c.makePublic('file1');
+  assert.match(sent[0].url, /\/drive\/v3\/files\/file1\/permissions/);
+  assert.equal(sent[0].opts.method, 'POST');
+  assert.deepEqual(JSON.parse(sent[0].opts.body), { role: 'reader', type: 'anyone' });
+});

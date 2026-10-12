@@ -188,6 +188,15 @@ export class DriveClient {
   async download(fileId) {
     return (await this.call(`${API}/files/${encodeURIComponent(fileId)}?alt=media`)).blob();
   }
+
+  /** Bật "ai có link đều xem được" cho một file (chỉ quyền xem) — để máy khác nhập bài bằng link. */
+  async makePublic(fileId) {
+    await this.json(`${API}/files/${encodeURIComponent(fileId)}/permissions?fields=id`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ role: 'reader', type: 'anyone' }),
+    });
+  }
 }
 
 // ---------- Dùng trong app ----------
@@ -215,4 +224,53 @@ export async function appFolder(app, drive) {
   const id = await drive.client.ensureFolder(drive.folderName, cached);
   if (id !== cached) await app.setSetting('driveFolder', { id, name: drive.folderName });
   return id;
+}
+
+// ---------- Nhập bài từ link (không cần đăng nhập) ----------
+// Máy gửi bật "ai có link đều xem được" cho file bài, rồi đưa "link nhập bài" (mã file + API key).
+// Máy nhận tải file qua Drive API bằng API key — không cần đăng nhập Google, dùng tài khoản nào cũng được.
+
+const FILE_ID = /^[\w-]{20,}$/;
+
+/** "Link nhập bài": link của app, mang theo mã file và API key (phần sau dấu #, không gửi lên máy chủ nào). */
+export function importLink(fileId, apiKey, base = `${location.origin}${location.pathname}`) {
+  return `${base}#drive=${encodeURIComponent(fileId)}&key=${encodeURIComponent(apiKey)}`;
+}
+
+/**
+ * Đọc mã file (và API key nếu có) từ link bố mẹ dán: link nhập bài của app, hoặc link Google Drive thường
+ * (…/file/d/<id>/view, …open?id=<id>, …uc?id=<id>), hoặc chỉ mã file.
+ * @returns {{ id: string, key: string|null } | null}
+ */
+export function parseDriveLink(text) {
+  const s = String(text ?? '').trim();
+  if (!s) return null;
+  const hash = s.match(/[#&]drive=([\w-]+)/);
+  if (hash) return { id: hash[1], key: decodeURIComponent(s.match(/[#&]key=([^&\s]+)/)?.[1] ?? '') || null };
+  const id = s.match(/\/d\/([\w-]{20,})/)?.[1] ?? s.match(/[?&]id=([\w-]{20,})/)?.[1] ?? (FILE_ID.test(s) ? s : null);
+  return id ? { id, key: null } : null;
+}
+
+/**
+ * Tải một file đã bật "ai có link" bằng API key (không đăng nhập).
+ * @returns {Promise<{ name: string, blob: Blob }>}
+ */
+export async function downloadPublicFile(fileId, apiKey, fetchFn = (...args) => fetch(...args)) {
+  const get = async (query) => {
+    let res;
+    try {
+      res = await fetchFn(`${API}/files/${encodeURIComponent(fileId)}?${query}&key=${encodeURIComponent(apiKey)}`);
+    } catch {
+      throw new DriveError('Không kết nối được Google Drive. Kiểm tra mạng rồi thử lại.', 'offline');
+    }
+    if (res.status === 404) throw new DriveError('Không tìm thấy file trên Google Drive (file đã bị xóa, hoặc chưa bật chia sẻ link).', 'notfound');
+    if (res.status === 400 || res.status === 403) {
+      throw new DriveError('Google Drive không cho tải: file chưa bật "ai có link đều xem được", hoặc API key sai / chưa bật Google Drive API.', 'denied');
+    }
+    if (!res.ok) throw new DriveError(`Google Drive báo lỗi (${res.status}).`, 'http');
+    return res;
+  };
+  const { name } = await (await get('fields=name')).json();
+  const blob = await (await get('alt=media')).blob();
+  return { name: name || 'bai-hoc.zip', blob };
 }

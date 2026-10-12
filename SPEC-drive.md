@@ -1,6 +1,6 @@
 # SPEC — Chia sẻ bài qua Google Drive
 
-> Ngày: 2026-10-12 · Chốt: **cách A — tải thẳng lên Drive** (bố mẹ tự tạo Google Client ID một lần) · **Đã làm trong app 0.6.0**
+> Ngày: 2026-10-12 · Chốt: **cách A — tải thẳng lên Drive** (bố mẹ tự tạo Google Client ID một lần) · **Đã làm trong app 0.6.0**; **nhập bài từ link** (mục 7) trong 0.6.1
 
 ## 1. Mục tiêu
 Sau khi bấm **"1. Tạo file bài"**, bố mẹ bấm **"3. Tải lên Google Drive"** là file bài vào thẳng **một thư mục cố định** trên Drive. Trên máy kia bấm **"Nhập bài từ Google Drive"**, chọn bài là nhập — không phải tải file về, không cần AirDrop/Zalo.
@@ -37,3 +37,12 @@ Vẫn 0 đồng, không có server: đăng nhập Google chạy ngay trong trìn
 - Unit (`tests/unit/drive.test.js`, Drive giả): tìm/tạo thư mục, id đã nhớ bị xóa, tên có dấu nháy, tải lên mới / ghi đè cùng tên, liệt kê `.zip` mới nhất trước, tải về, hết phiên (401), mất mạng.
 - Giao diện (`tests/ui/drive.spec.js`, Google giả): máy A kết nối → tạo file → tải lên (và tải lại = ghi đè) → máy B (trình duyệt riêng) xóa bài → nhập từ Drive → bài trở lại; đăng nhập một lần cho cả buổi; chưa thiết lập thì không có nút tải lên.
 - **Thủ công trên iPhone** (chưa làm được tự động): đăng nhập thật bằng Safari và bằng app ở Màn hình chính.
+
+## 7. Nhập bài từ link — không cần đăng nhập (app 0.6.1, chốt 2026-10-12)
+Máy nhận **dùng tài khoản Google khác hoặc không có tài khoản** vẫn nhập được bài.
+- **Máy gửi** cần thêm **Google API key** (Cài đặt → Google Drive; hướng dẫn trong app): Credentials → Create credentials → API key; giới hạn *Websites* `https://hanhtran2410.github.io/*` và *API*: Google Drive API.
+- Tải lên xong (có API key): app bật **"ai có link đều xem được"** (chỉ quyền xem) cho file đó và hiện **link nhập bài** + nút **Copy link**. Link có dạng `https://hanhtran2410.github.io/kid-english/#drive=<mã file>&key=<API key>` (phần sau `#` không gửi lên máy chủ nào).
+- **Máy nhận** (không cần Client ID, API key hay đăng nhập): Quản lý bài → **"Nhập bài từ link"** → dán link → **Nhập**. App tải file qua Drive API bằng API key trong link rồi nhập như "Nhập bài từ file". Link Google Drive thường (`…/file/d/<id>/view`) cũng dùng được nếu máy nhận có API key.
+- Mở app bằng chính link nhập bài (ví dụ bấm link trong Zalo → Safari): app nhớ link, xóa phần `#` khỏi thanh địa chỉ, báo bố mẹ vào Quản lý bài — ô link đã điền sẵn. (Trên iPhone, app ở Màn hình chính và Safari có dữ liệu riêng: nên dán link trong app đang dùng cho bé.)
+- Ai có link đều tải được file bài (nội dung bài + ảnh; không có giọng bé, tiến độ). API key bị giới hạn theo trang web và chỉ Drive API.
+- Test: unit (đọc/tạo link, tải công khai không gửi vé đăng nhập, key sai / file chưa chia sẻ, bật chia sẻ) và giao diện (máy A tải lên → link; máy C mới tinh dán link → nhập, không đăng nhập; mở app bằng link → điền sẵn).

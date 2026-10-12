@@ -1,6 +1,7 @@
 // Khởi động app và đăng ký các màn hình.
 
 import { App } from './app.js';
+import { toast } from './ui.js';
 import { openDatabase, migrateMedia, ensureLessonNumbers } from './db.js';
 import { loadSettings } from './settings.js';
 import { seedSamplesOnce, upgradePhraseSamples } from './samples.js';
@@ -44,6 +45,13 @@ function fatal(message) {
 async function boot() {
   const app = new App(document.getElementById('app'));
   window.kidEnglish = app; // để soi lỗi qua Safari Web Inspector
+
+  // Mở app bằng "link nhập bài" (SPEC-drive mục 7): giữ link để điền sẵn ở Quản lý bài, bỏ phần # khỏi thanh địa chỉ.
+  if (/[#&]drive=/.test(location.hash)) {
+    app.pendingImportLink = location.href;
+    history.replaceState(null, '', `${location.pathname}${location.search}`);
+    setTimeout(() => toast('Có link nhập bài: vào Góc bố mẹ → Quản lý bài → "Nhập bài từ link" (link đã điền sẵn).', 6000), 1500);
+  }
 
   try {
     app.db = await openDatabase();

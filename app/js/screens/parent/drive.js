@@ -1,7 +1,7 @@
 // Góc bố mẹ — Google Drive (SPEC-drive.md): cài đặt, nút tải file bài lên Drive, nhập bài từ Drive.
 
-import { h, toast, formatDateTime } from '../../ui.js';
-import { appDrive, appFolder, loadGis, DriveError, DEFAULT_FOLDER } from '../../drive.js';
+import { h, toast, formatDateTime, copyText } from '../../ui.js';
+import { appDrive, appFolder, loadGis, DriveError, DEFAULT_FOLDER, importLink, parseDriveLink, downloadPublicFile } from '../../drive.js';
 import { section, field } from './common.js';
 
 const message = (err) => (err instanceof DriveError ? err.message : 'Có lỗi khi làm việc với Google Drive.');
@@ -17,6 +17,7 @@ export function driveSettingsSection(app) {
   const s = app.settings;
   const clientId = h('input', { type: 'text', value: s.driveClientId ?? '', placeholder: 'xxxx.apps.googleusercontent.com', 'aria-label': 'Google Client ID', autocomplete: 'off', spellcheck: false });
   const folder = h('input', { type: 'text', value: s.driveFolderName || DEFAULT_FOLDER, 'aria-label': 'Thư mục trên Drive' });
+  const apiKey = h('input', { type: 'text', value: s.driveApiKey ?? '', placeholder: 'AIza…', 'aria-label': 'Google API key', autocomplete: 'off', spellcheck: false });
   const status = h('p.muted');
 
   const saveBtn = h('button.btn', {
@@ -25,6 +26,7 @@ export function driveSettingsSection(app) {
     onclick: async () => {
       await app.setSetting('driveClientId', clientId.value.trim());
       await app.setSetting('driveFolderName', folder.value.trim() || DEFAULT_FOLDER);
+      await app.setSetting('driveApiKey', apiKey.value.trim());
       prepareDrive(app);
       toast('Đã lưu. Bấm "Kết nối thử" để đăng nhập Google.', 2500);
     },
@@ -61,23 +63,45 @@ export function driveSettingsSection(app) {
       h('li', {}, 'Mục "Clients" → Create client → Application type: Web application → "Authorized JavaScript origins" → Add URI: ', h('code', { text: origin }), ' → Create.'),
       h('li', { text: 'Copy "Client ID" (dạng ….apps.googleusercontent.com), dán vào ô trên, bấm Lưu rồi "Kết nối thử". Làm bước này trên từng máy (iPhone, iPad…).' }),
       h('li', { text: 'Lần đầu Google báo "Google hasn\'t verified this app" vì đây là app riêng của bạn: bấm Continue, cho phép quyền Drive.' })),
-    h('p.field-hint', { text: 'App chỉ được dùng các file và thư mục do chính app tạo trên Drive (quyền drive.file), không xem được file khác của bạn.' }));
+    h('p', { text: 'API key — để máy khác nhập bài bằng link, không cần đăng nhập (chỉ cần trên máy GỬI bài):' }),
+    h('ol', {},
+      h('li', { text: 'Trong cùng dự án: "APIs & Services" → "Credentials" → Create credentials → API key.' }),
+      h('li', {}, 'Bấm vào key vừa tạo → "Application restrictions": Websites → Add: ', h('code', { text: `${origin}/*` }),
+        ' ; "API restrictions": Restrict key → chọn Google Drive API → Save.'),
+      h('li', { text: 'Copy key (dạng AIza…), dán vào ô "Google API key" ở trên, bấm Lưu.' })),
+    h('p.field-hint', { text: 'App chỉ được dùng các file và thư mục do chính app tạo trên Drive (quyền drive.file), không xem được file khác của bạn. File bài có link thì ai có link đều tải được (chỉ có nội dung bài và ảnh, không có giọng bé hay tiến độ).' }));
 
   return section('Google Drive (chia sẻ bài sang máy khác)',
     field('Google Client ID', clientId, 'Mỗi máy dán cùng một Client ID.'),
     field('Thư mục trên Drive', folder, 'App tự tạo thư mục này (nếu chưa có) và tải file bài vào đó.'),
+    field('Google API key', apiKey, 'Không bắt buộc. Có key thì sau khi tải lên, app tạo "link nhập bài": máy khác dán link là nhập được, không cần đăng nhập Google.'),
     h('div.actions', {}, saveBtn, testBtn),
     status,
     h('p.field-hint', { text: 'Trên iPhone/iPad: nếu không mở được cửa sổ đăng nhập Google khi mở app từ Màn hình chính, hãy mở app bằng Safari để tải lên / nhập bài.' }),
     guide);
 }
 
+/** Ô hiện "link nhập bài" + nút Copy (copy ngay trong lúc chạm). */
+function linkView(link) {
+  const input = h('input.link-out', { type: 'text', value: link, readOnly: true, 'aria-label': 'Link nhập bài', onfocus: (e) => e.target.select() });
+  return h('div.drive-link', {},
+    h('p', { text: '🔗 Link nhập bài — gửi link này (Zalo, tin nhắn…). Máy kia: Quản lý bài → "Nhập bài từ link" → dán link. Không cần đăng nhập Google.' }),
+    h('div.row', {}, input, h('button.btn.small', {
+      type: 'button',
+      text: 'Copy link',
+      onclick: () => copyText(link).then((ok) => toast(ok ? 'Đã copy link nhập bài.' : 'Không copy được, hãy chọn và copy trong ô link.')),
+    })));
+}
+
 /**
- * Nút "Tải lên Google Drive" cho một file đã tạo.
+ * Nút "Tải lên Google Drive" cho một file đã tạo. Có API key thì sau khi tải lên, bật "ai có link đều xem được"
+ * và hiện "link nhập bài" (SPEC-drive mục 7).
  * @param {() => ({ blob: Blob, filename: string } | null)} getFile
+ * @returns {{ btn: HTMLElement, linkBox: HTMLElement }}
  */
 export function driveUploadButton(app, getFile, status) {
   prepareDrive(app);
+  const linkBox = h('div');
   const btn = h('button.btn.primary', {
     type: 'button',
     text: '3. Tải lên Google Drive',
@@ -88,12 +112,20 @@ export function driveUploadButton(app, getFile, status) {
       if (!drive || !made) return;
       const ready = drive.auth.getToken(); // gọi ngay trong lúc chạm để mở được cửa sổ đăng nhập
       btn.disabled = true;
+      linkBox.replaceChildren();
       status.textContent = 'Đang tải lên Google Drive…';
       try {
         await ready;
         const folderId = await appFolder(app, drive);
         const f = await drive.client.upload(folderId, made.filename, made.blob);
-        status.textContent = `✅ Đã tải lên Google Drive: ${drive.folderName}/${f.name}${f.replaced ? ' (thay file cũ cùng tên)' : ''}. Trên máy kia: Quản lý bài → "Nhập bài từ Google Drive".`;
+        status.textContent = `✅ Đã tải lên Google Drive: ${drive.folderName}/${f.name}${f.replaced ? ' (thay file cũ cùng tên)' : ''}. Trên máy kia (cùng tài khoản Google): Quản lý bài → "Nhập bài từ Google Drive".`;
+        const apiKey = String(app.settings.driveApiKey ?? '').trim();
+        if (apiKey) {
+          await drive.client.makePublic(f.id);
+          linkBox.replaceChildren(linkView(importLink(f.id, apiKey)));
+        } else {
+          linkBox.replaceChildren(h('p.field-hint', { text: 'Muốn máy khác nhập bằng link (không cần đăng nhập Google): thêm "Google API key" ở Cài đặt → Google Drive.' }));
+        }
         toast('Đã tải lên Google Drive.');
       } catch (err) {
         status.textContent = `⚠️ ${message(err)}`;
@@ -102,7 +134,60 @@ export function driveUploadButton(app, getFile, status) {
       }
     },
   });
-  return btn;
+  return { btn, linkBox };
+}
+
+/**
+ * "Nhập bài từ link": dán link nhập bài (hoặc link Google Drive thường nếu máy này có API key) → tải về → nhập.
+ * Không cần đăng nhập Google.
+ * @param {(file: File) => Promise<void>} importFile
+ */
+export function linkImportButton(app, importFile) {
+  const input = h('input', { type: 'url', placeholder: 'Dán link nhập bài…', 'aria-label': 'Link bài học', autocomplete: 'off' });
+  const go = h('button.btn.primary', {
+    type: 'button',
+    text: 'Nhập',
+    onclick: async () => {
+      const parsed = parseDriveLink(input.value);
+      if (!parsed) {
+        toast('Link không đúng. Hãy dán "link nhập bài" từ máy gửi.', 3500);
+        return;
+      }
+      const key = parsed.key || String(app.settings.driveApiKey ?? '').trim();
+      if (!key) {
+        toast('Link này là link Google Drive thường. Hãy dán "link nhập bài" (nút Copy link ở máy gửi).', 4500);
+        return;
+      }
+      go.disabled = true;
+      status.textContent = 'Đang tải bài từ Google Drive…';
+      try {
+        const { name, blob } = await downloadPublicFile(parsed.id, key);
+        status.textContent = '';
+        await importFile(new File([blob], name, { type: 'application/zip' }));
+      } catch (err) {
+        status.textContent = `⚠️ ${message(err)}`;
+      } finally {
+        go.disabled = false;
+      }
+    },
+  });
+  const status = h('p.muted');
+  const box = h('div.link-import', { hidden: true }, h('div.row', {}, input, go), status);
+  const btn = h('button.btn', {
+    type: 'button',
+    text: 'Nhập bài từ link',
+    onclick: () => {
+      box.hidden = false;
+      input.focus();
+    },
+  });
+  // Mở app bằng link nhập bài (Safari): điền sẵn link.
+  if (app.pendingImportLink) {
+    input.value = app.pendingImportLink;
+    app.pendingImportLink = null;
+    box.hidden = false;
+  }
+  return { btn, box };
 }
 
 /**

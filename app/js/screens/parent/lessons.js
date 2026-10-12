@@ -21,7 +21,7 @@ import { APP_VERSION } from '../../app.js';
 import { parentLayout, goParent, section, notice } from './common.js';
 import { lessonPreview } from './create.js';
 import { saveFile } from './backup.js';
-import { driveUploadButton, driveImportButton } from './drive.js';
+import { driveUploadButton, driveImportButton, linkImportButton } from './drive.js';
 import { appDrive } from '../../drive.js';
 
 function imageErrorMessage(err) {
@@ -76,12 +76,14 @@ export function lessonsView(app) {
     }
   };
   const fromDrive = driveImportButton(app, importFile);
+  const fromLink = linkImportButton(app, importFile);
   body.append(
     notice('info', 'Tạo bài và thêm ảnh trên máy tính (mở cùng link app), bấm "Chia sẻ bài" để xuất file, gửi sang iPhone/iPad (AirDrop, iCloud, Zalo… hoặc tải lên Google Drive) rồi bấm "Nhập bài từ file" / "Nhập bài từ Google Drive" ở đây.'),
     section(null, list), h('div.actions', {},
     h('button.btn.primary', { type: 'button', text: 'Nhập bài từ file', onclick: () => importInput.click() }),
     importInput,
     fromDrive.btn,
+    fromLink.btn,
     h('button.btn', {
       type: 'button',
       text: 'Thêm lại bài mẫu',
@@ -91,6 +93,7 @@ export function lessonsView(app) {
         goParent(app, 'lessons');
       },
     })),
+    fromLink.box,
     fromDrive.box);
 
   const log = app.settings.importLog ?? [];
@@ -346,11 +349,12 @@ function shareSection(app, lesson) {
       }
     },
   });
-  const driveBtn = driveUploadButton(app, () => made, status);
+  const { btn: driveBtn, linkBox } = driveUploadButton(app, () => made, status);
   return section('Chia sẻ bài sang máy khác',
     h('p', { text: `File ${lessonFileName(lesson)} gồm nội dung bài và ảnh (không có ghi âm, tiến độ của bé). Trên máy kia: Góc bố mẹ → Quản lý bài → "Nhập bài từ file".` }),
     h('div.actions', {}, makeBtn, sendBtn, driveBtn),
     status,
+    linkBox,
     appDrive(app) ? null : h('p.field-hint', { text: 'Muốn tải thẳng lên Google Drive: Góc bố mẹ → Cài đặt → Google Drive.' }));
 }
 

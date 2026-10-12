@@ -1261,3 +1261,7 @@ a.btn { text-decoration: none; }
 .drive-guide summary { cursor: pointer; font-weight: 700; }
 .drive-guide ol { padding-left: 20px; line-height: 1.5; }
 .drive-guide code { background: #f3eee8; padding: 1px 6px; border-radius: 6px; word-break: break-all; }
+.drive-link { margin-top: 10px; padding: 10px; border-radius: 12px; background: #eefaf4; }
+.drive-link .row, .link-import .row { display: flex; gap: 8px; align-items: center; }
+.drive-link .link-out, .link-import input { flex: 1; min-width: 0; }
+.link-import { margin-top: 10px; }
