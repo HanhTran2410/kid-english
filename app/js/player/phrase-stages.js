@@ -138,8 +138,12 @@ export async function runSay(ctx, phrase) {
   else if (app.mic.ready) await teacher.say('Now you say it!');
   // "Nói được" chỉ khi nghe ra từ khóa bắt buộc (động từ), không chỉ danh từ.
   let { result } = await teacher.hear(phrase.requiredKeywords, { maxMs: 7000 });
+  // Im lặng: Bông đọc mẫu cả câu một lần rồi nghe lại; sau đó không đọc lại nữa.
+  let modeled = false;
   if (result === RESULT.SILENT) {
-    await sayInChunks(teacher, phrase, highlight);
+    scene.play(1);
+    await teacher.say(`${phrase.en}!`);
+    modeled = true;
     ({ result } = await teacher.hear(phrase.requiredKeywords, { maxMs: 7000 }));
   }
   if (result === RESULT.MATCH) {
@@ -154,7 +158,7 @@ export async function runSay(ctx, phrase) {
     await teacher.say('Good try!');
   }
   teacher.bunny.set('idle');
-  if (result !== RESULT.MATCH) {
+  if (result !== RESULT.MATCH && !modeled) {
     highlight('all');
     scene.play(1);
     await teacher.say(`${phrase.en}!`);
