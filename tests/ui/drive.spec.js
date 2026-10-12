@@ -39,6 +39,9 @@ function fakeGoogle() {
     if (req.headers().authorization !== 'Bearer token-ok') return send({}, 401);
     const perm = url.pathname.match(/\/files\/([^/]+)\/permissions$/)?.[1];
     if (perm && req.method() === 'POST') {
+      if (stats.blockSharing) {
+        return send({ error: { code: 400, message: 'Bad Request. User message: "Sharing outside of the domain is not allowed."', errors: [{ reason: 'publishOutNotPermitted' }] } }, 400);
+      }
       const body = JSON.parse(req.postData());
       if (body.type === 'anyone' && body.role === 'reader') files.get(perm).public = true;
       return send({ id: 'perm1' });
@@ -207,4 +210,18 @@ test('link nhập bài: máy A (có API key) tải lên → copy link → máy C
 
   await a.context.close();
   await context.close();
+});
+
+test('tài khoản công ty chặn chia sẻ ra ngoài: vẫn báo đã tải lên, giải thích vì sao không có link và cách xử lý', async ({ browser }) => {
+  const google = fakeGoogle();
+  google.stats.blockSharing = true;
+  const a = await device(browser, google, { apiKey: API_KEY });
+  await a.page.evaluate(() => window.kidEnglish.go('parent', { view: 'lessons' }));
+  await a.page.getByRole('button', { name: /Colors/ }).click();
+  await a.page.getByRole('button', { name: '1. Tạo file bài' }).click();
+  await a.page.getByRole('button', { name: '3. Tải lên Google Drive' }).click();
+  await expect(a.page.getByText(/✅ Đã tải lên Google Drive: Kid English\/\d+-colors\.zip/)).toBeVisible();
+  await expect(a.page.getByText(/không được chia sẻ file ra ngoài.*Gmail cá nhân.*publishOutNotPermitted/)).toBeVisible();
+  await expect(a.page.getByLabel('Link nhập bài')).toHaveCount(0);
+  await a.context.close();
 });

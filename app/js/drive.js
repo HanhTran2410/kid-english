@@ -91,6 +91,26 @@ export class DriveAuth {
 
 // ---------- Drive API ----------
 
+/**
+ * Lỗi HTTP của Google: kèm lý do Google trả về (error.message, error.errors[0].reason) để bố mẹ / người sửa app hiểu.
+ * @returns {Promise<DriveError>} err.reason: lý do ngắn của Google (ví dụ "publishOutNotPermitted")
+ */
+export async function httpError(res) {
+  let reason = '';
+  let detail = '';
+  try {
+    const body = await res.json();
+    reason = body?.error?.errors?.[0]?.reason ?? body?.error?.status ?? '';
+    detail = body?.error?.message ?? '';
+  } catch {
+    // không có nội dung JSON
+  }
+  const err = new DriveError(`Google Drive báo lỗi (${res.status}${reason ? `, ${reason}` : ''})${detail ? `: ${detail}` : '.'}`, 'http');
+  err.status = res.status;
+  err.reason = reason;
+  return err;
+}
+
 const quote = (s) => `'${String(s).replace(/\\/g, '\\\\').replace(/'/g, "\\'")}'`;
 
 export class DriveClient {
@@ -117,7 +137,7 @@ export class DriveClient {
       throw new DriveError('Phiên đăng nhập Google đã hết. Bấm lại để đăng nhập.', 'auth');
     }
     if (res.status === 404) throw new DriveError('Không tìm thấy trên Google Drive.', 'notfound');
-    if (!res.ok) throw new DriveError(`Google Drive báo lỗi (${res.status}).`, 'http');
+    if (!res.ok) throw await httpError(res);
     return res;
   }
 
@@ -265,9 +285,10 @@ export async function downloadPublicFile(fileId, apiKey, fetchFn = (...args) => 
     }
     if (res.status === 404) throw new DriveError('Không tìm thấy file trên Google Drive (file đã bị xóa, hoặc chưa bật chia sẻ link).', 'notfound');
     if (res.status === 400 || res.status === 403) {
-      throw new DriveError('Google Drive không cho tải: file chưa bật "ai có link đều xem được", hoặc API key sai / chưa bật Google Drive API.', 'denied');
+      const g = await httpError(res);
+      throw new DriveError(`Google Drive không cho tải: file chưa bật "ai có link đều xem được", hoặc API key sai / chưa bật Google Drive API. (${g.message})`, 'denied');
     }
-    if (!res.ok) throw new DriveError(`Google Drive báo lỗi (${res.status}).`, 'http');
+    if (!res.ok) throw await httpError(res);
     return res;
   };
   const { name } = await (await get('fields=name')).json();

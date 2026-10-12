@@ -2,9 +2,20 @@
 
 import { h, toast, formatDateTime, copyText } from '../../ui.js';
 import { appDrive, appFolder, loadGis, DriveError, DEFAULT_FOLDER, importLink, parseDriveLink, downloadPublicFile } from '../../drive.js';
-import { section, field } from './common.js';
+import { section, field, notice } from './common.js';
 
 const message = (err) => (err instanceof DriveError ? err.message : 'Có lỗi khi làm việc với Google Drive.');
+
+/** Không bật được "ai có link đều xem được": giải thích theo lý do Google trả về. */
+export function shareErrorMessage(err) {
+  const text = `${err?.reason ?? ''} ${err?.message ?? ''}`;
+  if (/publishOutNotPermitted|outside|domain|organi[sz]ation|invalidSharingRequest|sharing/i.test(text)) {
+    return 'Không tạo được link nhập bài: tài khoản Google này không được chia sẻ file ra ngoài (thường gặp ở tài khoản công ty / trường học — quản trị viên chặn). '
+      + 'Cách xử lý: dùng tài khoản Gmail cá nhân (Cài đặt → Google Drive → Kết nối thử, chọn Gmail cá nhân) rồi tải lên lại; hoặc nhờ quản trị viên cho phép chia sẻ ra ngoài. '
+      + `File vẫn đã lên Drive — máy dùng cùng tài khoản có thể "Nhập bài từ Google Drive". (Chi tiết: ${err?.message ?? ''})`;
+  }
+  return `Đã tải lên nhưng không tạo được link nhập bài. ${message(err)}`;
+}
 
 /** Tải sẵn phần đăng nhập Google khi trang có nút Drive (để lúc bấm mở được cửa sổ đăng nhập ngay). */
 export function prepareDrive(app) {
@@ -121,8 +132,13 @@ export function driveUploadButton(app, getFile, status) {
         status.textContent = `✅ Đã tải lên Google Drive: ${drive.folderName}/${f.name}${f.replaced ? ' (thay file cũ cùng tên)' : ''}. Trên máy kia (cùng tài khoản Google): Quản lý bài → "Nhập bài từ Google Drive".`;
         const apiKey = String(app.settings.driveApiKey ?? '').trim();
         if (apiKey) {
-          await drive.client.makePublic(f.id);
-          linkBox.replaceChildren(linkView(importLink(f.id, apiKey)));
+          // File đã lên Drive; bước bật chia sẻ link lỗi thì báo riêng (không coi là tải lên thất bại).
+          try {
+            await drive.client.makePublic(f.id);
+            linkBox.replaceChildren(linkView(importLink(f.id, apiKey)));
+          } catch (err) {
+            linkBox.replaceChildren(notice('error', shareErrorMessage(err)));
+          }
         } else {
           linkBox.replaceChildren(h('p.field-hint', { text: 'Muốn máy khác nhập bằng link (không cần đăng nhập Google): thêm "Google API key" ở Cài đặt → Google Drive.' }));
         }

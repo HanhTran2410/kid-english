@@ -154,3 +154,21 @@ test('bật "ai có link đều xem được": quyền xem cho mọi người', 
   assert.equal(sent[0].opts.method, 'POST');
   assert.deepEqual(JSON.parse(sent[0].opts.body), { role: 'reader', type: 'anyone' });
 });
+
+test('lỗi HTTP của Google: hiện lý do Google trả về; tài khoản công ty chặn chia sẻ ra ngoài thì giải thích dễ hiểu', async () => {
+  const { httpError } = await import('../../app/js/drive.js');
+  const res = {
+    status: 400,
+    json: async () => ({ error: { code: 400, message: 'Bad Request. User message: "Sharing outside of the domain is not allowed."', errors: [{ reason: 'publishOutNotPermitted' }] } }),
+  };
+  const err = await httpError(res);
+  assert.equal(err.status, 400);
+  assert.equal(err.reason, 'publishOutNotPermitted');
+  assert.match(err.message, /\(400, publishOutNotPermitted\): Bad Request/);
+  const plain = await httpError({ status: 500, json: async () => { throw new Error('không phải JSON'); } });
+  assert.equal(plain.message, 'Google Drive báo lỗi (500).');
+
+  // Upload thật sự qua client: lỗi giữa chừng mang theo lý do.
+  const c = new DriveClient(async () => 'good', async () => res);
+  await assert.rejects(c.makePublic('f1'), (e) => e.reason === 'publishOutNotPermitted');
+});
