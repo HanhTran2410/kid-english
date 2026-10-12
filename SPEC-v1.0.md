@@ -194,6 +194,15 @@ Ngoài các luật chung (chỉ trả JSON, tránh câu đã có ở bài khác�
 ### 7.2. Prompt khung hình (đã có từ app 0.2.1)
 Một ảnh lưới cho **tối đa 4 câu**: **mỗi hàng 1 câu = 1 hoạt động gồm đúng 3 khung liên tiếp** (không phải nhiều bước của một hoạt động); khung lấy từ `framePrompts`, thiếu thì app bổ sung. Hoặc **làm từng câu**: mỗi câu 1 ảnh 3×1 (AI dễ vẽ đúng hơn). Prompt (app 0.2.2, theo review): lưới tuyệt đối (tỉ lệ canvas cột:hàng để ô vuông, đúng số đường kẻ, không viền ngoài), thiết kế Bông cố định và **không cắt tai/đầu/chân**, mỗi hàng ghi **bối cảnh giữ nguyên** (`frameScene`), hình chiếm 60–70% ô và không chạm đường kẻ (kể cả giọt nước, vệt chuyển động), quy tắc cấm, câu FINAL CHECK. Ngoài ra: mỗi ô là một bước của cùng một hành động; **cùng nhân vật, cùng góc nhìn, cùng khung cảnh, cùng màu**, chỉ tư thế đổi; mô tả Bông cố định; khi gộp cả bài thì mỗi hàng một câu.
 
+**Bổ sung app 0.3.1 (theo review lần 2):**
+- Đường kẻ ghi **vị trí chính xác** (1/3, 2/3 chiều rộng; 1/4, 1/2, 3/4 chiều cao…).
+- **Nhân vật phụ** (Mummy, Daddy, Grandma, Grandpa) được app tự nhận ra trong `frameScene`/`framePrompts` và thêm mục SECONDARY CHARACTERS với **thiết kế cố định** (thỏ trưởng thành, màu lông và trang phục cố định), ghi rõ **chỉ xuất hiện ở hàng nào**; không nhắc tới thì không thêm. Có cảnh nắm tay thì yêu cầu **hai bàn tay chạm nhau rõ**, không hở, không tay lơ lửng.
+- Mỗi khung có vai rõ: **khung 1 = bắt đầu, khung 2 = đang làm, khung 3 = đã xong**; các khung phải **khác nhau rõ khi xem riêng** (đổi tư thế người, tay, trạng thái đồ vật — không chỉ đổi mắt); hành động "nhìn" thì xoay cả đầu, người và chỉ tay.
+- Bối cảnh: **nền trắng, chỉ vẽ vài đạo cụ đã kể** dạng hình đơn giản, không vẽ toàn cảnh.
+- Cảnh có đường phố (road, street, crossing, curb, traffic…) thì thêm mục **SAFETY**: Bông luôn đứng trên vỉa hè sau mép đường, không bao giờ bước xuống đường.
+- Cuối prompt có **danh sách kiểm tra** (FINAL VALIDATION) theo từng hàng.
+- Prompt tạo bài câu (7.1) yêu cầu AI: `frameScene` chỉ 2–4 đạo cụ; 3 khung bắt đầu → đang làm → xong, khác nhau rõ; người lớn chỉ dùng "Mummy"/"Daddy"; luôn thể hiện hành vi an toàn.
+
 ### 7.3. Prompt "cô giáo" cho câu (1.0-c)
 Dùng câu của bài; mời bé làm động tác ("Show me! Wash your face!"), dùng câu trong tình huống giả vờ.
 

@@ -317,8 +317,11 @@ export function buildPhraseLessonPrompt({ situation, count = 4, level = 'beginne
     '- "requiredKeywords": the main verb or phrasal verb that MUST be said (e.g. ["put on"], ["wash"]). "keywords": the main noun(s) (e.g. ["shirt"]).',
     '- "chunks": split the phrase into 1–3 short parts that, joined with spaces, give EXACTLY the phrase (e.g. ["Put on", "your shirt"]).',
     `- "imagePrompt": ${BONG_DESCRIPTION}, doing the action, concrete and clear. Always end with: "${IMAGE_STYLE}".`,
-    '- "frameScene": the place and the props that stay exactly the same in all frames of this action (e.g. "a bedroom with a bed, pillow, blanket and an alarm clock on a bedside table").',
-    '- "framePrompts": exactly 3 consecutive animation frames of Bông doing the action. Each frame is one clear sentence about Bông\'s pose and what changes, using the SAME props (e.g. "Bông sleeps in the bed under the blanket, eyes closed", "The alarm clock rings with small motion marks; Bông opens her eyes", "Bông sits up in the same bed and stretches both arms").',
+    '- "frameScene": only the 2–4 simple props that stay exactly the same in all frames of this action, no full scenery (e.g. "a bed with a pillow and a blanket, and an alarm clock on a small bedside table").',
+    '- "framePrompts": exactly 3 consecutive animation frames of Bông doing the action, using the SAME props: frame 1 = starting position, frame 2 = action clearly in progress, frame 3 = action completed (e.g. "Bông sleeps in the bed under the blanket, eyes closed", "The alarm clock rings with small motion marks; Bông opens her eyes", "Bông sits up in the same bed and stretches both arms").',
+    '- Each frame must look clearly different even when seen alone: change Bông\'s body pose, paw position or the state of the object, not only her eyes or head. For "look" actions, turn her whole head and body and point with one paw.',
+    '- If an adult is needed, use only "Mummy" or "Daddy" (bunny parents). When they hold hands, say that their paws visibly touch.',
+    '- Always show safe behavior the child should copy (stay on the sidewalk behind the curb, hold an adult\'s paw near roads).',
     '- "commands": the ids of phrases that are easy to act out with the body (for a "Bông says" game).',
     ...(avoid.length ? [`- The child ALREADY LEARNED these phrases. Do NOT repeat them: ${avoid.join('; ')}.`] : []),
     '- Use simple, positive, child-friendly language only.',
@@ -337,6 +340,55 @@ const BONG_DESIGN = [
 ];
 
 /**
+ * Nhân vật phụ có thể xuất hiện trong khung hình (bố mẹ, ông bà): thiết kế cố định để AI vẽ giống nhau ở mọi ô.
+ * Chỉ đưa vào prompt những nhân vật thực sự được nhắc tới trong bối cảnh / mô tả khung.
+ */
+const SIDE_CHARACTERS = [
+  {
+    name: 'MUMMY',
+    role: "Bông's mother",
+    pronoun: 'she',
+    match: /\b(mummy|mommy|mum|mom|mother|mama)\b/i,
+    design: 'an adult female bunny with soft light-gray fur, pink inner ears, gentle eyes and a warm smile, clearly taller and larger than Bông, always wearing the same simple pastel-pink dress',
+  },
+  {
+    name: 'DADDY',
+    role: "Bông's father",
+    pronoun: 'he',
+    match: /\b(daddy|dad|father|papa)\b/i,
+    design: 'an adult male bunny with soft light-brown fur, pink inner ears, kind eyes and a big smile, clearly taller and larger than Bông, always wearing the same simple light-blue shirt',
+  },
+  {
+    name: 'GRANDMA',
+    role: "Bông's grandmother",
+    pronoun: 'she',
+    match: /\b(grandma|granny|grandmother)\b/i,
+    design: 'an older female bunny with silvery-white fur, small round glasses and a gentle smile, always wearing the same lilac cardigan',
+  },
+  {
+    name: 'GRANDPA',
+    role: "Bông's grandfather",
+    pronoun: 'he',
+    match: /\b(grandpa|grandad|granddad|grandfather)\b/i,
+    design: 'an older male bunny with gray fur, small round glasses and a cheerful smile, always wearing the same green vest',
+  },
+];
+
+const HOLDING_HANDS = /\b(hold|holds|holding|held)\b[^.;]*\b(hand|hands|paw|paws)\b|\bhand in hand\b/i;
+const TRAFFIC = /\b(road|street|cross|crossing|curb|kerb|sidewalk|pavement|traffic|car|cars|bus)\b/i;
+
+const gcd = (a, b) => (b ? gcd(b, a % b) : a);
+const fraction = (k, m) => `${k / gcd(k, m)}/${m / gcd(k, m)}`;
+const listJoin = (items) => (items.length <= 1 ? items.join('') : `${items.slice(0, -1).join(', ')} and ${items.at(-1)}`);
+
+/** Vai của từng khung: khung đầu = bắt đầu, khung giữa = đang làm, khung cuối = đã xong. */
+function frameRole(c, cols) {
+  if (c === 0) return 'start';
+  if (c === cols - 1) return 'action completed';
+  return 'action clearly in progress';
+}
+
+/**
  * Prompt khung hình (flipbook) cho một nhóm câu: mỗi HÀNG là một hoạt động gồm đúng 3 khung liên tiếp,
  * mỗi CỘT là một bước (SPEC-v1.0 mục 7.2). Dùng chung cho mọi bài; bối cảnh và mô tả khung lấy từ bài câu.
  * @param {Array<{ en: string, steps: string[], scene?: string }>} rows
@@ -347,26 +399,70 @@ export function buildFramesPrompt(rows) {
   const cells = cols * n;
   const sentence = (t) => (/[.!?]$/.test(t) ? t : `${t}.`);
   const rowWord = n === 1 ? 'row' : 'rows';
+  const rowText = rows.map((row) => [row.scene ?? '', ...row.steps].join(' '));
+  const allText = rowText.join(' ');
+
+  // Nhân vật phụ: chỉ những ai được nhắc tới, kèm các hàng có mặt.
+  const side = SIDE_CHARACTERS
+    .map((ch) => ({ ...ch, rows: rowText.flatMap((t, r) => (ch.match.test(t) ? [r + 1] : [])) }))
+    .filter((ch) => ch.rows.length);
+  const holdsHands = HOLDING_HANDS.test(allText);
+  const traffic = TRAFFIC.test(allText);
+  const sideNames = side.map((ch) => ch.name.charAt(0) + ch.name.slice(1).toLowerCase());
+  const sideAppear = side.length === 1 ? `${side[0].pronoun} appears` : 'they appear';
+
+  const vertical = Array.from({ length: cols - 1 }, (_, k) => fraction(k + 1, cols));
+  const horizontal = Array.from({ length: n - 1 }, (_, k) => fraction(k + 1, n));
 
   const storyboard = [];
   rows.forEach((row, r) => {
     storyboard.push('', `### ROW ${r + 1} — ${row.en.toUpperCase()}`);
     storyboard.push(row.scene
-      ? `Setting that stays IDENTICAL in all ${cols} cells of this row (same positions, same scale): ${sentence(row.scene)}`
-      : `Keep the same background and the same props in the same positions and at the same scale in all ${cols} cells of this row.`);
+      ? `Setting that stays IDENTICAL in all ${cols} cells of this row (same positions, same scale; plain white background, draw ONLY these props as simple shapes): ${sentence(row.scene)}`
+      : `Keep the same few simple props in the same positions and at the same scale in all ${cols} cells of this row, on a plain white background.`);
     row.steps.forEach((step, c) => {
-      storyboard.push(`Cell ${r * cols + c + 1} — frame ${c + 1} of ${cols}: ${sentence(step)}`);
+      storyboard.push(`Cell ${r * cols + c + 1} — frame ${c + 1} of ${cols} (${frameRole(c, cols)}): ${sentence(step)}`);
     });
   });
+
+  const sideSection = side.length
+    ? [
+      '',
+      '## SECONDARY CHARACTERS',
+      ...side.map((ch) => `- ${ch.name} (${ch.role}) appears ONLY in ${ch.rows.length === 1 ? 'row' : 'rows'} ${listJoin(ch.rows.map(String))}: ${ch.design}.`),
+      `- Keep ${listJoin(sideNames)}'s fur color, face, proportions and outfit identical wherever ${sideAppear}; ${side.length === 1 ? 'clearly an adult bunny' : 'each clearly an adult bunny'}, never another copy of Bông.`,
+      '- When space is limited, show only the part of the adult needed for the action, but never let the adult hide Bông\'s face, paws, feet or the main action.',
+      ...(holdsHands ? ['- Whenever Bông holds someone\'s hand, their paws visibly touch and connect naturally between them — no gap, no floating or disconnected paws.'] : []),
+    ]
+    : [];
+
+  const safetySection = traffic
+    ? [
+      '',
+      '## SAFETY',
+      `- Always show safe behavior a parent wants the child to copy: Bông stays on the sidewalk, behind the curb, in every frame and never steps onto the road${side.length ? `; near traffic she stays next to ${listJoin(sideNames)}` : ''}.`,
+      '- No road-crossing action, no cars driving close to Bông.',
+    ]
+    : [];
+
+  const checks = [
+    `Exactly ${cols} columns × ${n} ${rowWord} = ${cells} square cells.`,
+    `Exactly ${cols - 1} vertical and ${n - 1} horizontal divider line(s).`,
+    ...rows.map((row, r) => `Row ${r + 1}: "${row.en}", shown in ${cols} clearly different stages (start → in progress → completed).`),
+    "Bông's design is identical in all cells.",
+    ...(side.length ? [`${listJoin(sideNames)} ${side.length === 1 ? 'looks' : 'look'} the same wherever ${sideAppear}.`] : []),
+    ...(traffic ? ['Bông stays safely on the sidewalk in every frame.'] : []),
+    'Nothing important is cropped and nothing crosses a divider line.',
+  ];
 
   return [
     `Create ONE single image containing an EXACT ${cols}-column × ${n}-row grid: ${cells} equal cells in total.`,
     `Use a canvas with aspect ratio ${cols}:${n} (width:height) so that every cell is square.`,
     '',
     '## GRID LAYOUT — ABSOLUTE REQUIREMENTS',
-    `- The canvas is divided into exactly ${cols} equal columns and ${n} equal ${rowWord}; all ${cells} cells have identical width and height.`,
+    `- The canvas is divided into exactly ${cols} equal columns and ${n} equal ${rowWord}; all ${cells} cells are identical squares.`,
     '- The grid fills the entire canvas edge to edge.',
-    `- Draw exactly ${cols - 1} straight vertical divider line(s) and exactly ${n - 1} straight horizontal divider line(s): thin, uniform, light gray, running continuously across the canvas.`,
+    `- Draw exactly ${cols - 1} straight vertical divider line(s)${vertical.length ? ` at ${listJoin(vertical)} of the canvas width` : ''} and exactly ${n - 1} straight horizontal divider line(s)${horizontal.length ? ` at ${listJoin(horizontal)} of the canvas height` : ''}: thin, uniform, light gray, running continuously across the canvas.`,
     '- No outer border, no individual cell borders, no rounded corners, no gaps between cells.',
     '- Every cell contains exactly one clearly readable animation frame. Read the cells left to right, then top to bottom.',
     '- Do not merge cells, omit cells, add extra panels or change the grid layout.',
@@ -377,28 +473,39 @@ export function buildFramesPrompt(rows) {
     'Consistency:',
     `- Keep Bông's face, eyes, ears, fur color, body proportions and scale identical in all ${cells} cells.`,
     '- Always show Bông as a complete character: never crop her head, ears, arms, legs or feet. For lying, sitting, washing, brushing or dressing poses, adjust the pose naturally but keep the same design.',
-    '- No duplicate bunnies and no other characters.',
+    `- No duplicate Bông and no other characters${side.length ? ` except ${listJoin(sideNames)}, only in the rows listed below` : ''}.`,
+    ...sideSection,
     '',
     '## ANIMATION STORYBOARD',
-    `Each row is ONE separate everyday activity made of exactly ${cols} consecutive frames (NOT ${n} steps of one activity). The frames of a row are played one after another like a flipbook, so only Bông's pose, expression and the action details change between them.`,
+    `Each row is ONE separate everyday activity made of exactly ${cols} consecutive frames (NOT ${n} steps of one activity). The frames of a row are played one after another like a flipbook.`,
+    `- Frame 1 shows the starting position, ${cols > 2 ? 'the middle frame shows the action clearly in progress, ' : ''}frame ${cols} shows the completed action.`,
+    '- Every frame must look clearly different from the others and be understandable on its own: change Bông\'s body pose, paw/arm position or the state of the object — not only her eyes. When a frame is about looking in a direction, turn her whole head and upper body that way and point with one paw.',
+    '- Within a row, keep the camera angle, character scale, props and their positions unchanged. Objects move naturally (hinged things swing on their hinges, nothing jumps or teleports) and nothing is duplicated.',
     ...storyboard,
+    ...safetySection,
     '',
     '## VISUAL STYLE',
     "- Cute preschool flashcard illustrations for a 3-year-old: simple flat vector shapes, thick soft dark outlines, bright but gentle pastel colors.",
-    '- Pure white background with minimal, uncluttered scenery; friendly expressions; clear silhouettes and recognizable objects.',
+    "- Pure white background in every cell: draw only the few props named in that row's setting, as simple shapes — no full rooms, no landscapes, no decorative extras.",
+    '- Friendly expressions, clear silhouettes and recognizable objects.',
     '- Consistent line thickness, color palette, lighting and camera angle across the whole image. No photorealism, no 3D, no complex textures, no dramatic shadows.',
     '',
     '## COMPOSITION AND CONTINUITY',
     '- Within each row: same camera angle, same character scale, same background layout and prop placement.',
     '- Bông and the essential props occupy about 60–70% of each cell, centered, with visible white space around them.',
     '- The main object of each action is big and clearly recognizable.',
-    '- No body part, prop, water drop, motion mark or shadow may touch or cross a divider line.',
+    '- No body part, paw, ear, prop, water drop, motion mark or shadow may touch or cross a divider line.',
     '',
     '## STRICT NEGATIVE RULES',
     '- No text, words, letters, numbers, captions, labels, speech bubbles, logos or watermarks.',
-    '- No extra panels, frames or grid lines; no missing or duplicated cells.',
-    '- No inconsistent character design, no extra limbs, no malformed hands, no distorted faces, no duplicated props.',
-    '- No cropped ears, heads, feet or essential objects. No scene change within a row except the described action.',
+    '- No extra panels, frames or grid lines; no missing, merged or duplicated cells.',
+    '- No inconsistent character design or clothing, no extra limbs, no malformed or fused paws, no distorted faces, no duplicated props.',
+    '- No floating objects, disconnected hands or physically impossible movements.',
+    '- No cropped ears, heads, feet or essential objects. No scene change and no camera change within a row except the described action.',
+    '',
+    '## FINAL VALIDATION',
+    'Before finishing, check:',
+    ...checks.map((c, i) => `${i + 1}. ${c}`),
     '',
     `FINAL CHECK: exactly ${cells} equal cells in ${cols} columns and ${n} ${rowWord}, showing ${n} separate ${cols}-frame ${n === 1 ? 'activity' : 'activities'} in the order above.`,
   ].join('\n');

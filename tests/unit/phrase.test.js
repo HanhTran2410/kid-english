@@ -172,18 +172,56 @@ test('prompt khung hình: lưới tuyệt đối, Bông nhất quán không bị
   ]);
   assert.match(p, /EXACT 3-column × 2-row grid: 6 equal cells in total/);
   assert.match(p, /aspect ratio 3:2 \(width:height\) so that every cell is square/);
-  assert.match(p, /exactly 2 straight vertical divider line\(s\) and exactly 1 straight horizontal divider line\(s\)/);
+  assert.match(p, /exactly 2 straight vertical divider line\(s\) at 1\/3 and 2\/3 of the canvas width and exactly 1 straight horizontal divider line\(s\) at 1\/2 of the canvas height/);
   assert.match(p, /never crop her head, ears, arms, legs or feet/);
   assert.match(p, /exactly 3 consecutive frames \(NOT 2 steps of one activity\)/);
-  assert.match(p, /### ROW 1 — WAKE UP\nSetting that stays IDENTICAL in all 3 cells of this row \(same positions, same scale\): a bedroom with a bed and an alarm clock\.\nCell 1 — frame 1 of 3: Bông sleeps in bed\./);
-  assert.match(p, /### ROW 2 — WASH YOUR FACE\nKeep the same background and the same props/);
-  assert.match(p, /No body part, prop, water drop, motion mark or shadow may touch or cross a divider line/);
+  assert.match(p, /### ROW 1 — WAKE UP\nSetting that stays IDENTICAL in all 3 cells of this row \(same positions, same scale; plain white background, draw ONLY these props as simple shapes\): a bedroom with a bed and an alarm clock\.\nCell 1 — frame 1 of 3 \(start\): Bông sleeps in bed\.\nCell 2 — frame 2 of 3 \(action clearly in progress\): The alarm rings\.\nCell 3 — frame 3 of 3 \(action completed\): Bông sits up\./);
+  assert.match(p, /### ROW 2 — WASH YOUR FACE\nKeep the same few simple props/);
+  assert.match(p, /understandable on its own: change Bông's body pose/);
+  assert.match(p, /No body part, paw, ear, prop, water drop, motion mark or shadow may touch or cross a divider line/);
+  assert.match(p, /3\. Row 1: "Wake up", shown in 3 clearly different stages/);
   assert.match(p, /FINAL CHECK: exactly 6 equal cells in 3 columns and 2 rows/);
   assert.doesNotMatch(p, /\bdoor\b/, 'không nhắc đồ vật không có trong bài');
+  // Không có nhân vật phụ / đường phố thì không thêm các phần đó.
+  assert.doesNotMatch(p, /SECONDARY CHARACTERS|## SAFETY|Mummy/);
+  assert.match(p, /No duplicate Bông and no other characters\./);
   const one = buildFramesPrompt([{ en: 'Wake up', steps: ['a', 'b', 'c'] }]);
   assert.match(one, /3-column × 1-row grid: 3 equal cells/);
   assert.match(one, /exactly 0 straight horizontal divider line/);
   assert.match(one, /showing 1 separate 3-frame activity/);
+});
+
+test('prompt khung hình: Mummy được định nghĩa cố định, chỉ ở hàng có nhắc tới; nắm tay thì tay chạm nhau; đường phố thì có luật an toàn', async () => {
+  const { buildFramesPrompt } = await import('../../app/js/prompts.js');
+  const p = buildFramesPrompt([
+    { en: "Hold Mummy's hand", scene: 'a front door and a doormat', steps: ['Bông stands beside Mummy', "Bông holds Mummy's hand", 'They smile'] },
+    { en: 'Open the door', scene: 'a front door', steps: ['Bông reaches the doorknob', 'Bông pulls the door', 'The door is open'] },
+    { en: 'Look both ways', scene: 'a sidewalk with a curb', steps: ['Bông stands beside Mom behind the curb', 'Bông looks left', 'Bông looks right'] },
+  ]);
+  assert.match(p, /## SECONDARY CHARACTERS\n- MUMMY \(Bông's mother\) appears ONLY in rows 1 and 3: an adult female bunny with soft light-gray fur/);
+  assert.match(p, /wherever she appears; clearly an adult bunny, never another copy of Bông/);
+  assert.match(p, /no other characters except Mummy, only in the rows listed below/);
+  assert.match(p, /their paws visibly touch and connect/);
+  assert.match(p, /## SAFETY\n- Always show safe behavior .*never steps onto the road; near traffic she stays next to Mummy/);
+  assert.match(p, /No road-crossing action/);
+  assert.match(p, /Mummy looks the same wherever she appears\./);
+  assert.match(p, /Bông stays safely on the sidewalk in every frame\./);
+  assert.doesNotMatch(p, /DADDY|GRANDMA|GRANDPA/);
+
+  const two = buildFramesPrompt([{ en: 'Hug Daddy', steps: ['Bông runs to Daddy', 'Bông hugs Daddy', 'Grandma smiles'] }]);
+  assert.match(two, /DADDY \(Bông's father\) appears ONLY in row 1/);
+  assert.match(two, /GRANDMA/);
+  assert.match(two, /wherever they appear; each clearly an adult bunny/);
+});
+
+test('prompt tạo bài câu: khung 1 bắt đầu → 2 đang làm → 3 xong, khung khác nhau rõ, người lớn là Mummy/Daddy, hành vi an toàn', async () => {
+  const { buildPhraseLessonPrompt } = await import('../../app/js/prompts.js');
+  const p = buildPhraseLessonPrompt({ situation: 'Going out' });
+  assert.match(p, /frame 1 = starting position, frame 2 = action clearly in progress, frame 3 = action completed/);
+  assert.match(p, /look clearly different even when seen alone/);
+  assert.match(p, /use only "Mummy" or "Daddy"/);
+  assert.match(p, /stay on the sidewalk behind the curb/);
+  assert.match(p, /only the 2–4 simple props/);
 });
 
 test('bài câu giữ frameScene; nhóm làm từng câu là lưới 3×1', async () => {
