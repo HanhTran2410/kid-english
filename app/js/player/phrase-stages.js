@@ -119,15 +119,23 @@ export async function runDo(ctx, phrase) {
     scene.play();
     await teacher.say(`Look! ${phrase.en}!`);
   }
+  // Bé vừa nghe câu ở bước này → bước nói theo không cần đọc lại câu trong lời mời.
+  ctx.justHeard = phrase.id;
   await teacher.pause(500);
 }
 
 // ---------- C. Nói theo (tùy chọn, không bao giờ làm kẹt bài) ----------
+// Nối liền bước B: bé vừa nghe câu nên Bông chỉ mời "Now you say it!" (không đọc lại câu).
+// Bé nói được thì chỉ khen; chưa nói được / im lặng / không có mic thì Bông đọc mẫu câu một lần.
 export async function runSay(ctx, phrase) {
   const { app, teacher } = ctx;
   const { scene, highlight } = phraseCard(ctx, phrase);
   highlight('all');
-  await teacher.say(`Can you say: ${phrase.en}?`);
+  const justHeard = ctx.justHeard === phrase.id;
+  ctx.justHeard = null;
+  if (!justHeard) await teacher.say(`Can you say: ${phrase.en}?`);
+  // Không có mic thì teacher.hear tự nói "Your turn!".
+  else if (app.mic.ready) await teacher.say('Now you say it!');
   // "Nói được" chỉ khi nghe ra từ khóa bắt buộc (động từ), không chỉ danh từ.
   let { result } = await teacher.hear(phrase.requiredKeywords, { maxMs: 7000 });
   if (result === RESULT.SILENT) {
@@ -146,9 +154,11 @@ export async function runSay(ctx, phrase) {
     await teacher.say('Good try!');
   }
   teacher.bunny.set('idle');
-  highlight('all');
-  scene.play(1);
-  await teacher.say(`${phrase.en}!`);
+  if (result !== RESULT.MATCH) {
+    highlight('all');
+    scene.play(1);
+    await teacher.say(`${phrase.en}!`);
+  }
   if (result === RESULT.LISTEN_ONLY) await teacher.say('Good!');
   await teacher.checkPresence();
   await teacher.pause(600);

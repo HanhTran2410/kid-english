@@ -38,9 +38,11 @@ test('màn hình chính có nút Phrases; học hết bài Morning: xem → làm
   await expect(page.locator('.prize-sticker')).toBeVisible();
 
   const spoken = await page.evaluate(() => window.__spoken);
-  for (const line of ['Wash', 'your face', 'Wash your face!', 'Your turn! Wash your face!', 'Can you say: Wash your face?']) {
+  for (const line of ['Wash', 'your face', 'Wash your face!', 'Your turn! Wash your face!', 'Now you say it!']) {
     expect(spoken).toContain(line);
   }
+  // Sau ✔ Bông không đọc lại câu trong lời mời nói theo.
+  expect(spoken).not.toContain('Can you say: Wash your face?');
   expect(spoken.some((t) => t.startsWith('Which one is:'))).toBe(true);
   expect(spoken.join(' ')).not.toMatch(/wrong/i);
 

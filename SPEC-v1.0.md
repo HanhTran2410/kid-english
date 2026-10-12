@@ -4,6 +4,7 @@
 > - draft2: video bố mẹ quay chuyển sang bản 1.1.
 > - draft3: sửa theo review — offline/giọng nói, từ khóa bắt buộc, định danh câu và lưu ảnh/khung hình, hiệu ứng theo loại hình, không trừ sao, thu nhỏ phạm vi 1.0-a, bổ sung test.
 > - Chốt 2026-10-09: các câu hỏi mục 13 theo đề xuất.
+> - **App 0.2.5** (2026-10-12): gộp B + C để bớt đọc lặp — sau ✔ Bông mời "Now you say it!" mà không đọc lại câu; bé nói được thì không đọc mẫu lại (mục 5).
 > - **Flipbook làm sớm (app 0.2.1)** theo góp ý sau khi thử 1.0-a (cảnh Bông chỉ có cái đầu + emoji khó hiểu): khung hình từ ảnh lưới (mỗi hàng 1 câu, 3 bước, Bông vẽ **cả người**), xem trước, lưu, phát khi học; nâng cấp IndexedDB lên phiên bản 2 (kho `frameSets`); chia sẻ bài / sao lưu mang theo khung hình (format 2). **Không làm kho `phraseImages` riêng**: ảnh tĩnh của câu = bộ khung 1 khung. Trò E, F và ảnh tĩnh riêng vẫn ở 1.0-b.
 > - **1.0-a đã làm xong (app 0.2.0)**: nút Phrases, danh sách bài câu, tạo bài câu, xem trước, trang bài câu (đổi hiệu ứng, Câu dùng trong ngày), cảnh Bông + emoji với 18 hiệu ứng, luồng A–D, tiến độ câu, bài mẫu Morning. Ghi chú kỹ thuật: 1.0-a chưa cần kho mới nên **chưa nâng cấp IndexedDB**; kho `phraseImages`/`frameSets` sẽ thêm cùng 1.0-b.
 
@@ -139,14 +140,14 @@ Cùng khung màn hình với bài từ vựng (🏠, thanh tiến độ, Bông, 
 3. Bông khen. Không chạm sau 15 giây thì Bông làm mẫu lại một lần rồi đi tiếp; không trừ gì.
 4. Chạm ✔ nhiều lần chỉ tính một lần.
 
-**C. Nói theo** — tùy chọn, không bao giờ làm kẹt bài
-1. Bông: *"Can you say: Wash your face?"*, nghe tối đa 7 giây.
+**C. Nói theo** — tùy chọn, không bao giờ làm kẹt bài. **Nối liền bước B, không đọc lại câu thừa** (app 0.2.5).
+1. Bé vừa nghe câu ở bước B nên Bông chỉ mời: *"Now you say it!"* (câu vẫn hiện chữ trên màn hình), nghe tối đa 7 giây. Nếu bắt đầu thẳng từ bước C (bỏ qua B bằng ▶, Học tiếp) thì mời đầy đủ *"Can you say: Wash your face?"*.
 2. Kết quả:
    - **recognized** (nói được): nhận dạng giọng nói nghe ra **ít nhất một từ/cụm trong `requiredKeywords`** (so khớp lỏng như hiện tại, cụm nhiều chữ khớp theo cụm). Chỉ nói danh từ ("face") **không** tính là nói được câu, nhưng vẫn được khen "Good try!".
    - **heard_speech** (có tiếng): có tiếng nhưng không nhận ra từ bắt buộc, hoặc máy không có nhận dạng. Chỉ có nghĩa là bé đã lên tiếng, không chứng minh bé nói đúng.
    - **silent** (im lặng): mic hoạt động nhưng không có tiếng → Bông đọc lại từng cụm, nghe thêm một lần.
    - **unavailable** (không nghe được): không có mic, bị từ chối quyền, mic lỗi → **chế độ chỉ nghe** như hiện tại (*"Your turn!"*, chờ 3 giây, đọc mẫu, đi tiếp). **Lỗi mic, quyền hay mạng không bao giờ được tính là im lặng.**
-3. Bông luôn đọc lại câu chuẩn rồi đi tiếp.
+3. Bé **nói được** thì Bông chỉ khen rồi đi tiếp. Các trường hợp còn lại (có tiếng, im lặng, không nghe được) Bông đọc mẫu câu chuẩn **một lần** rồi đi tiếp.
 
 **D. Chọn hình đúng câu**
 - *"Which one is 'wash your face'?"* — 2–3 cảnh nhỏ, bé chạm. Chạm sai: hình lắc nhẹ, Bông đọc câu của hình đó, mời chọn lại; sai 2 lần thì hình đúng phát sáng rồi đi tiếp.
