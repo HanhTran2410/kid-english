@@ -288,49 +288,87 @@ const capitalize = (s) => s.charAt(0).toUpperCase() + s.slice(1);
  * @param {{ cols: number, rows: number }} shape
  */
 // ---------- Mũi tên chỉ bộ phận chi tiết ----------
-// Từ là MỘT PHẦN của vật lớn hơn (trán, má, khuỷu tay, đuôi, cánh hoa…) vẽ riêng thì bé khó nhận ra:
-// vẽ cả khuôn mặt / người / con vật và một mũi tên đỏ chỉ đúng vào phần đó. Từ rõ ràng (mắt, mũi, tay, con mèo…) không cần.
+// Từ là MỘT PHẦN của vật lớn hơn (trán, má, cổ tay, đuôi, cánh hoa…) vẽ riêng thì bé khó nhận ra: vẽ cả khuôn mặt /
+// bàn tay / chân / người / con vật trong tư thế rõ ràng và một mũi tên đỏ chỉ ĐÚNG chỗ. Mỗi bộ phận có cách vẽ và điểm
+// chỉ riêng (theo review: tránh mũi tên chỉ nhầm sang chỗ bên cạnh). Từ rõ ràng (mắt, mũi, tay, con mèo…) không cần.
 
-const FACE = "a smiling child's whole face (head and hair, front view)";
-const UPPER = "a child's head and upper body, front view";
-const HAND = "a child's whole open hand with five fingers";
-const ARM = "a child's whole arm with the open hand";
-const LEG = "a child's whole leg with the bare foot, side view";
-const BODY = 'a whole child standing, full body, simple clothes';
+const FACE = "a smiling child's face and head, front view, the hairline high above the forehead and NO hair covering the forehead";
+const HAND_OPEN = "a child's open hand, palm facing the viewer, all five fingers spread naturally (NOT a thumbs-up or any other gesture), the whole hand and a little of the wrist inside the cell";
+const LEG_SIDE = "a child's lower leg and bare foot in side view, the joint between the leg and the foot clearly visible, the whole foot inside the cell";
+const BODY = "a whole child standing straight, front view, wearing a plain T-shirt with no pictures or patterns";
+
+/** bộ phận → [cách vẽ, điểm mũi tên chỉ vào] */
 const POINTER_PARTS = new Map([
-  ...['forehead', 'cheek', 'chin', 'eyebrow', 'eyelash', 'lip', 'lips', 'tongue', 'nostril', 'jaw', 'temple', 'dimple'].map((p) => [p, FACE]),
-  ...['neck', 'shoulder', 'collarbone'].map((p) => [p, UPPER]),
-  ...['thumb', 'palm', 'fingernail', 'knuckle'].map((p) => [p, HAND]),
-  ...['elbow', 'wrist', 'forearm'].map((p) => [p, ARM]),
-  ...['knee', 'ankle', 'heel', 'toe', 'toenail', 'thigh', 'shin', 'sole'].map((p) => [p, LEG]),
-  ...['belly', 'tummy', 'belly button', 'navel', 'chest', 'hip', 'waist', 'bottom'].map((p) => [p, BODY]),
-  ['back', 'a whole child standing, seen from behind'],
-  ...['tail', 'paw', 'whiskers', 'mane', 'hoof', 'claw'].map((p) => [p, 'the whole cute animal (for example a cat, dog or horse)']),
-  ...['beak', 'wing', 'feather'].map((p) => [p, 'a whole cute bird']),
-  ['fin', 'a whole cute fish'],
-  ...['petal', 'stem', 'root', 'thorn'].map((p) => [p, 'a whole simple flower or plant']),
+  ['forehead', [FACE, 'the center of the forehead (between the hairline and the eyebrows)']],
+  ['cheek', [FACE, 'the middle of ONE cheek only (below the eye and beside the nose), not the eye, nose or mouth']],
+  ['chin', [FACE, 'the chin (the bottom of the face, below the mouth)']],
+  ['eyebrow', [FACE, 'ONE eyebrow (the line of hair above the eye), not the eye']],
+  ['eyelash', ["a close-up of one big open child's eye with clearly drawn long eyelashes", 'the eyelashes, not the eyeball']],
+  ['lip', [FACE, 'the lips, not the teeth or tongue']],
+  ['lips', [FACE, 'the lips, not the teeth or tongue']],
+  ['tongue', ["a smiling child's face playfully sticking the tongue out", 'the tongue']],
+  ['nostril', [FACE, 'ONE nostril (the small opening at the bottom of the nose)']],
+  ['jaw', [FACE, 'the jaw line (the lower edge of the face beside the chin)']],
+  ['temple', [FACE, 'ONE temple (the flat side of the head between the eye and the ear)']],
+  ['dimple', ["a broadly smiling child's face with one dimple in the cheek", 'the dimple']],
+  ['neck', ["a child's head and upper body, front view", 'the neck (between the chin and the shoulders)']],
+  ['shoulder', ["a child's head and upper body, front view, arms down", 'ONE shoulder (the top outer corner of the body where the arm starts)']],
+  ['collarbone', ["a child's head and upper body, front view, round-neck shirt", 'the collarbone just below the neck']],
+  ['thumb', [HAND_OPEN, 'the thumb only (the short thick finger on the side), not the other fingers or the palm']],
+  ['palm', [HAND_OPEN, 'the center of the palm']],
+  ['fingernail', ["a child's hand seen from the back, fingers spread, clean pink nails", 'the nail of the index finger']],
+  ['knuckle', ["a child's hand making a loose fist, seen from the back", 'the knuckles (the bumps on top of the fist)']],
+  ['wrist', ["a child's hand and the lower part of the forearm, fully inside the cell, the wrist area drawn a little larger so it is easy to see", 'the exact middle of the joint between the hand and the forearm, not the palm or the forearm']],
+  ['forearm', ["a child's whole arm, side view, straight", 'the middle of the forearm (between the wrist and the elbow)']],
+  ['elbow', ["a child's whole arm bent at a right angle, side view", 'the pointed tip of the elbow where the arm bends']],
+  ['ankle', [LEG_SIDE, 'the ankle joint (between the leg and the foot), not the toes, the heel or the calf']],
+  ['heel', [LEG_SIDE, 'the heel (the round back part of the foot)']],
+  ['sole', ["the bottom of one bare child's foot, seen from below, five toes visible", 'the middle of the sole']],
+  ['toe', ["one bare child's foot seen from above with five toes", 'the big toe only']],
+  ['toenail', ["one bare child's foot seen from above with five toes", 'the nail of the big toe']],
+  ['knee', ["a child's whole leg, slightly bent, side view, wearing shorts so the knee is bare", 'the knee (the round joint in the middle of the leg)']],
+  ['thigh', ["a child's whole leg, side view, wearing shorts", 'the thigh (the upper part of the leg, above the knee)']],
+  ['shin', ["a child's whole leg, side view, wearing shorts", 'the shin (the front of the leg below the knee)']],
+  ['belly', [`${BODY}, one hand pointing at the tummy`, 'the middle of the belly (below the chest, above the waist)']],
+  ['tummy', [`${BODY}, one hand pointing at the tummy`, 'the middle of the tummy (below the chest, above the waist)']],
+  ['belly button', ['a whole child standing straight, front view, wearing only swim shorts so the tummy is bare', 'the belly button in the middle of the tummy']],
+  ['navel', ['a whole child standing straight, front view, wearing only swim shorts so the tummy is bare', 'the navel in the middle of the tummy']],
+  ['chest', [BODY, 'the middle of the chest (below the neck, above the tummy)']],
+  ['back', ['a whole child standing straight, seen from behind, plain T-shirt', 'the middle of the back']],
+  ['hip', [BODY, 'ONE hip (the side of the body where the leg starts)']],
+  ['waist', [BODY, 'the waist (the narrow middle of the body above the hips)']],
+  ['bottom', ['a whole child standing, seen from behind, plain shorts', 'the bottom']],
+  ...['tail', 'paw', 'whiskers', 'mane', 'hoof', 'claw'].map((p) => [p, ['the whole cute animal (for example a cat, dog or horse), side view', `the ${p}`]]),
+  ...['beak', 'wing', 'feather'].map((p) => [p, ['a whole cute bird, side view', `the ${p}`]]),
+  ['fin', ['a whole cute fish, side view', 'one fin']],
+  ...['petal', 'stem', 'root', 'thorn'].map((p) => [p, ['a whole simple flower or plant (roots shown under the ground line if needed)', `one ${p}`]]),
 ]);
 
+const ARROW_RULE = 'The arrow is fully inside this cell: its tail sits in empty white space and its arrowhead stops right beside the target, touching its edge without covering it; the arrow never crosses a divider line.';
+
 /**
- * Câu dặn vẽ mũi tên cho từ là bộ phận chi tiết; '' nếu không cần (từ rõ ràng, hoặc mô tả đã nói tới mũi tên).
- * @param {{ en: string, imagePrompt?: string }|string} word
+ * Cách vẽ một bộ phận chi tiết (cả khuôn mặt / tay / người… + mũi tên đỏ chỉ đúng chỗ); '' nếu từ không có trong bảng.
+ * @param {{ en: string }|string} word
  */
 export function pointerNote(word) {
   const en = String(typeof word === 'string' ? word : word?.en ?? '').toLowerCase().trim();
-  const prompt = typeof word === 'string' ? '' : String(word?.imagePrompt ?? '');
-  const whole = wordForms(en).map((f) => POINTER_PARTS.get(f)).find(Boolean);
-  if (!whole || /\barrow\b/i.test(prompt)) return '';
-  return `Show it in context instead of alone: draw ${whole}, and add ONE thick bright-red arrow (simple shape, no text) that starts in the white space outside and points exactly at the ${en}; give the ${en} a soft yellow glow so it stands out and keep it clearly visible, not covered.`;
+  const part = wordForms(en).map((f) => POINTER_PARTS.get(f)).find(Boolean);
+  if (!part) return '';
+  const [scene, target] = part;
+  return `Show it in context instead of alone: draw ${scene}. Add ONE thick bright-red arrow (simple shape, no text) pointing at ${target}; give that spot a soft yellow glow so it stands out. ${ARROW_RULE}`;
 }
 
-/** Từ cần mũi tên (theo bảng bộ phận hoặc mô tả hình đã có mũi tên). */
+/** Từ cần mũi tên: có trong bảng bộ phận, hoặc mô tả hình của AI đã nói tới mũi tên. */
 export const needsPointer = (word) => Boolean(pointerNote(word)) || /\barrow\b/i.test(String(word?.imagePrompt ?? ''));
 
-/** Prompt ảnh một từ (nút "Copy prompt ảnh"): mô tả của AI + câu dặn vẽ mũi tên nếu là bộ phận chi tiết. */
+/**
+ * Prompt ảnh một từ (nút "Copy prompt ảnh"). Bộ phận có trong bảng: dùng cách vẽ của app (thay mô tả của AI để không
+ * có hai yêu cầu chọi nhau, ví dụ "raised thumb" và "open hand").
+ */
 export function singleImagePrompt(word) {
-  const base = String(word?.imagePrompt ?? '').trim() || `One ${word?.en ?? ''}, ${IMAGE_STYLE}`;
   const note = pointerNote(word);
-  return note ? `${base.replace(/\.?\s*$/, '.')} ${note}` : base;
+  if (note) return `${capitalize(String(word?.en ?? ''))}: ${note} ${IMAGE_STYLE}`;
+  return String(word?.imagePrompt ?? '').trim() || `One ${word?.en ?? ''}, ${IMAGE_STYLE}`;
 }
 
 export function buildGridImagePrompt(words, { cols, rows }) {
@@ -349,10 +387,11 @@ export function buildGridImagePrompt(words, { cols, rows }) {
       const i = r * cols + c;
       const item = items[i];
       if (item) {
-        const hint = visualHint(item);
         const note = pointerNote(item);
+        const hint = note ? '' : visualHint(item); // bộ phận trong bảng: chỉ dùng cách vẽ của app
         const arrow = needsPointer(item);
-        placement.push(`Cell ${i + 1} — ${capitalize(item.en)}: ${hint ? sentence(hint) : `${/[^s]s$/i.test(item.en) ? capitalize(item.en) : `One ${item.en}`}.`}${note ? ` ${note}` : ''} ${arrow ? 'Only this one subject (plus its arrow) in the cell.' : 'Only this one subject in the cell.'}`);
+        const what = note || (hint ? sentence(hint) : `${/[^s]s$/i.test(item.en) ? capitalize(item.en) : `One ${item.en}`}.`);
+        placement.push(`Cell ${i + 1} — ${capitalize(item.en)}: ${what} ${arrow ? 'Only this one subject (plus its arrow) in the cell.' : 'Only this one subject in the cell.'}`);
       } else {
         placement.push(`Cell ${i + 1} — EMPTY CELL: completely blank, uniform pure white (#FFFFFF). Absolutely nothing inside: no illustration, no object, no icon, no pattern, no shadow, no texture, no decoration, no stray marks.`);
       }
@@ -370,7 +409,7 @@ export function buildGridImagePrompt(words, { cols, rows }) {
     'ILLUSTRATION STYLE',
     "Cute children's English-learning flashcards for a 3-year-old child. Simple flat vector illustrations, clean shapes, thick soft dark outlines, bright gentle pastel colors, friendly expressions, instantly recognizable subjects.",
     `Use the same consistent style, outline thickness, color palette and simplicity in all ${filled} illustrated cells.`,
-    'Each subject is centered in its cell and fills about 70% of the cell, with comfortable white space on every side. No subject may touch or cross a divider line or the edge of the image (people: show them smaller if needed so they do not touch the line below).',
+    'Each subject is centered in its cell and large enough for a 3-year-old to recognize it immediately: about 65–75% of the cell when practical, with comfortable white space on every side. Never crop any hand, finger, foot, leg, face or body part needed to understand the word. No subject may touch or cross a divider line or the edge of the image (people: show them smaller if needed so they do not touch the line below).',
     'Plain pure-white background in every cell.',
     '',
     'STRICT GRID AND CONTENT RULES',
