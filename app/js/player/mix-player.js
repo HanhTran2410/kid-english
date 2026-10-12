@@ -5,7 +5,8 @@
 import { h, wordVisual } from '../ui.js';
 import { isAbort } from '../timing.js';
 import { RESULT } from '../speech/listen.js';
-import { listLessons, getFrameSets, frameBlobs } from '../db.js';
+import { listLessons, getFrameSets, frameBlobs, latestImageForWord, mediaBlob } from '../db.js';
+import { normalizeWord } from '../text.js';
 import { numberRecords } from '../progress.js';
 import { collectItems, pickReviewItems, pickPlayItems, distractors, learnedKeys } from '../mix.js';
 import { activityLayout } from './layout.js';
@@ -69,9 +70,16 @@ export function mixScreen(app, { mode = 'review' } = {}) {
 
     // Hình: ảnh/emoji của từ; khung hình (flipbook) của câu theo từng bài.
     const frames = new Map();
+    const imageByItem = new Map(); // ảnh đồ vật của số đếm (ảnh mới nhất), không có thì emoji
     for (const { item, others } of plan) {
       for (const it of [item, ...others]) {
         if (it.kind === 'word') await loadWordVisual(app.db, visuals, it.en, it.emoji);
+        if (it.kind === 'number' && !imageByItem.has(normalizeWord(it.data.item))) {
+          const img = await latestImageForWord(app.db, it.data.item);
+          const url = img ? URL.createObjectURL(mediaBlob(img)) : null;
+          if (url) urls.push(url);
+          imageByItem.set(normalizeWord(it.data.item), url);
+        }
         if (it.kind === 'phrase' && !frames.has(it.lessonId)) {
           const byPhrase = new Map();
           for (const [phraseId, set] of await getFrameSets(app.db, it.lessonId)) {
@@ -92,10 +100,11 @@ export function mixScreen(app, { mode = 'review' } = {}) {
       stage: layout.stage,
       nextBtn: layout.nextBtn,
       pickedThisRun: new Set(),
-      maxNumber: 10,
+      maxNumber: 20,
       allowHigh: [...mastery].some(([n, m]) => n > 5 && m > 0),
       // Trò chơi tổng hợp: chỉ cộng sao cho mục đã học trước lượt này (đoán trúng mục mới không tính là thuộc).
       canAward: (key) => !play || learnedBefore.has(key),
+      imageOf: (entry) => imageByItem.get(normalizeWord(entry.item)) ?? null,
     };
 
     let wordTurn = 0;

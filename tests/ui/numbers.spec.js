@@ -1,6 +1,6 @@
 // Test giao diện mục "Số đếm" (SPEC-numbers.md).
 import { test, expect } from '@playwright/test';
-import { fakeSpeech, startApp, playThrough } from './helpers.js';
+import { fakeSpeech, startApp, playThrough, openParent } from './helpers.js';
 
 const progressOf = (page, key) => page.evaluate(async (k) => (await window.kidEnglish.db.get('progress', k)) ?? null, key);
 
@@ -27,7 +27,7 @@ test('màn hình chính có nút Số đếm; học hết bài Đếm 1–10: B�
   await startApp(page);
   await page.getByRole('button', { name: 'Số đếm' }).click();
   // Danh sách bài số: bài đếm và trò chơi, không lẫn bài từ vựng / bài câu.
-  await expect(page.locator('.lesson-card')).toHaveCount(2);
+  await expect(page.locator('.lesson-card')).toHaveCount(3);
   await autoTapCount(page);
   await page.getByRole('button', { name: 'Count 1–10', exact: true }).click();
 
@@ -105,4 +105,72 @@ test('màn hình chính 7 nút (có 🎲 Trò chơi) vừa iPhone dọc, không 
     expect(box.y + box.height).toBeLessThanOrEqual(664);
     expect(box.x + box.width).toBeLessThanOrEqual(390);
   }
+});
+
+test('bài Đếm 11–20: khung 10 + đếm tiếp "Ten! Eleven…", bé chỉ chạm đếm phần thêm', async ({ page }) => {
+  await startApp(page);
+  await page.getByRole('button', { name: 'Số đếm' }).click();
+  // Bài số xếp theo thứ tự bài: 1–10 trước 11–20.
+  await expect(page.locator('.lesson-card').first()).toHaveAttribute('aria-label', 'Count 1–10');
+  await autoTapCount(page);
+  await page.getByRole('button', { name: 'Count 11–20', exact: true }).click();
+  await expect(page.locator('.number-card .numeral')).toHaveText('11');
+  await expect(page.locator('.number-card .ten-frame .count-item')).toHaveCount(10);
+  await expect(page.locator('.number-card .count-item:not(.in-ten)')).toHaveCount(1);
+  await playThrough(page);
+  await expect(page.locator('.prize-sticker')).toBeVisible();
+
+  const spoken = await page.evaluate(() => window.__spoken);
+  for (const line of ['Ten!', 'Eleven', 'Eleven bees!', 'Ten! Your turn! Tap and count!', 'Twelve eggs! Great counting!',
+    'Twenty leaves!']) {
+    expect(spoken).toContain(line);
+  }
+  expect(spoken.some((t) => /^Where are (thirteen|fourteen|fifteen|sixteen|seventeen|eighteen|nineteen|twenty) \w+/.test(t))).toBe(true);
+  // Không đếm lại 1–10 ở bài 11–20.
+  expect(spoken).not.toContain('One');
+  expect((await page.evaluate(async () => window.kidEnglish.db.get('progress', 'number:12'))).mastery).toBeGreaterThanOrEqual(1);
+});
+
+test('ảnh đồ vật: bố mẹ thêm ảnh lưới cho bài số → khi học hiện ảnh thay emoji', async ({ page }) => {
+  await startApp(page);
+  await openParent(page);
+  await page.getByRole('button', { name: 'Quản lý bài' }).click();
+  await page.getByRole('button', { name: /Count 1–10/ }).click();
+  const heading = page.getByRole('heading', { name: /Ảnh đồ vật/ });
+  await expect(heading).toBeVisible();
+  const [, cols, rows] = (await heading.textContent()).match(/(\d)×(\d)/).map(Number);
+
+  // Ảnh lưới giống AI vẽ: nền trắng, đường kẻ xám nhạt, mỗi ô một hình tròn màu.
+  const png = await page.evaluate(async ([cols, rows]) => {
+    const size = 200;
+    const c = document.createElement('canvas');
+    c.width = cols * size; c.height = rows * size;
+    const g = c.getContext('2d');
+    g.fillStyle = '#fff';
+    g.fillRect(0, 0, c.width, c.height);
+    g.strokeStyle = '#e4e4e4';
+    g.lineWidth = 5;
+    for (let i = 1; i < cols; i++) { g.beginPath(); g.moveTo(i * size, 0); g.lineTo(i * size, c.height); g.stroke(); }
+    for (let i = 1; i < rows; i++) { g.beginPath(); g.moveTo(0, i * size); g.lineTo(c.width, i * size); g.stroke(); }
+    for (let i = 0; i < 10; i++) {
+      g.fillStyle = `hsl(${i * 36}, 80%, 50%)`;
+      g.beginPath();
+      g.arc((i % cols) * size + size / 2, Math.floor(i / cols) * size + size / 2, 60, 0, Math.PI * 2);
+      g.fill();
+    }
+    return c.toDataURL('image/png').split(',')[1];
+  }, [cols, rows]);
+  await page.locator('section', { hasText: 'Ảnh đồ vật' }).locator('input[type=file]')
+    .setInputFiles({ name: 'items.png', mimeType: 'image/png', buffer: Buffer.from(png, 'base64') });
+  await expect(page.getByLabel('Từ cho ô 1', { exact: true })).toHaveValue('balloon');
+  await page.getByRole('button', { name: 'Lưu các ảnh này' }).click();
+  // Trang bài hiện ảnh nhỏ thay emoji.
+  await expect(page.locator('img.p-thumb').first()).toBeVisible();
+
+  await page.goto('/?fast&nosw');
+  await page.getByRole('button', { name: 'Bắt đầu' }).click();
+  await page.getByRole('button', { name: 'Số đếm' }).click();
+  await page.getByRole('button', { name: 'Count 1–10', exact: true }).click();
+  await expect(page.locator('.number-card .count-img')).toHaveCount(1);
+  await expect(page.locator('.number-card .count-img')).toHaveJSProperty('complete', true);
 });

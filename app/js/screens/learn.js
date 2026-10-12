@@ -3,7 +3,7 @@
 
 import { isAbort } from '../timing.js';
 import { normalizeWord } from '../text.js';
-import { listLessons, getFrameSets, frameBlobs } from '../db.js';
+import { listLessons, getFrameSets, frameBlobs, latestImageForWord, mediaBlob } from '../db.js';
 import { isLearned, isUnknown, wordRecords } from '../progress.js';
 import { isWordLesson } from '../phrase.js';
 import { findWord } from '../lesson.js';
@@ -72,8 +72,19 @@ export function learnScreen(app) {
       frames.set(item.lessonId, byPhrase);
     }
 
+    // Ảnh đồ vật của số đếm (ảnh mới nhất), không có thì emoji.
+    const imageByItem = new Map();
+    for (const { item } of turns.filter((t) => t.kind === 'number')) {
+      const img = await latestImageForWord(app.db, item.data.item);
+      if (!img) continue;
+      const url = URL.createObjectURL(mediaBlob(img));
+      urls.push(url);
+      imageByItem.set(normalizeWord(item.data.item), url);
+    }
+
     const teacher = new Teacher(app, { signal, bunny: layout.bunny, stage: layout.stage, replayBtn: layout.replayBtn });
-    const ctx = { app, teacher, visuals, signal, stage: layout.stage, nextBtn: layout.nextBtn, frameUrls: new Map() };
+    const ctx = { app, teacher, visuals, signal, stage: layout.stage, nextBtn: layout.nextBtn, frameUrls: new Map(),
+      imageOf: (entry) => imageByItem.get(normalizeWord(entry.item)) ?? null };
     const practiced = new Set();
 
     for (let i = 0; i < turns.length; i++) {

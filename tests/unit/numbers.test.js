@@ -47,7 +47,7 @@ test('bài số có sẵn: bài đếm và trò chơi, nhận đúng loại bài
 test('kiểm tra bài số: bỏ số trùng/lạ, thiếu số nhiều thì thêm "s", không có số nào thì từ chối', () => {
   const r = validateNumberLesson({
     title: 'X',
-    numbers: [{ n: 2, item: 'cup', emoji: '🥤' }, { n: 2, item: 'cup', emoji: '🥤' }, { n: 11, item: 'a', emoji: 'a' }, { n: 1, item: 'hat', emoji: '🎩' }],
+    numbers: [{ n: 2, item: 'cup', emoji: '🥤' }, { n: 2, item: 'cup', emoji: '🥤' }, { n: 21, item: 'a', emoji: 'a' }, { n: 1, item: 'hat', emoji: '🎩' }],
   });
   assert.equal(r.ok, true);
   assert.deepEqual(r.lesson.numbers.map((x) => x.n), [1, 2]);
@@ -120,4 +120,33 @@ test('tiến độ số (number:n) không lẫn vào từ vựng và câu', () =
   assert.deepEqual(wordRecords(records).map((r) => r.word), ['three']);
   assert.deepEqual(numberRecords(records).map((r) => r.word), ['number:3']);
   assert.deepEqual(phraseRecords(records).map((r) => r.word), ['phrase:wash your face']);
+});
+
+test('bài 11–20: đồ vật, số ít / số nhiều, mã bài cố định để tự thêm cho máy cũ', async () => {
+  const { TEEN_ITEMS } = await import('../../app/js/numbers.js');
+  const lessons = builtInNumberLessons();
+  assert.deepEqual(lessons.map((l) => l.builtin), ['count-1-10', 'game-1-10', 'count-11-20']);
+  const teen = lessons[2];
+  assert.deepEqual(teen.numbers.map((x) => x.n), [11, 12, 13, 14, 15, 16, 17, 18, 19, 20]);
+  assert.equal(validateNumberLesson(teen).ok, true);
+  const by = new Map(TEEN_ITEMS.map((x) => [x.n, x]));
+  assert.equal(countPhrase(by.get(15)), 'Fifteen butterflies');
+  assert.equal(countPhrase(by.get(20)), 'Twenty leaves');
+  assert.equal(countPhrase(by.get(17)), 'Seventeen candies');
+  const steps = buildCountSteps(teen);
+  assert.equal(steps.length, 30, 'mỗi số: đếm, chạm đếm, chọn nhóm');
+});
+
+test('11–20: thẻ sai và nhóm sai lấy trong 11–20; 1–10 vẫn lấy trong 1–10', () => {
+  const rng = seeded(11);
+  for (let k = 0; k < 50; k++) {
+    for (const n of [11, 15, 20]) {
+      const c = numberChoices(n, rng);
+      assert.ok(c.includes(n) && c.every((m) => m >= 11 && m <= 20) && new Set(c).size === 3, c.join(','));
+      const m = groupDistractor(n, rng);
+      assert.ok(m >= 11 && m <= 20 && Math.abs(m - n) >= 2, `${n} vs ${m}`);
+    }
+    const low = numberChoices(7, rng);
+    assert.ok(low.every((m) => m >= 1 && m <= 10), low.join(','));
+  }
 });

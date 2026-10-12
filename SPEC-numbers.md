@@ -195,3 +195,28 @@ Có thể làm N-a và N-b cùng lúc nếu bố mẹ muốn thử cả hai mộ
 | 3 | Bé có **nói số** để app nghe không? | **Chưa** ở bản đầu (đếm bằng chạm là chính, mic trên iPhone cần mạng) |
 | 4 | Danh sách đồ vật ở mục 3 có ổn không? | Bố mẹ đổi tùy ý, ví dụ đồ vật bé có ở nhà |
 | 5 | Bố cục màn hình chính 2×3 (Sticker vào lưới) | Đồng ý |
+
+## 14. Mở rộng (app 0.5.0): bài Đếm 11–20 và ảnh đồ vật
+
+> Chốt 2026-10-12: 11–20 **đếm tiếp từ 10**; ảnh đồ vật do AI vẽ (ảnh lưới như bài từ vựng), không có ảnh thì dùng emoji. **Đã làm xong trong app 0.5.0.** Danh sách bài số xếp theo số bài (1–10 trước 11–20).
+
+### 14.1. Bài "Count 11–20 / Đếm từ 11 đến 20"
+| Số | Đồ vật | Số | Đồ vật |
+|---|---|---|---|
+| 11 | 🐝 bee | 16 | 🐚 shell |
+| 12 | 🥚 egg | 17 | 🍬 candy (candies) |
+| 13 | 🍪 cookie | 18 | ⚽ ball |
+| 14 | 🍓 strawberry (strawberries) | 19 | 🧁 cupcake |
+| 15 | 🦋 butterfly (butterflies) | 20 | 🍃 leaf (leaves) |
+
+- **Khung 10:** 10 đồ vật đầu xếp 2 hàng × 5 trong **một khung có viền và nhãn "10"**; phần còn lại xếp hàng tối đa 5 bên dưới.
+- **A. Bông đếm:** khung 10 sáng lên, Bông nói *"Ten!"*, rồi đếm tiếp từng cái còn lại *"Eleven, twelve…"* (to ra + số nhỏ như bài 1–10), cuối cùng *"Fifteen butterflies!"*.
+- **B. Bé chạm đếm:** khung 10 đã đếm sẵn (hiện "10"); Bông: *"Ten! Your turn! Tap and count!"* — bé chỉ chạm **phần thêm**, mỗi chạm Bông đọc số tiếp theo từ eleven.
+- **C. Chọn nhóm đúng:** 2 nhóm (đều có khung 10 thu nhỏ) chênh nhau ít nhất 2, ví dụ 12 và 17.
+- Bài được **thêm tự động một lần** cho máy đã có bài 1–10 (cờ riêng); bố mẹ xóa rồi thì không tự thêm lại (dùng "Thêm lại bài mẫu").
+- Trò **Chọn số** vẫn là 1–10. Số 11–20 có trong **Ôn tập** và **Trò chơi tổng hợp** như các mục khác. Thẻ sai của số 11–20 lấy trong 11–20, của số 1–10 lấy trong 1–10.
+
+### 14.2. Ảnh đồ vật (thay emoji)
+- Trang bài số trong Góc bố mẹ có mục **"Ảnh đồ vật — 1 ảnh lưới cho cả bài"**, dùng lại đúng phần ảnh lưới của bài từ vựng: **Copy prompt** → AI vẽ 1 ảnh lưới (mỗi ô **một đồ vật đơn lẻ**, nền trắng, không có Bông) → **Chọn ảnh** → app cắt, bố mẹ gán từng ô → **Lưu**.
+- Ảnh lưu trong kho `images` (như từ vựng) theo bài + tên đồ vật; **không nâng cấp IndexedDB**, sao lưu / chia sẻ bài mang theo ảnh như bài từ vựng.
+- Khi học / chơi: đồ vật có ảnh thì **lặp lại ảnh đó n lần** thay cho emoji; ảnh lỗi hoặc chưa có thì dùng emoji. Ở Ôn tập / Trò chơi tổng hợp dùng ảnh mới nhất của đồ vật đó.

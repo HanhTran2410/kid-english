@@ -4,6 +4,8 @@
 import { isAbort } from '../timing.js';
 import { isNumberLesson, buildCountSteps, buildGameRounds } from '../numbers.js';
 import { numberRecords } from '../progress.js';
+import { normalizeWord } from '../text.js';
+import { mediaBlob } from '../db.js';
 import { activityLayout } from './layout.js';
 import { Teacher } from './teacher.js';
 import { startIndexFor, resumeAfter } from './plan.js';
@@ -18,6 +20,7 @@ const RUNNERS = { count: runCount, tap: runTap, group: runGroup };
  */
 export function numberLessonScreen(app, { lessonId, start = 'begin' }) {
   const layout = activityLayout(app, 'number-lesson');
+  const urls = [];
   const signal = app.startActivity();
 
   const saveLesson = async (lesson) => {
@@ -45,6 +48,16 @@ export function numberLessonScreen(app, { lessonId, start = 'begin' }) {
       allowHigh: true,
     };
     const byN = new Map(lesson.numbers.map((x) => [x.n, x]));
+
+    // Ảnh đồ vật bố mẹ đã thêm (SPEC-numbers mục 14.2), ảnh mới nhất của mỗi đồ vật; không có thì dùng emoji.
+    const images = await app.db.getAllByIndex('images', 'lessonId', lesson.id);
+    const imageByItem = new Map();
+    for (const img of [...images].sort((a, b) => (a.createdAt ?? 0) - (b.createdAt ?? 0))) {
+      const url = URL.createObjectURL(mediaBlob(img));
+      urls.push(url);
+      imageByItem.set(img.word, url);
+    }
+    ctx.imageOf = (entry) => imageByItem.get(normalizeWord(entry.item)) ?? null;
 
     let steps;
     let rounds = [];
@@ -100,5 +113,8 @@ export function numberLessonScreen(app, { lessonId, start = 'begin' }) {
     app.go('home');
   });
 
-  return () => layout.bunny.destroy();
+  return () => {
+    layout.bunny.destroy();
+    urls.forEach((u) => URL.revokeObjectURL(u));
+  };
 }

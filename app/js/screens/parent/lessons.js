@@ -121,7 +121,16 @@ export function lessonDetailView(app, { lessonId }) {
     // Đổi tên và chủ đề
     const rename = renameSection(app, lesson);
     if (isNumberLesson(lesson)) {
-      body.append(rename, await numberDetailSection(app, lesson), section(null, deleteButton(app, lesson)));
+      const thumbs = new Map();
+      for (const img of [...images].sort((a, b) => (a.createdAt ?? 0) - (b.createdAt ?? 0))) {
+        const url = URL.createObjectURL(mediaBlob(img));
+        urls.push(url);
+        thumbs.set(img.word, url);
+      }
+      body.append(rename, await numberDetailSection(app, lesson, thumbs));
+      // Ảnh đồ vật (SPEC-numbers mục 14.2): dùng lại phần ảnh lưới của bài từ vựng, mỗi ô là MỘT đồ vật.
+      if (lesson.mode !== 'game') body.append(gridSection(app, numberImageLesson(lesson), urls, 'Ảnh đồ vật — 1 ảnh lưới cho cả bài'));
+      body.append(shareSection(app, lesson), section(null, deleteButton(app, lesson)));
       return;
     }
     if (isPhraseLesson(lesson)) {
@@ -197,7 +206,7 @@ export function lessonDetailView(app, { lessonId }) {
  * AI hay vẽ sai số cột/hàng, xếp lộn thứ tự hoặc vẽ thừa ô, nên: app tự đoán lưới thật trong ảnh,
  * bố mẹ chọn lại được kiểu lưới, và chọn từ cho từng ô (ô thừa thì bỏ qua).
  */
-function gridSection(app, lesson, urls) {
+function gridSection(app, lesson, urls, title = null) {
   const words = lesson.words.map((w) => w.en);
   const expected = gridShape(words.length);
   const prompt = buildGridImagePrompt(lesson.words, expected);
@@ -286,7 +295,7 @@ function gridSection(app, lesson, urls) {
     await render();
   });
 
-  return section(`Ảnh lưới — 1 ảnh cho cả bài (${expected.cols}×${expected.rows} ô)`,
+  return section(`${title ?? 'Ảnh lưới — 1 ảnh cho cả bài'} (${expected.cols}×${expected.rows} ô)`,
     notice('info', 'Bản AI miễn phí giới hạn số lần tạo ảnh. Cách này chỉ cần 1 lần: bấm "Copy prompt ảnh lưới", dán vào ChatGPT/Gemini, lưu ảnh về máy, rồi bấm "Chọn ảnh lưới" — app tự cắt ra từng ô, bố mẹ kiểm tra rồi lưu.'),
     h('div.actions', {},
       h('button.btn', {
@@ -346,19 +355,34 @@ function sizeLabel(lesson) {
 }
 
 /** Trang bài số (SPEC-numbers mục 7): nội dung có sẵn, chỉ xem tiến độ từng số. */
-async function numberDetailSection(app, lesson) {
+/** Bài số dưới dạng "danh sách từ" (tên đồ vật) để dùng lại phần ảnh lưới của bài từ vựng. */
+function numberImageLesson(lesson) {
+  return {
+    id: lesson.id,
+    words: lesson.numbers.map((x) => ({
+      en: x.item,
+      emoji: x.emoji,
+      imagePrompt: `exactly ONE single ${x.item}, drawn alone as a simple object (it will be repeated to count), no character, no hands, no background scenery`,
+    })),
+  };
+}
+
+async function numberDetailSection(app, lesson, thumbs = new Map()) {
   const rows = [];
   for (const x of lesson.numbers) {
     const rec = await app.db.get('progress', numberKey(x.n));
     const a = rec?.attempts;
+    const thumb = thumbs.get(normalizeWord(x.item));
     rows.push(h('li', {},
-      h('span.p-emoji', { text: x.emoji }),
+      thumb ? h('img.p-thumb', { src: thumb, alt: x.item }) : h('span.p-emoji', { text: x.emoji }),
       h('span.p-word', { text: `${x.n} · ${countPhrase(x)}` }),
       h('span.p-stars', { text: rec?.mastery ? '⭐'.repeat(rec.mastery) : '—' }),
       h('span.p-meta', { text: rec ? `gặp ${rec.practiceCount} lần${a ? ` · chọn: đúng ngay ${a.right}, sai ${a.wrong}` : ''}` : 'chưa học' })));
   }
   return section(lesson.mode === 'game' ? 'Trò chơi Chọn số — tiến độ từng số' : 'Tiến độ từng số',
-    h('p.muted', { text: 'Bài số có sẵn trong app, không cần tạo ảnh. Sao chỉ tăng, không bao giờ bị trừ.' }),
+    h('p.muted', { text: lesson.mode === 'game'
+      ? 'Trò chơi dùng đồ vật của bài 1–10. Sao chỉ tăng, không bao giờ bị trừ.'
+      : 'Bài số có sẵn trong app. Muốn đẹp hơn emoji thì thêm ảnh đồ vật ở mục bên dưới. Sao chỉ tăng, không bao giờ bị trừ.' }),
     h('ul.progress-list', {}, ...rows));
 }
 

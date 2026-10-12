@@ -2,8 +2,10 @@
 // Các hàm đều thuần (không phụ thuộc DOM), test được trong Node.
 
 export const NUMBER_KIND = 'numbers';
-export const NUMBER_WORDS = ['zero', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten'];
-export const MAX_NUMBER = 10;
+export const NUMBER_WORDS = ['zero', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten',
+  'eleven', 'twelve', 'thirteen', 'fourteen', 'fifteen', 'sixteen', 'seventeen', 'eighteen', 'nineteen', 'twenty'];
+export const MAX_NUMBER = 20;
+export const TEN = 10; // từ 11 trở lên: 10 đồ vật đầu đóng thành "khung 10", Bông đếm tiếp từ 10 (SPEC-numbers mục 14)
 export const PICK_FROM = 3; // bước "chọn nhóm đúng" bắt đầu từ số 3
 export const GAME_ROUNDS = 8;
 const MAX_ASKED = 2; // một số không bị hỏi quá 2 lần mỗi lượt chơi
@@ -23,14 +25,35 @@ export const NUMBER_ITEMS = [
   { n: 10, item: 'teddy bear', items: 'teddy bears', emoji: '🧸' },
 ];
 
-/** Các bài số có sẵn, thêm tự động một lần (SPEC-numbers mục 7). */
+/** Đồ vật cho 11–20 (SPEC-numbers mục 14). */
+export const TEEN_ITEMS = [
+  { n: 11, item: 'bee', items: 'bees', emoji: '🐝' },
+  { n: 12, item: 'egg', items: 'eggs', emoji: '🥚' },
+  { n: 13, item: 'cookie', items: 'cookies', emoji: '🍪' },
+  { n: 14, item: 'strawberry', items: 'strawberries', emoji: '🍓' },
+  { n: 15, item: 'butterfly', items: 'butterflies', emoji: '🦋' },
+  { n: 16, item: 'shell', items: 'shells', emoji: '🐚' },
+  { n: 17, item: 'candy', items: 'candies', emoji: '🍬' },
+  { n: 18, item: 'ball', items: 'balls', emoji: '⚽' },
+  { n: 19, item: 'cupcake', items: 'cupcakes', emoji: '🧁' },
+  { n: 20, item: 'leaf', items: 'leaves', emoji: '🍃' },
+];
+
+/**
+ * Các bài số có sẵn, thêm tự động (SPEC-numbers mục 7, 14). `builtin` là mã cố định để biết bài nào đã thêm
+ * (máy đã có bài 1–10 vẫn nhận được bài 11–20 mới).
+ */
 export function builtInNumberLessons() {
-  const numbers = NUMBER_ITEMS.map((x) => ({ ...x }));
+  const copy = (list) => list.map((x) => ({ ...x }));
   return [
-    { version: 2, kind: NUMBER_KIND, mode: 'count', title: 'Count 1–10', titleVi: 'Đếm từ 1 đến 10', topic: 'Numbers', emoji: '🎈', numbers },
-    { version: 2, kind: NUMBER_KIND, mode: 'game', title: 'Number game', titleVi: 'Chọn số', topic: 'Numbers', emoji: '🎯', numbers: numbers.map((x) => ({ ...x })), rounds: GAME_ROUNDS },
+    { version: 2, kind: NUMBER_KIND, mode: 'count', builtin: 'count-1-10', title: 'Count 1–10', titleVi: 'Đếm từ 1 đến 10', topic: 'Numbers', emoji: '🎈', numbers: copy(NUMBER_ITEMS) },
+    { version: 2, kind: NUMBER_KIND, mode: 'game', builtin: 'game-1-10', title: 'Number game', titleVi: 'Chọn số', topic: 'Numbers', emoji: '🎯', numbers: copy(NUMBER_ITEMS), rounds: GAME_ROUNDS },
+    { version: 2, kind: NUMBER_KIND, mode: 'count', builtin: 'count-11-20', title: 'Count 11–20', titleVi: 'Đếm từ 11 đến 20', topic: 'Numbers', emoji: '🐝', numbers: copy(TEEN_ITEMS) },
   ];
 }
+
+/** Khoảng số cùng "chục" với n: 1–10 hoặc 11–20 (thẻ sai, nhóm sai lấy trong khoảng này). */
+export const decadeOf = (n) => (n > TEN ? [TEN + 1, 2 * TEN] : [1, TEN]);
 
 export const isNumberLesson = (lesson) => lesson?.kind === NUMBER_KIND || Array.isArray(lesson?.numbers);
 
@@ -83,7 +106,10 @@ export function buildCountSteps(lesson) {
   return steps;
 }
 
-/** Vị trí đồ vật: hàng tối đa 5 cái (6–10 thành 2 hàng: 5 + phần còn lại). */
+/**
+ * Vị trí đồ vật: hàng tối đa 5 cái (6–10 thành 2 hàng: 5 + phần còn lại).
+ * Từ 11 trở lên: khung 10 (2 hàng × 5) + phần thêm xếp theo hàng này (`itemRows(n - 10)`).
+ */
 export function itemRows(n) {
   return n <= 5 ? [n] : [5, n - 5];
 }
@@ -97,10 +123,14 @@ function shuffle(list, rng) {
   return a;
 }
 
-/** Số lượng của nhóm sai ở bước "chọn nhóm đúng": chênh với n ít nhất 2 để bé phân biệt được bằng mắt. */
+/**
+ * Số lượng của nhóm sai ở bước "chọn nhóm đúng": chênh với n ít nhất 2 để bé phân biệt được bằng mắt,
+ * cùng chục với n (1–10 hoặc 11–20).
+ */
 export function groupDistractor(n, rng = Math.random, max = MAX_NUMBER) {
+  const [lo, hi] = decadeOf(n);
   const options = [];
-  for (let m = 1; m <= max; m++) if (Math.abs(m - n) >= 2) options.push(m);
+  for (let m = lo; m <= Math.min(hi, max); m++) if (Math.abs(m - n) >= 2) options.push(m);
   return options[Math.floor(rng() * options.length)];
 }
 
@@ -108,11 +138,13 @@ const confusable = (a, b) => CONFUSABLE.some(([x, y]) => (a === x && b === y) ||
 
 /**
  * 3 thẻ chữ số cho trò chơi: số đúng + 2 số khác, không trùng, không có cặp dễ nhầm (6 và 9).
- * @param {{ allowHigh?: boolean, count?: number }} options allowHigh=false: thẻ sai chỉ lấy từ 1–5
+ * Thẻ sai lấy cùng chục với n (1–10 hoặc 11–20).
+ * @param {{ allowHigh?: boolean, count?: number }} options allowHigh=false: thẻ sai của số 1–10 chỉ lấy từ 1–5
  */
 export function numberChoices(n, rng = Math.random, { allowHigh = true, count = 3, max = MAX_NUMBER } = {}) {
-  const top = allowHigh ? max : Math.min(5, max);
-  const pool = shuffle(Array.from({ length: top }, (_, i) => i + 1).filter((m) => m !== n), rng);
+  const [lo, hi] = decadeOf(n);
+  const top = Math.min(hi, max, !allowHigh && n <= TEN ? 5 : hi);
+  const pool = shuffle(Array.from({ length: Math.max(0, top - lo + 1) }, (_, i) => lo + i).filter((m) => m !== n), rng);
   const chosen = [n];
   for (const m of pool) {
     if (chosen.length >= count) break;

@@ -29,10 +29,10 @@ async function addFrom(app, files) {
   return added;
 }
 
-/** Bài số có sẵn trong app (SPEC-numbers mục 7), không cần tải file. */
-async function addNumberLessons(app) {
+/** Bài số có sẵn trong app (SPEC-numbers mục 7, 14), không cần tải file. `only`: chỉ thêm các bài có mã này. */
+async function addNumberLessons(app, only = null) {
   const now = Date.now();
-  const list = builtInNumberLessons();
+  const list = builtInNumberLessons().filter((l) => !only || only.includes(l.builtin));
   for (const [i, lesson] of list.entries()) {
     await app.db.put('lessons', createLessonRecord(lesson, now - list.length + i));
   }
@@ -53,9 +53,15 @@ export async function seedSamplesOnce(app) {
   if (!app.settings.phraseSamplesSeeded) {
     if (await addFrom(app, PHRASE_SAMPLE_FILES)) await app.setSetting('phraseSamplesSeeded', true);
   }
-  if (!app.settings.numberSamplesSeeded) {
+  // Bài số: mỗi bài có sẵn chỉ tự thêm MỘT lần (bố mẹ xóa rồi thì không tự thêm lại).
+  // Máy đã có bài số từ bản 0.3 (cờ cũ numberSamplesSeeded) coi như đã thêm bài 1–10 và trò chơi → chỉ nhận bài 11–20.
+  const seeded = app.settings.numberLessonsSeeded
+    ?? (app.settings.numberSamplesSeeded ? ['count-1-10', 'game-1-10'] : []);
+  const missing = builtInNumberLessons().map((l) => l.builtin).filter((id) => !seeded.includes(id));
+  if (missing.length) {
     try {
-      if (await addNumberLessons(app)) await app.setSetting('numberSamplesSeeded', true);
+      await addNumberLessons(app, missing);
+      await app.setSetting('numberLessonsSeeded', [...seeded, ...missing]);
     } catch (err) {
       console.error('Không thêm được bài số', err);
     }

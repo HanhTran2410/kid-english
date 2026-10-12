@@ -14,6 +14,7 @@ export const DEFAULT_SETTINGS = {
   samplesSeeded: false,
   phraseSamplesSeeded: false,
   numberSamplesSeeded: false,
+  numberLessonsSeeded: null,
   lastPromptReviewWords: [],
   lastPromptTopic: '',
   importLog: [], // các file bài đã nhập gần đây: { file, at, summary, lessons }

@@ -190,6 +190,8 @@ export function lessonsScreen(app, { kind = WORDS_KIND } = {}) {
 
   (async () => {
     const lessons = (await listLessons(app.db)).filter((l) => lessonKind(l) === kind);
+    // Bài số: theo thứ tự bài (Đếm 1–10 trước Đếm 11–20), không theo bài mới nhất.
+    if (kind === NUMBER_KIND) lessons.sort((a, b) => (a.no ?? 0) - (b.no ?? 0));
     if (!lessons.length) {
       grid.append(h('div.empty', { text: '📭' }));
       return;
