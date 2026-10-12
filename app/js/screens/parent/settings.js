@@ -6,6 +6,7 @@ import { pickMimeType } from '../../speech/recorder.js';
 import { LIMIT_OPTIONS } from '../../session.js';
 import { isStandalone, characterName } from '../child.js';
 import { parentLayout, goParent, section, field, notice } from './common.js';
+import { driveSettingsSection } from './drive.js';
 
 export function settingsView(app) {
   const body = parentLayout(app, { title: 'Cài đặt & chẩn đoán', back: () => goParent(app) });
@@ -70,6 +71,7 @@ export function settingsView(app) {
       h('p.field-hint', { text: 'Trên iOS, nhận dạng gửi giọng bé lên máy chủ Apple để xử lý và cần mạng. Tắt đi thì app chỉ đo âm lượng.' })),
     section('Thời gian',
       field('Giới hạn mỗi buổi', limit, `Giới hạn mềm: hết giờ vẫn cho học hết bài. Khi ${characterName(app)} ngủ, bố mẹ nhấn giữ 🌙 3 giây để cho thêm 15 phút.`)),
+    driveSettingsSection(app),
     diagnostics(app));
 }
 

@@ -15,6 +15,9 @@ export const DEFAULT_SETTINGS = {
   phraseSamplesSeeded: false,
   numberSamplesSeeded: false,
   numberLessonsSeeded: null,
+  driveClientId: '', // Google Drive (SPEC-drive.md): Client ID do bố mẹ tạo
+  driveFolderName: 'Kid English',
+  driveFolder: null, // { id, name } thư mục của app trên Drive (nhớ để không phải tìm lại)
   lastPromptReviewWords: [],
   lastPromptTopic: '',
   importLog: [], // các file bài đã nhập gần đây: { file, at, summary, lessons }

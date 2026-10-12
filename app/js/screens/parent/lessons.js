@@ -21,6 +21,8 @@ import { APP_VERSION } from '../../app.js';
 import { parentLayout, goParent, section, notice } from './common.js';
 import { lessonPreview } from './create.js';
 import { saveFile } from './backup.js';
+import { driveUploadButton, driveImportButton } from './drive.js';
+import { appDrive } from '../../drive.js';
 
 function imageErrorMessage(err) {
   if (err instanceof ImageError) return err.message;
@@ -34,7 +36,10 @@ export function lessonsView(app) {
   const importInput = h('input', { type: 'file', accept: '.zip,application/zip', hidden: true });
   importInput.addEventListener('change', async () => {
     const file = importInput.files?.[0];
-    if (!file) return;
+    if (file) await importFile(file);
+  });
+  // Nhập một file bài (từ ô chọn file hoặc tải về từ Google Drive).
+  const importFile = async (file) => {
     try {
       const payload = await readBackup(file);
       if (!payload.lessons.length) throw new BackupError('File này không có bài học nào.');
@@ -69,12 +74,14 @@ export function lessonsView(app) {
     } catch (err) {
       toast(err instanceof BackupError ? err.message : 'Không đọc được file bài học.', 4000);
     }
-  });
+  };
+  const fromDrive = driveImportButton(app, importFile);
   body.append(
-    notice('info', 'Tạo bài và thêm ảnh trên máy tính (mở cùng link app), bấm "Chia sẻ bài" để xuất file, gửi sang iPhone/iPad (AirDrop, iCloud, Zalo…) rồi bấm "Nhập bài từ file" ở đây.'),
+    notice('info', 'Tạo bài và thêm ảnh trên máy tính (mở cùng link app), bấm "Chia sẻ bài" để xuất file, gửi sang iPhone/iPad (AirDrop, iCloud, Zalo… hoặc tải lên Google Drive) rồi bấm "Nhập bài từ file" / "Nhập bài từ Google Drive" ở đây.'),
     section(null, list), h('div.actions', {},
     h('button.btn.primary', { type: 'button', text: 'Nhập bài từ file', onclick: () => importInput.click() }),
     importInput,
+    fromDrive.btn,
     h('button.btn', {
       type: 'button',
       text: 'Thêm lại bài mẫu',
@@ -83,7 +90,8 @@ export function lessonsView(app) {
         toast(`Đã thêm ${n} bài mẫu.`);
         goParent(app, 'lessons');
       },
-    })));
+    })),
+    fromDrive.box);
 
   const log = app.settings.importLog ?? [];
   if (log.length) {
@@ -327,8 +335,9 @@ function shareSection(app, lesson) {
       makeBtn.disabled = true;
       try {
         made = await createBackup(app.db, { lessonIds: [lesson.id], appVersion: APP_VERSION });
-        status.textContent = `Đã tạo ${made.filename}. Bấm "Gửi file" để lưu vào Files/iCloud hoặc gửi AirDrop, Zalo…`;
+        status.textContent = `Đã tạo ${made.filename}. Bấm "Gửi file" để lưu vào Files/iCloud hoặc gửi AirDrop, Zalo…${appDrive(app) ? ', hoặc "Tải lên Google Drive".' : ''}`;
         sendBtn.hidden = false;
+        driveBtn.hidden = !appDrive(app);
       } catch (err) {
         console.error(err);
         status.textContent = 'Không tạo được file bài học.';
@@ -337,10 +346,12 @@ function shareSection(app, lesson) {
       }
     },
   });
+  const driveBtn = driveUploadButton(app, () => made, status);
   return section('Chia sẻ bài sang máy khác',
     h('p', { text: `File ${lessonFileName(lesson)} gồm nội dung bài và ảnh (không có ghi âm, tiến độ của bé). Trên máy kia: Góc bố mẹ → Quản lý bài → "Nhập bài từ file".` }),
-    h('div.actions', {}, makeBtn, sendBtn),
-    status);
+    h('div.actions', {}, makeBtn, sendBtn, driveBtn),
+    status,
+    appDrive(app) ? null : h('p.field-hint', { text: 'Muốn tải thẳng lên Google Drive: Góc bố mẹ → Cài đặt → Google Drive.' }));
 }
 
 /** Đổi số bài, tên bài, chủ đề (dùng chung cho bài từ vựng và bài câu). */
