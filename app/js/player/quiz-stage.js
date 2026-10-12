@@ -10,10 +10,15 @@ import { markPickedRight, markPickedWrong } from './track.js';
  * @param {{ ask: string, answer: string }} question
  * @param {string[]} pool các từ để lấy lựa chọn sai
  * @param {(word: string) => string} emojiOf
+ * @param {{ record?: (firstTry: boolean) => Promise<void>, maxChoices?: number }} [options]
+ *   record: ghi kết quả lần chọn đầu (mặc định: đúng ngay +1, sai −1 như bài từ vựng); Trò chơi tổng hợp không trừ sao.
  */
-export async function runQuizStep(ctx, question, pool, emojiOf) {
+export async function runQuizStep(ctx, question, pool, emojiOf, options = {}) {
   const { app, teacher, stage } = ctx;
-  const maxChoices = pool.length >= 3 ? 3 : 2;
+  const maxChoices = options.maxChoices ?? (pool.length >= 3 ? 3 : 2);
+  const record = options.record ?? ((firstTry) => (firstTry
+    ? markPickedRight(app, question.answer, emojiOf(question.answer))
+    : markPickedWrong(app, question.answer, emojiOf(question.answer))));
   const choices = pickChoices(question.answer, pool, Math.random, maxChoices);
   const answerKey = normalizeWord(question.answer);
 
@@ -31,7 +36,7 @@ export async function runQuizStep(ctx, question, pool, emojiOf) {
     const tapped = await teacher.waitTap(buttons);
     const word = tapped.dataset.word;
     if (normalizeWord(word) === answerKey) {
-      if (wrong === 0) await markPickedRight(app, question.answer, emojiOf(question.answer));
+      if (wrong === 0) await record(true);
       tapped.classList.add('correct');
       play('ding');
       teacher.celebrate(tapped);
@@ -42,7 +47,7 @@ export async function runQuizStep(ctx, question, pool, emojiOf) {
     }
 
     wrong++;
-    if (wrong === 1) await markPickedWrong(app, question.answer, emojiOf(question.answer));
+    if (wrong === 1) await record(false);
     play('boing');
     tapped.classList.remove('shake');
     void tapped.offsetWidth; // chạy lại hiệu ứng lắc

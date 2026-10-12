@@ -5,7 +5,8 @@ import { play } from '../speech/sfx.js';
 import { scaled, abortError } from '../timing.js';
 import { numberKey, numberWord, countPhrase, itemRows, groupDistractor, numberChoices } from '../numbers.js';
 import { waitAdvance } from './stage-kit.js';
-import { markPracticed, markDid, markPhrasePick } from './track.js';
+import { markPracticed, markDid, markPhrasePick, markSpoke } from './track.js';
+import { RESULT } from '../speech/listen.js';
 
 const TAP_WAIT_MS = 15_000; // bé không chạm 15 giây → Bông đếm nốt / nhắc lại câu hỏi
 const COUNT_GAP_MS = 250; // nghỉ giữa hai số khi Bông đếm
@@ -207,7 +208,7 @@ function shake(el) {
 /** Ghi kết quả chọn (không bao giờ trừ sao): +1 chỉ khi đúng ngay lần đầu, một lần mỗi số mỗi lượt. */
 async function recordPick(ctx, entry, firstTry) {
   const key = numberKey(entry.n);
-  const award = firstTry && !ctx.pickedThisRun.has(key);
+  const award = firstTry && !ctx.pickedThisRun.has(key) && (ctx.canAward?.(key) ?? true);
   if (firstTry) ctx.pickedThisRun.add(key);
   await markPhrasePick(ctx.app, key, entry.emoji, { firstTry, award });
 }
@@ -348,4 +349,48 @@ export async function runGameRound(ctx, round, entry) {
   }
   teacher.endQuestion();
   await teacher.pause(700);
+}
+
+// ---------- Học cùng Bông: đếm và nói (SPEC-mix mục 3) ----------
+/**
+ * Bông hỏi "How many apples?", bé nói số. Không cho chạm đếm ở lượt này (mic đang nghe, Bông đọc số sẽ bị nghe nhầm).
+ * Nghe ra số đúng → khen; không thì Bông đếm mẫu rồi nói "Three apples!".
+ */
+export async function runNumberTalk(ctx, entry) {
+  const { app, teacher } = ctx;
+  await markPracticed(app, numberKey(entry.n), entry.emoji);
+  const num = numeral(entry.n);
+  num.classList.add('later');
+  const group = itemGroup(entry, entry.n);
+  const text = h('div.number-text.later', { text: countPhrase(entry) });
+  ctx.stage.replaceChildren(h('div.number-card', {}, num, group.el, text));
+  const reveal = () => [num, text].forEach((el) => el.classList.remove('later'));
+
+  await teacher.say(`How many ${entry.items}?`);
+  let { result } = await teacher.hear([numberWord(entry.n), String(entry.n)]);
+  if (result === RESULT.SILENT) {
+    await teacher.say("Let's count!");
+    ({ result } = await teacher.hear([numberWord(entry.n), String(entry.n)]));
+  }
+  reveal();
+  if (result === RESULT.MATCH) {
+    await markSpoke(app, numberKey(entry.n), entry.emoji);
+    play('ding');
+    teacher.celebrate(group.el);
+    teacher.bunny.set('clap');
+    group.el.classList.add('all-done');
+    await teacher.say(`Yes! ${countPhrase(entry)}!`);
+  } else {
+    if (result === RESULT.VOICE) {
+      play('pop');
+      teacher.bunny.set('clap');
+      await teacher.say('Good try!');
+    }
+    teacher.bunny.set('idle');
+    await countAlong(teacher, group);
+    await sayTotal(teacher, { group, num }, entry);
+  }
+  teacher.bunny.set('idle');
+  await teacher.checkPresence();
+  await teacher.pause(600);
 }

@@ -53,7 +53,8 @@ test('màn hình chính có nút Phrases; học hết bài Morning: xem → làm
   // Tiến độ câu lưu riêng (khóa phrase:…), không lẫn vào phần từ vựng.
   expect(await progressOf(page, 'phrase:wash your face')).not.toBeNull();
   await page.getByRole('button', { name: 'Về màn hình chính' }).click();
-  await expect(page.getByRole('button', { name: 'Ôn tập' })).toHaveClass(/disabled/);
+  // Ôn tập chung từ, câu, số (SPEC-mix mục 2): học xong bài câu là ôn được.
+  await expect(page.getByRole('button', { name: 'Ôn tập' })).not.toHaveClass(/disabled/);
 });
 
 test('chạm ✔ nhiều lần chỉ +1; chọn sai không trừ sao, chỉ ghi lịch sử', async ({ page }) => {

@@ -1186,3 +1186,34 @@ a.btn { text-decoration: none; }
 .replay-btn:active { transform: translateY(4px); box-shadow: 0 3px 0 #e0b84f; }
 .replay-btn.pressed { animation: pop 0.35s; }
 @keyframes replay-in { from { opacity: 0; transform: scale(0.6); } }
+/* Học cùng Bông — lượt số: chữ số và chữ hiện sau khi bé trả lời */
+.number-card .later { visibility: hidden; }
+
+/* ---------- Màn hình chính 7 nút (SPEC-mix mục 4.4): 4 cột trên màn rộng, 2 cột × 4 hàng trên iPhone dọc ---------- */
+.home-btn.play { background: #4fb3bf; }
+.home-grid { grid-template-columns: repeat(4, auto); }
+.home-grid .home-btn { width: clamp(var(--tap), min(18vw, 30vh), 210px); }
+@media (max-width: 900px) and (orientation: portrait), (max-width: 760px) {
+  .home-grid { grid-template-columns: repeat(2, auto); gap: 12px; }
+  .home-grid .home-btn { width: clamp(104px, min(40vw, 18.5vh), 190px); border-radius: 32px; }
+  .home-btn .home-emoji, .home-btn.stickers .home-emoji { font-size: clamp(40px, min(14vw, 7.5vh), 84px); }
+  .home-en { font-size: clamp(17px, min(5vw, 3vh), 28px); }
+  .home-vi { font-size: clamp(12px, min(3.4vw, 2vh), 18px); }
+  .home-bong { width: clamp(48px, min(14vw, 7.5vh), 96px); height: clamp(48px, min(14vw, 7.5vh), 96px); }
+}
+/* Hàng cuối lẻ nút thì căn giữa: mỗi nút chiếm 2 "nửa cột"; nút đầu hàng cuối lùi vào nửa cột. */
+.home-grid {
+  --btn-w: clamp(var(--tap), min(18vw, 30vh), 210px);
+  --gap: clamp(16px, 3vw, 32px);
+  grid-template-columns: repeat(8, calc((var(--btn-w) - var(--gap)) / 2));
+  column-gap: var(--gap);
+  row-gap: var(--gap);
+  justify-content: center;
+}
+.home-grid .home-btn { width: var(--btn-w); grid-column: span 2; }
+.home-grid .home-btn:nth-child(5) { grid-column: 2 / span 2; }
+@media (max-width: 900px) and (orientation: portrait), (max-width: 760px) {
+  .home-grid { --btn-w: clamp(104px, min(40vw, 18.5vh), 190px); --gap: 12px; grid-template-columns: repeat(4, calc((var(--btn-w) - var(--gap)) / 2)); }
+  .home-grid .home-btn:nth-child(5) { grid-column: span 2; }
+  .home-grid .home-btn:nth-child(7) { grid-column: 2 / span 2; }
+}

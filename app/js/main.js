@@ -8,7 +8,7 @@ import { startScreen, homeScreen, lessonsScreen, stickersScreen, sleepScreen } f
 import { lessonScreen } from './player/lesson-player.js';
 import { phraseLessonScreen } from './player/phrase-player.js';
 import { numberLessonScreen } from './player/number-player.js';
-import { reviewScreen } from './screens/review.js';
+import { mixScreen } from './player/mix-player.js';
 import { learnScreen } from './screens/learn.js';
 import { parentScreen } from './screens/parent/index.js';
 
@@ -73,7 +73,8 @@ async function boot() {
   app.register('phrase-lesson', phraseLessonScreen);
   app.register('numbers', (a) => lessonsScreen(a, { kind: 'numbers' }));
   app.register('number-lesson', numberLessonScreen);
-  app.register('review', reviewScreen);
+  app.register('review', (a) => mixScreen(a, { mode: 'review' }));
+  app.register('play', (a) => mixScreen(a, { mode: 'play' }));
   app.register('learn', learnScreen);
   app.register('stickers', stickersScreen);
   app.register('sleep', sleepScreen);

@@ -17,8 +17,8 @@ const DO_WAIT_MS = 15_000; // không chạm ✔ sau 15 giây thì Bông làm m�
  * Hình của câu: flipbook nếu bố mẹ đã thêm khung hình, không thì cảnh Bông + emoji có hiệu ứng.
  * Khung hình hỏng thì tự quay về cảnh emoji.
  */
-export function phraseVisual(ctx, phrase, { small = false, label = '' } = {}) {
-  const urls = ctx.frameUrls?.get(phrase.id);
+export function phraseVisual(ctx, phrase, { small = false, label = '', urls: given = null } = {}) {
+  const urls = given ?? ctx.frameUrls?.get(phrase.id);
   const scene = () => createScene({ emoji: phrase.emoji, motion: phrase.motion, small, label });
   if (!urls?.length) return scene();
   const visual = createFlipbook(urls, {
@@ -172,53 +172,65 @@ export async function runSay(ctx, phrase) {
 
 // ---------- D. Chọn hình đúng câu ----------
 export async function runPick(ctx, phrase) {
-  const { app, teacher, lesson } = ctx;
+  const { lesson } = ctx;
   const ids = lesson.phrases.map((p) => p.id);
   const choices = pickChoices(phrase.id, ids, Math.random, ids.length >= 3 ? 3 : 2);
   const byId = new Map(lesson.phrases.map((p) => [p.id, p]));
+  await pickPhrase(ctx, phrase, choices.map((id) => ({ phrase: byId.get(id), urls: ctx.frameUrls?.get(id) })));
+}
+
+/**
+ * Chọn cảnh đúng câu (dùng chung cho bài câu, Ôn tập, Trò chơi tổng hợp).
+ * @param {object} target câu cần chọn
+ * @param {{ phrase: object, urls?: string[] }[]} options các lựa chọn (đã xáo trộn, có cả câu đúng); urls: khung hình nếu có
+ * @param {{ canAward?: boolean }} [opts] canAward=false: đúng ngay cũng không cộng sao (mục bé chưa học)
+ */
+export async function pickPhrase(ctx, target, options, { canAward = true } = {}) {
+  const { app, teacher } = ctx;
   const scenes = [];
-  const buttons = choices.map((id) => {
-    const p = byId.get(id);
-    const scene = phraseVisual(ctx, p, { small: true });
+  const buttons = options.map(({ phrase: p, urls }, i) => {
+    const scene = phraseVisual(ctx, p, { small: true, urls });
     scenes.push(scene);
-    return h('button.choice.phrase-choice', { type: 'button', 'aria-label': p.en, dataset: { id } }, scene.el);
+    return h('button.choice.phrase-choice', { type: 'button', 'aria-label': p.en, dataset: { i: String(i) } }, scene.el);
   });
+  const correct = options.findIndex((o) => o.phrase === target);
   ctx.stage.replaceChildren(h('div.choices', { dataset: { count: String(buttons.length) } }, ...buttons));
 
   scenes.forEach((s) => s.play(1));
-  await teacher.ask(`Which one is: ${phrase.en}?`);
+  await teacher.ask(`Which one is: ${target.en}?`);
 
-  const key = phraseKey(phrase.en);
+  const key = phraseKey(target.en);
   let wrong = 0;
   for (;;) {
     const tapped = await teacher.waitTap(buttons);
-    if (tapped.dataset.id === phrase.id) {
+    const i = Number(tapped.dataset.i);
+    if (i === correct) {
       // +1 chỉ khi đúng ngay lần đầu, tối đa một lần mỗi câu mỗi lượt học (SPEC-v1.0 mục 8).
       const firstTry = wrong === 0;
-      const award = firstTry && !ctx.pickedThisRun.has(key);
+      const award = firstTry && canAward && !ctx.pickedThisRun.has(key);
       ctx.pickedThisRun.add(key);
-      await markPhrasePick(app, key, phrase.emoji, { firstTry, award });
+      await markPhrasePick(app, key, target.emoji, { firstTry, award });
       tapped.classList.add('correct');
       play('ding');
       teacher.celebrate(tapped);
       teacher.bunny.set('clap');
-      await teacher.say(`Yes! ${phrase.en}!`);
+      await teacher.say(`Yes! ${target.en}!`);
       teacher.bunny.set('idle');
       break;
     }
     wrong++;
     // Chọn sai: không trừ sao, chỉ ghi lịch sử (một lần mỗi câu hỏi).
-    if (wrong === 1) await markPhrasePick(app, key, phrase.emoji, { firstTry: false, award: false });
+    if (wrong === 1) await markPhrasePick(app, key, target.emoji, { firstTry: false, award: false });
     play('boing');
     tapped.classList.remove('shake');
     void tapped.offsetWidth;
     tapped.classList.add('shake');
     if (wrong >= 2) {
-      buttons.find((b) => b.dataset.id === phrase.id)?.classList.add('glow');
-      await teacher.say(`This is: ${phrase.en}!`);
+      buttons[correct]?.classList.add('glow');
+      await teacher.say(`This is: ${target.en}!`);
       break;
     }
-    await teacher.say(`That's: ${byId.get(tapped.dataset.id).en}. Try again!`);
+    await teacher.say(`That's: ${options[i].phrase.en}. Try again!`);
   }
   teacher.endQuestion();
   await teacher.pause(700);

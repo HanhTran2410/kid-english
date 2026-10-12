@@ -3,7 +3,7 @@
 import { h, holdButton, wordVisual, toast } from '../ui.js';
 import { play } from '../speech/sfx.js';
 import { listLessons, getStickers, mediaBlob } from '../db.js';
-import { isLearned, wordRecords } from '../progress.js';
+import { isLearned } from '../progress.js';
 import { isBackupDue } from '../settings.js';
 import { STICKERS } from '../stickers.js';
 import { homeButton } from '../player/layout.js';
@@ -104,14 +104,17 @@ export function homeScreen(app) {
       big('💬', 'Phrases', 'Câu nói', () => app.go('phrases'), '.phrases'),
       big('🔢', 'Numbers', 'Số đếm', () => app.go('numbers'), '.numbers'),
       reviewBtn,
+      // Trò chơi tổng hợp (SPEC-mix mục 4): mọi bài kể cả chưa học, chỉ chạm chọn.
+      big('🎲', 'Play', 'Trò chơi', () => app.go('play'), '.play'),
       big(bongElement('home-bong'), `Learn with ${characterName(app)}`, `Học cùng ${characterName(app)}`, () => app.go('learn'), '.learn'),
-      // 6 nút trong một lưới (SPEC-numbers mục 2): 3×2 trên màn rộng, 2×3 trên iPhone dọc.
+      // 7 nút trong một lưới: 4 cột trên màn rộng, 2 cột × 4 hàng trên iPhone dọc.
       big('🎁', 'Stickers', 'Sticker của bé', () => app.go('stickers'), '.stickers')),
     bunny.el,
   );
 
   app.db.getAll('progress').then((list) => {
-    if (!wordRecords(list).some(isLearned)) reviewBtn.classList.add('disabled');
+    // Ôn tập chung từ, câu, số (SPEC-mix mục 2): sáng khi bé đã học bất kỳ loại nào.
+    if (!list.some(isLearned)) reviewBtn.classList.add('disabled');
   });
   return () => bunny.destroy();
 }
