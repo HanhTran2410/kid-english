@@ -214,7 +214,8 @@ Có thể làm N-a và N-b cùng lúc nếu bố mẹ muốn thử cả hai mộ
 - **B. Bé chạm đếm:** khung 10 đã đếm sẵn (hiện "10"); Bông: *"Ten! Your turn! Tap and count!"* — bé chỉ chạm **phần thêm**, mỗi chạm Bông đọc số tiếp theo từ eleven.
 - **C. Chọn nhóm đúng:** 2 nhóm (đều có khung 10 thu nhỏ) chênh nhau ít nhất 2, ví dụ 12 và 17.
 - Bài được **thêm tự động một lần** cho máy đã có bài 1–10 (cờ riêng); bố mẹ xóa rồi thì không tự thêm lại (dùng "Thêm lại bài mẫu").
-- Trò **Chọn số** vẫn là 1–10. Số 11–20 có trong **Ôn tập** và **Trò chơi tổng hợp** như các mục khác. Thẻ sai của số 11–20 lấy trong 11–20, của số 1–10 lấy trong 1–10.
+- Trò **Chọn số** (thẻ "Number game") vẫn là 1–10; **thẻ riêng "Chọn số 11–20"** (app 0.5.1, chốt 2026-10-12) — cùng luật, 8 câu, nửa 11–15 nửa 16–20, đồ vật của bài 11–20. Số 11–20 cũng có trong **Ôn tập** và **Trò chơi tổng hợp**. Thẻ sai của số 11–20 lấy trong 11–20, của số 1–10 lấy trong 1–10.
+- Trò Chọn số dùng **ảnh đồ vật** bố mẹ đã thêm ở bài đếm cùng khoảng số (ảnh mới nhất của đồ vật đó).
 
 ### 14.2. Ảnh đồ vật (thay emoji)
 - Trang bài số trong Góc bố mẹ có mục **"Ảnh đồ vật — 1 ảnh lưới cho cả bài"**, dùng lại đúng phần ảnh lưới của bài từ vựng: **Copy prompt** → AI vẽ 1 ảnh lưới (mỗi ô **một đồ vật đơn lẻ**, nền trắng, không có Bông) → **Chọn ảnh** → app cắt, bố mẹ gán từng ô → **Lưu**.

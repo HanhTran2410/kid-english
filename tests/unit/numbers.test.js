@@ -125,7 +125,7 @@ test('tiến độ số (number:n) không lẫn vào từ vựng và câu', () =
 test('bài 11–20: đồ vật, số ít / số nhiều, mã bài cố định để tự thêm cho máy cũ', async () => {
   const { TEEN_ITEMS } = await import('../../app/js/numbers.js');
   const lessons = builtInNumberLessons();
-  assert.deepEqual(lessons.map((l) => l.builtin), ['count-1-10', 'game-1-10', 'count-11-20']);
+  assert.deepEqual(lessons.map((l) => l.builtin), ['count-1-10', 'game-1-10', 'count-11-20', 'game-11-20']);
   const teen = lessons[2];
   assert.deepEqual(teen.numbers.map((x) => x.n), [11, 12, 13, 14, 15, 16, 17, 18, 19, 20]);
   assert.equal(validateNumberLesson(teen).ok, true);
@@ -148,5 +148,19 @@ test('11–20: thẻ sai và nhóm sai lấy trong 11–20; 1–10 vẫn lấy t
     }
     const low = numberChoices(7, rng);
     assert.ok(low.every((m) => m >= 1 && m <= 10), low.join(','));
+  }
+});
+
+test('trò Chọn số 11–20: 8 câu, nửa 11–15 nửa 16–20, thẻ trong 11–20', () => {
+  const game = builtInNumberLessons().find((l) => l.builtin === 'game-11-20');
+  assert.equal(game.mode, 'game');
+  assert.equal(validateNumberLesson(game).ok, true);
+  for (let seed = 1; seed < 20; seed++) {
+    const rounds = buildGameRounds(game.numbers.map((x) => x.n), new Map(), { rng: seeded(seed) });
+    const ns = rounds.map((r) => r.n);
+    assert.equal(ns.length, 8);
+    assert.equal(ns.filter((n) => n <= 15).length, 4);
+    assert.equal(ns.filter((n) => n > 15).length, 4);
+    for (const r of rounds) assert.ok(numberChoices(r.n, seeded(seed)).every((m) => m >= 11 && m <= 20));
   }
 });

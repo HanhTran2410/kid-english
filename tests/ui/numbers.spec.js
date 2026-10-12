@@ -27,7 +27,7 @@ test('màn hình chính có nút Số đếm; học hết bài Đếm 1–10: B�
   await startApp(page);
   await page.getByRole('button', { name: 'Số đếm' }).click();
   // Danh sách bài số: bài đếm và trò chơi, không lẫn bài từ vựng / bài câu.
-  await expect(page.locator('.lesson-card')).toHaveCount(3);
+  await expect(page.locator('.lesson-card')).toHaveCount(4);
   await autoTapCount(page);
   await page.getByRole('button', { name: 'Count 1–10', exact: true }).click();
 
@@ -173,4 +173,27 @@ test('ảnh đồ vật: bố mẹ thêm ảnh lưới cho bài số → khi h�
   await page.getByRole('button', { name: 'Count 1–10', exact: true }).click();
   await expect(page.locator('.number-card .count-img')).toHaveCount(1);
   await expect(page.locator('.number-card .count-img')).toHaveJSProperty('complete', true);
+
+  // Trò Chọn số dùng ảnh đồ vật của bài đếm (câu thứ 2 là kiểu "How many…?" có đồ vật).
+  await page.locator('.home-btn-small').click();
+  await page.getByRole('button', { name: 'Số đếm' }).click();
+  await page.getByRole('button', { name: 'Number game', exact: true }).click();
+  await expect(page.locator('.numeral-choice')).toHaveCount(3);
+  await page.locator('.next-btn').click();
+  await expect(page.locator('.game-card .count-img').first()).toBeVisible();
+});
+
+test('trò Chọn số 11–20: thẻ riêng, chỉ hỏi số 11–20, có Hoan hô', async ({ page }) => {
+  await startApp(page);
+  await page.getByRole('button', { name: 'Số đếm' }).click();
+  await expect(page.locator('.lesson-card').last()).toHaveAttribute('aria-label', 'Number game 11–20');
+  await page.getByRole('button', { name: 'Number game 11–20', exact: true }).click();
+  await expect(page.locator('.numeral-choice')).toHaveCount(3);
+  for (const t of await page.locator('.numeral-choice').allTextContents()) expect(Number(t)).toBeGreaterThanOrEqual(11);
+  await playThrough(page);
+  await expect(page.locator('.prize-sticker')).toBeVisible();
+  const spoken = await page.evaluate(() => window.__spoken);
+  const asked = spoken.filter((t) => /^(Find number|How many)/.test(t));
+  expect(asked.length).toBeGreaterThanOrEqual(8);
+  for (const q of asked) expect(q).toMatch(/eleven|twelve|thirteen|fourteen|fifteen|sixteen|seventeen|eighteen|nineteen|twenty|bees|eggs|cookies|strawberries|butterflies|shells|candies|balls|cupcakes|leaves/);
 });

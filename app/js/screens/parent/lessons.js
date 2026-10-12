@@ -381,7 +381,7 @@ async function numberDetailSection(app, lesson, thumbs = new Map()) {
   }
   return section(lesson.mode === 'game' ? 'Trò chơi Chọn số — tiến độ từng số' : 'Tiến độ từng số',
     h('p.muted', { text: lesson.mode === 'game'
-      ? 'Trò chơi dùng đồ vật của bài 1–10. Sao chỉ tăng, không bao giờ bị trừ.'
+      ? 'Trò chơi dùng đồ vật và ảnh đồ vật của bài đếm cùng khoảng số. Sao chỉ tăng, không bao giờ bị trừ.'
       : 'Bài số có sẵn trong app. Muốn đẹp hơn emoji thì thêm ảnh đồ vật ở mục bên dưới. Sao chỉ tăng, không bao giờ bị trừ.' }),
     h('ul.progress-list', {}, ...rows));
 }

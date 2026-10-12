@@ -5,7 +5,7 @@ import { isAbort } from '../timing.js';
 import { isNumberLesson, buildCountSteps, buildGameRounds } from '../numbers.js';
 import { numberRecords } from '../progress.js';
 import { normalizeWord } from '../text.js';
-import { mediaBlob } from '../db.js';
+import { mediaBlob, latestImageForWord } from '../db.js';
 import { activityLayout } from './layout.js';
 import { Teacher } from './teacher.js';
 import { startIndexFor, resumeAfter } from './plan.js';
@@ -56,6 +56,16 @@ export function numberLessonScreen(app, { lessonId, start = 'begin' }) {
       const url = URL.createObjectURL(mediaBlob(img));
       urls.push(url);
       imageByItem.set(img.word, url);
+    }
+    // Đồ vật chưa có ảnh trong bài này (ví dụ trò Chọn số): lấy ảnh mới nhất của đồ vật đó ở bài đếm.
+    for (const x of lesson.numbers) {
+      const key = normalizeWord(x.item);
+      if (imageByItem.has(key)) continue;
+      const img = await latestImageForWord(app.db, x.item);
+      if (!img) continue;
+      const url = URL.createObjectURL(mediaBlob(img));
+      urls.push(url);
+      imageByItem.set(key, url);
     }
     ctx.imageOf = (entry) => imageByItem.get(normalizeWord(entry.item)) ?? null;
 

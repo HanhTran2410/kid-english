@@ -49,6 +49,7 @@ export function builtInNumberLessons() {
     { version: 2, kind: NUMBER_KIND, mode: 'count', builtin: 'count-1-10', title: 'Count 1–10', titleVi: 'Đếm từ 1 đến 10', topic: 'Numbers', emoji: '🎈', numbers: copy(NUMBER_ITEMS) },
     { version: 2, kind: NUMBER_KIND, mode: 'game', builtin: 'game-1-10', title: 'Number game', titleVi: 'Chọn số', topic: 'Numbers', emoji: '🎯', numbers: copy(NUMBER_ITEMS), rounds: GAME_ROUNDS },
     { version: 2, kind: NUMBER_KIND, mode: 'count', builtin: 'count-11-20', title: 'Count 11–20', titleVi: 'Đếm từ 11 đến 20', topic: 'Numbers', emoji: '🐝', numbers: copy(TEEN_ITEMS) },
+    { version: 2, kind: NUMBER_KIND, mode: 'game', builtin: 'game-11-20', title: 'Number game 11–20', titleVi: 'Chọn số 11–20', topic: 'Numbers', emoji: '🎯', numbers: copy(TEEN_ITEMS), rounds: GAME_ROUNDS },
   ];
 }
 
@@ -155,7 +156,7 @@ export function numberChoices(n, rng = Math.random, { allowHigh = true, count = 
 }
 
 /**
- * Câu hỏi cho một lượt chơi "Chọn số" (SPEC-numbers mục 5): một nửa số dễ (1–5), một nửa số khó (6–10);
+ * Câu hỏi cho một lượt chơi "Chọn số" (SPEC-numbers mục 5): một nửa số dễ (nửa nhỏ, ví dụ 1–5), một nửa số khó (nửa lớn);
  * trong mỗi nhóm ưu tiên số bé ít sao; không số nào bị hỏi quá 2 lần; xen kẽ 2 kiểu câu.
  * @param {number[]} available các số có trong bài
  * @param {Map<number, number>} mastery số sao của từng số
@@ -163,8 +164,11 @@ export function numberChoices(n, rng = Math.random, { allowHigh = true, count = 
  */
 export function buildGameRounds(available, mastery = new Map(), { rounds = GAME_ROUNDS, rng = Math.random } = {}) {
   const weakestFirst = (list) => shuffle(list, rng).sort((a, b) => (mastery.get(a) ?? 0) - (mastery.get(b) ?? 0));
-  const easy = weakestFirst(available.filter((n) => n <= 5));
-  const hard = weakestFirst(available.filter((n) => n > 5));
+  // Nửa dễ = nửa số nhỏ của bài (1–5 ở bài 1–10, 11–15 ở bài 11–20).
+  const sorted = [...available].sort((a, b) => a - b);
+  const mid = sorted[Math.ceil(sorted.length / 2) - 1];
+  const easy = weakestFirst(available.filter((n) => n <= mid));
+  const hard = weakestFirst(available.filter((n) => n > mid));
   const picked = [];
   const count = new Map();
   const asked = (m) => count.get(m) ?? 0;
