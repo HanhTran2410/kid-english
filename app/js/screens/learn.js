@@ -31,7 +31,7 @@ export function learnScreen(app) {
     const byId = new Map(lessons.map((l) => [l.id, l]));
     for (const id of new Set(turns.map((t) => t.lessonId))) await loadLessonVisuals(app.db, byId.get(id), visuals);
 
-    const teacher = new Teacher(app, { signal, bunny: layout.bunny, stage: layout.stage });
+    const teacher = new Teacher(app, { signal, bunny: layout.bunny, stage: layout.stage, replayBtn: layout.replayBtn });
     const ctx = { app, teacher, visuals, signal, stage: layout.stage, nextBtn: layout.nextBtn };
     const practiced = new Set();
 

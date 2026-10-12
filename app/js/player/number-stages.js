@@ -168,10 +168,12 @@ export async function runTap(ctx, entry) {
   // Nhận chạm ngay cả khi Bông đang mời (bé hay chạm luôn); chạm thì câu mời bị cắt bởi số đầu tiên.
   const counting = waitCounting(ctx, card.group);
   counting.catch(() => {}); // rời bài giữa chừng: lỗi dừng được xử lý ở dòng await bên dưới
-  await teacher.say('Your turn! Tap and count!').catch((err) => {
+  await teacher.ask('Your turn! Tap and count!').catch((err) => {
     if (ctx.signal.aborted) throw err;
   });
-  if (await counting) {
+  const countedAll = await counting;
+  teacher.endQuestion();
+  if (countedAll) {
     await markDid(app, numberKey(entry.n), entry.emoji);
     play('ding');
     teacher.celebrate(card.group.el);
@@ -219,7 +221,7 @@ export async function runGroup(ctx, entry) {
     itemGroup(entry, m, { small: true }).el));
   ctx.stage.replaceChildren(h('div.choices', { dataset: { count: '2' } }, ...buttons));
 
-  await teacher.say(`Where are ${lower(countPhrase(entry))}?`);
+  await teacher.ask(`Where are ${lower(countPhrase(entry))}?`);
   let wrong = 0;
   for (;;) {
     const tapped = await teacher.waitTap(buttons);
@@ -244,6 +246,7 @@ export async function runGroup(ctx, entry) {
     }
     await teacher.say(`That's ${lower(countPhrase(entry, m))}. Try again!`);
   }
+  teacher.endQuestion();
   await teacher.pause(700);
 }
 
@@ -297,14 +300,14 @@ export async function runGameRound(ctx, round, entry) {
     // Bé chạm đồ vật để đếm (không bắt buộc), Bông đọc số; bé tự chọn thẻ.
     waitCounting(ctx, group, { last: false }).catch(() => {});
   } else {
-    ctx.stage.replaceChildren(h('div.game-card', {}, h('div.game-question', { text: '❓' }), cards));
+    ctx.stage.replaceChildren(h('div.game-card', {}, h('button.game-question', { type: 'button', 'aria-label': 'Nghe lại câu hỏi', text: '❓', onclick: () => teacher.replay() }), cards));
   }
 
   const question = round.type === 'count' ? `How many ${entry.items}?` : `Find number ${numberWord(n)}!`;
   const answer = round.type === 'count' ? countPhrase(entry, n) : Word(n);
   const correctBtn = buttons.find((b) => Number(b.dataset.n) === n);
   const entryForN = { ...entry, n };
-  await teacher.say(question);
+  await teacher.ask(question);
 
   let wrong = 0;
   let timeouts = 0;
@@ -343,5 +346,6 @@ export async function runGameRound(ctx, round, entry) {
     }
     await teacher.say(`That's ${numberWord(m)}. Try again!`);
   }
+  teacher.endQuestion();
   await teacher.pause(700);
 }

@@ -34,6 +34,7 @@ export async function runSkippable(ctx, activitySignal, fn) {
     ctx.nextBtn.removeEventListener('click', onNext);
     ctx.signal = activitySignal;
     ctx.teacher.signal = activitySignal;
+    ctx.teacher.endQuestion?.();
     if (step.signal.aborted && !activitySignal.aborted) {
       ctx.app.speaker.cancel();
       ctx.app.listening = false;

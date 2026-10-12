@@ -242,6 +242,12 @@ Kết thúc bài: màn hình **"Hoan hô!"** kèm 1 sticker tặng bé. **Hộp 
   - **"What's this?"**: hiện hình, bé nói tên (nghe theo mục 4.3.1).
   - Chỉ có 1 từ đã học thì chỉ chơi "What's this?" ("Find the…" cần ít nhất 2 hình).
 
+**Nút 🔊 nghe lại câu hỏi (app 0.3.3)** — dùng chung cho mọi màn có câu hỏi chờ bé trả lời bằng cách chạm: "Find the…" (Ôn tập, trò chơi trong bài từ vựng), chọn hình / làm theo ✔ ở bài câu, chạm đếm / chọn nhóm / Chọn số ở bài số.
+- Nút tròn vàng 🔊 hiện **cạnh Bông** khi Bông vừa hỏi và đang chờ bé; trả lời xong hoặc sang bước khác thì ẩn.
+- Bé chạm → Bông đọc lại **đúng câu hỏi đó** (ví dụ *"Where is the cow?"*). Bông đang nói thì không đọc chồng lên.
+- Không hiện ở các bước bé phải **nói** (mic đang nghe — Bông đọc lại sẽ bị mic nghe nhầm thành tiếng bé).
+- Trò Chọn số: chạm dấu ❓ cũng đọc lại câu hỏi.
+
 ### 4.5. Học cùng Bông
 - Bông hỏi đáp với bé bằng các đoạn **hội thoại** (phần B) lấy từ các bài đã lưu. Ưu tiên bài mới học và từ chưa thuộc. Bài nào không có hội thoại thì dùng mẫu *"What's this?" → "It's a ___!"*.
 - Mỗi lượt khoảng 6–8 câu hỏi rồi kết thúc bằng màn hình "Hoan hô!".

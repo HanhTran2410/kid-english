@@ -24,7 +24,7 @@ export async function runQuizStep(ctx, question, pool, emojiOf) {
   });
   stage.replaceChildren(h('div.choices', { dataset: { count: String(buttons.length) } }, ...buttons));
 
-  await teacher.say(question.ask);
+  await teacher.ask(question.ask);
 
   let wrong = 0;
   for (;;) {
@@ -57,6 +57,7 @@ export async function runQuizStep(ctx, question, pool, emojiOf) {
     }
     await teacher.say(`That's ${withArticle(word)}. Try again!`);
   }
+  teacher.endQuestion();
   await teacher.pause(700);
 }
 

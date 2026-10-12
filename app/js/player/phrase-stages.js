@@ -105,8 +105,10 @@ export async function runDo(ctx, phrase) {
   ctx.stage.querySelector('.phrase-card').append(did);
 
   scene.play();
-  await teacher.say(`Your turn! ${phrase.en}!`);
-  if (await waitDid(ctx, did)) {
+  await teacher.ask(`Your turn! ${phrase.en}!`);
+  const didIt = await waitDid(ctx, did);
+  teacher.endQuestion();
+  if (didIt) {
     did.classList.add('done');
     play('ding');
     teacher.celebrate(did);
@@ -184,7 +186,7 @@ export async function runPick(ctx, phrase) {
   ctx.stage.replaceChildren(h('div.choices', { dataset: { count: String(buttons.length) } }, ...buttons));
 
   scenes.forEach((s) => s.play(1));
-  await teacher.say(`Which one is: ${phrase.en}?`);
+  await teacher.ask(`Which one is: ${phrase.en}?`);
 
   const key = phraseKey(phrase.en);
   let wrong = 0;
@@ -218,5 +220,6 @@ export async function runPick(ctx, phrase) {
     }
     await teacher.say(`That's: ${byId.get(tapped.dataset.id).en}. Try again!`);
   }
+  teacher.endQuestion();
   await teacher.pause(700);
 }

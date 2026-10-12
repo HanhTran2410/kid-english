@@ -35,7 +35,7 @@ export function numberLessonScreen(app, { lessonId, start = 'begin' }) {
       return;
     }
     const game = lesson.mode === 'game';
-    const teacher = new Teacher(app, { signal, bunny: layout.bunny, stage: layout.stage });
+    const teacher = new Teacher(app, { signal, bunny: layout.bunny, stage: layout.stage, replayBtn: layout.replayBtn });
     const ctx = {
       app, teacher, lesson, signal,
       stage: layout.stage,

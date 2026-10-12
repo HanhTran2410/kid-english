@@ -34,7 +34,7 @@ export function reviewScreen(app) {
     const emojiOf = (w) => pool.find((r) => r.word === w)?.emoji ?? '';
     const poolWords = pool.map((r) => r.word);
 
-    const teacher = new Teacher(app, { signal, bunny: layout.bunny, stage: layout.stage });
+    const teacher = new Teacher(app, { signal, bunny: layout.bunny, stage: layout.stage, replayBtn: layout.replayBtn });
     const ctx = { app, teacher, visuals, signal, stage: layout.stage, nextBtn: layout.nextBtn };
 
     for (let i = 0; i < picked.length; i++) {

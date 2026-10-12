@@ -32,16 +32,46 @@ export class Teacher {
    * @param {import('../app.js').App} app
    * @param {{ signal: AbortSignal, bunny: ReturnType<typeof createBunny>, stage: HTMLElement }} options
    */
-  constructor(app, { signal, bunny, stage }) {
+  constructor(app, { signal, bunny, stage, replayBtn = null }) {
     this.app = app;
     this.signal = signal;
     this.bunny = bunny;
     this.stage = stage;
     this.silentStreak = 0;
+    this.question = null;
+    this.replayBtn = replayBtn;
+    replayBtn?.addEventListener('click', () => this.replay());
   }
 
   say(text, options = {}) {
     return this.app.speaker.speak(text, { signal: this.signal, ...options });
+  }
+
+  /** Hỏi bé một câu đang chờ trả lời: hiện nút 🔊 để bé nghe lại khi lỡ không để ý. */
+  ask(text) {
+    this.question = text;
+    if (this.replayBtn) this.replayBtn.hidden = false;
+    return this.say(text);
+  }
+
+  /** Bé chạm 🔊: đọc lại câu hỏi (bỏ qua nếu Bông đang nói). */
+  replay() {
+    const btn = this.replayBtn;
+    if (btn) {
+      btn.classList.remove('pressed');
+      void btn.offsetWidth;
+      btn.classList.add('pressed');
+    }
+    if (!this.question || this.app.speaker.speaking || this.signal.aborted) return;
+    play('tap');
+    this.bunny.set('idle');
+    this.say(this.question).catch(() => {});
+  }
+
+  /** Câu hỏi đã xong (bé trả lời, hết bước): ẩn nút 🔊. */
+  endQuestion() {
+    this.question = null;
+    if (this.replayBtn) this.replayBtn.hidden = true;
   }
 
   sayVi(text) {

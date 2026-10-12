@@ -51,7 +51,7 @@ export function phraseLessonScreen(app, { lessonId, start = 'begin', continueDir
       frameUrls.set(phraseId, list);
     }
 
-    const teacher = new Teacher(app, { signal, bunny: layout.bunny, stage: layout.stage });
+    const teacher = new Teacher(app, { signal, bunny: layout.bunny, stage: layout.stage, replayBtn: layout.replayBtn });
     const ctx = {
       app, teacher, lesson, signal, frameUrls,
       stage: layout.stage,

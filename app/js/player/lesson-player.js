@@ -47,7 +47,7 @@ export function lessonScreen(app, { lessonId, start = 'begin', continueDirectly 
       await saveLesson(lesson);
     }
 
-    const teacher = new Teacher(app, { signal, bunny: layout.bunny, stage: layout.stage });
+    const teacher = new Teacher(app, { signal, bunny: layout.bunny, stage: layout.stage, replayBtn: layout.replayBtn });
     const ctx = {
       app, teacher, lesson, visuals, signal,
       stage: layout.stage,

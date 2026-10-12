@@ -1147,7 +1147,7 @@ a.btn { text-decoration: none; }
 .numeral-choice { display: grid; place-items: center; width: clamp(96px, 24vmin, 200px); aspect-ratio: 1; }
 .numeral-choice .numeral { font-size: clamp(60px, 15vmin, 140px); }
 .numeral-choices { gap: clamp(12px, 3vw, 32px); }
-.game-question { font-size: clamp(56px, 12vmin, 110px); font-family: var(--emoji); }
+.game-question { font-size: clamp(56px, 12vmin, 110px); font-family: var(--emoji); background: none; border: 0; padding: 0; cursor: pointer; }
 @media (max-width: 600px) {
   .numeral-choice { width: clamp(88px, 26vw, 120px); }
 }
@@ -1164,3 +1164,25 @@ a.btn { text-decoration: none; }
   .count-item { min-width: 0; }
   .count-emoji { font-size: clamp(34px, 11vw, 56px); }
 }
+
+/* Nút 🔊 nghe lại câu hỏi: cạnh Bông, chỉ hiện khi Bông đang chờ bé trả lời */
+.replay-btn {
+  position: fixed;
+  left: calc(max(12px, env(safe-area-inset-left)) + clamp(84px, 13vmin, 140px) + 14px);
+  bottom: max(16px, env(safe-area-inset-bottom));
+  z-index: 6;
+  display: grid;
+  place-items: center;
+  width: clamp(80px, 11vmin, 104px);
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background: var(--yellow);
+  font-family: var(--emoji);
+  font-size: clamp(36px, 5.5vmin, 48px);
+  box-shadow: 0 7px 0 #e0b84f;
+  animation: replay-in 0.3s;
+}
+.replay-btn[hidden] { display: none; }
+.replay-btn:active { transform: translateY(4px); box-shadow: 0 3px 0 #e0b84f; }
+.replay-btn.pressed { animation: pop 0.35s; }
+@keyframes replay-in { from { opacity: 0; transform: scale(0.6); } }
