@@ -41,11 +41,34 @@ const JSON_SHAPE = `{
   ]
 }`;
 
+export const MAX_TOPIC_AVOID_WORDS = 200;
+
+const topicKey = (t) => String(t ?? '').toLowerCase().replace(/\s+/g, ' ').trim().replace(/s$/, '');
+
+/**
+ * Từ cần tránh khi tạo bài mới, chia 2 nhóm: từ của các bài CÙNG CHỦ ĐỀ (luôn đưa hết vào prompt, nhấn mạnh)
+ * và từ ở các bài khác. Chủ đề so khớp không phân biệt hoa/thường và số ít/số nhiều ("Animal" = "Animals").
+ * @param {object[]} lessons bài từ vựng (mới nhất trước)
+ * @param {string} topic chủ đề đang tạo
+ * @param {(lesson: object) => string} topicOf chủ đề của một bài
+ * @returns {{ topicWords: string[], otherWords: string[], topicLessons: object[] }}
+ */
+export function splitAvoidWords(lessons, topic, topicOf) {
+  const key = topicKey(topic);
+  const words = (l) => (l.words ?? []).map((w) => String(w.en).toLowerCase().trim()).filter(Boolean);
+  const topicLessons = key ? lessons.filter((l) => l.words && [topicOf(l), l.title].some((t) => topicKey(t) === key)) : [];
+  const topicWords = [...new Set(topicLessons.flatMap(words))];
+  const inTopic = new Set(topicWords);
+  const otherWords = [...new Set(lessons.filter((l) => l.words && !topicLessons.includes(l)).flatMap(words))].filter((w) => !inTopic.has(w));
+  return { topicWords, otherWords, topicLessons };
+}
+
 /**
  * Prompt tạo bài học.
  * @param {{ topic: string, age?: number, duration?: number, level?: 'beginner'|'some',
- *           style?: 'fun'|'story', reviewWords?: string[], avoidWords?: string[] }} options
- *   avoidWords: các từ bé đã có ở bài khác, để AI không tạo trùng
+ *           style?: 'fun'|'story', reviewWords?: string[], avoidWords?: string[], topicAvoidWords?: string[] }} options
+ *   topicAvoidWords: từ bé đã có ở các bài CÙNG CHỦ ĐỀ (+ từ bố mẹ muốn tránh) — đưa hết vào prompt, nhấn mạnh
+ *   avoidWords: các từ bé đã có ở bài khác, để AI không tạo trùng (tối đa MAX_AVOID_WORDS)
  */
 export function buildLessonPrompt({
   topic,
@@ -55,6 +78,7 @@ export function buildLessonPrompt({
   style = 'fun',
   reviewWords = [],
   avoidWords = [],
+  topicAvoidWords = [],
 }) {
   const n = wordsForDuration(duration);
   const total = n + reviewWords.length;
@@ -79,9 +103,18 @@ export function buildLessonPrompt({
   }
 
   const reviewSet = new Set(reviewWords.map((w) => w.toLowerCase()));
-  const avoid = [...new Set(avoidWords.map((w) => w.toLowerCase()))].filter((w) => !reviewSet.has(w)).slice(0, MAX_AVOID_WORDS);
+  const clean = (list) => [...new Set(list.map((w) => String(w).toLowerCase().trim()).filter(Boolean))].filter((w) => !reviewSet.has(w));
+  const sameTopic = clean(topicAvoidWords).slice(0, MAX_TOPIC_AVOID_WORDS);
+  const sameSet = new Set(sameTopic);
+  const avoid = clean(avoidWords).filter((w) => !sameSet.has(w)).slice(0, MAX_AVOID_WORDS);
+  if (sameTopic.length) {
+    lines.push(`- IMPORTANT: the child ALREADY LEARNED these "${topic}" words in earlier "${topic}" lessons. NONE of them may appear in "words" — choose DIFFERENT ${topic} words: ${sameTopic.join(', ')}.`);
+  }
   if (avoid.length) {
     lines.push(`- The child ALREADY LEARNED these words in other lessons. Do NOT use them as new words: ${avoid.join(', ')}.`);
+  }
+  if (sameTopic.length || avoid.length) {
+    lines.push(`- Before answering, check every item in "words": none of them may be in the lists above${reviewWords.length ? ' (except the review words)' : ''}. Also avoid plural/singular forms of those words.`);
   }
 
   lines.push(

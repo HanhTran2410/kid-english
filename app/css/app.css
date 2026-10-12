@@ -1287,3 +1287,8 @@ a.btn { text-decoration: none; }
   .album-tab { min-width: 58px; padding: 6px; }
   .album-emoji { font-size: 28px; }
 }
+
+/* Tạo bài: loại trừ từ theo chủ đề */
+.avoid-info { margin: 8px 0; }
+.avoid-topic summary { cursor: pointer; font-weight: 700; color: var(--ink-soft); }
+.avoid-words { margin: 6px 0 0; padding: 8px 10px; border-radius: 10px; background: #fbf4ea; line-height: 1.5; }

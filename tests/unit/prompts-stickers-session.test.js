@@ -200,3 +200,30 @@ test('biết trước kiểu lưới: tìm đường kẻ quanh đúng vị trí
   frac[302] = 0.1;
   assert.equal(findExpectedLines(frac, 4), null);
 });
+
+test('loại trừ từ theo chủ đề: từ của bài cùng chủ đề (không phân biệt hoa/thường, số ít/nhiều) tách riêng, đưa hết vào prompt', async () => {
+  const { splitAvoidWords, buildLessonPrompt, MAX_AVOID_WORDS } = await import('../../app/js/prompts.js');
+  const { topicOf } = await import('../../app/js/lesson.js');
+  const w = (list) => list.map((en) => ({ en }));
+  const lessons = [
+    { title: 'Animals 2', topic: 'Animals', words: w(['Lion', 'tiger']) },
+    { title: 'Colors', words: w(['red', 'blue']) },
+    { title: 'Animals', words: w(['cow', 'dog', 'lion']) },
+    { title: 'Morning', kind: 'phrases', phrases: [] },
+    // Rất nhiều từ ở các bài khác (vượt giới hạn) — từ cùng chủ đề vẫn không bị cắt.
+    { title: 'Big', words: w(Array.from({ length: 120 }, (_, i) => `word${i}`)) },
+  ];
+  const split = splitAvoidWords(lessons, 'animal', topicOf);
+  assert.deepEqual(split.topicWords, ['lion', 'tiger', 'cow', 'dog']);
+  assert.equal(split.topicLessons.length, 2);
+  assert.ok(split.otherWords.includes('red') && !split.otherWords.includes('lion'));
+  assert.deepEqual(splitAvoidWords(lessons, 'Weather', topicOf).topicWords, []);
+
+  const p = buildLessonPrompt({ topic: 'Animals', reviewWords: ['cow'], topicAvoidWords: [...split.topicWords, 'fish'], avoidWords: split.otherWords });
+  assert.match(p, /IMPORTANT: the child ALREADY LEARNED these "Animals" words in earlier "Animals" lessons\. NONE of them may appear in "words" — choose DIFFERENT Animals words: lion, tiger, dog, fish\./);
+  assert.doesNotMatch(p.match(/IMPORTANT:.*$/m)[0], /\bcow\b/, 'từ cần ôn không bị loại trừ');
+  const others = p.match(/in other lessons\. Do NOT use them as new words: (.*)\.$/m)[1].split(', ');
+  assert.equal(others.length, MAX_AVOID_WORDS);
+  assert.ok(!others.includes('lion'), 'không lặp lại từ đã có ở dòng cùng chủ đề');
+  assert.match(p, /Before answering, check every item in "words".*\(except the review words\)/);
+});

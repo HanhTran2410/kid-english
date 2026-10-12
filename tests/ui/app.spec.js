@@ -570,3 +570,30 @@ test('đổi tên nhân vật trong Cài đặt thì màn hình chính dùng tê
   await expect(page.getByText('Learn with Thỏ', { exact: true })).toBeVisible();
   await expect(page.getByText('Học cùng Thỏ', { exact: true })).toBeVisible();
 });
+
+test('tạo bài: loại trừ từ theo chủ đề — hiện danh sách từ cùng chủ đề, đổi chủ đề thì cập nhật, thêm từ muốn tránh', async ({ page, context }) => {
+  await context.grantPermissions(['clipboard-read', 'clipboard-write']);
+  await startApp(page);
+  await openParent(page);
+  await page.getByRole('button', { name: 'Tạo bài học' }).click();
+  // Mặc định chủ đề Animals: loại trừ từ của bài mẫu Animals.
+  const summary = page.locator('.avoid-topic summary');
+  await expect(summary).toContainText(/Loại trừ \d+ từ của chủ đề "Animals" \(1 bài: Animals\)/);
+  await summary.click();
+  await expect(page.locator('.avoid-words')).toContainText('dog');
+
+  await page.getByRole('button', { name: 'Colors', exact: true }).click();
+  await expect(summary).toContainText('chủ đề "Colors"');
+  await page.getByLabel('Từ muốn tránh thêm').fill('pink, Purple');
+  await page.getByRole('button', { name: 'Weather', exact: true }).click();
+  await expect(summary).toContainText('Loại trừ 2 từ của chủ đề "Weather"');
+  await page.getByRole('button', { name: 'Colors', exact: true }).click();
+
+  await page.getByRole('button', { name: 'Copy prompt' }).click();
+  const prompt = await page.getByLabel('Prompt').inputValue();
+  const line = prompt.match(/IMPORTANT: .*$/m)[0];
+  expect(line).toContain('earlier "Colors" lessons');
+  for (const w of ['red', 'pink', 'purple']) expect(line).toContain(w);
+  expect(line).not.toContain('dog');
+  expect(prompt).toMatch(/in other lessons\. Do NOT use them as new words: .*dog/);
+});

@@ -1,11 +1,11 @@
 // Tạo bài: form → Copy prompt → Dán bài → Xem trước → Lưu (SPEC mục 3).
 
 import { h, toast, copyText } from '../../ui.js';
-import { buildLessonPrompt, DURATIONS, MAX_AVOID_WORDS, buildPhraseLessonPrompt, SITUATIONS, PHRASE_COUNTS } from '../../prompts.js';
+import { buildLessonPrompt, DURATIONS, MAX_AVOID_WORDS, buildPhraseLessonPrompt, SITUATIONS, PHRASE_COUNTS, splitAvoidWords } from '../../prompts.js';
 import { isPhraseLesson, phraseOverlap } from '../../phrase.js';
 import { createScene } from '../../player/scene.js';
 import { pickWordsForPrompt, markUsedInPrompt, isUnknown, KNOWN_MASTERY, wordRecords } from '../../progress.js';
-import { parseLesson, createLessonRecord, overlapWithLessons, uniqueTitle, baseTitle, nextLessonNo } from '../../lesson.js';
+import { parseLesson, createLessonRecord, overlapWithLessons, uniqueTitle, baseTitle, nextLessonNo, topicOf } from '../../lesson.js';
 import { listLessons } from '../../db.js';
 import { quizQuestions } from '../../player/plan.js';
 import { parentLayout, goParent, section, notice, speakButton, field } from './common.js';
@@ -24,15 +24,36 @@ export function createView(app) {
   const body = parentLayout(app, { title: 'Tạo bài học', back: () => goParent(app) });
   const topic = h('input', { type: 'text', placeholder: 'Ví dụ: Animals, Fruits, My house…', value: 'Animals' });
   const chips = h('div.chips', {}, ...TOPICS.map((t) => h('button.chip', {
-    type: 'button', text: t, onclick: () => { topic.value = t; },
+    type: 'button', text: t, onclick: () => { topic.value = t; refreshAvoid(); },
   })));
   const age = h('input', { type: 'number', min: '2', max: '8', value: '3' });
   const MAX_REVIEW = 2;
   const reviewBox = h('div.review-picker');
-  const avoidInfo = h('p.field-hint');
+  // Loại trừ từ đã có (SPEC mục 3.2): từ của các bài CÙNG CHỦ ĐỀ luôn đưa hết vào prompt; từ bài khác tối đa MAX_AVOID_WORDS.
+  const avoidInfo = h('div.avoid-info');
+  const extraAvoid = h('input', { type: 'text', placeholder: 'Ví dụ: cat, dog, fish', 'aria-label': 'Từ muốn tránh thêm', autocomplete: 'off' });
+  let wordLessons = [];
+  const extraWords = () => extraAvoid.value.split(/[,;\n]+/).map((w) => w.trim().toLowerCase()).filter(Boolean);
+  const currentAvoid = () => {
+    const split = splitAvoidWords(wordLessons, topic.value.trim() || 'Animals', topicOf);
+    return { ...split, topicWords: [...new Set([...split.topicWords, ...extraWords()])] };
+  };
+  function refreshAvoid() {
+    const { topicWords, otherWords, topicLessons } = currentAvoid();
+    const name = topic.value.trim() || 'Animals';
+    const others = Math.min(otherWords.length, MAX_AVOID_WORDS);
+    avoidInfo.replaceChildren(
+      topicWords.length
+        ? h('details.avoid-topic', {},
+          h('summary', { text: `🚫 Loại trừ ${topicWords.length} từ của chủ đề "${name}"${topicLessons.length ? ` (${topicLessons.length} bài: ${topicLessons.map((l) => l.title).join(', ')})` : ''} — bấm để xem` }),
+          h('p.avoid-words', { text: topicWords.join(', ') }))
+        : h('p.field-hint', { text: `Chưa có bài nào chủ đề "${name}" trên máy này.` }),
+      others ? h('p.field-hint', { text: `Ngoài ra prompt dặn AI tránh ${others} từ bé đã có ở các bài chủ đề khác.` }) : null);
+  }
+  topic.addEventListener('input', refreshAvoid);
+  extraAvoid.addEventListener('input', refreshAvoid);
 
   // Đọc dữ liệu trước, để lúc bấm "Copy prompt" ghép prompt và copy ngay (iOS chặn copy sau một bước chờ).
-  let avoidWords = [];
   const selectedReview = () => [...reviewBox.querySelectorAll('input:checked')].map((i) => i.value);
 
   // Từ cần ôn: bố mẹ tự chọn (tối đa 2). App tích sẵn 2 từ chưa thuộc theo cách XOAY VÒNG.
@@ -68,10 +89,8 @@ export function createView(app) {
     onChange();
   });
   listLessons(app.db).then((lessons) => {
-    avoidWords = [...new Set(lessons.flatMap((l) => (l.words ?? []).map((w) => w.en.toLowerCase())))];
-    avoidInfo.textContent = avoidWords.length
-      ? `Để không trùng, prompt dặn AI tránh ${Math.min(avoidWords.length, MAX_AVOID_WORDS)} từ bé đã có ở các bài khác.`
-      : '';
+    wordLessons = lessons.filter((l) => Array.isArray(l.words));
+    refreshAvoid();
   });
 
   const promptArea = h('textarea.prompt-area', { rows: '8', readonly: true, 'aria-label': 'Prompt' });
@@ -94,6 +113,7 @@ export function createView(app) {
     onsubmit: (e) => {
       e.preventDefault();
       const words = selectedReview();
+      const { topicWords, otherWords } = currentAvoid();
       const prompt = buildLessonPrompt({
         topic: topic.value.trim() || 'Animals',
         age: Number(age.value) || 3,
@@ -101,7 +121,8 @@ export function createView(app) {
         level: radioValue(form, 'level'),
         style: radioValue(form, 'style'),
         reviewWords: words,
-        avoidWords,
+        topicAvoidWords: topicWords,
+        avoidWords: otherWords,
       });
       // Copy NGAY, trước mọi bước chờ.
       const copied = copyText(prompt);
@@ -116,14 +137,14 @@ export function createView(app) {
       app.setSetting('lastPromptTopic', topic.value.trim());
     },
   },
-  section('📚 Chủ đề', chips, field('Hoặc tự gõ', topic)),
+  section('📚 Chủ đề', chips, field('Hoặc tự gõ', topic), avoidInfo,
+    field('🚫 Từ muốn tránh thêm (không bắt buộc)', extraAvoid, 'Cách nhau bằng dấu phẩy. Ví dụ bé đã biết ở ngoài, hoặc từ AI hay lặp lại.')),
   section('Bé và bài học',
     field('👶 Tuổi', age),
     field('⏱️ Thời lượng', radios('duration', Object.entries(DURATIONS).map(([m, n]) => [m, `${m} phút (${n} từ)`]), 10)),
     field('🎯 Trình độ', radios('level', [['beginner', 'Mới bắt đầu'], ['some', 'Đã biết ít']], 'beginner')),
     field('🎨 Kiểu bài', radios('style', [['fun', 'Vui nhộn'], ['story', 'Kể chuyện']], 'fun')),
-    h('div.field', {}, h('span.field-label', { text: `☑️ Từ cần ôn (tối đa ${MAX_REVIEW} từ, AI thêm vào bài)` }), reviewBox),
-    avoidInfo),
+    h('div.field', {}, h('span.field-label', { text: `☑️ Từ cần ôn (tối đa ${MAX_REVIEW} từ, AI thêm vào bài)` }), reviewBox)),
   h('div.actions', {}, h('button.btn.primary.big', { type: 'submit', text: 'Copy prompt' })));
 
   body.append(
