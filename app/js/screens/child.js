@@ -12,6 +12,7 @@ import { MIC } from '../speech/microphone.js';
 import { normalizeWord } from '../text.js';
 import { groupByTopic } from '../lesson.js';
 import { lessonKind, PHRASE_KIND, WORDS_KIND } from '../phrase.js';
+import { NUMBER_KIND } from '../numbers.js';
 
 const ALL = '__all__';
 import { bongElement } from '../bong.js';
@@ -101,9 +102,11 @@ export function homeScreen(app) {
     h('div.home-grid', {},
       big('📚', 'Lessons', 'Bài học', () => app.go('lessons'), '.lessons'),
       big('💬', 'Phrases', 'Câu nói', () => app.go('phrases'), '.phrases'),
+      big('🔢', 'Numbers', 'Số đếm', () => app.go('numbers'), '.numbers'),
       reviewBtn,
-      big(bongElement('home-bong'), `Learn with ${characterName(app)}`, `Học cùng ${characterName(app)}`, () => app.go('learn'), '.learn')),
-    h('div.home-bottom', {}, big('🎁', 'My Stickers', 'Sticker của bé', () => app.go('stickers'), '.stickers')),
+      big(bongElement('home-bong'), `Learn with ${characterName(app)}`, `Học cùng ${characterName(app)}`, () => app.go('learn'), '.learn'),
+      // 6 nút trong một lưới (SPEC-numbers mục 2): 3×2 trên màn rộng, 2×3 trên iPhone dọc.
+      big('🎁', 'Stickers', 'Sticker của bé', () => app.go('stickers'), '.stickers')),
     bunny.el,
   );
 
@@ -116,10 +119,10 @@ export function homeScreen(app) {
 // ---------- Danh sách bài học ----------
 
 /**
- * Danh sách bài của bé: bài từ vựng (mặc định) hoặc bài câu (`kind: 'phrases'`, SPEC-v1.0 mục 6.2).
+ * Danh sách bài của bé: bài từ vựng (mặc định), bài câu (`kind: 'phrases'`, SPEC-v1.0 mục 6.2) hoặc bài số (SPEC-numbers mục 2).
  */
 export function lessonsScreen(app, { kind = WORDS_KIND } = {}) {
-  const playScreen = kind === PHRASE_KIND ? 'phrase-lesson' : 'lesson';
+  const playScreen = { [PHRASE_KIND]: 'phrase-lesson', [NUMBER_KIND]: 'number-lesson' }[kind] ?? 'lesson';
   app.lessonTabs ??= {};
   app.root.className = `child-screen lessons ${kind}`;
   const grid = h('div.lesson-grid');
@@ -158,7 +161,7 @@ export function lessonsScreen(app, { kind = WORDS_KIND } = {}) {
   grid.before(tabs);
 
   const card = async (lesson) => {
-    const items = lesson.words ?? lesson.phrases ?? [];
+    const items = lesson.words ?? lesson.phrases ?? lesson.numbers ?? [];
     let cover = null;
     if (lesson.words) {
       const images = await app.db.getAllByIndex('images', 'lessonId', lesson.id);

@@ -2,6 +2,7 @@
 
 import { normalizeWord, tokenize, wordCount } from './text.js';
 import { MISSING_EMOJI } from './lesson.js';
+import { NUMBER_KIND, isNumberLesson } from './numbers.js';
 
 export const PHRASE_KIND = 'phrases';
 export const WORDS_KIND = 'words';
@@ -47,7 +48,11 @@ export function effectiveMotion(motion, { hasObject = true, isImage = false } = 
 const FILLER = new Set(['the', 'a', 'an', 'your', 'my', 'our', 'his', 'her', 'its', "let's", 'lets', 'please', 'to', 'it', 'up', 'down', 'on', 'off', 'in', 'out', 'and', 'now']);
 
 /** Bài từ vựng cũ không có `kind` → coi là bài từ vựng. */
-export const lessonKind = (lesson) => (lesson?.kind === PHRASE_KIND || Array.isArray(lesson?.phrases) ? PHRASE_KIND : WORDS_KIND);
+export const lessonKind = (lesson) => {
+  if (isNumberLesson(lesson)) return NUMBER_KIND;
+  return lesson?.kind === PHRASE_KIND || Array.isArray(lesson?.phrases) ? PHRASE_KIND : WORDS_KIND;
+};
+export const isWordLesson = (lesson) => lessonKind(lesson) === WORDS_KIND;
 export const isPhraseLesson = (lesson) => lessonKind(lesson) === PHRASE_KIND;
 
 /** Khóa tiến độ của câu: dùng chung giữa các bài có cùng câu (SPEC-v1.0 mục 8). */

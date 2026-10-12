@@ -1072,3 +1072,95 @@ a.btn { text-decoration: none; }
 .flip-previews { display: flex; flex-wrap: wrap; gap: 12px; }
 .flip-preview { display: grid; gap: 4px; justify-items: center; font-weight: 700; font-size: 14px; }
 .flip-preview .scene.small { width: 140px; }
+
+/* ---------- Màn hình chính 6 nút (SPEC-numbers mục 2): 3×2 trên màn rộng, 2×3 trên iPhone dọc ---------- */
+.home-grid { display: grid; grid-template-columns: repeat(3, auto); justify-content: center; align-content: center; }
+.home-grid .home-btn { width: clamp(var(--tap), min(20vw, 26vh), 220px); }
+.home-btn.numbers { background: var(--coral); }
+.home-btn.stickers { aspect-ratio: 1; min-height: 0; padding: 0; border-radius: 40px; grid-auto-flow: row; gap: 6px; }
+.home-btn.stickers .home-emoji { font-size: clamp(56px, 11vw, 120px); }
+.home-btn.stickers .home-text { justify-items: center; text-align: center; }
+@media (max-width: 760px) {
+  .home-grid { grid-template-columns: repeat(2, auto); gap: 14px; }
+  .home-grid .home-btn { width: clamp(var(--tap), min(40vw, 24vh), 200px); }
+  .home-btn .home-emoji, .home-btn.stickers .home-emoji { font-size: clamp(48px, min(16vw, 9vh), 96px); }
+}
+
+/* ---------- Số đếm (SPEC-numbers mục 4, 5, 8) ---------- */
+.number-card, .game-card { display: grid; justify-items: center; gap: clamp(8px, 2vh, 22px); }
+.numeral {
+  font-size: clamp(72px, 16vmin, 160px);
+  font-weight: 900;
+  line-height: 1;
+  color: var(--num-color, var(--ink));
+  text-shadow: 0 4px 0 rgba(61, 44, 94, 0.15);
+}
+.numeral.glow { animation: num-glow 0.9s ease-in-out 2; }
+@keyframes num-glow { 50% { transform: scale(1.18); text-shadow: 0 0 28px var(--num-color); } }
+.number-text { font-size: clamp(26px, 5vmin, 48px); font-weight: 800; }
+
+.count-group {
+  display: grid;
+  justify-items: center;
+  gap: clamp(4px, 1.2vh, 12px);
+  padding: 12px 16px;
+  border-radius: var(--radius);
+  background: var(--card);
+  box-shadow: var(--shadow);
+}
+.count-row { display: flex; gap: clamp(4px, 1.5vw, 14px); }
+.count-item {
+  display: grid;
+  justify-items: center;
+  min-width: min(64px, 15vw);
+  min-height: min(64px, 15vw);
+  padding: 0;
+  border: 0;
+  background: none;
+  animation: fly-in 0.4s backwards;
+  animation-delay: calc(var(--i, 0) * 80ms);
+}
+.count-emoji {
+  font-family: var(--emoji);
+  font-size: clamp(38px, min(12vw, 9vh), 84px);
+  line-height: 1.15;
+  border-radius: 18px;
+  transition: transform 0.25s;
+}
+.count-label { min-height: 1.2em; font-size: clamp(18px, 3.5vmin, 30px); font-weight: 900; color: var(--num-color, var(--ink)); }
+.count-item.counted .count-emoji { transform: scale(1.1); }
+.count-item.counting .count-emoji { animation: count-pop 0.35s; }
+.count-item.nudge .count-emoji { animation: m-pulse 0.3s; }
+.count-group.all-done { animation: pop 0.5s; }
+.number-card.your-turn .count-item { cursor: pointer; }
+@keyframes count-pop { 50% { transform: scale(1.45); } }
+@keyframes fly-in { from { opacity: 0; transform: translateY(-30px) scale(0.6); } }
+
+/* Chọn nhóm đúng: nhóm nhỏ, không có số */
+.count-group.small { padding: 4px; box-shadow: none; }
+.count-group.small .count-item { min-width: 0; min-height: 0; animation: none; }
+.count-group.small .count-emoji { font-size: clamp(22px, min(5.5vw, 5vh), 44px); }
+.count-group.small .count-label { display: none; }
+.group-choice { display: grid; place-items: center; min-width: clamp(140px, 40vw, 380px); min-height: clamp(110px, 22vh, 240px); padding: 12px; }
+
+/* Trò chơi: thẻ chữ số to */
+.numeral-choice { display: grid; place-items: center; width: clamp(96px, 24vmin, 200px); aspect-ratio: 1; }
+.numeral-choice .numeral { font-size: clamp(60px, 15vmin, 140px); }
+.numeral-choices { gap: clamp(12px, 3vw, 32px); }
+.game-question { font-size: clamp(56px, 12vmin, 110px); font-family: var(--emoji); }
+@media (max-width: 600px) {
+  .numeral-choice { width: clamp(88px, 26vw, 120px); }
+}
+
+/* Giảm chuyển động: chỉ đổi màu nền đồ vật đã đếm thay vì phóng to */
+@media (prefers-reduced-motion: reduce) {
+  .count-item.counted .count-emoji { transform: none; background: rgba(255, 209, 102, 0.6); }
+}
+.count-group { max-width: calc(100vw - 32px); box-sizing: border-box; }
+.count-group.small .count-emoji { font-size: clamp(26px, min(7vw, 6vh), 48px); }
+@media (max-width: 600px) {
+  .count-group { padding: 10px 12px; }
+  .count-row { gap: 4px; }
+  .count-item { min-width: 0; }
+  .count-emoji { font-size: clamp(34px, 11vw, 56px); }
+}

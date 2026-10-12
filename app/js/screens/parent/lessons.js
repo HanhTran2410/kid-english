@@ -8,6 +8,7 @@ import { normalizeWord } from '../../text.js';
 import { uniqueTitle, topicOf, formatLessonNo, lessonFileName } from '../../lesson.js';
 import { isPhraseLesson, MOTION_NAMES, frameGroups, frameSteps, defaultFrameMapping, collectFrames, singlePhraseGroup } from '../../phrase.js';
 import { buildFramesPrompt } from '../../prompts.js';
+import { isNumberLesson, numberKey, countPhrase } from '../../numbers.js';
 import { getFrameSets, setFrameSet, removeFrameSet, frameBlobs } from '../../db.js';
 import { createFlipbook } from '../../player/flipbook.js';
 import { createScene } from '../../player/scene.js';
@@ -99,7 +100,7 @@ export function lessonsView(app) {
         h('span.lesson-no', { text: `#${formatLessonNo(l.no)}` }),
         h('span.p-emoji', { text: l.emoji }),
         h('span.grow', {}, h('b', { text: l.title }),
-          h('span.lesson-meta', { text: `${isPhraseLesson(l) ? '💬 Câu nói' : '📚 Từ vựng'} · ${topicOf(l)} · ${isPhraseLesson(l) ? `${l.phrases.length} câu` : `${l.words.length} từ`} · học xong ${l.timesCompleted ?? 0} lần · ${formatDateTime(l.createdAt).slice(0, 10)}` })))));
+          h('span.lesson-meta', { text: `${kindLabel(l)} · ${topicOf(l)} · ${sizeLabel(l)} · học xong ${l.timesCompleted ?? 0} lần · ${formatDateTime(l.createdAt).slice(0, 10)}` })))));
     }
   });
 }
@@ -119,6 +120,10 @@ export function lessonDetailView(app, { lessonId }) {
 
     // Đổi tên và chủ đề
     const rename = renameSection(app, lesson);
+    if (isNumberLesson(lesson)) {
+      body.append(rename, await numberDetailSection(app, lesson), section(null, deleteButton(app, lesson)));
+      return;
+    }
     if (isPhraseLesson(lesson)) {
       const frameSets = await getFrameSets(app.db, lesson.id);
       body.append(...phraseDetailSections(app, lesson, frameSets, urls), shareSection(app, lesson), section(null, deleteButton(app, lesson)));
@@ -330,6 +335,33 @@ function shareSection(app, lesson) {
 }
 
 /** Đổi số bài, tên bài, chủ đề (dùng chung cho bài từ vựng và bài câu). */
+function kindLabel(lesson) {
+  if (isNumberLesson(lesson)) return lesson.mode === 'game' ? '🔢 Số đếm (trò chơi)' : '🔢 Số đếm';
+  return isPhraseLesson(lesson) ? '💬 Câu nói' : '📚 Từ vựng';
+}
+
+function sizeLabel(lesson) {
+  if (isNumberLesson(lesson)) return `${lesson.numbers.length} số`;
+  return isPhraseLesson(lesson) ? `${lesson.phrases.length} câu` : `${lesson.words.length} từ`;
+}
+
+/** Trang bài số (SPEC-numbers mục 7): nội dung có sẵn, chỉ xem tiến độ từng số. */
+async function numberDetailSection(app, lesson) {
+  const rows = [];
+  for (const x of lesson.numbers) {
+    const rec = await app.db.get('progress', numberKey(x.n));
+    const a = rec?.attempts;
+    rows.push(h('li', {},
+      h('span.p-emoji', { text: x.emoji }),
+      h('span.p-word', { text: `${x.n} · ${countPhrase(x)}` }),
+      h('span.p-stars', { text: rec?.mastery ? '⭐'.repeat(rec.mastery) : '—' }),
+      h('span.p-meta', { text: rec ? `gặp ${rec.practiceCount} lần${a ? ` · chọn: đúng ngay ${a.right}, sai ${a.wrong}` : ''}` : 'chưa học' })));
+  }
+  return section(lesson.mode === 'game' ? 'Trò chơi Chọn số — tiến độ từng số' : 'Tiến độ từng số',
+    h('p.muted', { text: 'Bài số có sẵn trong app, không cần tạo ảnh. Sao chỉ tăng, không bao giờ bị trừ.' }),
+    h('ul.progress-list', {}, ...rows));
+}
+
 function renameSection(app, lesson) {
   const name = h('input', { type: 'text', value: lesson.title, 'aria-label': 'Tên bài' });
   const noInput = h('input', { type: 'number', min: '1', max: '999', value: String(lesson.no ?? ''), 'aria-label': 'Số bài' });

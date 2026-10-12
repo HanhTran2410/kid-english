@@ -2,6 +2,7 @@
 
 import { parseLesson, createLessonRecord, baseTitle } from './lesson.js';
 import { ensureLessonNumbers } from './db.js';
+import { builtInNumberLessons } from './numbers.js';
 
 export const SAMPLE_FILES = ['lessons/animals.json', 'lessons/colors.json'];
 export const PHRASE_SAMPLE_FILES = ['lessons/morning.json'];
@@ -28,9 +29,20 @@ async function addFrom(app, files) {
   return added;
 }
 
-/** Nút "Thêm lại bài mẫu": thêm lại cả bài từ vựng và bài câu mẫu. */
+/** Bài số có sẵn trong app (SPEC-numbers mục 7), không cần tải file. */
+async function addNumberLessons(app) {
+  const now = Date.now();
+  const list = builtInNumberLessons();
+  for (const [i, lesson] of list.entries()) {
+    await app.db.put('lessons', createLessonRecord(lesson, now - list.length + i));
+  }
+  await ensureLessonNumbers(app.db);
+  return list.length;
+}
+
+/** Nút "Thêm lại bài mẫu": thêm lại bài từ vựng, bài câu và bài số mẫu. */
 export async function addSampleLessons(app) {
-  return (await addFrom(app, SAMPLE_FILES)) + (await addFrom(app, PHRASE_SAMPLE_FILES));
+  return (await addFrom(app, SAMPLE_FILES)) + (await addFrom(app, PHRASE_SAMPLE_FILES)) + (await addNumberLessons(app));
 }
 
 /** Lần chạy đầu: thêm bài mẫu. Bài câu mẫu có cờ riêng để máy đã dùng bản cũ vẫn nhận được. */
@@ -40,6 +52,13 @@ export async function seedSamplesOnce(app) {
   }
   if (!app.settings.phraseSamplesSeeded) {
     if (await addFrom(app, PHRASE_SAMPLE_FILES)) await app.setSetting('phraseSamplesSeeded', true);
+  }
+  if (!app.settings.numberSamplesSeeded) {
+    try {
+      if (await addNumberLessons(app)) await app.setSetting('numberSamplesSeeded', true);
+    } catch (err) {
+      console.error('Không thêm được bài số', err);
+    }
   }
 }
 

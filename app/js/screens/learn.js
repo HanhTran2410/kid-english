@@ -4,7 +4,7 @@ import { isAbort } from '../timing.js';
 import { normalizeWord } from '../text.js';
 import { listLessons } from '../db.js';
 import { isUnknown, wordRecords } from '../progress.js';
-import { isPhraseLesson } from '../phrase.js';
+import { isWordLesson } from '../phrase.js';
 import { findWord } from '../lesson.js';
 import { activityLayout } from '../player/layout.js';
 import { Teacher } from '../player/teacher.js';
@@ -21,7 +21,7 @@ export function learnScreen(app) {
   const visuals = new VisualSet();
 
   async function run() {
-    const lessons = (await listLessons(app.db)).filter((l) => !isPhraseLesson(l));
+    const lessons = (await listLessons(app.db)).filter(isWordLesson);
     if (!lessons.length) {
       app.go('home');
       return;

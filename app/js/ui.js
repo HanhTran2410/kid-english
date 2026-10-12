@@ -13,7 +13,13 @@ export function h(tagSpec, props = {}, ...children) {
     if (key === 'class') el.classList.add(...String(value).split(/\s+/).filter(Boolean));
     else if (key === 'text') el.textContent = value;
     else if (key === 'html') el.innerHTML = value;
-    else if (key === 'style' && typeof value === 'object') Object.assign(el.style, value);
+    else if (key === 'style' && typeof value === 'object') {
+      // Biến CSS (--i, --num-color…) phải đặt bằng setProperty, Object.assign bỏ qua chúng.
+      for (const [k, v] of Object.entries(value)) {
+        if (k.startsWith('--')) el.style.setProperty(k, v);
+        else el.style[k] = v;
+      }
+    }
     else if (key === 'dataset') Object.assign(el.dataset, value);
     else if (key.startsWith('on') && typeof value === 'function') el.addEventListener(key.slice(2), value);
     else if (key in el && typeof value !== 'string') el[key] = value;

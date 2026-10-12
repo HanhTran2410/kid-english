@@ -7,6 +7,7 @@ import { seedSamplesOnce, upgradePhraseSamples } from './samples.js';
 import { startScreen, homeScreen, lessonsScreen, stickersScreen, sleepScreen } from './screens/child.js';
 import { lessonScreen } from './player/lesson-player.js';
 import { phraseLessonScreen } from './player/phrase-player.js';
+import { numberLessonScreen } from './player/number-player.js';
 import { reviewScreen } from './screens/review.js';
 import { learnScreen } from './screens/learn.js';
 import { parentScreen } from './screens/parent/index.js';
@@ -70,6 +71,8 @@ async function boot() {
   app.register('lesson', lessonScreen);
   app.register('phrases', (a) => lessonsScreen(a, { kind: 'phrases' }));
   app.register('phrase-lesson', phraseLessonScreen);
+  app.register('numbers', (a) => lessonsScreen(a, { kind: 'numbers' }));
+  app.register('number-lesson', numberLessonScreen);
   app.register('review', reviewScreen);
   app.register('learn', learnScreen);
   app.register('stickers', stickersScreen);

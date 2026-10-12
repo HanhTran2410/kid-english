@@ -6,8 +6,8 @@ import { listLessons, getStickers } from '../../db.js';
 import { isBackupDue } from '../../settings.js';
 import { STICKERS } from '../../stickers.js';
 import { buildTeacherPrompt } from '../../prompts.js';
-import { pickWordsForPrompt, isLearned, KNOWN_MASTERY, wordRecords, phraseRecords } from '../../progress.js';
-import { isPhraseLesson } from '../../phrase.js';
+import { pickWordsForPrompt, isLearned, KNOWN_MASTERY, wordRecords, phraseRecords, numberRecords } from '../../progress.js';
+import { isWordLesson } from '../../phrase.js';
 import { isStandalone, micProblem } from '../child.js';
 import { parentLayout, goParent, section, notice } from './common.js';
 import { createView, pasteView, phraseCreateView } from './create.js';
@@ -105,7 +105,7 @@ function menuView(app) {
 }
 
 async function buildTeacherPromptFor(app) {
-  const lessons = (await listLessons(app.db)).filter((l) => !isPhraseLesson(l));
+  const lessons = (await listLessons(app.db)).filter(isWordLesson);
   const progress = wordRecords(await app.db.getAll('progress'));
   const latest = lessons[0];
   return buildTeacherPrompt({
@@ -129,8 +129,9 @@ function progressView(app) {
     const sorted = (records) => records.filter(isLearned).sort((a, b) => a.mastery - b.mastery || a.word.localeCompare(b.word));
     const words = sorted(wordRecords(list));
     const phrases = sorted(phraseRecords(list));
-    if (!words.length && !phrases.length) {
-      body.append(section(null, h('p', { text: 'Bé chưa học từ hay câu nào.' })));
+    const numbers = numberRecords(list).filter(isLearned).sort((a, b) => Number(a.word.split(':')[1]) - Number(b.word.split(':')[1]));
+    if (!words.length && !phrases.length && !numbers.length) {
+      body.append(section(null, h('p', { text: 'Bé chưa học từ, câu hay số nào.' })));
       return;
     }
     const row = (r, label, extra = '') => h('li', {},
@@ -147,6 +148,11 @@ function progressView(app) {
       body.append(section(`Câu nói — ${known(phrases)}/${phrases.length} câu đã thuộc (từ 3⭐)`,
         h('ul.progress-list', {}, ...phrases.map((r) => row(r, r.word.replace(/^phrase:/, ''),
           r.attempts ? ` · chọn hình: đúng ngay ${r.attempts.right}, sai ${r.attempts.wrong}` : '')))));
+    }
+    if (numbers.length) {
+      body.append(section(`Số đếm — ${known(numbers)}/${numbers.length} số đã thuộc (từ 3⭐)`,
+        h('ul.progress-list', {}, ...numbers.map((r) => row(r, r.word.replace(/^number:/, 'số '),
+          r.attempts ? ` · chọn: đúng ngay ${r.attempts.right}, sai ${r.attempts.wrong}` : '')))));
     }
   });
 }
