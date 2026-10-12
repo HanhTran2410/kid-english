@@ -249,3 +249,28 @@ test('dạng số ít / số nhiều cho danh sách loại trừ (kể cả bấ
   assert.equal(isSubtopic('Body: actions'), true);
   assert.equal(isSubtopic('Body'), false);
 });
+
+test('ảnh bộ phận chi tiết (trán, má, ngón cái…): vẽ cả mặt / tay / người + mũi tên đỏ; từ rõ ràng thì không', async () => {
+  const { pointerNote, needsPointer, singleImagePrompt, buildGridImagePrompt, buildLessonPrompt } = await import('../../app/js/prompts.js');
+  assert.match(pointerNote('forehead'), /whole face.*bright-red arrow.*points exactly at the forehead/);
+  assert.match(pointerNote({ en: 'Cheek' }), /whole face/);
+  assert.match(pointerNote('knees'), /whole leg/, 'số nhiều cũng nhận ra');
+  assert.match(pointerNote('thumb'), /whole open hand/);
+  assert.match(pointerNote('tail'), /whole cute animal/);
+  for (const w of ['eye', 'nose', 'hand', 'cat', 'apple', 'red']) assert.equal(pointerNote(w), '', w);
+  // Mô tả của AI đã có mũi tên: không thêm lần nữa, nhưng vẫn tính là ô có mũi tên.
+  const tail = { en: 'tail', imagePrompt: 'a cat with a long tail, big red arrow pointing at the tail' };
+  assert.equal(pointerNote(tail), '');
+  assert.equal(needsPointer(tail), true);
+
+  const grid = buildGridImagePrompt([{ en: 'forehead', imagePrompt: 'A close-up of a forehead' }, { en: 'eyes' }, tail, { en: 'cow' }], { cols: 2, rows: 2 });
+  assert.match(grid, /Cell 1 — Forehead: A close-up of a forehead\. Show it in context instead of alone: draw a smiling child's whole face.*Only this one subject \(plus its arrow\) in the cell\./);
+  assert.match(grid, /Cell 2 — Eyes: Eyes\. Only this one subject in the cell\./);
+  assert.match(grid, /Cell 4 — Cow: One cow\. Only this one subject in the cell\./);
+  assert.match(grid, /- ARROWS: only cells 1, 3 get one thick bright-red arrow/);
+  assert.doesNotMatch(buildGridImagePrompt([{ en: 'cow' }, { en: 'cat' }], { cols: 2, rows: 1 }), /ARROWS/);
+
+  assert.match(singleImagePrompt({ en: 'chin', imagePrompt: 'A child chin, flashcard style' }), /^A child chin, flashcard style\. Show it in context.*at the chin/);
+  assert.equal(singleImagePrompt({ en: 'cow', imagePrompt: 'A cow, flashcard style' }), 'A cow, flashcard style');
+  assert.match(buildLessonPrompt({ topic: 'Body' }), /PART of something bigger.*\n.*\n.*bright-red arrow/);
+});

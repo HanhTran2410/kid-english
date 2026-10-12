@@ -161,6 +161,10 @@ export function buildLessonPrompt({
     '- "imagePrompt": first a short, concrete description of exactly what to draw for this word, clearly different',
     '  from the other words in this lesson (for example "rain": "several blue raindrops falling, no cloud";',
     '  "wind": "three curved light-blue wind lines, no other objects").',
+    '  If the word is only a PART of something bigger (a body part like "cheek", "forehead", "elbow", "knee"; an animal part like',
+    '  "tail" or "beak"; a plant part like "petal"), draw the WHOLE face / body / animal / plant and add ONE thick bright-red arrow',
+    '  pointing exactly at that part (for example "cheek": "a smiling child\'s whole face, one thick bright-red arrow pointing at the',
+    '  left cheek, the cheek glowing soft pink"). Words that are clear on their own (eye, hand, cat, ball, apple) need no arrow.',
     `  Then always end with this same style: "${IMAGE_STYLE}".`,
     '- "conversation": 2 turns for each word. "word" must be one of the words. "teacher" asks a very simple question.',
     '  "child" is the short answer (at most 5 words) and contains the word or its sound.',
@@ -283,6 +287,52 @@ const capitalize = (s) => s.charAt(0).toUpperCase() + s.slice(1);
  * @param {Array<string|{ en: string, imagePrompt?: string }>} words theo đúng thứ tự trong bài
  * @param {{ cols: number, rows: number }} shape
  */
+// ---------- Mũi tên chỉ bộ phận chi tiết ----------
+// Từ là MỘT PHẦN của vật lớn hơn (trán, má, khuỷu tay, đuôi, cánh hoa…) vẽ riêng thì bé khó nhận ra:
+// vẽ cả khuôn mặt / người / con vật và một mũi tên đỏ chỉ đúng vào phần đó. Từ rõ ràng (mắt, mũi, tay, con mèo…) không cần.
+
+const FACE = "a smiling child's whole face (head and hair, front view)";
+const UPPER = "a child's head and upper body, front view";
+const HAND = "a child's whole open hand with five fingers";
+const ARM = "a child's whole arm with the open hand";
+const LEG = "a child's whole leg with the bare foot, side view";
+const BODY = 'a whole child standing, full body, simple clothes';
+const POINTER_PARTS = new Map([
+  ...['forehead', 'cheek', 'chin', 'eyebrow', 'eyelash', 'lip', 'lips', 'tongue', 'nostril', 'jaw', 'temple', 'dimple'].map((p) => [p, FACE]),
+  ...['neck', 'shoulder', 'collarbone'].map((p) => [p, UPPER]),
+  ...['thumb', 'palm', 'fingernail', 'knuckle'].map((p) => [p, HAND]),
+  ...['elbow', 'wrist', 'forearm'].map((p) => [p, ARM]),
+  ...['knee', 'ankle', 'heel', 'toe', 'toenail', 'thigh', 'shin', 'sole'].map((p) => [p, LEG]),
+  ...['belly', 'tummy', 'belly button', 'navel', 'chest', 'hip', 'waist', 'bottom'].map((p) => [p, BODY]),
+  ['back', 'a whole child standing, seen from behind'],
+  ...['tail', 'paw', 'whiskers', 'mane', 'hoof', 'claw'].map((p) => [p, 'the whole cute animal (for example a cat, dog or horse)']),
+  ...['beak', 'wing', 'feather'].map((p) => [p, 'a whole cute bird']),
+  ['fin', 'a whole cute fish'],
+  ...['petal', 'stem', 'root', 'thorn'].map((p) => [p, 'a whole simple flower or plant']),
+]);
+
+/**
+ * Câu dặn vẽ mũi tên cho từ là bộ phận chi tiết; '' nếu không cần (từ rõ ràng, hoặc mô tả đã nói tới mũi tên).
+ * @param {{ en: string, imagePrompt?: string }|string} word
+ */
+export function pointerNote(word) {
+  const en = String(typeof word === 'string' ? word : word?.en ?? '').toLowerCase().trim();
+  const prompt = typeof word === 'string' ? '' : String(word?.imagePrompt ?? '');
+  const whole = wordForms(en).map((f) => POINTER_PARTS.get(f)).find(Boolean);
+  if (!whole || /\barrow\b/i.test(prompt)) return '';
+  return `Show it in context instead of alone: draw ${whole}, and add ONE thick bright-red arrow (simple shape, no text) that starts in the white space outside and points exactly at the ${en}; give the ${en} a soft yellow glow so it stands out and keep it clearly visible, not covered.`;
+}
+
+/** Từ cần mũi tên (theo bảng bộ phận hoặc mô tả hình đã có mũi tên). */
+export const needsPointer = (word) => Boolean(pointerNote(word)) || /\barrow\b/i.test(String(word?.imagePrompt ?? ''));
+
+/** Prompt ảnh một từ (nút "Copy prompt ảnh"): mô tả của AI + câu dặn vẽ mũi tên nếu là bộ phận chi tiết. */
+export function singleImagePrompt(word) {
+  const base = String(word?.imagePrompt ?? '').trim() || `One ${word?.en ?? ''}, ${IMAGE_STYLE}`;
+  const note = pointerNote(word);
+  return note ? `${base.replace(/\.?\s*$/, '.')} ${note}` : base;
+}
+
 export function buildGridImagePrompt(words, { cols, rows }) {
   const cells = cols * rows;
   const items = words.slice(0, cells).map((w) => (typeof w === 'string' ? { en: w } : w));
@@ -300,7 +350,9 @@ export function buildGridImagePrompt(words, { cols, rows }) {
       const item = items[i];
       if (item) {
         const hint = visualHint(item);
-        placement.push(`Cell ${i + 1} — ${capitalize(item.en)}: ${hint ? sentence(hint) : `One ${item.en}.`} Only this one subject in the cell.`);
+        const note = pointerNote(item);
+        const arrow = needsPointer(item);
+        placement.push(`Cell ${i + 1} — ${capitalize(item.en)}: ${hint ? sentence(hint) : `${/[^s]s$/i.test(item.en) ? capitalize(item.en) : `One ${item.en}`}.`}${note ? ` ${note}` : ''} ${arrow ? 'Only this one subject (plus its arrow) in the cell.' : 'Only this one subject in the cell.'}`);
       } else {
         placement.push(`Cell ${i + 1} — EMPTY CELL: completely blank, uniform pure white (#FFFFFF). Absolutely nothing inside: no illustration, no object, no icon, no pattern, no shadow, no texture, no decoration, no stray marks.`);
       }
@@ -327,6 +379,9 @@ export function buildGridImagePrompt(words, { cols, rows }) {
     ...emptyCells.map((i) => `- Cell ${i + 1} (${where(i)}) must remain completely empty and pure white.`),
     '- Every illustrated cell contains only the single subject specified for that cell. Never add objects, characters or details that belong to another cell.',
     '- If a description gives a number (for example "five fingers" or "six teeth"), draw exactly that number.',
+    ...(items.some(needsPointer)
+      ? [`- ARROWS: only cells ${items.flatMap((it, i) => (needsPointer(it) ? [i + 1] : [])).join(', ')} get one thick bright-red arrow pointing at the named part (the part is the learning word, not the whole face or body). All other cells have no arrows, pointers or highlights.`]
+      : []),
     `- Only thin light-gray divider lines between adjacent cells: exactly ${cols - 1} vertical and ${rows - 1} horizontal. No outer border, no extra frames, no rounded cell corners, no additional grid lines.`,
     '- No text, letters, numbers, captions, labels, logos or watermarks.',
     '- Do not merge cells, resize individual cells, or let illustrations cross cell boundaries.',

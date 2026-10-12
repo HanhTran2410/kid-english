@@ -15,7 +15,7 @@ import { createScene } from '../../player/scene.js';
 import { speakButton } from './common.js';
 import { resizeImage, sliceGrid, gridShape, loadGridImage, GRID_OPTIONS, ImageError } from '../../image.js';
 import { addSampleLessons } from '../../samples.js';
-import { buildGridImagePrompt } from '../../prompts.js';
+import { buildGridImagePrompt, singleImagePrompt } from '../../prompts.js';
 import { createBackup, readBackup, applyBackup, BackupError } from '../../backup.js';
 import { APP_VERSION } from '../../app.js';
 import { parentLayout, goParent, section, notice } from './common.js';
@@ -189,7 +189,7 @@ export function lessonDetailView(app, { lessonId }) {
           w.imagePrompt ? h('button.btn.small', {
             type: 'button',
             text: 'Copy prompt ảnh',
-            onclick: async () => toast((await copyText(w.imagePrompt)) ? 'Đã copy prompt tạo ảnh.' : 'Không copy được.'),
+            onclick: async () => toast((await copyText(singleImagePrompt(w))) ? 'Đã copy prompt tạo ảnh.' : 'Không copy được.'),
           }) : null),
         input);
     });
