@@ -65,16 +65,28 @@ test('Học tiếp bài đếm từ đúng số đang dừng', async ({ page }) 
     await page.locator('.next-btn').click();
     shown = await counting.textContent({ timeout: 5000 }).catch(() => '1');
   }
-  const atHome = await page.evaluate(async () => {
-    const n = document.querySelector('.number-card .numeral')?.textContent;
-    document.querySelector('.home-btn-small').click();
-    return n;
+  await page.locator('.home-btn-small').click();
+  // So với chỗ dừng app ĐÃ LƯU (chế độ chạy nhanh đổi bước trong vài ms, chữ số trên màn hình lúc bấm 🏠 có thể là bước trước).
+  const saved = await page.evaluate(async () => {
+    const lesson = (await window.kidEnglish.db.getAll('lessons')).find((l) => l.title === 'Count 1–10');
+    return lesson.resume ? String(lesson.numbers[lesson.resume.index].n) : null;
   });
-  expect(Number(atHome)).toBeGreaterThanOrEqual(2);
+  expect(Number(saved)).toBeGreaterThanOrEqual(2);
   await page.getByRole('button', { name: 'Số đếm' }).click();
   await page.getByRole('button', { name: 'Count 1–10', exact: true }).click();
+  // Ghi lại chữ số ĐẦU TIÊN hiện ra (chế độ chạy nhanh có thể sang số sau trước khi kịp đọc màn hình).
+  await page.evaluate(() => {
+    window.__firstNumeral = null;
+    new MutationObserver((_, obs) => {
+      const n = document.querySelector('.number-card .numeral');
+      if (n) {
+        window.__firstNumeral = n.textContent;
+        obs.disconnect();
+      }
+    }).observe(document.body, { childList: true, subtree: true });
+  });
   await page.getByRole('button', { name: 'Học tiếp' }).click();
-  await expect(page.locator('.number-card .numeral')).toHaveText(atHome);
+  await expect.poll(() => page.evaluate(() => window.__firstNumeral)).toBe(saved);
 });
 
 test('trò chơi Chọn số: 2 kiểu câu, chọn sai không trừ sao, có Hoan hô', async ({ page }) => {

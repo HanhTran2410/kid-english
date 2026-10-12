@@ -345,7 +345,7 @@ test('tạo bài: bấm Copy prompt là copy được ngay, prompt dặn AI trá
   // Clipboard trên Windows đổi xuống dòng thành \r\n.
   const copied = (await page.evaluate(() => navigator.clipboard.readText())).replace(/\r\n/g, '\n');
   expect(copied).toContain('Create one short English lesson about the topic: "Animals"');
-  expect(copied).toMatch(/ALREADY LEARNED.*dog/);
+  expect(copied).toMatch(/PREVIOUSLY LEARNED WORDS.*dog/);
   await expect(page.getByLabel('Prompt')).toHaveValue(copied);
   await expect(page.getByRole('link', { name: 'Mở ChatGPT' })).toBeVisible();
 });
@@ -591,9 +591,25 @@ test('tạo bài: loại trừ từ theo chủ đề — hiện danh sách từ 
 
   await page.getByRole('button', { name: 'Copy prompt' }).click();
   const prompt = await page.getByLabel('Prompt').inputValue();
-  const line = prompt.match(/IMPORTANT: .*$/m)[0];
+  const line = prompt.match(/IMPORTANT — PREVIOUSLY LEARNED WORDS.*$/m)[0];
   expect(line).toContain('earlier "Colors" lessons');
   for (const w of ['red', 'pink', 'purple']) expect(line).toContain(w);
   expect(line).not.toContain('dog');
-  expect(prompt).toMatch(/in other lessons\. Do NOT use them as new words: .*dog/);
+  expect(prompt).toMatch(/Also previously learned in other lessons — do NOT use them as new words either: .*dog/);
+});
+
+test('tạo bài: chủ đề đã có nhiều từ thì cảnh báo và gợi ý chủ đề hẹp / chủ đề chưa có bài; chủ đề hẹp không cảnh báo nhưng vẫn loại trừ', async ({ page }) => {
+  await startApp(page);
+  await page.evaluate(async () => {
+    const words = Array.from({ length: 20 }, (_, i) => ({ en: `bodyword${i}`, vi: 'x', emoji: '🙂' }));
+    await window.kidEnglish.db.put('lessons', { id: 'body1', title: 'Body', topic: 'Body', words, createdAt: Date.now(), no: 9 });
+  });
+  await openParent(page);
+  await page.getByRole('button', { name: 'Tạo bài học' }).click();
+  await page.getByRole('button', { name: 'Body', exact: true }).click();
+  await expect(page.locator('.avoid-info .notice.warn')).toContainText('Chủ đề "Body" đã có 20 từ');
+  await expect(page.locator('.avoid-info .notice.warn')).toContainText('"Body: actions"');
+  await page.getByLabel('Hoặc tự gõ').fill('Body: actions');
+  await expect(page.locator('.avoid-info .notice.warn')).toHaveCount(0);
+  await expect(page.locator('.avoid-topic summary')).toContainText('Loại trừ 20 từ của chủ đề "Body: actions"');
 });

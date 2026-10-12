@@ -42,8 +42,39 @@ const JSON_SHAPE = `{
 }`;
 
 export const MAX_TOPIC_AVOID_WORDS = 200;
+export const MANY_TOPIC_WORDS = 20; // chủ đề đã có từ 20 từ trở lên: cảnh báo bố mẹ, AI dễ phải chọn từ khó/lạc đề
 
-const topicKey = (t) => String(t ?? '').toLowerCase().replace(/\s+/g, ' ').trim().replace(/s$/, '');
+const IRREGULAR = [['tooth', 'teeth'], ['foot', 'feet'], ['mouse', 'mice'], ['child', 'children'], ['man', 'men'],
+  ['woman', 'women'], ['goose', 'geese'], ['person', 'people'], ['leaf', 'leaves'], ['knife', 'knives'],
+  ['wolf', 'wolves'], ['sheep', 'sheep'], ['fish', 'fish'], ['deer', 'deer'], ['bus', 'buses']];
+
+/**
+ * Các dạng số ít / số nhiều của một từ tiếng Anh (cho danh sách loại trừ): "knees" → knee, "tooth" → teeth,
+ * "strawberry" → strawberries, "box" → boxes. Từ nhiều chữ chỉ đổi chữ cuối ("teddy bear" → "teddy bears").
+ */
+export function wordForms(word) {
+  const w = String(word ?? '').toLowerCase().trim();
+  if (!w) return [];
+  const parts = w.split(/\s+/);
+  const last = parts.pop();
+  const head = parts.length ? `${parts.join(' ')} ` : '';
+  let forms;
+  const irregular = IRREGULAR.find(([one, many]) => last === one || last === many);
+  if (irregular) forms = irregular; // tooth/teeth, leaf/leaves…
+  else if (/[^aeiou]ies$/.test(last)) forms = [last, `${last.slice(0, -3)}y`]; // strawberries → strawberry
+  else if (/(ss|x|z|ch|sh)es$/.test(last)) forms = [last, last.slice(0, -2)]; // boxes → box, glasses → glass
+  else if (/[^su]s$/.test(last) && last.length > 3) forms = [last, last.slice(0, -1)]; // knees → knee (không cắt "bus")
+  else if (/[^aeiou]y$/.test(last)) forms = [last, `${last.slice(0, -1)}ies`]; // strawberry → strawberries
+  else if (/(s|x|z|ch|sh)$/.test(last)) forms = [last, `${last}es`]; // bus → buses, box → boxes
+  else forms = [last, `${last}s`]; // knee → knees
+  return [...new Set(forms)].map((f) => `${head}${f}`);
+}
+
+// Chủ đề gốc để so khớp: không phân biệt hoa/thường, số ít/nhiều; chủ đề hẹp "Body: actions" vẫn thuộc "Body".
+const topicKey = (t) => String(t ?? '').toLowerCase().split(/[:(–—]| - /)[0].replace(/\s+/g, ' ').trim()
+  .replace(/([^aeiou])ies$/, '$1y').replace(/s$/, '');
+/** Chủ đề hẹp ("Body: actions") — không cảnh báo "chủ đề đã nhiều từ". */
+export const isSubtopic = (t) => /[:(–—]| - /.test(String(t ?? ''));
 
 /**
  * Từ cần tránh khi tạo bài mới, chia 2 nhóm: từ của các bài CÙNG CHỦ ĐỀ (luôn đưa hết vào prompt, nhấn mạnh)
@@ -104,17 +135,24 @@ export function buildLessonPrompt({
 
   const reviewSet = new Set(reviewWords.map((w) => w.toLowerCase()));
   const clean = (list) => [...new Set(list.map((w) => String(w).toLowerCase().trim()).filter(Boolean))].filter((w) => !reviewSet.has(w));
-  const sameTopic = clean(topicAvoidWords).slice(0, MAX_TOPIC_AVOID_WORDS);
+  // Danh sách cùng chủ đề có sẵn cả dạng số ít / số nhiều (knees → knee) để AI không "lách" bằng dạng kia.
+  const sameTopic = clean(clean(topicAvoidWords).flatMap(wordForms)).slice(0, MAX_TOPIC_AVOID_WORDS);
   const sameSet = new Set(sameTopic);
   const avoid = clean(avoidWords).filter((w) => !sameSet.has(w)).slice(0, MAX_AVOID_WORDS);
   if (sameTopic.length) {
-    lines.push(`- IMPORTANT: the child ALREADY LEARNED these "${topic}" words in earlier "${topic}" lessons. NONE of them may appear in "words" — choose DIFFERENT ${topic} words: ${sameTopic.join(', ')}.`);
+    lines.push(`- IMPORTANT — PREVIOUSLY LEARNED WORDS: the child already learned these words in earlier "${topic}" lessons (singular and plural forms are listed). NONE of them may be a new word in this lesson: ${sameTopic.join(', ')}.`);
   }
   if (avoid.length) {
-    lines.push(`- The child ALREADY LEARNED these words in other lessons. Do NOT use them as new words: ${avoid.join(', ')}.`);
+    lines.push(`- Also previously learned in other lessons — do NOT use them as new words either: ${avoid.join(', ')}.`);
   }
   if (sameTopic.length || avoid.length) {
-    lines.push(`- Before answering, check every item in "words": none of them may be in the lists above${reviewWords.length ? ' (except the review words)' : ''}. Also avoid plural/singular forms of those words.`);
+    lines.push(
+      `- The "previously learned" rule applies to BOTH lists above and to every singular/plural form (knee/knees, tooth/teeth, strawberry/strawberries)${reviewWords.length ? ', except the review words' : ''}.`,
+      '  It covers the NEW vocabulary only: every item in "words", every "word" in "conversation" and every "answer" in "questions".',
+      '  Previously learned words MAY still appear naturally inside sentences (conversation, story) to help the child review; common words like a, the, is, my, it are always fine.',
+      `- If few simple new "${topic}" words are left, choose words closely related to "${topic}" that a ${age}-year-old sees and uses every day (simple objects or actions), concrete and easy to draw. Never pick rare, abstract or difficult words just to avoid the lists.`,
+      '- Before answering, check every item in "words" against both lists (including singular/plural forms) and replace any match.',
+    );
   }
 
   lines.push(

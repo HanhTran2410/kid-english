@@ -152,6 +152,8 @@ Prompt yêu cầu AI:
 - `imagePrompt` theo một phong cách cố định để cả bộ hình đồng bộ.
 - **Loại trừ từ đã có (app 0.6.4):** từ của các bài **cùng chủ đề** (so khớp không phân biệt hoa/thường, số ít/số nhiều: "Animal" = "Animals") được đưa **hết** vào prompt thành một dòng riêng, nhấn mạnh ("IMPORTANT … NONE of them may appear … choose DIFFERENT words"); từ ở bài chủ đề khác vẫn dặn tránh (tối đa 80 từ); cuối phần luật có câu dặn AI tự kiểm tra lại danh sách `words` (kể cả dạng số ít/số nhiều). Từ cần ôn không bị loại trừ.
   - Màn **Tạo bài học**: ngay dưới ô chủ đề hiện "🚫 Loại trừ N từ của chủ đề … (các bài …)" — bấm để xem danh sách; đổi chủ đề thì cập nhật ngay. Ô **"Từ muốn tránh thêm"** (cách nhau bằng dấu phẩy) để bố mẹ tự thêm, được gộp vào dòng cùng chủ đề.
+  - **App 0.6.5 (theo review):** danh sách cùng chủ đề **có sẵn cả dạng số ít / số nhiều** (knees → knee, teeth → tooth, strawberries → strawberry); gọi là **"previously learned words"** (danh sách có thể có từ khác chủ đề, ví dụ frog trong bài Body); luật áp dụng cho **cả hai danh sách**; phạm vi: **từ mới** ("words", "conversation[].word", "questions[].answer") — từ cũ **vẫn được dùng tự nhiên trong câu** để ôn; nếu chủ đề còn ít từ dễ thì chọn từ gần chủ đề, đơn giản, cụ thể, không chọn từ hiếm/khó.
+  - Chủ đề đã có **≥ 20 từ**: màn Tạo bài **cảnh báo** và gợi ý chủ đề hẹp (ví dụ "Body: actions") hoặc chủ đề chưa có bài. Chủ đề hẹp "X: …" vẫn loại trừ từ của chủ đề X và không cảnh báo.
 
 ## 4. Màn hình
 

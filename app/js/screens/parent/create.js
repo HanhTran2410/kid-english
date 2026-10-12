@@ -1,7 +1,7 @@
 // Tạo bài: form → Copy prompt → Dán bài → Xem trước → Lưu (SPEC mục 3).
 
 import { h, toast, copyText } from '../../ui.js';
-import { buildLessonPrompt, DURATIONS, MAX_AVOID_WORDS, buildPhraseLessonPrompt, SITUATIONS, PHRASE_COUNTS, splitAvoidWords } from '../../prompts.js';
+import { buildLessonPrompt, DURATIONS, MAX_AVOID_WORDS, buildPhraseLessonPrompt, SITUATIONS, PHRASE_COUNTS, splitAvoidWords, MANY_TOPIC_WORDS, isSubtopic } from '../../prompts.js';
 import { isPhraseLesson, phraseOverlap } from '../../phrase.js';
 import { createScene } from '../../player/scene.js';
 import { pickWordsForPrompt, markUsedInPrompt, isUnknown, KNOWN_MASTERY, wordRecords } from '../../progress.js';
@@ -48,8 +48,13 @@ export function createView(app) {
           h('summary', { text: `🚫 Loại trừ ${topicWords.length} từ của chủ đề "${name}"${topicLessons.length ? ` (${topicLessons.length} bài: ${topicLessons.map((l) => l.title).join(', ')})` : ''} — bấm để xem` }),
           h('p.avoid-words', { text: topicWords.join(', ') }))
         : h('p.field-hint', { text: `Chưa có bài nào chủ đề "${name}" trên máy này.` }),
-      others ? h('p.field-hint', { text: `Ngoài ra prompt dặn AI tránh ${others} từ bé đã có ở các bài chủ đề khác.` }) : null);
+      others ? h('p.field-hint', { text: `Ngoài ra prompt dặn AI tránh ${others} từ bé đã có ở các bài chủ đề khác.` }) : null,
+      // Chủ đề đã có nhiều từ: AI dễ phải chọn từ khó / lạc đề — gợi ý chủ đề hẹp hơn hoặc chủ đề chưa có bài.
+      topicWords.length >= MANY_TOPIC_WORDS && !isSubtopic(name)
+        ? notice('warn', `Chủ đề "${name}" đã có ${topicWords.length} từ, còn ít từ dễ cho bé ${age.value || 3} tuổi — AI có thể chọn từ khó hoặc lạc đề. Nên chọn chủ đề hẹp hơn (ví dụ "${name}: actions", "${name}: at bath time")${unusedTopics().length ? ` hoặc chủ đề chưa có bài: ${unusedTopics().join(', ')}` : ''}.`)
+        : null);
   }
+  const unusedTopics = () => TOPICS.filter((t) => !splitAvoidWords(wordLessons, t, topicOf).topicLessons.length).slice(0, 4);
   topic.addEventListener('input', refreshAvoid);
   extraAvoid.addEventListener('input', refreshAvoid);
 

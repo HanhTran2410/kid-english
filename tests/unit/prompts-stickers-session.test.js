@@ -114,8 +114,8 @@ test('nghỉ quá 1 tiếng thì bắt đầu buổi mới', () => {
 
 test('prompt yêu cầu AI tránh các từ bé đã có ở bài khác (trừ từ cần ôn)', () => {
   const p = buildLessonPrompt({ topic: 'Animals', reviewWords: ['dog'], avoidWords: ['Dog', 'cat', 'cow', 'cat'] });
-  assert.match(p, /ALREADY LEARNED.*Do NOT use them as new words: cat, cow\./);
-  assert.doesNotMatch(buildLessonPrompt({ topic: 'Animals' }), /ALREADY LEARNED/);
+  assert.match(p, /previously learned in other lessons — do NOT use them as new words either: cat, cow./);
+  assert.doesNotMatch(buildLessonPrompt({ topic: 'Animals' }), /previously learned/i);
 });
 
 test('prompt ảnh lưới liệt kê đúng thứ tự từ và số ô', async () => {
@@ -220,10 +220,32 @@ test('loại trừ từ theo chủ đề: từ của bài cùng chủ đề (kh�
   assert.deepEqual(splitAvoidWords(lessons, 'Weather', topicOf).topicWords, []);
 
   const p = buildLessonPrompt({ topic: 'Animals', reviewWords: ['cow'], topicAvoidWords: [...split.topicWords, 'fish'], avoidWords: split.otherWords });
-  assert.match(p, /IMPORTANT: the child ALREADY LEARNED these "Animals" words in earlier "Animals" lessons\. NONE of them may appear in "words" — choose DIFFERENT Animals words: lion, tiger, dog, fish\./);
-  assert.doesNotMatch(p.match(/IMPORTANT:.*$/m)[0], /\bcow\b/, 'từ cần ôn không bị loại trừ');
-  const others = p.match(/in other lessons\. Do NOT use them as new words: (.*)\.$/m)[1].split(', ');
+  // Gọi là "từ đã học" (không phải "Animals words": danh sách có thể có từ khác chủ đề); có sẵn dạng số ít/số nhiều.
+  assert.match(p, /IMPORTANT — PREVIOUSLY LEARNED WORDS: the child already learned these words in earlier "Animals" lessons \(singular and plural forms are listed\)\. NONE of them may be a new word in this lesson: lion, lions, tiger, tigers, dog, dogs, fish\./);
+  assert.doesNotMatch(p.match(/IMPORTANT.*$/m)[0], /\bcows?\b/, 'từ cần ôn không bị loại trừ');
+  const others = p.match(/Also previously learned in other lessons — do NOT use them as new words either: (.*)\.$/m)[1].split(', ');
   assert.equal(others.length, MAX_AVOID_WORDS);
   assert.ok(!others.includes('lion'), 'không lặp lại từ đã có ở dòng cùng chủ đề');
-  assert.match(p, /Before answering, check every item in "words".*\(except the review words\)/);
+  assert.match(p, /applies to BOTH lists above and to every singular\/plural form.*, except the review words\./);
+  assert.match(p, /every item in "words", every "word" in "conversation" and every "answer" in "questions"/);
+  assert.match(p, /MAY still appear naturally inside sentences/);
+  assert.match(p, /If few simple new "Animals" words are left, choose words closely related to "Animals"/);
+  assert.match(p, /Before answering, check every item in "words" against both lists \(including singular\/plural forms\)/);
+});
+
+test('dạng số ít / số nhiều cho danh sách loại trừ (kể cả bất quy tắc); chủ đề hẹp "Body: actions" vẫn loại trừ từ của Body', async () => {
+  const { wordForms, splitAvoidWords, isSubtopic } = await import('../../app/js/prompts.js');
+  const { topicOf } = await import('../../app/js/lesson.js');
+  const cases = {
+    knees: ['knees', 'knee'], knee: ['knee', 'knees'], teeth: ['tooth', 'teeth'], feet: ['foot', 'feet'],
+    strawberries: ['strawberries', 'strawberry'], strawberry: ['strawberry', 'strawberries'], boxes: ['boxes', 'box'],
+    glass: ['glass', 'glasses'], bus: ['bus', 'buses'], buses: ['bus', 'buses'], leaves: ['leaf', 'leaves'],
+    fish: ['fish'], 'teddy bear': ['teddy bear', 'teddy bears'], toes: ['toes', 'toe'], monkey: ['monkey', 'monkeys'],
+  };
+  for (const [w, forms] of Object.entries(cases)) assert.deepEqual(wordForms(w), forms, w);
+  const lessons = [{ title: 'Body', words: [{ en: 'head' }] }, { title: 'Animals', words: [{ en: 'cow' }] }];
+  assert.deepEqual(splitAvoidWords(lessons, 'Body: actions', topicOf).topicWords, ['head']);
+  assert.deepEqual(splitAvoidWords(lessons, 'bodies', topicOf).topicWords, ['head']);
+  assert.equal(isSubtopic('Body: actions'), true);
+  assert.equal(isSubtopic('Body'), false);
 });
