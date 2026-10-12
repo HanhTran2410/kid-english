@@ -165,3 +165,23 @@ test('tìm đường kẻ chia ô: bỏ viền ngoài sát mép, gộp đường
   frac[150] = 0.5; // nét vẽ không chạy suốt ảnh: không phải đường kẻ
   assert.deepEqual(findDividerLines(frac), [100, 199.5]);
 });
+
+test('tìm đường kẻ: dải xám dày (vỉa hè, mặt đường) không bị coi là đường kẻ', async () => {
+  const { findDividerLines } = await import('../../app/js/image.js');
+  const frac = new Array(400).fill(0.1);
+  for (const i of [100, 200, 300]) frac[i] = 0.95;
+  for (let i = 340; i < 370; i++) frac[i] = 0.9; // mặt đường xám chạy suốt ảnh, dày 30 vạch
+  assert.deepEqual(findDividerLines(frac), [100, 200, 300]);
+});
+
+test('biết trước kiểu lưới: tìm đường kẻ quanh đúng vị trí k/n, bỏ qua nét khác; thiếu đường kẻ thì trả null', async () => {
+  const { findExpectedLines } = await import('../../app/js/image.js');
+  const frac = new Array(400).fill(0.1);
+  frac[99] = 0.9; // đường kẻ lệch nhẹ khỏi 1/4
+  frac[200] = frac[201] = 0.95; // đường kẻ dày 2 vạch ở 1/2
+  frac[302] = 0.85;
+  frac[218] = 0.98; // mép sàn nhà đen chạy ngang, nằm trong một ô
+  assert.deepEqual(findExpectedLines(frac, 4), [99, 200.5, 302]);
+  frac[302] = 0.1;
+  assert.equal(findExpectedLines(frac, 4), null);
+});

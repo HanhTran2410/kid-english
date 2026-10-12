@@ -201,6 +201,8 @@ Một ảnh lưới cho **tối đa 4 câu**: **mỗi hàng 1 câu = 1 hoạt đ
 - Bối cảnh: **nền trắng, chỉ vẽ vài đạo cụ đã kể** dạng hình đơn giản, không vẽ toàn cảnh.
 - Cảnh có đường phố (road, street, crossing, curb, traffic…) thì thêm mục **SAFETY**: Bông luôn đứng trên vỉa hè sau mép đường, không bao giờ bước xuống đường.
 - Cuối prompt có **danh sách kiểm tra** (FINAL VALIDATION) theo từng hàng.
+
+**Cắt ảnh lưới (app 0.3.2):** app biết trước kiểu lưới (chính app sinh prompt 3×N) nên **tìm đường kẻ quanh đúng vị trí k/cột, k/hàng** và cắt theo đường kẻ thật; chỉ khi không thấy mới tự đoán. Khi tự đoán: bỏ qua **dải xám dày** (vỉa hè, mặt đường, tường) và thử riêng **đường xám nhạt** để nét đen của hình (mép sàn, viền cửa) không bị coi là đường kẻ. Lỗi gặp thật: ảnh "Going out" có vỉa hè xám chạy ngang → app cũ đoán 1×2.
 - Prompt tạo bài câu (7.1) yêu cầu AI: `frameScene` chỉ 2–4 đạo cụ; 3 khung bắt đầu → đang làm → xong, khác nhau rõ; người lớn chỉ dùng "Mummy"/"Daddy"; luôn thể hiện hành vi an toàn.
 
 ### 7.3. Prompt "cô giáo" cho câu (1.0-c)

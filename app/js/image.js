@@ -69,7 +69,7 @@ export function countBands(profile, { minInk = 0.01, minBand = 0.06, mergeGap = 
  * @param {number[]} lineFrac tỉ lệ điểm "giống đường kẻ" (xám, không phải nền trắng) trên mỗi vạch (0..1)
  * @returns {number[]} vị trí (chỉ số vạch) tâm các đường kẻ BÊN TRONG, bỏ viền ngoài sát mép ảnh
  */
-export function findDividerLines(lineFrac, { minFrac = 0.8, edge = 0.04 } = {}) {
+export function findDividerLines(lineFrac, { minFrac = 0.8, edge = 0.04, maxThick = 0.02 } = {}) {
   const n = lineFrac.length;
   const lines = [];
   let start = -1;
@@ -77,11 +77,39 @@ export function findDividerLines(lineFrac, { minFrac = 0.8, edge = 0.04 } = {}) 
     const on = i < n && lineFrac[i] >= minFrac;
     if (on && start < 0) start = i;
     if (!on && start >= 0) {
-      lines.push((start + i - 1) / 2);
+      // Dải xám dày (vỉa hè, mặt đường, bức tường…) không phải đường kẻ mảnh.
+      if (i - start <= Math.max(2, maxThick * n)) lines.push((start + i - 1) / 2);
       start = -1;
     }
   }
   return lines.filter((c) => c > edge * n && c < (1 - edge) * n);
+}
+
+/**
+ * Biết trước kiểu lưới (ví dụ prompt khung hình yêu cầu 3×4): tìm đường kẻ GẦN các vị trí k/count.
+ * Trả về vị trí các đường kẻ, hoặc null nếu có vị trí không thấy đường kẻ rõ.
+ */
+export function findExpectedLines(lineFrac, count, { minFrac = 0.6, window = 0.06 } = {}) {
+  const n = lineFrac.length;
+  const lines = [];
+  for (let k = 1; k < count; k++) {
+    const center = (n * k) / count;
+    const from = Math.max(0, Math.floor(center - window * n));
+    const to = Math.min(n - 1, Math.ceil(center + window * n));
+    // Các dải đủ đậm trong cửa sổ; lấy dải GẦN vị trí k/count nhất (nét vẽ khác có thể nằm gần đó).
+    let best = null;
+    for (let i = from; i <= to; i++) {
+      if (lineFrac[i] < minFrac) continue;
+      let j = i;
+      while (j < to && lineFrac[j + 1] >= minFrac) j++;
+      const mid = (i + j) / 2;
+      if (best == null || Math.abs(mid - center) < Math.abs(best - center)) best = mid;
+      i = j;
+    }
+    if (best == null) return null;
+    lines.push(best);
+  }
+  return lines;
 }
 
 /** Đường kẻ chia ô phải cách đều tương đối (ô gần bằng nhau), không thì bỏ qua. */
@@ -96,9 +124,12 @@ function evenlySpaced(lines, n) {
  * Đoán lưới của ảnh.
  * Cách 1 (chính xác): tìm các đường kẻ xám chạy suốt ảnh → biết số ô và VỊ TRÍ ranh giới thật để cắt.
  * Cách 2 (dự phòng, ảnh không có đường kẻ): đếm số cột/hàng có hình (nền trắng không tính).
+ * Biết trước kiểu lưới (`expected`, ví dụ prompt yêu cầu 3×4) thì ưu tiên tìm đường kẻ đúng chỗ của kiểu lưới đó:
+ * tranh có mảng xám chạy ngang (vỉa hè, sàn nhà…) không làm app đoán sai.
+ * @param {{ cols: number, rows: number }} [expected]
  * @returns {{ cols: number, rows: number, xs?: number[], ys?: number[] } | null} xs/ys: ranh giới (theo ảnh gốc)
  */
-function detectGrid(source, w0, h0) {
+function detectGrid(source, w0, h0, expected = null) {
   const size = 400;
   const scale = size / Math.max(w0, h0);
   const w = Math.max(1, Math.round(w0 * scale));
@@ -113,6 +144,9 @@ function detectGrid(source, w0, h0) {
   const rowInk = new Array(hgt).fill(0);
   const colLine = new Array(w).fill(0);
   const rowLine = new Array(hgt).fill(0);
+  // Chỉ xám nhạt (đường kẻ prompt yêu cầu), không tính nét đen của hình (mép sàn, viền cửa…).
+  const colLight = new Array(w).fill(0);
+  const rowLight = new Array(hgt).fill(0);
   for (let y = 0; y < hgt; y++) {
     for (let x = 0; x < w; x++) {
       const i = (y * w + x) * 4;
@@ -129,21 +163,39 @@ function detectGrid(source, w0, h0) {
       if (lum < 242 && sat < 28) {
         colLine[x]++;
         rowLine[y]++;
+        if (lum >= 140) {
+          colLight[x]++;
+          rowLight[y]++;
+        }
       }
     }
   }
 
-  const vLines = findDividerLines(colLine.map((c) => c / hgt));
-  const hLines = findDividerLines(rowLine.map((c) => c / w));
-  const cols = vLines.length + 1;
-  const rows = hLines.length + 1;
-  if (cols * rows >= 2 && cols <= 5 && rows <= 5 && evenlySpaced(vLines, w) && evenlySpaced(hLines, hgt)) {
-    return {
-      cols,
-      rows,
-      xs: [0, ...vLines.map((x) => x / scale), w0],
-      ys: [0, ...hLines.map((y) => y / scale), h0],
-    };
+  const profiles = [[colLine, rowLine], [colLight, rowLight]].map(([c, r]) => [c.map((v) => v / hgt), r.map((v) => v / w)]);
+  const result = (vLines, hLines) => ({
+    cols: vLines.length + 1,
+    rows: hLines.length + 1,
+    xs: [0, ...vLines.map((x) => x / scale), w0],
+    ys: [0, ...hLines.map((y) => y / scale), h0],
+  });
+
+  // Cách 0: biết trước kiểu lưới → tìm đường kẻ quanh đúng các vị trí k/cột, k/hàng.
+  if (expected) {
+    for (const [cp, rp] of [...profiles].reverse()) {
+      const vLines = findExpectedLines(cp, expected.cols);
+      const hLines = findExpectedLines(rp, expected.rows);
+      if (vLines && hLines) return result(vLines, hLines);
+    }
+  }
+
+  for (const [cp, rp] of profiles) {
+    const vLines = findDividerLines(cp);
+    const hLines = findDividerLines(rp);
+    const cols = vLines.length + 1;
+    const rows = hLines.length + 1;
+    if (cols * rows >= 2 && cols <= 5 && rows <= 5 && evenlySpaced(vLines, w) && evenlySpaced(hLines, hgt)) {
+      return result(vLines, hLines);
+    }
   }
 
   const bandCols = countBands(colInk.map((c) => c / hgt));
@@ -202,14 +254,14 @@ export async function resizeImage(file, max = MAX_IMAGE_SIZE) {
 }
 
 /**
- * Đọc ảnh lưới và đoán số cột/hàng.
+ * Đọc ảnh lưới và đoán số cột/hàng (biết trước kiểu lưới `expected` thì ưu tiên kiểu đó).
  * @returns {Promise<{ source, w0: number, h0: number, detected: { cols: number, rows: number } | null }>}
  */
-export async function loadGridImage(file) {
+export async function loadGridImage(file, expected = null) {
   const { source, w0, h0 } = await decode(file);
   let detected = null;
   try {
-    detected = detectGrid(source, w0, h0);
+    detected = detectGrid(source, w0, h0, expected);
   } catch {
     detected = null;
   }

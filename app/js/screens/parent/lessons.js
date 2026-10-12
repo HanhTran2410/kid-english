@@ -212,7 +212,7 @@ function gridSection(app, lesson, urls) {
     previewBox.replaceChildren(h('p.muted', { text: 'Đang đọc ảnh…' }));
     let image;
     try {
-      image = await loadGridImage(file);
+      image = await loadGridImage(file, expected);
     } catch (err) {
       previewBox.replaceChildren(notice('error', imageErrorMessage(err)));
       return;
@@ -487,7 +487,7 @@ function framesSection(app, lesson, urls) {
       work.replaceChildren(h('p.muted', { text: 'Đang đọc ảnh…' }));
       let image;
       try {
-        image = await loadGridImage(file);
+        image = await loadGridImage(file, group.shape);
       } catch (err) {
         work.replaceChildren(notice('error', imageErrorMessage(err)));
         return;
