@@ -150,7 +150,7 @@ test('hết giờ thì Bông đi ngủ; nhấn giữ 🌙 cho học thêm', asyn
 test('bộ sưu tập sticker: học xong được sticker, chạm vào thì Bông đọc tên', async ({ page }) => {
   await startApp(page);
   await page.getByRole('button', { name: 'Sticker' }).click();
-  await expect(page.locator('.sticker-count')).toHaveText('0/40');
+  await expect(page.locator('.sticker-count')).toHaveText('0/100');
   await page.getByRole('button', { name: 'Về màn hình chính' }).click();
 
   await page.getByRole('button', { name: 'Học cùng Bông' }).click();
@@ -158,7 +158,7 @@ test('bộ sưu tập sticker: học xong được sticker, chạm vào thì Bô
   await page.locator('.done-btn').click();
 
   await page.getByRole('button', { name: 'Sticker' }).click();
-  await expect(page.locator('.sticker-count')).toHaveText('1/40');
+  await expect(page.locator('.sticker-count')).toHaveText('1/100');
   const owned = page.locator('.sticker.owned');
   await owned.click();
   const name = await owned.getAttribute('aria-label');
@@ -277,7 +277,7 @@ test('Góc bố mẹ: bớt từng sticker và xóa hết sticker', async ({ pag
   });
   await openParent(page);
   await page.getByRole('button', { name: 'Sticker của bé' }).click();
-  await expect(page.getByRole('heading', { name: /Bé có 2\/40 loại sticker \(3 lần nhận\)/ })).toBeVisible();
+  await expect(page.getByRole('heading', { name: /Bé có 2\/100 loại sticker \(3 lần nhận\)/ })).toBeVisible();
   await page.getByRole('button', { name: 'Bớt 1 sticker lion' }).click();
   await expect(page.getByRole('heading', { name: /\(2 lần nhận\)/ })).toBeVisible();
   await page.getByRole('button', { name: 'Xóa hết sticker' }).click();
@@ -287,7 +287,7 @@ test('Góc bố mẹ: bớt từng sticker và xóa hết sticker', async ({ pag
   await page.getByRole('button', { name: '← Quay lại' }).click();
   await page.getByRole('button', { name: 'Về màn hình của bé' }).click();
   await page.getByRole('button', { name: 'Sticker của bé' }).click();
-  await expect(page.locator('.sticker-count')).toHaveText('0/40');
+  await expect(page.locator('.sticker-count')).toHaveText('0/100');
 });
 
 test('chọn đúng hình thì sao bay ra ngay trên hình đó', async ({ page }) => {

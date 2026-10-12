@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { buildLessonPrompt, buildTeacherPrompt, wordsForDuration } from '../../app/js/prompts.js';
-import { STICKERS, pickSticker, awardSticker, mergeSticker } from '../../app/js/stickers.js';
+import { STICKERS, ALBUMS, currentAlbum, pickSticker, awardSticker, mergeSticker } from '../../app/js/stickers.js';
 import { newSession, resumeSession, addTime, extend, isTimeUp, NEW_SESSION_GAP_MS } from '../../app/js/session.js';
 
 // --- prompts ---
@@ -53,9 +53,24 @@ test('prompt cô giáo: tách từ của bài và từ cần ôn, ưu tiên từ
 
 // --- stickers ---
 
-test('có khoảng 40 sticker, mã không trùng', () => {
-  assert.equal(STICKERS.length, 40);
-  assert.equal(new Set(STICKERS.map((s) => s.id)).size, 40);
+test('100 sticker chia 5 album × 20, mã và hình không trùng; 40 sticker đầu giữ nguyên mã cũ', () => {
+  assert.equal(STICKERS.length, 100);
+  assert.equal(new Set(STICKERS.map((s) => s.id)).size, 100);
+  assert.equal(new Set(STICKERS.map((s) => s.emoji)).size, 100);
+  assert.deepEqual(ALBUMS.map((a) => a.stickers.length), [20, 20, 20, 20, 20]);
+  assert.deepEqual([STICKERS[0].id, STICKERS[19].id, STICKERS[39].id], ['lion', 'dinosaur', 'balloon']);
+});
+
+test('đủ 40 sticker cũ: sticker tiếp theo lấy từ album 3, album đang sưu tập là album 3', () => {
+  const owned = Object.fromEntries(STICKERS.slice(0, 40).map((s) => [s.id, { count: 1 }]));
+  assert.equal(currentAlbum(owned).index, 2);
+  for (let i = 0; i < 20; i++) {
+    const idx = STICKERS.indexOf(pickSticker(owned, Math.random));
+    assert.ok(idx >= 40 && idx < 60, String(idx));
+  }
+  // Có lỗ ở album 1 (ví dụ bố mẹ đã bớt): điền album 1 trước.
+  delete owned.lion;
+  assert.equal(pickSticker(owned, Math.random).id, 'lion');
 });
 
 test('ưu tiên tặng sticker chưa có', () => {
@@ -66,7 +81,7 @@ test('ưu tiên tặng sticker chưa có', () => {
 test('đủ bộ rồi thì tặng ngẫu nhiên và tăng count', () => {
   const owned = Object.fromEntries(STICKERS.map((s) => [s.id, { count: 1 }]));
   const s = pickSticker(owned, () => 0.99);
-  assert.equal(s.id, STICKERS[39].id);
+  assert.equal(s.id, STICKERS[99].id);
   const first = awardSticker(undefined, s.id, 5);
   assert.deepEqual(first, { id: s.id, firstEarnedAt: 5, count: 1 });
   assert.equal(awardSticker(first, s.id).count, 2);

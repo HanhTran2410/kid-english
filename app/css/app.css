@@ -1265,3 +1265,25 @@ a.btn { text-decoration: none; }
 .drive-link .row, .link-import .row { display: flex; gap: 8px; align-items: center; }
 .drive-link .link-out, .link-import input { flex: 1; min-width: 0; }
 .link-import { margin-top: 10px; }
+
+/* ---------- Album sticker (5 album × 20) ---------- */
+.sticker-albums { display: flex; justify-content: center; flex-wrap: wrap; gap: 10px; padding: 4px 12px 12px; }
+.album-tab {
+  display: grid;
+  justify-items: center;
+  gap: 2px;
+  min-width: 72px;
+  padding: 8px 10px;
+  border-radius: 20px;
+  background: var(--card);
+  box-shadow: var(--shadow);
+}
+.album-tab.active { outline: 5px solid var(--lilac); }
+.album-tab.full { background: #eafaf2; }
+.album-emoji { font-family: var(--emoji); font-size: 36px; line-height: 1; }
+.album-count { font-size: 15px; font-weight: 800; color: var(--ink-soft); }
+@media (max-width: 600px) {
+  .sticker-albums { gap: 6px; }
+  .album-tab { min-width: 58px; padding: 6px; }
+  .album-emoji { font-size: 28px; }
+}

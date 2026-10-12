@@ -331,6 +331,7 @@ Phân biệt hai trường hợp:
 - Màn hình bộ sưu tập: lưới sticker to. Sticker đã có thì có màu, **hiện tên tiếng Anh bên dưới** (ví dụ *Lion*) và số lần nhận ở góc (×3); chưa có thì hiện bóng xám kèm dấu ❓ để bé tò mò, không hiện tên.
 - Bé chạm vào sticker đã có: sticker nảy lên và Bông đọc tên tiếng Anh, ví dụ *"Lion!"*. Bé học thêm từ mới khi chơi.
 - Bé không xóa được sticker. Trong Góc bố mẹ → **Sticker của bé**: xem bé có những sticker nào, **bớt từng sticker** hoặc **xóa hết** (có hỏi xác nhận), dùng khi bố mẹ lỡ học thử thay bé.
+- **App 0.6.3:** tăng lên **100 sticker, chia 5 album × 20** (🦁 con vật, 🍎 đồ ăn + xe, 🐱 thú cưng / nông trại / biển, 🍇 đồ ăn, 🚒 xe / đồ chơi / thiên nhiên). 40 sticker cũ giữ nguyên mã và thứ tự (album 1–2), bé không mất sticker nào. Màn sticker có hàng nút album (biểu tượng + số đã có, đủ album thì ✅), mở sẵn **album đang sưu tập** (album đầu tiên còn thiếu). Sticker tặng mới **lấy trong album đang sưu tập** — đủ album này mới sang album sau.
 
 ### 4.9. Xử lý tình huống bất thường
 

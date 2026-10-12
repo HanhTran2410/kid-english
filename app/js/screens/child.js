@@ -5,7 +5,7 @@ import { play } from '../speech/sfx.js';
 import { listLessons, getStickers, mediaBlob } from '../db.js';
 import { isLearned } from '../progress.js';
 import { isBackupDue } from '../settings.js';
-import { STICKERS } from '../stickers.js';
+import { STICKERS, ALBUMS, currentAlbum } from '../stickers.js';
 import { homeButton } from '../player/layout.js';
 import { createBunny } from '../player/teacher.js';
 import { MIC } from '../speech/microphone.js';
@@ -236,12 +236,32 @@ export function stickersScreen(app) {
   app.root.className = 'child-screen stickers';
   const grid = h('div.sticker-grid');
   const counter = h('span.sticker-count');
-  app.root.append(h('header.child-top', {}, homeButton(app), counter), grid);
+  // 5 album × 20 sticker: mỗi lần xem một album, mở sẵn album bé đang sưu tập.
+  const albums = h('nav.sticker-albums', { 'aria-label': 'Album sticker' });
+  app.root.append(h('header.child-top', {}, homeButton(app), counter), albums, grid);
 
   getStickers(app.db).then((owned) => {
     const have = STICKERS.filter((s) => owned[s.id]).length;
     counter.textContent = `${have}/${STICKERS.length}`;
-    for (const s of STICKERS) {
+    const showAlbum = (album) => {
+      for (const b of albums.children) b.classList.toggle('active', Number(b.dataset.album) === album.index);
+      grid.replaceChildren(...album.stickers.map(cellOf));
+    };
+    for (const album of ALBUMS) {
+      const n = album.stickers.filter((s) => owned[s.id]).length;
+      albums.append(h(`button.album-tab${n === album.stickers.length ? '.full' : ''}`, {
+        type: 'button',
+        'aria-label': `Album ${album.index + 1}`,
+        dataset: { album: String(album.index) },
+        onclick: () => {
+          play('tap');
+          showAlbum(album);
+        },
+      }, h('span.album-emoji', { text: album.emoji }), h('span.album-count', { text: n === album.stickers.length ? '✅' : `${n}/${album.stickers.length}` })));
+    }
+    showAlbum(currentAlbum(owned));
+
+    function cellOf(s) {
       const rec = owned[s.id];
       const cell = rec
         ? h('button.sticker.owned', {
@@ -259,7 +279,7 @@ export function stickersScreen(app) {
         h('span.sticker-name', { text: s.name.charAt(0).toUpperCase() + s.name.slice(1) }),
         rec.count > 1 ? h('span.sticker-times', { text: `×${rec.count}` }) : null)
         : h('div.sticker.missing', { 'aria-label': 'Chưa có' }, h('span.sticker-emoji', { text: s.emoji }), h('span.sticker-q', { text: '❓' }));
-      grid.append(cell);
+      return cell;
     }
   });
 }
