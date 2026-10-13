@@ -9,9 +9,9 @@ import { Teacher } from './teacher.js';
 import { startIndexFor, resumeAfter } from './plan.js';
 import { runSkippable, endSkippable } from './stage-kit.js';
 import { runCompletion } from './completion-stage.js';
-import { runWatch, runDo, runSay, runPick } from './phrase-stages.js';
+import { runWatch, runDo, runSay, runPick, runSays } from './phrase-stages.js';
 
-const RUNNERS = { watch: runWatch, do: runDo, say: runSay, pick: runPick };
+const RUNNERS = { watch: runWatch, do: runDo, say: runSay, pick: runPick, says: runSays };
 
 /**
  * @param {{ lessonId: string, start?: 'begin'|'resume', continueDirectly?: boolean }} params

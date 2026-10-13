@@ -51,7 +51,7 @@ test('lỗi nhẹ: motion lạ → none, câu dài, chunks sai, id trùng, comma
   const r = validatePhraseLesson({
     title: 'X',
     phrases: [
-      { id: 'a', en: 'Please put on your nice warm red hat', vi: 'Đội mũ', emoji: '🧢', motion: 'dance', chunks: ['Put on', 'hat'] },
+      { id: 'a', en: 'Please put on your nice warm red hat', vi: 'Đội mũ', emoji: '🧢', motion: 'moonwalk', chunks: ['Put on', 'hat'] },
       { id: 'a', en: 'Sit down', vi: 'Ngồi xuống' },
       { en: 'sit  down!', vi: 'Ngồi' },
     ],
@@ -66,7 +66,7 @@ test('lỗi nhẹ: motion lạ → none, câu dài, chunks sai, id trùng, comma
   assert.deepEqual(r.lesson.phrases.map((p) => p.id), ['p1', 'p2'], 'id trùng → đặt lại');
   assert.deepEqual(r.lesson.commands, ['p1']);
   const w = r.warnings.join('\n');
-  for (const re of [/dài hơn 5 từ/, /"dance" không có/, /chia cụm không khớp/, /bị trùng/, /mã câu không tồn tại \(zz\)/, /đặt lại p1/]) {
+  for (const re of [/dài hơn 5 từ/, /"moonwalk" không có/, /chia cụm không khớp/, /bị trùng/, /mã câu không tồn tại \(zz\)/, /đặt lại p1/]) {
     assert.match(w, re);
   }
 });
@@ -145,7 +145,7 @@ test('bài câu mẫu Morning hợp lệ, không cảnh báo, 4 câu theo thứ 
 test('các bước bài câu: A–B–C cho từng câu rồi D cho từng câu', async () => {
   const { buildPhraseSteps } = await import('../../app/js/phrase.js');
   const steps = buildPhraseSteps({ phrases: [{}, {}] });
-  assert.deepEqual(steps.map((s) => `${s.stage}${s.index}`), ['watch0', 'do0', 'say0', 'watch1', 'do1', 'say1', 'pick0', 'pick1']);
+  assert.deepEqual(steps.map((s) => `${s.stage}${s.index}`), ['watch0', 'do0', 'say0', 'watch1', 'do1', 'say1', 'pick0', 'pick1', 'says0']);
 });
 
 test('khung hình: chia nhóm 4 câu/ảnh, 3 bước, gán mặc định, gom theo thứ tự bước, phát hiện trùng', async () => {
@@ -230,4 +230,37 @@ test('bài câu giữ frameScene; nhóm làm từng câu là lưới 3×1', asyn
   assert.equal(r.lesson.phrases[0].frameScene, 'a bathroom sink');
   const g = singlePhraseGroup(r.lesson, 1);
   assert.deepEqual([g.from, g.to, g.shape.cols, g.shape.rows, g.phrases[0].id], [2, 2, 3, 1, 'p2']);
+});
+
+test('động từ: tình huống Actions, luật riêng trong prompt, hiệu ứng mới, trò "Bông says" cuối bài', async () => {
+  const { SITUATIONS, isActionSituation, buildPhraseLessonPrompt } = await import('../../app/js/prompts.js');
+  const { MOTION_NAMES, effectiveMotion, buildPhraseSteps, saysPhrases, pickSaysRound } = await import('../../app/js/phrase.js');
+  assert.ok(SITUATIONS.includes('Actions: body') && SITUATIONS.includes('Actions: kitchen'));
+  for (const s of ['Actions: kitchen', 'Action', 'verbs', 'Động từ nhà bếp']) assert.equal(isActionSituation(s), true, s);
+  for (const s of ['Morning', 'Actionsxyz', 'Bath time']) assert.equal(isActionSituation(s), false, s);
+
+  const p = buildPhraseLessonPrompt({ situation: 'Actions: kitchen', avoidPhrases: ['Stand up'] });
+  assert.match(p, /ACTION VERBS LESSON/);
+  assert.match(p, /DIFFERENT main verb in every phrase/);
+  assert.match(p, /Do not reuse the main verb of the already-learned phrases/);
+  assert.match(p, /"commands": ALL phrase ids/);
+  assert.doesNotMatch(buildPhraseLessonPrompt({ situation: 'Morning' }), /ACTION VERBS LESSON/);
+  // Danh sách hiệu ứng trong prompt lấy từ app (có động từ mới).
+  for (const m of ['pour', 'stir', 'run', 'walk', 'throw', 'kick', 'dance', 'climb', 'push', 'pull']) {
+    assert.ok(MOTION_NAMES.includes(m), m);
+    assert.match(p, new RegExp(`exactly one of: [^\\n]*\\b${m}\\b`));
+  }
+  assert.equal(effectiveMotion('pour', { hasObject: false }), 'none', 'rót cần có vật (bình)');
+  assert.equal(effectiveMotion('pour', { hasObject: true }), 'pour');
+  assert.equal(effectiveMotion('dance', { hasObject: false }), 'dance');
+
+  // "Bông says": lấy câu trong commands, 3–4 lệnh, không trùng; bài < 2 câu lệnh thì không có bước này.
+  const lesson = { phrases: ['a', 'b', 'c', 'd', 'e'].map((id) => ({ id, en: id })), commands: ['a', 'b', 'c', 'd', 'e'] };
+  assert.equal(buildPhraseSteps(lesson).at(-1).stage, 'says');
+  const round = pickSaysRound(lesson);
+  assert.equal(round.length, 4);
+  assert.equal(new Set(round.map((x) => x.id)).size, 4);
+  assert.deepEqual(saysPhrases({ phrases: lesson.phrases, commands: ['a'] }), []);
+  assert.equal(buildPhraseSteps({ phrases: lesson.phrases, commands: ['a'] }).some((s) => s.stage === 'says'), false);
+  assert.equal(pickSaysRound({ phrases: lesson.phrases.slice(0, 2), commands: [] }).length, 2);
 });

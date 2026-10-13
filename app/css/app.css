@@ -1322,3 +1322,58 @@ a.btn { text-decoration: none; }
   font-size: 26px;
   pointer-events: none;
 }
+
+/* ---------- Động từ (SPEC-actions.md, app 0.7.0) ---------- */
+/* pour: vật (bình, ấm) nghiêng, giọt nước rơi xuống */
+.scene.playing[data-motion='pour'] .scene-object { animation-name: m-pour; transform-origin: 30% 80%; }
+.scene[data-motion='pour'] .fx.drop { left: calc(56% + var(--i) * 2%); top: 46%; font-size: 0.35em; }
+.scene.playing[data-motion='pour'] .fx.drop { animation-name: m-drop; animation-delay: calc(0.5s + var(--i) * 0.18s); }
+@keyframes m-pour { 0%, 15% { transform: rotate(0); } 45%, 85% { transform: rotate(-55deg); } 100% { transform: rotate(0); } }
+@keyframes m-drop { 0% { opacity: 0; transform: translateY(0); } 20% { opacity: 1; } 100% { opacity: 0; transform: translateY(160%); } }
+
+/* stir: thìa khuấy vòng tròn trên bát */
+.scene[data-motion='stir'] .fx.main { left: 64%; top: 18%; font-size: 0.65em; opacity: 1; }
+.scene.playing[data-motion='stir'] .fx.main { animation-name: m-stir; }
+@keyframes m-stir { 0%, 100% { opacity: 1; transform: translate(0, 0) rotate(-20deg); } 25% { transform: translate(18%, 10%) rotate(0); } 50% { transform: translate(0, 20%) rotate(20deg); } 75% { transform: translate(-18%, 10%) rotate(0); } }
+
+/* run: Bông chạy nhanh qua lại, bụi bay phía sau */
+.scene.playing[data-motion='run'] .scene-bong { animation-name: m-run; }
+.scene[data-motion='run'] .fx.dust { left: calc(4% + var(--i) * 6%); bottom: 8%; font-size: 0.4em; }
+.scene.playing[data-motion='run'] .fx.dust { animation-name: m-dust; animation-delay: calc(var(--i) * 0.2s); }
+@keyframes m-run { 0% { transform: translateX(-6%); } 15% { transform: translateX(6%) translateY(-6%); } 30% { transform: translateX(18%); } 45% { transform: translateX(30%) translateY(-6%); } 60% { transform: translateX(40%); } 100% { transform: translateX(-6%); } }
+@keyframes m-dust { 0% { opacity: 0; transform: scale(0.5); } 40% { opacity: 0.9; } 100% { opacity: 0; transform: translateX(-60%) scale(1.2); } }
+
+/* walk: như go nhưng chậm, nhún nhẹ từng bước */
+.scene.playing[data-motion='walk'] .scene-bong { animation-name: m-walk; }
+.scene[data-motion='walk'] .fx.step { left: calc(8% + var(--i) * 16%); bottom: 4%; font-size: 0.4em; }
+.scene.playing[data-motion='walk'] .fx.step { animation-name: m-step; animation-delay: calc(var(--i) * 0.45s); }
+@keyframes m-walk { 0% { transform: translateX(-6%); } 20% { transform: translateX(4%) translateY(-3%); } 40% { transform: translateX(12%); } 60% { transform: translateX(20%) translateY(-3%); } 80%, 100% { transform: translateX(28%); } }
+
+/* throw / kick: vật bay ra xa theo đường cong; Bông nhún */
+.scene.playing[data-motion='throw'] .scene-object { animation-name: m-throw; }
+.scene.playing[data-motion='kick'] .scene-object { animation-name: m-kick; }
+.scene.playing[data-motion='throw'] .scene-bong, .scene.playing[data-motion='kick'] .scene-bong { animation-name: m-hop; }
+@keyframes m-throw { 0% { left: 38%; top: 40%; transform: rotate(0) scale(0.8); } 50% { left: 62%; top: 4%; transform: rotate(180deg) scale(0.9); } 100% { left: 78%; top: 30%; transform: rotate(360deg) scale(0.8); } }
+@keyframes m-kick { 0%, 25% { left: 40%; top: 62%; transform: rotate(0); } 70% { left: 70%; top: 40%; transform: rotate(270deg); } 100% { left: 80%; top: 60%; transform: rotate(360deg); } }
+@keyframes m-hop { 0%, 100% { transform: translateY(0); } 30% { transform: translateY(-8%) rotate(-4deg); } 60% { transform: translateY(0) rotate(2deg); } }
+
+/* dance: Bông lắc lư, nốt nhạc bay lên */
+.scene.playing[data-motion='dance'] .scene-bong { animation-name: m-dance; }
+.scene[data-motion='dance'] .fx.note { left: calc(50% + var(--i) * 12%); top: calc(34% - var(--i) * 6%); }
+.scene.playing[data-motion='dance'] .fx.note { animation-name: m-zzz; animation-delay: calc(var(--i) * 0.3s); }
+@keyframes m-dance { 0%, 100% { transform: rotate(0) translateY(0); } 20% { transform: rotate(-10deg) translateY(-5%); } 40% { transform: rotate(10deg) translateY(0); } 60% { transform: rotate(-10deg) translateY(-5%); } 80% { transform: rotate(10deg) translateY(0); } }
+
+/* climb: thang bên cạnh, Bông leo lên từng nấc */
+.scene[data-motion='climb'] .fx.main { left: 56%; bottom: 6%; font-size: 1.1em; opacity: 1; }
+.scene.playing[data-motion='climb'] .scene-bong { animation-name: m-climb; }
+@keyframes m-climb { 0% { transform: translateY(0); } 25% { transform: translateY(-8%) rotate(-3deg); } 50% { transform: translateY(-16%) rotate(3deg); } 75%, 90% { transform: translateY(-24%); } 100% { transform: translateY(0); } }
+
+/* push / pull: vật trượt ra xa / lại gần Bông, Bông nghiêng người */
+.scene.playing[data-motion='push'] .scene-object { animation-name: m-push; }
+.scene.playing[data-motion='pull'] .scene-object { animation-name: m-pull; }
+.scene.playing[data-motion='push'] .scene-bong { animation-name: m-lean-forward; }
+.scene.playing[data-motion='pull'] .scene-bong { animation-name: m-lean-back; }
+@keyframes m-push { 0%, 20% { transform: translateX(0); } 80%, 100% { transform: translateX(40%); } }
+@keyframes m-pull { 0%, 20% { transform: translateX(40%); } 80%, 100% { transform: translateX(0); } }
+@keyframes m-lean-forward { 0%, 100% { transform: rotate(0); } 30%, 80% { transform: rotate(8deg); } }
+@keyframes m-lean-back { 0%, 100% { transform: rotate(0); } 30%, 80% { transform: rotate(-8deg); } }

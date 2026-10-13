@@ -1,0 +1,80 @@
+{
+  "version": 2,
+  "kind": "phrases",
+  "title": "Actions",
+  "titleVi": "Động từ cơ thể",
+  "topic": "Actions: body",
+  "emoji": "🤸",
+  "routine": false,
+  "phrases": [
+    {
+      "id": "p1",
+      "en": "Stand up",
+      "vi": "Đứng lên",
+      "emoji": "🧍",
+      "motion": "stand-up",
+      "requiredKeywords": ["stand up"],
+      "keywords": [],
+      "chunks": ["Stand up"],
+      "imagePrompt": "Bông, a cute bunny with creamy white fur, light-pink inner ears, big glossy eyes and rosy cheeks, standing up from a small chair with both arms up, cute children's flashcard illustration, simple flat shapes, thick soft outlines, bright pastel colors, plain white background, one object centered, no text",
+      "frameScene": "one small round pastel stool",
+      "framePrompts": [
+        "Bông sits on the small stool, paws on her knees",
+        "Bông pushes up from the stool, body half raised, legs straightening",
+        "Bông stands tall beside the same stool with both arms raised, smiling"
+      ]
+    },
+    {
+      "id": "p2",
+      "en": "Sit down",
+      "vi": "Ngồi xuống",
+      "emoji": "🪑",
+      "motion": "sit-down",
+      "requiredKeywords": ["sit down"],
+      "keywords": [],
+      "chunks": ["Sit down"],
+      "imagePrompt": "Bông, a cute bunny with creamy white fur, light-pink inner ears, big glossy eyes and rosy cheeks, sitting down on a small chair, cute children's flashcard illustration, simple flat shapes, thick soft outlines, bright pastel colors, plain white background, one object centered, no text",
+      "frameScene": "one small pastel chair",
+      "framePrompts": [
+        "Bông stands in front of the small chair, facing the viewer",
+        "Bông bends her knees and lowers her body toward the same chair",
+        "Bông sits on the chair with her paws on her lap, smiling"
+      ]
+    },
+    {
+      "id": "p3",
+      "en": "Jump",
+      "vi": "Nhảy lên",
+      "emoji": "🦘",
+      "motion": "jump",
+      "requiredKeywords": ["jump"],
+      "keywords": [],
+      "chunks": ["Jump"],
+      "imagePrompt": "Bông, a cute bunny with creamy white fur, light-pink inner ears, big glossy eyes and rosy cheeks, jumping high with both feet off the ground, cute children's flashcard illustration, simple flat shapes, thick soft outlines, bright pastel colors, plain white background, one object centered, no text",
+      "frameScene": "a simple short ground line",
+      "framePrompts": [
+        "Bông crouches down on the ground line, knees bent, ready to jump",
+        "Bông is high in the air above the same ground line, both feet off the ground, arms up",
+        "Bông lands back on the ground line with bent knees, smiling"
+      ]
+    },
+    {
+      "id": "p4",
+      "en": "Clap your hands",
+      "vi": "Vỗ tay",
+      "emoji": "👏",
+      "motion": "clap",
+      "requiredKeywords": ["clap"],
+      "keywords": ["hands"],
+      "chunks": ["Clap", "your hands"],
+      "imagePrompt": "Bông, a cute bunny with creamy white fur, light-pink inner ears, big glossy eyes and rosy cheeks, clapping her paws happily, cute children's flashcard illustration, simple flat shapes, thick soft outlines, bright pastel colors, plain white background, one object centered, no text",
+      "frameScene": "no props, plain white background",
+      "framePrompts": [
+        "Bông stands with her paws held wide apart in front of her chest",
+        "Bông brings her paws together in a clap, small curved motion marks around them",
+        "Bông opens her paws again and smiles with sparkles around her paws"
+      ]
+    }
+  ],
+  "commands": ["p1", "p2", "p3", "p4"]
+}

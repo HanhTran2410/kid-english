@@ -9,6 +9,8 @@ export const LEVELS = {
   some: 'a child who already knows a few simple English words',
 };
 
+import { MOTION_NAMES } from './phrase.js';
+
 export const STYLES = { fun: 'fun', story: 'story' };
 
 export const IMAGE_STYLE =
@@ -427,7 +429,11 @@ export function buildGridImagePrompt(words, { cols, rows }) {
   ].join('\n');
 }
 
-export const SITUATIONS = ['Morning', 'Getting dressed', 'Going out', 'Bath time', 'Meal time', 'Bedtime', 'Playtime'];
+export const SITUATIONS = ['Morning', 'Getting dressed', 'Going out', 'Bath time', 'Meal time', 'Bedtime', 'Playtime',
+  'Actions: body', 'Actions: kitchen', 'Actions: playground', 'Actions: tidy up'];
+
+/** Tình huống học ĐỘNG TỪ (SPEC-actions.md): "Actions…", "Verbs…", "Động từ…". */
+export const isActionSituation = (situation) => /^\s*(actions?|verbs?|động từ)(?=[\s:]|$)/i.test(String(situation ?? ''));
 export const PHRASE_COUNTS = [4, 6];
 export const BONG_DESCRIPTION = 'Bông, a cute bunny with creamy white fur, light-pink inner ears, big glossy eyes and rosy cheeks';
 
@@ -436,8 +442,7 @@ export const BONG_DESCRIPTION = 'Bông, a cute bunny with creamy white fur, ligh
  * @param {{ situation: string, count?: number, level?: 'beginner'|'some', age?: number, avoidPhrases?: string[] }} options
  */
 export function buildPhraseLessonPrompt({ situation, count = 4, level = 'beginner', age = 3, avoidPhrases = [] }) {
-  const motionList = ['open', 'close', 'put-on', 'take-off', 'wash', 'brush', 'eat', 'drink', 'turn-on', 'turn-off',
-    'sit-down', 'stand-up', 'wave', 'clap', 'jump', 'sleep', 'go', 'none'];
+  const motionList = MOTION_NAMES;
   const lengthRule = level === 'beginner' ? '2 to 3 words' : '3 to 5 words';
   const shape = `{
   "version": 2,
@@ -489,6 +494,19 @@ export function buildPhraseLessonPrompt({ situation, count = 4, level = 'beginne
     '- Always show safe behavior the child should copy (stay on the sidewalk behind the curb, hold an adult\'s paw near roads).',
     '- "commands": the ids of phrases that are easy to act out with the body (for a "Bông says" game).',
     ...(avoid.length ? [`- The child ALREADY LEARNED these phrases. Do NOT repeat them: ${avoid.join('; ')}.`] : []),
+    ...(isActionSituation(situation) ? [
+      '',
+      'ACTION VERBS LESSON — extra rules:',
+      '- Every phrase is a short command built around ONE clear action verb that a 3-year-old can act out right now or pretend to do (e.g. "Stand up", "Sit down", "Jump", "Clap your hands", "Pour the water", "Stir the soup", "Throw the ball").',
+      '- Use a DIFFERENT main verb in every phrase (not "Pick up the ball" and "Pick up the cup" in the same lesson).',
+      ...(avoid.length ? ['- Do not reuse the main verb of the already-learned phrases above.'] : []),
+      '- "requiredKeywords": exactly the main verb or phrasal verb (e.g. ["pour"], ["stand up"]).',
+      '- "motion": pick the matching motion (pour, stir, run, walk, throw, kick, dance, climb, push, pull, sit-down, stand-up, jump, clap, wave…).',
+      '- "emoji": the object of the action if there is one (🫖 for pour, ⚽ for kick), otherwise an emoji showing the action (🏃 run, 💃 dance).',
+      '- "routine": false. "commands": ALL phrase ids (every action is easy to act out).',
+      '- "framePrompts": the 3 frames show the MOVEMENT clearly — start pose → action in progress → finished pose — with Bông\'s whole body visible.',
+      '- Only safe actions a small child can do at home or in a playground (no climbing high, no knives).',
+    ] : []),
     '- Use simple, positive, child-friendly language only.',
   ].join('\n');
 }

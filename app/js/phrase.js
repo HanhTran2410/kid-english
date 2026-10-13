@@ -31,6 +31,17 @@ export const MOTIONS = {
   jump: { needsObject: false, onImage: 'bounce' },
   sleep: { needsObject: false, overlay: '💤', onImage: 'bounce' },
   go: { needsObject: false, overlay: '👣', onImage: 'bounce' },
+  // Động từ (SPEC-actions.md, app 0.7.0)
+  pour: { needsObject: true, overlay: '💧', onImage: 'pulse' },
+  stir: { needsObject: false, overlay: '🥄', onImage: 'pulse' },
+  run: { needsObject: false, overlay: '💨', onImage: 'bounce' },
+  walk: { needsObject: false, overlay: '👣', onImage: 'bounce' },
+  throw: { needsObject: true, onImage: 'pulse' },
+  kick: { needsObject: true, onImage: 'pulse' },
+  dance: { needsObject: false, overlay: '🎵', onImage: 'bounce' },
+  climb: { needsObject: false, overlay: '🪜', onImage: 'bounce' },
+  push: { needsObject: true, onImage: 'pulse' },
+  pull: { needsObject: true, onImage: 'pulse' },
   none: { needsObject: false, onImage: 'bounce' },
 };
 
@@ -246,7 +257,29 @@ export function buildPhraseSteps(lesson) {
     steps.push({ stage: 'watch', index }, { stage: 'do', index }, { stage: 'say', index });
   });
   if (lesson.phrases.length >= 2) lesson.phrases.forEach((_, index) => steps.push({ stage: 'pick', index }));
+  // Trò "Bông says" (SPEC-v1.0 mục 5 F, SPEC-actions.md): cuối bài, Bông ra liên tiếp vài lệnh, bé làm theo.
+  if (saysPhrases(lesson).length >= 2) steps.push({ stage: 'says', index: 0 });
   return steps;
+}
+
+export const SAYS_MAX = 4;
+
+/** Câu dùng cho trò "Bông says": các câu trong `commands`, không có thì mọi câu. */
+export function saysPhrases(lesson) {
+  const phrases = lesson.phrases ?? [];
+  const ids = new Set(lesson.commands ?? []);
+  const chosen = ids.size ? phrases.filter((p) => ids.has(p.id)) : phrases;
+  return chosen.length >= 2 ? chosen : [];
+}
+
+/** 3–4 lệnh cho một lượt "Bông says", xáo trộn, không lặp lệnh liền nhau (SPEC-actions mục 4). */
+export function pickSaysRound(lesson, rng = Math.random, max = SAYS_MAX) {
+  const list = [...saysPhrases(lesson)];
+  for (let i = list.length - 1; i > 0; i--) {
+    const j = Math.floor(rng() * (i + 1));
+    [list[i], list[j]] = [list[j], list[i]];
+  }
+  return list.slice(0, Math.min(max, Math.max(3, list.length)));
 }
 
 // ---------- Khung hình (flipbook) từ ảnh lưới (SPEC-v1.0 mục 2.3) ----------

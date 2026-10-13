@@ -10,7 +10,7 @@ ${FENCE}json
   "phrases": [
     { "id": "p1", "en": "Put on your shoes", "vi": "Đi giày", "emoji": "👟", "motion": "put-on", "requiredKeywords": ["put on"], "keywords": ["shoes"], "chunks": ["Put on", "your shoes"] },
     { "id": "p2", "en": "Open the door", "vi": "Mở cửa", "emoji": "🚪", "motion": "open", "requiredKeywords": ["open"], "keywords": ["door"] },
-    { "id": "p3", "en": "Let's go", "vi": "Đi thôi", "emoji": "🚶", "motion": "dance" }
+    { "id": "p3", "en": "Let's go", "vi": "Đi thôi", "emoji": "🚶", "motion": "moonwalk" }
   ],
   "commands": ["p1", "p2"]
 }
@@ -27,7 +27,7 @@ test('màn hình chính có nút Phrases; học hết bài Morning: xem → làm
   await expect(page.getByText('Phrases', { exact: true })).toBeVisible();
   await page.getByRole('button', { name: 'Câu nói' }).click();
   // Danh sách bài câu chỉ có bài câu, không lẫn bài từ vựng.
-  await expect(page.locator('.lesson-card')).toHaveCount(1);
+  await expect(page.locator('.lesson-card')).toHaveCount(2);
   const card = page.getByRole('button', { name: 'Morning', exact: true });
   await expect(card.locator('.lesson-words')).toHaveText('⏰🧼🪥👕');
   await card.click();
@@ -110,12 +110,12 @@ test('Góc bố mẹ: tạo bài câu (copy prompt), dán bài, xem trước, l�
   await expect(page.getByRole('status')).toContainText('Đã copy prompt');
   const copied = await page.evaluate(() => navigator.clipboard.readText());
   expect(copied).toMatch(/situation: "Going out"/);
-  expect(copied).toMatch(/Do NOT repeat them: wake up/);
+  expect(copied).toMatch(/Do NOT repeat them: .*wake up/);
 
   await page.getByRole('button', { name: 'Đã có bài từ AI → Dán bài' }).click();
   await page.getByPlaceholder(/Dán toàn bộ câu trả lời/).fill(PASTED);
   await page.getByRole('button', { name: 'Kiểm tra bài' }).click();
-  await expect(page.getByText(/hiệu ứng "dance" không có/)).toBeVisible();
+  await expect(page.getByText(/hiệu ứng "moonwalk" không có/)).toBeVisible();
   await expect(page.locator('.preview .phrase-admin')).toHaveCount(3);
   await page.getByRole('button', { name: 'Lưu bài' }).click();
 
@@ -133,7 +133,7 @@ test('Góc bố mẹ: tạo bài câu (copy prompt), dán bài, xem trước, l�
   await page.getByRole('button', { name: '← Quay lại' }).click();
   await page.getByRole('button', { name: 'Về màn hình của bé' }).click();
   await page.getByRole('button', { name: 'Câu nói' }).click();
-  await expect(page.locator('.topic-tab')).toHaveText(['⭐All', '🚪Going out', '🌅Morning']);
+  await expect(page.locator('.topic-tab')).toHaveText(['⭐All', '🚪Going out', '🤸Actions', '🌅Morning']);
 });
 
 test('khung hình (flipbook): ảnh lưới 3×4 → cắt → xem trước → lưu → khi học phát flipbook thay cho cảnh emoji', async ({ page, context }) => {
@@ -194,4 +194,35 @@ test('khung hình (flipbook): ảnh lưới 3×4 → cắt → xem trước → 
   await expect(page.locator('.scene-object')).toHaveCount(0);
   await playThrough(page);
   await expect(page.locator('.prize-sticker')).toBeVisible();
+});
+
+test('bài mẫu Actions (động từ): học hết có trò "Bông says" cuối bài — bé làm theo 3–4 lệnh rồi chạm ✔', async ({ page }) => {
+  await startApp(page);
+  await page.getByRole('button', { name: 'Câu nói' }).click();
+  await page.getByRole('button', { name: 'Actions', exact: true }).click();
+  await expect(page.locator('.phrase-text')).toHaveText('Stand up');
+  await expect(page.locator('.scene')).toHaveAttribute('data-motion', 'stand-up');
+  await playThrough(page);
+  await expect(page.locator('.prize-sticker')).toBeVisible();
+  const spoken = await page.evaluate(() => window.__spoken);
+  const start = spoken.indexOf("Let's play! Listen and do!");
+  expect(start).toBeGreaterThan(-1);
+  const commands = spoken.slice(start + 1).filter((t) => /^(Stand up|Sit down|Jump|Clap your hands)!$/.test(t));
+  expect(commands.length).toBeGreaterThanOrEqual(3);
+  expect(spoken).toContain('Super! You did them all!');
+  // Làm theo ở trò "Bông says" cũng được tính (không trừ sao).
+  expect((await page.evaluate(async () => window.kidEnglish.db.get('progress', 'phrase:jump'))).mastery).toBeGreaterThanOrEqual(1);
+});
+
+test('tạo bài câu: chọn tình huống "Actions: kitchen" → prompt có luật riêng cho động từ', async ({ page, context }) => {
+  await context.grantPermissions(['clipboard-read', 'clipboard-write']);
+  await startApp(page);
+  await openParent(page);
+  await page.getByRole('button', { name: 'Tạo bài câu' }).click();
+  await page.getByRole('button', { name: 'Actions: kitchen' }).click();
+  await page.getByRole('button', { name: 'Copy prompt' }).click();
+  const copied = (await page.evaluate(() => navigator.clipboard.readText())).replace(/\r\n/g, '\n');
+  expect(copied).toMatch(/situation: "Actions: kitchen"/);
+  expect(copied).toMatch(/ACTION VERBS LESSON/);
+  expect(copied).toMatch(/exactly one of: .*\bpour\b.*\bstir\b/);
 });

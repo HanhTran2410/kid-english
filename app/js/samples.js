@@ -5,7 +5,7 @@ import { ensureLessonNumbers } from './db.js';
 import { builtInNumberLessons } from './numbers.js';
 
 export const SAMPLE_FILES = ['lessons/animals.json', 'lessons/colors.json'];
-export const PHRASE_SAMPLE_FILES = ['lessons/morning.json'];
+export const PHRASE_SAMPLE_FILES = ['lessons/morning.json', 'lessons/actions.json'];
 
 /** Thêm các bài mẫu trong danh sách file. Trả về số bài đã thêm. */
 async function addFrom(app, files) {
@@ -50,8 +50,13 @@ export async function seedSamplesOnce(app) {
   if (!app.settings.samplesSeeded) {
     if (await addFrom(app, SAMPLE_FILES)) await app.setSetting('samplesSeeded', true);
   }
-  if (!app.settings.phraseSamplesSeeded) {
-    if (await addFrom(app, PHRASE_SAMPLE_FILES)) await app.setSetting('phraseSamplesSeeded', true);
+  // Bài câu mẫu: mỗi file chỉ tự thêm MỘT lần (bố mẹ xóa rồi thì không tự thêm lại). Máy đã có bài Morning từ bản cũ
+  // (cờ phraseSamplesSeeded) chỉ nhận bài mẫu mới (Actions).
+  const phraseSeeded = app.settings.phraseSamplesAdded
+    ?? (app.settings.phraseSamplesSeeded ? ['lessons/morning.json'] : []);
+  const newPhraseFiles = PHRASE_SAMPLE_FILES.filter((f) => !phraseSeeded.includes(f));
+  if (newPhraseFiles.length && await addFrom(app, newPhraseFiles)) {
+    await app.setSetting('phraseSamplesAdded', [...phraseSeeded, ...newPhraseFiles]);
   }
   // Bài số: mỗi bài có sẵn chỉ tự thêm MỘT lần (bố mẹ xóa rồi thì không tự thêm lại).
   // Máy đã có bài số từ bản 0.3 (cờ cũ numberSamplesSeeded) coi như đã thêm bài 1–10 và trò chơi → chỉ nhận bài 11–20.

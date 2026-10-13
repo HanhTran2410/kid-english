@@ -4,7 +4,7 @@ import { h } from '../ui.js';
 import { play } from '../speech/sfx.js';
 import { RESULT } from '../speech/listen.js';
 import { scaled, abortError } from '../timing.js';
-import { phraseKey } from '../phrase.js';
+import { phraseKey, pickSaysRound } from '../phrase.js';
 import { createScene } from './scene.js';
 import { createFlipbook } from './flipbook.js';
 import { pickChoices } from './plan.js';
@@ -124,6 +124,39 @@ export async function runDo(ctx, phrase) {
   // Bé vừa nghe câu ở bước này → bước nói theo không cần đọc lại câu trong lời mời.
   ctx.justHeard = phrase.id;
   await teacher.pause(500);
+}
+
+// ---------- F. "Bông says" (SPEC-v1.0 mục 5 F, SPEC-actions mục 4) ----------
+// Cuối bài: Bông ra liên tiếp 3–4 lệnh, bé làm theo rồi chạm ✔. Không có câu bẫy, không trừ gì.
+export async function runSays(ctx) {
+  const { app, teacher, lesson } = ctx;
+  const round = pickSaysRound(lesson);
+  if (!round.length) return;
+  await teacher.say("Let's play! Listen and do!");
+  for (const [i, phrase] of round.entries()) {
+    const { scene, highlight } = phraseCard(ctx, phrase);
+    ctx.stage.querySelector('.phrase-card').classList.add('says');
+    highlight('all');
+    const did = h('button.did-btn', { type: 'button', 'aria-label': 'Bé đã làm', text: '✔' });
+    ctx.stage.querySelector('.phrase-card').append(did);
+    scene.play();
+    await teacher.ask(`${phrase.en}!`);
+    const didIt = await waitDid(ctx, did);
+    teacher.endQuestion();
+    if (didIt) {
+      did.classList.add('done');
+      play('ding');
+      teacher.celebrate(did);
+      teacher.bunny.set('clap');
+      await markDid(app, phraseKey(phrase.en), phrase.emoji);
+      await teacher.say(i === round.length - 1 ? 'Super! You did them all!' : 'Yes!');
+      teacher.bunny.set('idle');
+    } else {
+      scene.play();
+      await teacher.say(`Look! ${phrase.en}!`);
+    }
+    await teacher.pause(400);
+  }
 }
 
 // ---------- C. Nói theo (tùy chọn, không bao giờ làm kẹt bài) ----------

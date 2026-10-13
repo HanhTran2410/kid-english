@@ -12,7 +12,10 @@ function effectLayer(motion) {
   const overlay = MOTIONS[motion]?.overlay;
   if (motion === 'wash') for (let i = 0; i < 5; i++) add(i % 2 ? '💧' : '🫧', i, 'bubble');
   else if (motion === 'sleep') for (let i = 0; i < 3; i++) add('💤', i, 'zzz');
-  else if (motion === 'go') for (let i = 0; i < 3; i++) add('👣', i, 'step');
+  else if (motion === 'go' || motion === 'walk') for (let i = 0; i < 3; i++) add('👣', i, 'step');
+  else if (motion === 'pour') for (let i = 0; i < 4; i++) add('💧', i, 'drop');
+  else if (motion === 'run') for (let i = 0; i < 3; i++) add('💨', i, 'dust');
+  else if (motion === 'dance') for (let i = 0; i < 3; i++) add(i % 2 ? '🎶' : '🎵', i, 'note');
   else if (overlay) add(overlay, 0, 'main');
   if (['open', 'clap', 'turn-on'].includes(motion)) for (let i = 0; i < 3; i++) add('✨', i, 'spark');
   return fx;

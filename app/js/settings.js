@@ -13,6 +13,7 @@ export const DEFAULT_SETTINGS = {
   firstUseAt: null,
   samplesSeeded: false,
   phraseSamplesSeeded: false,
+  phraseSamplesAdded: null, // các file bài câu mẫu đã tự thêm (mỗi file một lần)
   numberSamplesSeeded: false,
   numberLessonsSeeded: null,
   driveClientId: '', // Google Drive (SPEC-drive.md): Client ID do bố mẹ tạo
