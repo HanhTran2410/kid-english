@@ -16,6 +16,7 @@ export const DEFAULT_SETTINGS = {
   phraseSamplesAdded: null, // các file bài câu mẫu đã tự thêm (mỗi file một lần)
   numberSamplesSeeded: false,
   numberLessonsSeeded: null,
+  phonicsLessonsSeeded: null, // các bài phonics có sẵn đã tự thêm (mã builtin)
   driveClientId: '', // Google Drive (SPEC-drive.md): Client ID do bố mẹ tạo
   driveFolderName: 'Kid English',
   driveFolder: null, // { id, name } thư mục của app trên Drive (nhớ để không phải tìm lại)

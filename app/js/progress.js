@@ -115,7 +115,9 @@ export function mergeProgress(current, incoming) {
 }
 
 /** Bỏ các bản ghi tiến độ của câu (`phrase:…`) và số (`number:…`) — dùng cho phần từ vựng. */
-export const wordRecords = (records) => records.filter((r) => !/^(phrase|number):/.test(String(r.word)));
+export const wordRecords = (records) => records.filter((r) => !/^(phrase|number|letter):/.test(String(r.word)));
+/** Chỉ các bản ghi tiến độ của chữ cái (SPEC-phonics mục 10). */
+export const letterRecords = (records) => records.filter((r) => String(r.word).startsWith('letter:'));
 /** Chỉ các bản ghi tiến độ của số (SPEC-numbers mục 6). */
 export const numberRecords = (records) => records.filter((r) => String(r.word).startsWith('number:'));
 /** Chỉ các bản ghi tiến độ của câu. */

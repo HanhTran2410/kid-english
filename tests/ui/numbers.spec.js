@@ -107,12 +107,12 @@ test('trò chơi Chọn số: 2 kiểu câu, chọn sai không trừ sao, có Ho
   for (const r of records) expect(r.mastery).toBeGreaterThanOrEqual(0);
 });
 
-test('màn hình chính 7 nút (có 🎲 Trò chơi) vừa iPhone dọc, không phải cuộn', async ({ page }) => {
+test('màn hình chính 8 nút (có 🎲 Trò chơi, 🔤 Chữ cái) vừa iPhone dọc, không phải cuộn', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 664 });
   await startApp(page);
   const buttons = page.locator('.home-grid .home-btn');
-  await expect(buttons).toHaveCount(7);
-  for (let i = 0; i < 7; i++) {
+  await expect(buttons).toHaveCount(8);
+  for (let i = 0; i < 8; i++) {
     const box = await buttons.nth(i).boundingBox();
     expect(box.y + box.height).toBeLessThanOrEqual(664);
     expect(box.x + box.width).toBeLessThanOrEqual(390);

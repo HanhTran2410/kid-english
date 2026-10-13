@@ -74,6 +74,14 @@ export async function playThrough(page, { stopAfterSteps = Infinity } = {}) {
     // Bước "làm theo" của bài câu: bé (bố mẹ) chạm ✔.
     const did = page.locator('.did-btn:not(.done)');
     if (await did.isVisible().catch(() => false)) await did.click({ timeout: 1000, force: true }).catch(() => {});
+    // Phonics: chạm khám phá các từ trong sơ đồ; chạm bóng bay chữ.
+    const word = page.locator('.mind-word.shown:not(.tapped)').first();
+    if (await word.isVisible().catch(() => false)) await word.click({ timeout: 1000, force: true }).catch(() => {});
+    const balloon = page.locator('.balloon:not(.popped):not(.shake)').first();
+    if (await balloon.isVisible().catch(() => false)) {
+      await balloon.click({ timeout: 1000, force: true }).catch(() => {});
+      taps++;
+    }
     const choice = page.locator('.choice:not(.shake)').first();
     if (await choice.isVisible().catch(() => false)) {
       await choice.click({ timeout: 1000 }).catch(() => {});

@@ -1,0 +1,70 @@
+// Mục Phonics (SPEC-phonics.md): sơ đồ tư duy, tìm từ đúng âm, chữ hoa – chữ thường, nghe từ chọn chữ, bắt bóng chữ.
+import { test, expect } from '@playwright/test';
+import { fakeSpeech, startApp, playThrough, openParent } from './helpers.js';
+
+const spoken = (page) => page.evaluate(() => window.__spoken);
+
+test.beforeEach(async ({ page }) => {
+  await fakeSpeech(page);
+});
+
+test('màn hình chính có nút Chữ cái; 5 bài A–Z; sơ đồ chữ A: nhánh mọc ra, chạm từ nào Bông đọc từ đó', async ({ page }) => {
+  await startApp(page);
+  await page.getByRole('button', { name: 'Chữ cái' }).click();
+  await expect(page.locator('.lesson-card')).toHaveCount(5);
+  await expect(page.locator('.lesson-card').first()).toHaveAttribute('aria-label', 'Letters A–F');
+  await expect(page.locator('.lesson-card').first().locator('.lesson-words')).toHaveText('A B C D E F');
+  await page.getByRole('button', { name: 'Letters A–F', exact: true }).click();
+
+  await expect(page.locator('.mind-center')).toBeVisible();
+  await expect(page.locator('.mind-word')).toHaveCount(6);
+  await expect(page.locator('.mind-word.shown')).toHaveCount(6);
+  await expect(page.locator('.mind-word').first().locator('.hl')).toHaveText('a');
+  // Bé chạm khám phá: chạm "apple" → Bông đọc "A, apple!".
+  await page.getByRole('button', { name: 'apple', exact: true }).click({ force: true });
+  await expect.poll(async () => (await spoken(page)).includes('A, apple!')).toBe(true);
+  // Chạm chữ giữa: nghe lại câu giới thiệu.
+  await page.locator('.mind-center').click({ force: true });
+  await expect.poll(async () => (await spoken(page)).filter((t) => t === 'A! A is for ant!').length).toBeGreaterThanOrEqual(2);
+
+  await playThrough(page);
+  await expect(page.locator('.prize-sticker')).toBeVisible();
+  const said = await spoken(page);
+  for (const line of ['A! A is for ant!', 'Ant!', 'Your turn! Tap a picture!', 'Great! You found all the A words!',
+    'Which one starts with B?', "Let's pop the balloons!", 'Hooray! You popped them all!']) {
+    expect(said).toContain(line);
+  }
+  expect(said.some((t) => /^Big [A-F]\. Find the small [A-F]!$/.test(t))).toBe(true);
+  expect(said.some((t) => /! Which letter\?$/.test(t))).toBe(true);
+  expect(said.some((t) => /^Pop the [A-F]!$/.test(t))).toBe(true);
+  expect(said.join(' ')).not.toMatch(/wrong/i);
+  // Tiến độ chữ lưu riêng (letter:a), không trừ sao.
+  const a = await page.evaluate(async () => window.kidEnglish.db.get('progress', 'letter:a'));
+  expect(a.practiceCount).toBeGreaterThan(0);
+  expect(a.mastery).toBeGreaterThanOrEqual(0);
+});
+
+test('Ôn tập có câu hỏi chữ cái khi bé đã học chữ', async ({ page }) => {
+  await startApp(page);
+  await page.evaluate(async () => {
+    for (const l of ['a', 'b', 'c']) await window.kidEnglish.db.put('progress', { word: `letter:${l}`, emoji: '🔤', mastery: 0, practiceCount: 1, lastPracticedAt: Date.now() });
+  });
+  await page.goto('/?fast&nosw');
+  await page.getByRole('button', { name: 'Bắt đầu' }).click();
+  await page.getByRole('button', { name: 'Ôn tập' }).click();
+  await playThrough(page);
+  await expect(page.locator('.prize-sticker')).toBeVisible();
+  const said = await spoken(page);
+  expect(said.some((t) => /^Big [ABC]\. Find the small [ABC]!$/.test(t) || /! Which letter\?$/.test(t))).toBe(true);
+});
+
+test('Góc bố mẹ: trang bài chữ cái có tiến độ từng chữ và ảnh lưới cho từng chữ', async ({ page }) => {
+  await startApp(page);
+  await openParent(page);
+  await page.getByRole('button', { name: 'Quản lý bài' }).click();
+  await expect(page.locator('.lesson-meta').filter({ hasText: '🔤 Chữ cái' })).toHaveCount(5);
+  await page.getByRole('button', { name: /Letters A–F/ }).click();
+  await expect(page.getByRole('heading', { name: 'Tiến độ từng chữ' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: /Ảnh chữ Aa/ })).toBeVisible();
+  await expect(page.getByRole('heading', { name: /Ảnh chữ Ff/ })).toBeVisible();
+});

@@ -3,6 +3,7 @@
 import { parseLesson, createLessonRecord, baseTitle } from './lesson.js';
 import { ensureLessonNumbers } from './db.js';
 import { builtInNumberLessons } from './numbers.js';
+import { builtInPhonicsLessons } from './phonics.js';
 
 export const SAMPLE_FILES = ['lessons/animals.json', 'lessons/colors.json'];
 export const PHRASE_SAMPLE_FILES = ['lessons/morning.json', 'lessons/actions.json'];
@@ -40,9 +41,21 @@ async function addNumberLessons(app, only = null) {
   return list.length;
 }
 
-/** Nút "Thêm lại bài mẫu": thêm lại bài từ vựng, bài câu và bài số mẫu. */
+/** Bài phonics có sẵn (SPEC-phonics mục 4). `only`: chỉ thêm các bài có mã này. */
+async function addPhonicsLessons(app, only = null) {
+  const now = Date.now();
+  const list = builtInPhonicsLessons().filter((l) => !only || only.includes(l.builtin));
+  for (const [i, lesson] of list.entries()) {
+    await app.db.put('lessons', createLessonRecord(lesson, now - list.length + i));
+  }
+  await ensureLessonNumbers(app.db);
+  return list.length;
+}
+
+/** Nút "Thêm lại bài mẫu": thêm lại bài từ vựng, bài câu, bài số và bài phonics mẫu. */
 export async function addSampleLessons(app) {
-  return (await addFrom(app, SAMPLE_FILES)) + (await addFrom(app, PHRASE_SAMPLE_FILES)) + (await addNumberLessons(app));
+  return (await addFrom(app, SAMPLE_FILES)) + (await addFrom(app, PHRASE_SAMPLE_FILES)) + (await addNumberLessons(app))
+    + (await addPhonicsLessons(app));
 }
 
 /** Lần chạy đầu: thêm bài mẫu. Bài câu mẫu có cờ riêng để máy đã dùng bản cũ vẫn nhận được. */
@@ -69,6 +82,17 @@ export async function seedSamplesOnce(app) {
       await app.setSetting('numberLessonsSeeded', [...seeded, ...missing]);
     } catch (err) {
       console.error('Không thêm được bài số', err);
+    }
+  }
+  // Bài phonics: mỗi bài có sẵn chỉ tự thêm MỘT lần.
+  const phonicsSeeded = app.settings.phonicsLessonsSeeded ?? [];
+  const newPhonics = builtInPhonicsLessons().map((l) => l.builtin).filter((id) => !phonicsSeeded.includes(id));
+  if (newPhonics.length) {
+    try {
+      await addPhonicsLessons(app, newPhonics);
+      await app.setSetting('phonicsLessonsSeeded', [...phonicsSeeded, ...newPhonics]);
+    } catch (err) {
+      console.error('Không thêm được bài phonics', err);
     }
   }
 }

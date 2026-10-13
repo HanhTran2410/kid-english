@@ -9,6 +9,7 @@ import { uniqueTitle, topicOf, formatLessonNo, lessonFileName } from '../../less
 import { isPhraseLesson, MOTION_NAMES, frameGroups, frameSteps, defaultFrameMapping, collectFrames, singlePhraseGroup } from '../../phrase.js';
 import { buildFramesPrompt } from '../../prompts.js';
 import { isNumberLesson, numberKey, countPhrase } from '../../numbers.js';
+import { isPhonicsLesson, letterKey } from '../../phonics.js';
 import { getFrameSets, setFrameSet, removeFrameSet, frameBlobs } from '../../db.js';
 import { createFlipbook } from '../../player/flipbook.js';
 import { createScene } from '../../player/scene.js';
@@ -131,6 +132,15 @@ export function lessonDetailView(app, { lessonId }) {
 
     // Đổi tên và chủ đề
     const rename = renameSection(app, lesson);
+    if (isPhonicsLesson(lesson)) {
+      body.append(rename, await phonicsDetailSection(app, lesson));
+      // Ảnh cho từ của từng chữ: mỗi chữ một ảnh lưới (dùng lại phần ảnh lưới của bài từ vựng).
+      for (const l of lesson.letters) {
+        body.append(gridSection(app, { id: lesson.id, words: l.words }, urls, `Ảnh chữ ${l.letter.toUpperCase()}${l.letter}`));
+      }
+      body.append(shareSection(app, lesson), section(null, deleteButton(app, lesson)));
+      return;
+    }
     if (isNumberLesson(lesson)) {
       const thumbs = new Map();
       for (const img of [...images].sort((a, b) => (a.createdAt ?? 0) - (b.createdAt ?? 0))) {
@@ -360,16 +370,35 @@ function shareSection(app, lesson) {
 
 /** Đổi số bài, tên bài, chủ đề (dùng chung cho bài từ vựng và bài câu). */
 function kindLabel(lesson) {
+  if (isPhonicsLesson(lesson)) return '🔤 Chữ cái';
   if (isNumberLesson(lesson)) return lesson.mode === 'game' ? '🔢 Số đếm (trò chơi)' : '🔢 Số đếm';
   return isPhraseLesson(lesson) ? '💬 Câu nói' : '📚 Từ vựng';
 }
 
 function sizeLabel(lesson) {
+  if (isPhonicsLesson(lesson)) return `${lesson.letters.length} chữ`;
   if (isNumberLesson(lesson)) return `${lesson.numbers.length} số`;
   return isPhraseLesson(lesson) ? `${lesson.phrases.length} câu` : `${lesson.words.length} từ`;
 }
 
 /** Trang bài số (SPEC-numbers mục 7): nội dung có sẵn, chỉ xem tiến độ từng số. */
+/** Trang bài phonics: tiến độ từng chữ và các từ của chữ (SPEC-phonics mục 10). */
+async function phonicsDetailSection(app, lesson) {
+  const rows = [];
+  for (const l of lesson.letters) {
+    const rec = await app.db.get('progress', letterKey(l.letter));
+    const a = rec?.attempts;
+    rows.push(h('li', {},
+      h('span.p-emoji', { text: `${l.letter.toUpperCase()}${l.letter}` }),
+      h('span.p-word', { text: l.words.map((w) => `${w.emoji} ${w.en}`).join(', ') }),
+      h('span.p-stars', { text: rec?.mastery ? '⭐'.repeat(rec.mastery) : '—' }),
+      h('span.p-meta', { text: rec ? `gặp ${rec.practiceCount} lần${a ? ` · chọn: đúng ngay ${a.right}, sai ${a.wrong}` : ''}` : 'chưa học' })));
+  }
+  return section('Tiến độ từng chữ',
+    h('p.muted', { text: 'Bài chữ cái có sẵn trong app (từ bắt đầu bằng âm chính của chữ). Muốn đẹp hơn emoji thì thêm ảnh ở các mục "Ảnh chữ …" bên dưới. Sao chỉ tăng, không bao giờ bị trừ.' }),
+    h('ul.progress-list', {}, ...rows));
+}
+
 /** Bài số dưới dạng "danh sách từ" (tên đồ vật) để dùng lại phần ảnh lưới của bài từ vựng. */
 function numberImageLesson(lesson) {
   return {

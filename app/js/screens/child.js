@@ -14,6 +14,7 @@ import { normalizeWord } from '../text.js';
 import { groupByTopic } from '../lesson.js';
 import { lessonKind, PHRASE_KIND, WORDS_KIND } from '../phrase.js';
 import { NUMBER_KIND } from '../numbers.js';
+import { PHONICS_KIND } from '../phonics.js';
 
 const ALL = '__all__';
 import { bongElement } from '../bong.js';
@@ -104,6 +105,8 @@ export function homeScreen(app) {
       big('📚', 'Lessons', 'Bài học', () => app.go('lessons'), '.lessons'),
       big('💬', 'Phrases', 'Câu nói', () => app.go('phrases'), '.phrases'),
       big('🔢', 'Numbers', 'Số đếm', () => app.go('numbers'), '.numbers'),
+      // Chữ cái và âm (SPEC-phonics.md): nút thứ 8, lưới 2 × 4 / 4 × 2 vừa khít.
+      big('🔤', 'Phonics', 'Chữ cái', () => app.go('phonics'), '.phonics'),
       reviewBtn,
       // Trò chơi tổng hợp (SPEC-mix mục 4): mọi bài kể cả chưa học, chỉ chạm chọn.
       big('🎲', 'Play', 'Trò chơi', () => app.go('play'), '.play'),
@@ -128,7 +131,7 @@ export function homeScreen(app) {
  * Danh sách bài của bé: bài từ vựng (mặc định), bài câu (`kind: 'phrases'`, SPEC-v1.0 mục 6.2) hoặc bài số (SPEC-numbers mục 2).
  */
 export function lessonsScreen(app, { kind = WORDS_KIND } = {}) {
-  const playScreen = { [PHRASE_KIND]: 'phrase-lesson', [NUMBER_KIND]: 'number-lesson' }[kind] ?? 'lesson';
+  const playScreen = { [PHRASE_KIND]: 'phrase-lesson', [NUMBER_KIND]: 'number-lesson', [PHONICS_KIND]: 'phonics-lesson' }[kind] ?? 'lesson';
   app.lessonTabs ??= {};
   app.root.className = `child-screen lessons ${kind}`;
   const grid = h('div.lesson-grid');
@@ -208,7 +211,8 @@ export function lessonsScreen(app, { kind = WORDS_KIND } = {}) {
     lesson.mode === 'game' && url ? h('span.card-badge', { text: '🎯', 'aria-hidden': 'true' }) : null,
     h('span.lesson-title', { text: lesson.title }),
     // Hàng emoji các từ trong bài: bé chưa biết đọc vẫn phân biệt được "Animals" và "Animals 2".
-    h('span.lesson-words', { text: items.slice(0, 4).map((w) => w.emoji).join('') }),
+    // Bài phonics: hàng chữ cái của bài ("A B C D E F").
+    h('span.lesson-words', { text: lesson.letters ? lesson.letters.map((l) => l.letter.toUpperCase()).join(' ') : items.slice(0, 4).map((w) => w.emoji).join('') }),
     h('span.lesson-stars', { text: n ? (n <= 5 ? '⭐'.repeat(n) : `⭐×${n}`) : '' }),
     lesson.resume ? h('span.resume-bar', {}, h('span', { style: { width: `${Math.round((lesson.resume.progress ?? 0) * 100)}%` } })) : null);
   };
@@ -216,7 +220,7 @@ export function lessonsScreen(app, { kind = WORDS_KIND } = {}) {
   (async () => {
     const lessons = (await listLessons(app.db)).filter((l) => lessonKind(l) === kind);
     // Bài số: theo thứ tự bài (Đếm 1–10 trước Đếm 11–20), không theo bài mới nhất.
-    if (kind === NUMBER_KIND) lessons.sort((a, b) => (a.no ?? 0) - (b.no ?? 0));
+    if (kind === NUMBER_KIND || kind === PHONICS_KIND) lessons.sort((a, b) => (a.no ?? 0) - (b.no ?? 0));
     if (!lessons.length) {
       grid.append(h('div.empty', { text: '📭' }));
       return;

@@ -16,6 +16,7 @@ import { findPrompt, answerSentence } from './plan.js';
 import { runQuizStep } from './quiz-stage.js';
 import { pickPhrase } from './phrase-stages.js';
 import { runGameRound } from './number-stages.js';
+import { runCase, runHear } from './phonics-stages.js';
 import { runCompletion } from './completion-stage.js';
 import { markPracticed, markSpoke, markPhrasePick, spoke } from './track.js';
 import { runSkippable, endSkippable } from './stage-kit.js';
@@ -61,8 +62,8 @@ export function mixScreen(app, { mode = 'review' } = {}) {
     const learnedBefore = learnedKeys(items);
     // Mỗi câu hỏi kèm đáp án sai cùng loại; từ/câu không có đáp án sai thì chỉ hỏi được bằng "What's this?" (Ôn tập).
     const plan = (play ? pickPlayItems(items) : pickReviewItems(items))
-      .map((item) => ({ item, others: item.kind === 'number' ? [] : distractors(item, items) }))
-      .filter(({ item, others }) => item.kind === 'number' || others.length || (!play && item.kind === 'word'));
+      .map((item) => ({ item, others: ['number', 'letter'].includes(item.kind) ? [] : distractors(item, items) }))
+      .filter(({ item, others }) => ['number', 'letter'].includes(item.kind) || others.length || (!play && item.kind === 'word'));
     if (!plan.length) {
       app.go('home');
       return;
@@ -104,15 +105,18 @@ export function mixScreen(app, { mode = 'review' } = {}) {
       allowHigh: [...mastery].some(([n, m]) => n > 5 && m > 0),
       // Trò chơi tổng hợp: chỉ cộng sao cho mục đã học trước lượt này (đoán trúng mục mới không tính là thuộc).
       canAward: (key) => !play || learnedBefore.has(key),
-      imageOf: (entry) => imageByItem.get(normalizeWord(entry.item)) ?? null,
+      // Câu hỏi chữ cái: thẻ sai ưu tiên lấy từ các chữ có trên máy.
+      lesson: { letters: items.filter((i) => i.kind === 'letter').map((i) => i.data) },
+      imageOf: (x) => imageByItem.get(normalizeWord(typeof x === 'string' ? x : x.item)) ?? null,
     };
 
     let wordTurn = 0;
     let numberTurn = 0;
+    let letterTurn = 0;
     for (let i = 0; i < plan.length; i++) {
       layout.setProgress(i / plan.length);
       const { item, others } = plan[i];
-      if (item.kind !== 'number') await markPracticed(app, item.kind === 'word' ? item.en : item.key, item.emoji);
+      if (!['number', 'letter'].includes(item.kind)) await markPracticed(app, item.kind === 'word' ? item.en : item.key, item.emoji);
 
       await runSkippable(ctx, signal, async () => {
         if (item.kind === 'word') {
@@ -133,6 +137,7 @@ export function mixScreen(app, { mode = 'review' } = {}) {
           const options = shuffle([item, ...others]).map((o) => ({ phrase: o.data, urls: framesOf(o) }));
           return pickPhrase(ctx, item.data, options, { canAward: ctx.canAward(item.key) });
         }
+        if (item.kind === 'letter') return (letterTurn++ % 2 === 0 ? runCase : runHear)(ctx, item.data);
         return runGameRound(ctx, { n: item.data.n, type: numberTurn++ % 2 === 0 ? 'find' : 'count' }, item.data);
       });
     }

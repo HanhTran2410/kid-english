@@ -6,7 +6,7 @@ import { listLessons, getStickers } from '../../db.js';
 import { isBackupDue } from '../../settings.js';
 import { STICKERS } from '../../stickers.js';
 import { buildTeacherPrompt } from '../../prompts.js';
-import { pickWordsForPrompt, isLearned, KNOWN_MASTERY, wordRecords, phraseRecords, numberRecords } from '../../progress.js';
+import { pickWordsForPrompt, isLearned, KNOWN_MASTERY, wordRecords, phraseRecords, numberRecords, letterRecords } from '../../progress.js';
 import { isWordLesson } from '../../phrase.js';
 import { isStandalone, micProblem } from '../child.js';
 import { parentLayout, goParent, section, notice } from './common.js';
@@ -130,8 +130,9 @@ function progressView(app) {
     const words = sorted(wordRecords(list));
     const phrases = sorted(phraseRecords(list));
     const numbers = numberRecords(list).filter(isLearned).sort((a, b) => Number(a.word.split(':')[1]) - Number(b.word.split(':')[1]));
-    if (!words.length && !phrases.length && !numbers.length) {
-      body.append(section(null, h('p', { text: 'Bé chưa học từ, câu hay số nào.' })));
+    const letters = letterRecords(list).filter(isLearned).sort((a, b) => a.word.localeCompare(b.word));
+    if (!words.length && !phrases.length && !numbers.length && !letters.length) {
+      body.append(section(null, h('p', { text: 'Bé chưa học từ, câu, số hay chữ cái nào.' })));
       return;
     }
     const row = (r, label, extra = '') => h('li', {},
@@ -152,6 +153,11 @@ function progressView(app) {
     if (numbers.length) {
       body.append(section(`Số đếm — ${known(numbers)}/${numbers.length} số đã thuộc (từ 3⭐)`,
         h('ul.progress-list', {}, ...numbers.map((r) => row(r, r.word.replace(/^number:/, 'số '),
+          r.attempts ? ` · chọn: đúng ngay ${r.attempts.right}, sai ${r.attempts.wrong}` : '')))));
+    }
+    if (letters.length) {
+      body.append(section(`Chữ cái — ${known(letters)}/${letters.length} chữ đã thuộc (từ 3⭐)`,
+        h('ul.progress-list', {}, ...letters.map((r) => row(r, `chữ ${r.word.replace(/^letter:/, '').toUpperCase()}`,
           r.attempts ? ` · chọn: đúng ngay ${r.attempts.right}, sai ${r.attempts.wrong}` : '')))));
     }
   });

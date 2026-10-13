@@ -3,6 +3,7 @@
 import { normalizeWord, tokenize, wordCount } from './text.js';
 import { MISSING_EMOJI } from './lesson.js';
 import { NUMBER_KIND, isNumberLesson } from './numbers.js';
+import { PHONICS_KIND, isPhonicsLesson } from './phonics.js';
 
 export const PHRASE_KIND = 'phrases';
 export const WORDS_KIND = 'words';
@@ -61,6 +62,7 @@ const FILLER = new Set(['the', 'a', 'an', 'your', 'my', 'our', 'his', 'her', 'it
 /** Bài từ vựng cũ không có `kind` → coi là bài từ vựng. */
 export const lessonKind = (lesson) => {
   if (isNumberLesson(lesson)) return NUMBER_KIND;
+  if (isPhonicsLesson(lesson)) return PHONICS_KIND;
   return lesson?.kind === PHRASE_KIND || Array.isArray(lesson?.phrases) ? PHRASE_KIND : WORDS_KIND;
 };
 export const isWordLesson = (lesson) => lessonKind(lesson) === WORDS_KIND;

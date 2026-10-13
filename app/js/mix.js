@@ -4,10 +4,11 @@
 import { progressKey, isLearned, isUnknown, isStale } from './progress.js';
 import { phraseKey, lessonKind, PHRASE_KIND } from './phrase.js';
 import { NUMBER_KIND, numberKey } from './numbers.js';
+import { PHONICS_KIND, letterKey } from './phonics.js';
 
 export const REVIEW_COUNT = 8;
 export const PLAY_COUNT = 10;
-export const KINDS = ['word', 'phrase', 'number'];
+export const KINDS = ['word', 'phrase', 'number', 'letter'];
 
 /**
  * Mọi mục có trên máy, mỗi mục một lần (bài mới nhất trước).
@@ -25,7 +26,9 @@ export function collectItems(lessons, records = new Map()) {
   };
   for (const lesson of lessons) {
     const kind = lessonKind(lesson);
-    if (kind === NUMBER_KIND) {
+    if (kind === PHONICS_KIND) {
+      for (const l of lesson.letters ?? []) add('letter', letterKey(l.letter), l.letter.toUpperCase(), l.words[0]?.emoji ?? '', lesson.id, l);
+    } else if (kind === NUMBER_KIND) {
       for (const x of lesson.numbers ?? []) add('number', numberKey(x.n), String(x.n), x.emoji, lesson.id, x);
     } else if (kind === PHRASE_KIND) {
       for (const p of lesson.phrases ?? []) add('phrase', phraseKey(p.en), p.en, p.emoji, lesson.id, p);
