@@ -1305,3 +1305,20 @@ a.btn { text-decoration: none; }
   opacity: 0.55;
   pointer-events: none;
 }
+
+/* Thẻ trò chơi: huy hiệu 🎯 ở góc ảnh bìa */
+.card-badge {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: var(--shadow);
+  font-family: var(--emoji);
+  font-size: 26px;
+  pointer-events: none;
+}

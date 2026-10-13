@@ -185,6 +185,13 @@ test('ảnh đồ vật: bố mẹ thêm ảnh lưới cho bài số → khi h�
   // Ảnh bìa thẻ bài: ảnh đồ vật đầu tiên (thẻ trò chơi dùng ảnh của bài đếm); bài 11–20 chưa có ảnh thì vẫn emoji.
   await expect(page.locator('.lesson-card[aria-label="Count 1–10"] img')).toBeVisible();
   await expect(page.locator('.lesson-card[aria-label="Number game"] img')).toBeVisible();
+  // Thẻ trò chơi: ảnh của đồ vật KHÁC đồ vật đầu tiên (không trùng ảnh bìa bài đếm) + huy hiệu 🎯.
+  await expect(page.locator('.lesson-card[aria-label="Count 1–10"]')).toHaveAttribute('data-cover', 'balloon');
+  const gameCover = await page.locator('.lesson-card[aria-label="Number game"]').getAttribute('data-cover');
+  expect(gameCover).toBeTruthy();
+  expect(gameCover).not.toBe('balloon');
+  await expect(page.locator('.lesson-card[aria-label="Number game"] .card-badge')).toBeVisible();
+  await expect(page.locator('.lesson-card[aria-label="Count 1–10"] .card-badge')).toHaveCount(0);
   await expect(page.locator('.lesson-card[aria-label="Count 11–20"] img')).toHaveCount(0);
   await page.getByRole('button', { name: 'Count 1–10', exact: true }).click();
   await expect(page.locator('.number-card .count-img')).toHaveCount(1);

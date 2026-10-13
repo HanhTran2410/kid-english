@@ -174,10 +174,24 @@ export function lessonsScreen(app, { kind = WORDS_KIND } = {}) {
       const firstKey = normalizeWord(lesson.words[0]?.en ?? '');
       cover = images.find((img) => img.word === firstKey) ?? null;
     } else if (lesson.numbers?.length) {
-      // Bài số: ảnh đồ vật đầu tiên (bố mẹ thêm ở bài đếm); thẻ trò chơi không có ảnh riêng → ảnh mới nhất của đồ vật đó.
-      const images = await app.db.getAllByIndex('images', 'lessonId', lesson.id);
-      const item = lesson.numbers[0].item;
-      cover = images.find((img) => img.word === normalizeWord(item)) ?? await latestImageForWord(app.db, item);
+      if (lesson.mode === 'game') {
+        // Thẻ trò chơi: ảnh NGẪU NHIÊN của một đồ vật khác đồ vật đầu tiên (đồ vật đầu là ảnh bìa của bài đếm) — để
+        // thẻ trò chơi và thẻ bài đếm không trùng ảnh.
+        const others = lesson.numbers.slice(1).map((x) => x.item);
+        for (let i = others.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1));
+          [others[i], others[j]] = [others[j], others[i]];
+        }
+        for (const item of others) {
+          cover = await latestImageForWord(app.db, item);
+          if (cover) break;
+        }
+      } else {
+        // Bài đếm: ảnh đồ vật đầu tiên (bố mẹ thêm ở bài này), không có thì ảnh mới nhất của đồ vật đó.
+        const images = await app.db.getAllByIndex('images', 'lessonId', lesson.id);
+        const item = lesson.numbers[0].item;
+        cover = images.find((img) => img.word === normalizeWord(item)) ?? await latestImageForWord(app.db, item);
+      }
     }
     let url = null;
     if (cover) {
@@ -187,8 +201,11 @@ export function lessonsScreen(app, { kind = WORDS_KIND } = {}) {
     const n = lesson.timesCompleted ?? 0;
     return h('button.lesson-card', {
       type: 'button', 'aria-label': lesson.title, onclick: () => open(lesson),
+      dataset: cover ? { cover: cover.word } : undefined,
     },
     wordVisual({ url, emoji: lesson.emoji, word: lesson.title }, 'cover'),
+    // Thẻ trò chơi có huy hiệu 🎯 ở góc ảnh để bé phân biệt với thẻ bài học.
+    lesson.mode === 'game' && url ? h('span.card-badge', { text: '🎯', 'aria-hidden': 'true' }) : null,
     h('span.lesson-title', { text: lesson.title }),
     // Hàng emoji các từ trong bài: bé chưa biết đọc vẫn phân biệt được "Animals" và "Animals 2".
     h('span.lesson-words', { text: items.slice(0, 4).map((w) => w.emoji).join('') }),
