@@ -220,4 +220,5 @@ Có thể làm N-a và N-b cùng lúc nếu bố mẹ muốn thử cả hai mộ
 ### 14.2. Ảnh đồ vật (thay emoji)
 - Trang bài số trong Góc bố mẹ có mục **"Ảnh đồ vật — 1 ảnh lưới cho cả bài"**, dùng lại đúng phần ảnh lưới của bài từ vựng: **Copy prompt** → AI vẽ 1 ảnh lưới (mỗi ô **một đồ vật đơn lẻ**, nền trắng, không có Bông) → **Chọn ảnh** → app cắt, bố mẹ gán từng ô → **Lưu**.
 - Ảnh lưu trong kho `images` (như từ vựng) theo bài + tên đồ vật; **không nâng cấp IndexedDB**, sao lưu / chia sẻ bài mang theo ảnh như bài từ vựng.
+- Thẻ bài trong danh sách Số đếm dùng **ảnh đồ vật đầu tiên** làm ảnh bìa (thẻ trò chơi lấy ảnh của bài đếm), chưa có ảnh thì emoji (app 0.6.8).
 - Khi học / chơi: đồ vật có ảnh thì **lặp lại ảnh đó n lần** thay cho emoji; ảnh lỗi hoặc chưa có thì dùng emoji. Ở Ôn tập / Trò chơi tổng hợp dùng ảnh mới nhất của đồ vật đó.

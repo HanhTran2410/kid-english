@@ -2,7 +2,7 @@
 
 import { h, holdButton, wordVisual, toast } from '../ui.js';
 import { play } from '../speech/sfx.js';
-import { listLessons, getStickers, mediaBlob } from '../db.js';
+import { listLessons, getStickers, mediaBlob, latestImageForWord } from '../db.js';
 import { isLearned } from '../progress.js';
 import { isBackupDue } from '../settings.js';
 import { STICKERS, ALBUMS, currentAlbum } from '../stickers.js';
@@ -170,6 +170,11 @@ export function lessonsScreen(app, { kind = WORDS_KIND } = {}) {
       const images = await app.db.getAllByIndex('images', 'lessonId', lesson.id);
       const firstKey = normalizeWord(lesson.words[0]?.en ?? '');
       cover = images.find((img) => img.word === firstKey) ?? null;
+    } else if (lesson.numbers?.length) {
+      // Bài số: ảnh đồ vật đầu tiên (bố mẹ thêm ở bài đếm); thẻ trò chơi không có ảnh riêng → ảnh mới nhất của đồ vật đó.
+      const images = await app.db.getAllByIndex('images', 'lessonId', lesson.id);
+      const item = lesson.numbers[0].item;
+      cover = images.find((img) => img.word === normalizeWord(item)) ?? await latestImageForWord(app.db, item);
     }
     let url = null;
     if (cover) {
