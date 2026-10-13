@@ -160,6 +160,7 @@ Prompt yêu cầu AI:
 ## 4. Màn hình
 
 ### 4.1. Màn hình chính (bé)
+- **Phiên bản app** (app 0.6.9): chữ nhỏ, mờ ở góc dưới bên phải (ví dụ `v0.6.9`) để bố mẹ biết máy đã cập nhật chưa mà không phải vào Góc bố mẹ.
 - 3 nút rất to, có hình **và chữ giải thích**: tiếng Anh to ở trên, tiếng Việt nhỏ ở dưới — **📚 Lessons / Bài học**, **⭐ Review / Ôn tập**, **🐰 Learn with Bông / Học cùng Bông**; nút **🎁 My Stickers / Sticker của bé**.
 - 1 nút **🎁 Bộ sưu tập sticker** (mục 4.8), nhỏ hơn 3 nút chính nhưng vẫn đủ to cho bé bấm.
 - Góc trên có biểu tượng ⚙️ nhỏ (kèm chữ "Bố mẹ (giữ 3 giây)") dẫn vào **Góc bố mẹ**, mở bằng cách **nhấn giữ 3 giây** để bé không vào nhầm. Bấm nhẹ thì hiện dòng nhắc cách mở.

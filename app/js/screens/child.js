@@ -1,6 +1,7 @@
 // Các màn hình của bé: Bắt đầu, màn hình chính, danh sách bài, sticker, Bông đi ngủ (SPEC 4.1, 4.2, 4.8).
 
 import { h, holdButton, wordVisual, toast } from '../ui.js';
+import { APP_VERSION } from '../app.js';
 import { play } from '../speech/sfx.js';
 import { listLessons, getStickers, mediaBlob, latestImageForWord } from '../db.js';
 import { isLearned } from '../progress.js';
@@ -110,6 +111,8 @@ export function homeScreen(app) {
       // 7 nút trong một lưới: 4 cột trên màn rộng, 2 cột × 4 hàng trên iPhone dọc.
       big('🎁', 'Stickers', 'Sticker của bé', () => app.go('stickers'), '.stickers')),
     bunny.el,
+    // Phiên bản app (nhỏ, mờ) để bố mẹ biết máy đã cập nhật chưa mà không phải vào Góc bố mẹ.
+    h('span.app-version', { text: `v${APP_VERSION}`, 'aria-hidden': 'true' }),
   );
 
   app.db.getAll('progress').then((list) => {

@@ -613,3 +613,11 @@ test('tạo bài: chủ đề đã có nhiều từ thì cảnh báo và gợi �
   await expect(page.locator('.avoid-info .notice.warn')).toHaveCount(0);
   await expect(page.locator('.avoid-topic summary')).toContainText('Loại trừ 20 từ của chủ đề "Body: actions"');
 });
+
+test('màn hình chính hiện phiên bản app nhỏ ở góc (khớp với Góc bố mẹ)', async ({ page }) => {
+  await startApp(page);
+  const version = await page.evaluate(async () => (await import('/js/app.js')).APP_VERSION);
+  await expect(page.locator('.app-version')).toHaveText(`v${version}`);
+  await openParent(page);
+  await expect(page.getByText(`Phiên bản ${version}`)).toBeVisible();
+});

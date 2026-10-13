@@ -1292,3 +1292,16 @@ a.btn { text-decoration: none; }
 .avoid-info { margin: 8px 0; }
 .avoid-topic summary { cursor: pointer; font-weight: 700; color: var(--ink-soft); }
 .avoid-words { margin: 6px 0 0; padding: 8px 10px; border-radius: 10px; background: #fbf4ea; line-height: 1.5; }
+
+/* Phiên bản app ở màn hình chính: nhỏ, mờ, góc dưới bên phải */
+.app-version {
+  position: fixed;
+  right: max(12px, env(safe-area-inset-right));
+  bottom: max(6px, env(safe-area-inset-bottom));
+  z-index: 1;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--ink-soft);
+  opacity: 0.55;
+  pointer-events: none;
+}
