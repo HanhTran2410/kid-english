@@ -1502,3 +1502,11 @@ a.btn { text-decoration: none; }
 /* Bóng bay ở khoảng giữa màn, không sát đáy */
 .pop-area { height: min(48vh, 400px); }
 .balloon { bottom: 30%; }
+
+/* Ảnh thật trong thẻ phonics: luôn co vừa khung (ảnh 512px không được đẩy thẻ rộng ra / đè lên chữ) */
+.mind-word, .find-choice, .hear-word { grid-template-columns: minmax(0, 1fr); min-width: 0; overflow: hidden; }
+.word-pic { min-width: 0; width: 100%; overflow: hidden; }
+.word-pic img { display: block; width: 100%; height: 100%; max-width: 100%; min-width: 0; object-fit: contain; }
+/* Ảnh phủ đúng bằng khung hình của thẻ (khung có tỉ lệ cố định), ảnh co theo khung chứ không theo kích thước gốc */
+.word-pic { position: relative; }
+.word-pic img { position: absolute; inset: 0; width: 100%; height: 100%; }

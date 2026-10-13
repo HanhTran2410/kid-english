@@ -111,3 +111,29 @@ test('máy cũ: bài phonics có sẵn tự cập nhật bộ từ mới (bỏ "
     return [lesson.letters.find((l) => l.letter === 'o').words.map((w) => w.en).join(','), lesson.title, lesson.timesCompleted];
   })).toEqual(['octopus,ox,otter,olive', 'Chữ M–R của bé', 3]);
 });
+
+test('ảnh thật (512px) trong sơ đồ nằm gọn trong thẻ, thẻ có ảnh cùng cỡ thẻ emoji, không đè lên chữ', async ({ page }) => {
+  await startApp(page);
+  await page.evaluate(async () => {
+    const { setWordImage } = await import('/js/db.js');
+    const db = window.kidEnglish.db;
+    const lesson = (await db.getAll('lessons')).find((l) => l.builtin === 'phonics-a-f');
+    const c = document.createElement('canvas'); c.width = 512; c.height = 512;
+    const g = c.getContext('2d'); g.fillStyle = '#fff'; g.fillRect(0, 0, 512, 512); g.fillStyle = '#e33'; g.fillRect(60, 60, 392, 392);
+    const blob = await new Promise((r) => c.toBlob(r, 'image/jpeg'));
+    await setWordImage(db, { lessonId: lesson.id, word: 'ant', blob, mimeType: 'image/jpeg', width: 512, height: 512 });
+  });
+  await page.getByRole('button', { name: 'Chữ cái' }).click();
+  await page.getByRole('button', { name: 'Letters A–F', exact: true }).click();
+  const ant = page.getByRole('button', { name: 'ant', exact: true });
+  await expect(ant.locator('img')).toBeVisible();
+  await expect(page.locator('.mind-word.shown')).toHaveCount(6);
+  const box = (l) => l.boundingBox();
+  const [card, img, label, other] = await Promise.all([box(ant), box(ant.locator('img')), box(ant.locator('.word-label')),
+    box(page.getByRole('button', { name: 'axe', exact: true }))]);
+  expect(Math.abs(card.width - other.width)).toBeLessThan(3);
+  expect(Math.abs(card.height - other.height)).toBeLessThan(3);
+  expect(img.x).toBeGreaterThanOrEqual(card.x - 1);
+  expect(img.x + img.width).toBeLessThanOrEqual(card.x + card.width + 1);
+  expect(img.y + img.height).toBeLessThanOrEqual(label.y + 1);
+});
