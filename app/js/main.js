@@ -4,7 +4,7 @@ import { App } from './app.js';
 import { toast } from './ui.js';
 import { openDatabase, migrateMedia, ensureLessonNumbers } from './db.js';
 import { loadSettings } from './settings.js';
-import { seedSamplesOnce, upgradePhraseSamples } from './samples.js';
+import { seedSamplesOnce, upgradePhraseSamples, upgradePhonicsLessons } from './samples.js';
 import { startScreen, homeScreen, lessonsScreen, stickersScreen, sleepScreen } from './screens/child.js';
 import { lessonScreen } from './player/lesson-player.js';
 import { phraseLessonScreen } from './player/phrase-player.js';
@@ -68,6 +68,7 @@ async function boot() {
   await seedSamplesOnce(app);
   await ensureLessonNumbers(app.db);
   upgradePhraseSamples(app).catch(() => {});
+  upgradePhonicsLessons(app).catch(() => {});
   // Chuyển ảnh/ghi âm cũ (lưu dạng Blob) sang dạng Safari đọc lại ổn định hơn.
   migrateMedia(app.db).catch((err) => console.warn('migrateMedia', err));
   await app.speaker.init({ voiceURI: app.settings.voiceURI, rate: app.settings.rate });

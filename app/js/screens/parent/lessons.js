@@ -390,7 +390,7 @@ async function phonicsDetailSection(app, lesson) {
     const a = rec?.attempts;
     rows.push(h('li', {},
       h('span.p-emoji', { text: `${l.letter.toUpperCase()}${l.letter}` }),
-      h('span.p-word', { text: l.words.map((w) => `${w.emoji} ${w.en}`).join(', ') }),
+      h('span.p-word', { text: `${l.sound ? `âm ${l.sound}${l.inside ? ' (trong từ)' : ''}: ` : ''}${l.words.map((w) => `${w.emoji} ${w.en}`).join(', ')}` }),
       h('span.p-stars', { text: rec?.mastery ? '⭐'.repeat(rec.mastery) : '—' }),
       h('span.p-meta', { text: rec ? `gặp ${rec.practiceCount} lần${a ? ` · chọn: đúng ngay ${a.right}, sai ${a.wrong}` : ''}` : 'chưa học' })));
   }

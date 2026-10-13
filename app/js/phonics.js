@@ -22,7 +22,7 @@ const RAW = {
   l: ['lion 🦁', 'leaf 🍃', 'lemon 🍋', 'lamp 💡', 'ladybug 🐞', 'log 🪵'],
   m: ['moon 🌙', 'monkey 🐵', 'milk 🥛', 'mouse 🐭', 'mushroom 🍄', 'map 🗺️'],
   n: ['nose 👃', 'nut 🥜', 'net 🥅', 'nest 🪺', 'noodles 🍜', 'nurse 🧑‍⚕️'],
-  o: ['octopus 🐙', 'orange 🍊', 'ox 🐂', 'otter 🦦', 'olive 🫒'],
+  o: ['octopus 🐙', 'ox 🐂', 'otter 🦦', 'olive 🫒'], // không dùng orange: giọng Mỹ đọc /ɔːr/, không phải /ɒ/
   p: ['pig 🐷', 'pen 🖊️', 'pizza 🍕', 'panda 🐼', 'pear 🍐', 'penguin 🐧'],
   q: ['queen 👸', 'question ❓', 'quilt 🛏️'],
   r: ['rabbit 🐰', 'rain 🌧️', 'robot 🤖', 'rocket 🚀', 'ring 💍', 'rainbow 🌈'],
@@ -38,9 +38,20 @@ const RAW = {
 
 export const ALPHABET = Object.keys(RAW);
 
-/** Chữ cái + các từ; `inside`: chữ X — âm nằm trong từ, không ở đầu. */
+/** Âm mục tiêu của từng chữ (âm chính, theo giọng Mỹ của app) — hiện cho bố mẹ, kiểm tra bộ từ. */
+export const SOUNDS = {
+  a: '/æ/', b: '/b/', c: '/k/', d: '/d/', e: '/ɛ/', f: '/f/', g: '/ɡ/', h: '/h/', i: '/ɪ/', j: '/dʒ/', k: '/k/', l: '/l/', m: '/m/',
+  n: '/n/', o: '/ɒ/', p: '/p/', q: '/kw/', r: '/r/', s: '/s/', t: '/t/', u: '/ʌ/', v: '/v/', w: '/w/', x: '/ks/', y: '/j/', z: '/z/',
+};
+
+/** Chữ khác nhau nhưng âm đầu giống nhau (cat – kite – queen đều bắt đầu bằng /k/): không cho làm đáp án nhiễu của nhau. */
+const SAME_SOUND = [['c', 'k', 'q']];
+export const sameSound = (a, b) => a !== b && SAME_SOUND.some((g) => g.includes(a) && g.includes(b));
+
+/** Chữ cái + âm mục tiêu + các từ; `inside`: chữ X — âm nằm trong từ, không ở đầu. */
 export const LETTERS = ALPHABET.map((letter) => ({
   letter,
+  sound: SOUNDS[letter],
   inside: letter === 'x',
   words: RAW[letter].map((s) => {
     const i = s.lastIndexOf(' ');
@@ -65,7 +76,7 @@ const GROUPS = [['a', 'f'], ['g', 'l'], ['m', 'r'], ['s', 'v'], ['w', 'z']];
 export function builtInPhonicsLessons() {
   return GROUPS.map(([from, to]) => {
     const letters = ALPHABET.slice(ALPHABET.indexOf(from), ALPHABET.indexOf(to) + 1)
-      .map((l) => ({ letter: l, inside: LETTER_BY.get(l).inside, words: LETTER_BY.get(l).words.map((w) => ({ ...w })) }));
+      .map((l) => ({ letter: l, sound: SOUNDS[l], inside: LETTER_BY.get(l).inside, words: LETTER_BY.get(l).words.map((w) => ({ ...w })) }));
     const title = `Letters ${from.toUpperCase()}–${to.toUpperCase()}`;
     return {
       version: 2, kind: PHONICS_KIND, builtin: `phonics-${from}-${to}`, title, titleVi: `Chữ cái ${from.toUpperCase()}–${to.toUpperCase()}`,
@@ -80,11 +91,12 @@ export function highlightIndex(word, letter) {
   return i < 0 ? 0 : i;
 }
 
-/** Câu Bông nói ở giữa sơ đồ: "A! A is for ant!" — chữ X: "X! Box has X!". */
+/** Câu Bông nói ở giữa sơ đồ: "A! A is for ant!" — chữ X: "X! Box has X!"; chữ Q nhắc Q đi cùng U. */
 export function letterIntro(entry) {
   const L = entry.letter.toUpperCase();
   const first = entry.words[0]?.en ?? '';
-  return entry.inside ? `${L}! ${cap(first)} has ${L}!` : `${L}! ${L} is for ${first}!`;
+  if (entry.inside) return `${L}! ${cap(first)} has ${L}!`;
+  return `${L}! ${L} is for ${first}!${entry.letter === 'q' ? ' Q and U go together!' : ''}`;
 }
 
 /** Câu hỏi tìm từ đúng âm: "Which one starts with A?" — chữ X: "Which one has X?". */
@@ -125,20 +137,23 @@ const confusable = (a, b) => CONFUSABLE.some(([x, y]) => (a === x && b === y) ||
 /**
  * Thẻ chữ để chọn: chữ đúng + chữ khác (ưu tiên chữ trong bài), không trùng, không có cặp dễ nhầm (b/d, p/q…).
  * @param {string[]} pool chữ ưu tiên lấy làm thẻ sai (chữ của bài)
+ * @param {{ sound?: boolean }} [opts] sound: trò "nghe từ chọn chữ" — bỏ chữ cùng âm đầu (Kite: không có thẻ C)
  */
-export function letterChoices(letter, pool, rng = Math.random, count = 3) {
+export function letterChoices(letter, pool, rng = Math.random, count = 3, { sound = false } = {}) {
   const chosen = [letter];
   const candidates = [...shuffle(pool.filter((l) => l !== letter), rng), ...shuffle(ALPHABET.filter((l) => l !== letter && !pool.includes(l)), rng)];
   for (const l of candidates) {
     if (chosen.length >= count) break;
     if (chosen.some((c) => confusable(c, l))) continue;
+    if (sound && sameSound(letter, l)) continue;
     chosen.push(l);
   }
   return shuffle(chosen, rng);
 }
 
 /**
- * Hình cho câu "Which one starts with A?": 1 từ của chữ này + từ của chữ KHÁC (không bắt đầu bằng chữ này).
+ * Hình cho câu "Which one starts with A?": 1 từ của chữ này + từ của chữ KHÁC — không bắt đầu bằng chữ này,
+ * cũng không bắt đầu bằng chữ CÙNG ÂM (câu hỏi C: không có hình kite).
  * @param {object[]} letters các chữ của bài (để lấy từ của chữ khác)
  */
 export function findChoices(entry, letters, rng = Math.random, count = 3) {
@@ -146,7 +161,8 @@ export function findChoices(entry, letters, rng = Math.random, count = 3) {
   const others = shuffle(letters.length > 1 ? letters : LETTERS, rng)
     .filter((l) => l.letter !== entry.letter)
     .flatMap((l) => shuffle(l.words, rng).slice(0, 1))
-    .filter((w) => (entry.inside ? !w.en.toLowerCase().includes(entry.letter) : !w.en.toLowerCase().startsWith(entry.letter)));
+    .filter((w) => (entry.inside ? !w.en.toLowerCase().includes(entry.letter) : !w.en.toLowerCase().startsWith(entry.letter)))
+    .filter((w) => !sameSound(entry.letter, w.en.charAt(0).toLowerCase()));
   const wrong = shuffle(others, rng).slice(0, count - 1);
   return { answer, choices: shuffle([answer, ...wrong], rng) };
 }

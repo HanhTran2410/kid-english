@@ -98,6 +98,22 @@ export async function seedSamplesOnce(app) {
 }
 
 /**
+ * Bài phonics có sẵn đã có trên máy từ bản cũ: cập nhật danh sách từ và âm mục tiêu theo dữ liệu mới của app
+ * (ví dụ bỏ "orange" khỏi chữ O). Giữ nguyên tên, số bài, chỗ học dở, số lần học; chỉ bài có mã `builtin`.
+ */
+export async function upgradePhonicsLessons(app) {
+  const fresh = new Map(builtInPhonicsLessons().map((l) => [l.builtin, l]));
+  for (const lesson of await app.db.getAll('lessons')) {
+    const src = fresh.get(lesson.builtin);
+    if (!src) continue;
+    const same = JSON.stringify(lesson.letters) === JSON.stringify(src.letters);
+    if (same) continue;
+    lesson.letters = src.letters;
+    await app.db.put('lessons', lesson);
+  }
+}
+
+/**
  * Bài câu mẫu đã có trên máy từ bản cũ: bổ sung mô tả khung hình chi tiết (frameScene, framePrompts) từ file mẫu mới,
  * chỉ cho những câu còn thiếu frameScene. Không đổi gì khác (tên, tiến độ, khung hình đã lưu…).
  */

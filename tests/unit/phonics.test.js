@@ -96,3 +96,22 @@ test('tiến độ chữ (letter:) không lẫn từ vựng; Ôn tập / Trò ch
   assert.equal(letters.length, 26);
   assert.equal(letters[0].key, 'letter:a');
 });
+
+test('theo review: âm mục tiêu từng chữ; không dùng orange cho O; đáp án nhiễu không cùng âm đầu (C/K/Q); Q đi cùng U', async () => {
+  const { SOUNDS, sameSound } = await import('../../app/js/phonics.js');
+  assert.equal(Object.keys(SOUNDS).length, 26);
+  assert.equal(LETTER_BY.get('a').sound, '/æ/');
+  assert.equal(LETTER_BY.get('x').sound, '/ks/');
+  assert.ok(builtInPhonicsLessons().every((l) => l.letters.every((x) => x.sound)), 'bài có sẵn mang theo âm');
+  assert.ok(!LETTER_BY.get('o').words.some((w) => w.en === 'orange'));
+  assert.equal(sameSound('c', 'k'), true);
+  assert.equal(sameSound('c', 'b'), false);
+  const L = [LETTER_BY.get('c'), LETTER_BY.get('k'), LETTER_BY.get('q'), LETTER_BY.get('a')];
+  for (let seed = 1; seed < 40; seed++) {
+    const { answer, choices } = findChoices(L[0], L, seeded(seed));
+    assert.ok(choices.filter((w) => w !== answer).every((w) => !/^[ckq]/.test(w.en)), choices.map((w) => w.en).join(','));
+    const c = letterChoices('k', ['c', 'k', 'q', 'a', 'b'], seeded(seed), 3, { sound: true });
+    assert.ok(!c.includes('c') && !c.includes('q'), c.join(','));
+  }
+  assert.equal(letterIntro(LETTER_BY.get('q')), 'Q! Q is for queen! Q and U go together!');
+});

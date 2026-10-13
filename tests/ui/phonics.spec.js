@@ -68,3 +68,46 @@ test('Góc bố mẹ: trang bài chữ cái có tiến độ từng chữ và �
   await expect(page.getByRole('heading', { name: /Ảnh chữ Aa/ })).toBeVisible();
   await expect(page.getByRole('heading', { name: /Ảnh chữ Ff/ })).toBeVisible();
 });
+
+test('theo review: chạm được ngay khi nhánh đang mọc (dừng đọc lần lượt, đọc từ bé chạm); chữ đã học thì sơ đồ mở ngay', async ({ page }) => {
+  // Tốc độ thật (không ?fast) để kịp chạm khi nhánh đang mọc.
+  await page.goto('/?nosw');
+  await page.getByRole('button', { name: 'Bắt đầu' }).click({ force: true });
+  await page.getByRole('button', { name: 'Chữ cái' }).click({ force: true });
+  await page.getByRole('button', { name: 'Letters A–F', exact: true }).click({ force: true });
+  const ant = page.getByRole('button', { name: 'ant', exact: true });
+  await expect(ant).toHaveClass(/shown/);
+  await ant.dispatchEvent('click');
+  await expect.poll(async () => (await spoken(page)).includes('A, ant!')).toBe(true);
+  await expect(page.locator('.mind-word.shown')).toHaveCount(6);
+  expect(await spoken(page)).not.toContain('Axe!');
+
+  // Lần sau (chữ A đã học — tiến độ còn trên máy): mở ngay cả 6 nhánh, không đọc lần lượt từng từ.
+  await page.goto('/?fast&nosw');
+  await page.getByRole('button', { name: 'Bắt đầu' }).click({ force: true });
+  await page.getByRole('button', { name: 'Chữ cái' }).click({ force: true });
+  await page.getByRole('button', { name: 'Letters A–F', exact: true }).click({ force: true });
+  await page.getByRole('button', { name: 'Học lại' }).click({ force: true, timeout: 3000 }).catch(() => {});
+  await expect(page.locator('.mind-word.shown')).toHaveCount(6);
+  await expect.poll(async () => (await spoken(page)).includes('Your turn! Tap a picture!')).toBe(true);
+  const said = await spoken(page);
+  expect(said.slice(0, said.indexOf('Your turn! Tap a picture!'))).toEqual(['A! A is for ant!']);
+});
+
+test('máy cũ: bài phonics có sẵn tự cập nhật bộ từ mới (bỏ "orange" khỏi chữ O), giữ tên và tiến độ', async ({ page }) => {
+  await startApp(page);
+  await page.evaluate(async () => {
+    const db = window.kidEnglish.db;
+    const lesson = (await db.getAll('lessons')).find((l) => l.builtin === 'phonics-m-r');
+    const o = lesson.letters.find((l) => l.letter === 'o');
+    o.words.splice(1, 0, { en: 'orange', emoji: '🍊' });
+    lesson.title = 'Chữ M–R của bé';
+    lesson.timesCompleted = 3;
+    await db.put('lessons', lesson);
+  });
+  await page.reload();
+  await expect.poll(() => page.evaluate(async () => {
+    const lesson = (await window.kidEnglish.db.getAll('lessons')).find((l) => l.builtin === 'phonics-m-r');
+    return [lesson.letters.find((l) => l.letter === 'o').words.map((w) => w.en).join(','), lesson.title, lesson.timesCompleted];
+  })).toEqual(['octopus,ox,otter,olive', 'Chữ M–R của bé', 3]);
+});

@@ -1,97 +1,116 @@
-# SPEC — Mục mới "Phonics" (chữ cái và âm, kiểu sơ đồ tư duy)
+# SPEC — Mục "Phonics" (chữ cái và âm, kiểu sơ đồ tư duy)
 
-> Phiên bản spec: **draft1** · Ngày: 2026-10-13 · Dựa trên app 0.7.0
-> Trạng thái: **đã chốt 2026-10-13** (mục 12 theo đề xuất: A–Z, "A is for ant", 6 từ, P-a + P-b, nút thứ 8).
-> Ghi chú khi code: chữ khó có ít từ đúng âm + emoji (Q, U, X, Z…) dùng 3–5 từ; 26 chữ chia 5 bài: A–F, G–L, M–R, S–V, W–Z.
-> **Đã làm P-a + P-b trong app 0.8.0:** sơ đồ (nhánh mọc ra, chạm từ nào đọc từ đó, chạm chữ giữa nghe lại), tìm từ đúng âm, chữ hoa – chữ thường (thẻ chọn cùng một màu để màu không lộ đáp án), nghe từ chọn chữ, bắt bóng chữ; chữ cái trong Ôn tập / Trò chơi 🎲; Góc bố mẹ: tiến độ từng chữ + ảnh lưới cho từng chữ; nút thứ 8. Chưa làm: bố mẹ ghi âm âm rời, đọc vần theo nhịp, tô chữ bằng ngón tay (P-c), tạo bài phonics bằng AI.
+> Phiên bản spec: **1.1** · Ngày: 2026-10-13
+> - draft1 → chốt 2026-10-13: A–Z, "A is for ant", 6 từ (mục tiêu), P-a + P-b một lượt, nút thứ 8.
+> - **1.0 — đã làm P-a + P-b trong app 0.8.0.**
+> - **1.1 — sửa theo review (app 0.8.1):** âm mục tiêu cho từng chữ; bỏ *orange* (sai âm với giọng Mỹ); đáp án nhiễu không cùng âm đầu (C/K/Q); chạm được ngay khi nhánh đang mọc; chữ đã học thì sơ đồ mở ngay; Q nhắc "Q and U go together"; máy cũ tự cập nhật bộ từ; sửa chỗ mâu thuẫn về số chữ mỗi bài; thêm cấu trúc dữ liệu, luật tính sao và checklist nghiệm thu.
 
-**Phạm vi kỹ thuật:** một mục học mới trong app hiện tại (cùng link, cùng app), dùng chung khung học (🏠, Bông, nút ▶, 🔊 nghe lại), tiến độ, sticker, Ôn tập, Trò chơi 🎲, ảnh lưới, sao lưu / chia sẻ bài. 0 đồng, chạy offline.
+**Phạm vi kỹ thuật:** mục học mới trong app hiện tại, dùng chung khung học (🏠, Bông, nút ▶, 🔊 nghe lại), tiến độ, sticker, Ôn tập, Trò chơi 🎲, ảnh lưới, sao lưu / chia sẻ bài. 0 đồng, chạy offline.
 
 ## 1. Mục tiêu
-- Bé 3 tuổi **nhận ra chữ cái** (hoa và thường: **A a**) và **âm của chữ** (A nói /æ/ như trong *ant*), qua các **từ quen thuộc bắt đầu bằng âm đó** có hình minh họa.
-- Học kiểu **sơ đồ tư duy**: chữ ở giữa, các từ tỏa ra xung quanh. Bé tự chạm để khám phá, chạm từ nào nghe từ đó.
-- Chưa dạy đọc ghép vần (c-a-t → cat) ở bản đầu (để sau, mục 11).
+- Bé 3 tuổi **nhận ra chữ cái** (hoa và thường: **A a**) và **liên kết chữ với âm đầu của từ quen thuộc** (A — *ant*, *apple*), qua hình minh họa.
+- Học kiểu **sơ đồ tư duy**: chữ ở giữa, các từ tỏa ra; bé tự chạm khám phá.
+- Chưa dạy ghép vần (c-a-t → *cat*) ở bản đầu (mục 12).
 
-## 2. Lưu ý quan trọng về "âm" (phonics ≠ bảng chữ cái)
-- Phonics dạy **âm chính** của chữ, không phải tên chữ: A trong *ant, apple* là /æ/. **Không dùng *arm*** (âm /ɑː/), không dùng *eye* cho E, *one* cho O… — bé sẽ nghe lẫn âm. Bộ từ có sẵn (mục 4) chọn đúng âm chính; prompt cho AI (mục 9) cũng dặn như vậy.
-- **Giọng đọc của máy (TTS) đọc tên chữ và đọc từ tốt, nhưng KHÔNG đọc được âm rời** (/æ/, /s/…) một cách đáng tin cậy. Cách xử lý đề xuất (câu hỏi 12.2):
-  1. Mặc định: Bông nói **"A. A is for ant!"** và đọc chậm từ, **tô màu chữ cái đầu** trong từ (*<b>a</b>nt*) để bé thấy âm nằm ở đâu — không cần âm rời.
-  2. Thêm: **bố mẹ ghi âm** âm của từng chữ (26 bản ghi ngắn, mỗi bản 1 giây: "/æ/ /æ/ /æ/") trong Góc bố mẹ — app dùng bản ghi này mỗi khi cần âm rời. App đã có sẵn chức năng ghi âm.
-  3. (Không chọn) Đóng gói sẵn file âm thanh trong app: phải tìm nguồn có bản quyền phù hợp, tăng dung lượng app.
+## 2. Âm chữ: tên chữ ≠ âm chữ ≠ âm đầu của từ
+- **Tên chữ** A = /eɪ/; **âm chính** của A trong *ant* = /æ/. Một chữ có thể có nhiều âm (C: *cat* /k/, *city* /s/) — bản đầu **chỉ dạy một âm mục tiêu** mỗi chữ (`sound`, mục 4), chọn từ có **âm đầu đúng âm đó** theo giọng Mỹ của app.
+- Câu **"A is for ant!"** là lời giới thiệu thân thiện, giúp bé **liên kết chữ với từ**; nó **không tự dạy âm rời** /æ/. Vì vậy:
+  - Tô màu chữ cái mang âm trong từ (*<b>a</b>nt*) và cho bé nghe từ mẫu.
+  - Trò chơi chỉ yêu cầu **nhận biết chữ** và **phân loại từ theo âm đầu thực tế**; **không** yêu cầu bé phát âm âm rời, không dùng mic.
+- **Giọng đọc của máy không đọc được âm rời** đáng tin cậy → âm rời chỉ có khi **bố mẹ ghi âm** (P-c, mục 9).
 
 ## 3. Màn hình sơ đồ (mỗi chữ một màn)
 ```
             🐜 ant
                \
-  🍎 apple —  [ A a ]  — 🐊 alligator
+  🪓 axe —   [ A a ]  — 🍎 apple
                /     \
-     🚑 ambulance    🧑‍🚀 astronaut
+   🧑‍🚀 astronaut   🐊 alligator      (+ 🚑 ambulance)
 ```
-- **Giữa:** thẻ tròn to **"A a"** (chữ hoa + chữ thường, mỗi chữ cái một màu cố định). Chạm → Bông: *"A! A is for ant, apple…"* (hoặc âm ghi sẵn của bố mẹ).
-- **Nhánh:** 4–6 từ tỏa quanh, mỗi từ là một thẻ **hình + chữ**, chữ cái đầu tô màu của chữ. Đường nối từ giữa ra từng thẻ.
-- **Mở dần:** lúc vào màn, các nhánh **mọc ra lần lượt** (đường nối kéo dài, thẻ bật ra) trong lúc Bông đọc từng từ — bé thấy "cây" lớn lên.
-- **Bé chạm từ nào** → thẻ to ra, Bông đọc: *"Ant! A — ant!"*; chạm lại thì đọc lại. Thẻ đã chạm có dấu ✓ nhỏ; chạm đủ các từ → sao bay + *"Great! You found all the A words!"*.
-- iPhone dọc: 4 từ (2 trên, 2 dưới) để thẻ đủ to; iPad: 6 từ quanh vòng tròn.
-- Không có nút ▶ bắt buộc — bé khám phá tự do; nút **"Next letter →"** to ở góc để sang chữ tiếp.
+- **Giữa:** thẻ tròn to **"A a"**, mỗi chữ một màu cố định.
+- **Nhánh:** 3–6 thẻ **hình + chữ** quanh vòng tròn, chữ mang âm được tô màu, có đường nối.
+- **Lần đầu học chữ:** nhánh **mọc ra lần lượt** trong lúc Bông đọc từng từ. **Bé chạm được ngay** thẻ đã hiện: Bông dừng đọc lần lượt, các nhánh còn lại hiện hết, rồi đọc từ bé vừa chạm.
+- **Chữ đã học (lần sau):** sơ đồ **mở ngay**, chỉ nghe câu giới thiệu, không chạy lại hiệu ứng.
+- **Chạm thẻ từ:** thẻ to ra, Bông đọc *"A, ant!"* (X: *"Box!"*); chạm lại thì đọc lại.
+- **Chạm chữ giữa:** chỉ nghe lại câu giới thiệu *"A! A is for ant!"* — **không** đọc lại cả 6 từ.
+- **Viền màu trên thẻ đã chạm** = "đã khám phá trong lượt này", **không** có nghĩa là bé đã thuộc từ.
+- Chạm đủ các từ → sao bay + *"Great! You found all the A words!"* rồi sang bước sau. **Nút ▶ luôn hiện**, không bắt chạm hết.
+- **iPhone dọc vẫn hiện 6 thẻ** (đã kiểm tra trên khổ 390 × 664: thẻ ~95 px, hình và chữ đủ rõ) — không cần nút "More". iPad: 6 thẻ quanh vòng tròn.
 
-## 4. Nội dung có sẵn (không cần AI)
-- 26 chữ, mỗi chữ **6 từ** quen với bé 3 tuổi, có emoji (chạy ngay, offline), ví dụ:
+## 4. Nội dung có sẵn và cấu trúc dữ liệu
+- **26 chữ A–Z**, mỗi chữ **mục tiêu 6 từ** quen với bé 3 tuổi, có emoji (offline). Chữ khó có ít từ vừa đúng âm vừa quen vừa có hình rõ thì dùng **3–5 từ chính xác** thay vì cố đủ 6: E 5, I 5, O 4, Q 3, U 3, X 4, Y 5, Z 4.
+- Bộ từ đã rà theo âm mục tiêu: C toàn /k/ (cat, car, cup…), G toàn /ɡ/ (goat, grapes… — không *giraffe*), I /ɪ/, O /ɒ/ (**không *orange*** — giọng Mỹ đọc /ɔːr/), U /ʌ/, Y là phụ âm /j/ (yo-yo, yarn), Z /z/ (zebra, zipper), Q /kw/ (queen, question, quilt — Bông nói thêm *"Q and U go together!"*).
+- **Ngoại lệ chữ X** (`inside: true`): âm /ks/ nằm **trong / cuối từ** (box, fox, six, taxi). Bông nói *"X! Box has X!"*, câu hỏi là *"Which one **has** X?"* (không dùng "starts with"), tô chữ x ở vị trí của nó. Không dùng *xylophone* (đọc /z/).
+- **5 bài**: A–F, G–L, M–R (6 chữ), S–V, W–Z (4 chữ). Quy tắc: **mỗi bài tối đa 6 chữ, bài cuối có thể ít hơn**; mỗi chữ có sơ đồ và trò riêng.
+- Bài lưu trong kho `lessons` (không nâng cấp IndexedDB):
+```json
+{
+  "kind": "phonics", "builtin": "phonics-a-f", "title": "Letters A–F", "topic": "Phonics", "emoji": "🐜",
+  "letters": [
+    { "letter": "a", "sound": "/æ/", "inside": false,
+      "words": [ { "en": "ant", "emoji": "🐜" }, { "en": "apple", "emoji": "🍎" } ] },
+    { "letter": "x", "sound": "/ks/", "inside": true, "words": [ { "en": "box", "emoji": "📦" } ] }
+  ]
+}
+```
+  - Mã ổn định: chữ = `letter`, từ = `en` (trong một chữ); `builtin` cho bài có sẵn.
+  - **Máy cũ:** khi mở app, bài có sẵn (`builtin`) **tự cập nhật** `letters` theo dữ liệu mới (ví dụ bỏ *orange*), giữ tên, số bài, chỗ học dở, số lần học.
+- **Ảnh:** emoji mặc định; Góc bố mẹ có mục **"Ảnh chữ Aa"** cho từng chữ — ảnh lưới AI, **mỗi ô một từ theo đúng thứ tự dữ liệu**, ảnh không có chữ in sẵn; lưu trong kho `images` theo bài + từ. Không có ảnh hoặc ảnh lỗi thì dùng emoji, bài không hỏng. Không bắt buộc tạo ảnh.
 
-| Chữ | Từ (âm chính) |
-|---|---|
-| A a /æ/ | ant 🐜, apple 🍎, alligator 🐊, ambulance 🚑, astronaut 🧑‍🚀, axe 🪓 *(hoặc bỏ axe nếu không muốn)* |
-| B b | ball ⚽, bear 🐻, banana 🍌, bus 🚌, bee 🐝, book 📖 |
-| C c /k/ | cat 🐱, car 🚗, cake 🍰, cup ☕, cow 🐮, carrot 🥕 |
-| S s | sun ☀️, sock 🧦, snake 🐍, star ⭐, spoon 🥄, sandwich 🥪 |
-| … | (đủ 26 chữ; X dùng từ **kết thúc** bằng x: box 📦, fox 🦊 — vì gần như không có từ trẻ em bắt đầu bằng /ks/) |
+## 5. Các bước của một bài
+Với từng chữ: **1. Sơ đồ** (mục 3) → **2. Tìm từ đúng âm**: *"Which one starts with A?"* (X: *"Which one has X?"*), 1 hình của chữ + 2 hình **không bắt đầu bằng chữ đó và cũng không cùng âm đầu** (câu hỏi C không có hình *kite*).
 
-- Chia thành **bài 6 chữ** theo thứ tự đã chốt (câu hỏi 12.1), ví dụ bài 1: **s a t i p n** (thứ tự Jolly Phonics — sớm ghép được từ: *sat, pin, tap*) hoặc **A–F** (theo bảng chữ cái).
-- Ảnh: emoji mặc định; bố mẹ thay bằng **ảnh lưới AI** như bài từ vựng (một ảnh lưới cho các từ của một chữ hoặc cả bài, có mũi tên nếu là bộ phận chi tiết).
+Cuối bài (bài ≥ 2 chữ): **chữ hoa – chữ thường** (tối đa 4 lượt), **nghe từ chọn chữ** (tối đa 4 lượt), **bắt bóng chữ** (mỗi chữ của bài một lần, tối đa 6) → Hoan hô + sticker.
 
-## 5. Các bước của một bài phonics (6 chữ)
-Với từng chữ:
-1. **Sơ đồ** (mục 3): nhánh mọc ra, Bông đọc từng từ; bé chạm khám phá (tự đi tiếp sau khi chạm đủ hoặc bấm "Next").
-2. **Tìm từ đúng âm** (trò nhỏ, chọn 1 trong 3): *"Which one starts with A?"* — 1 hình bắt đầu bằng A, 2 hình của chữ khác.
-
-Cuối bài: các trò ở mục 6 + Hoan hô + sticker.
-
-## 6. Trò chơi (chạm chọn, không bắt nói)
-| Trò | Cách chơi | Ghi chú |
+## 6. Trò chơi (chạm chọn, không nói, không phạt)
+| Trò | Cách chơi | Quy tắc đáp án |
 |---|---|---|
-| **Chữ hoa – chữ thường** | Hiện **A**, bé chọn **a** trong 3 chữ thường | Thẻ chữ to, màu của chữ |
-| **Nghe từ, chọn chữ** | Bông: *"Sun! Which letter?"* — bé chọn **S** trong 3 chữ | Tô chữ đầu khi đáp đúng |
-| **Bắt bóng chữ** | Bóng bay chữ cái bay lên; Bông: *"Pop the B!"*, bé chạm bóng đúng (bóng nổ) | Vui, vận động tay; 8–10 lượt |
-| **Ai lạc nhóm?** | 3 hình bắt đầu bằng S, 1 hình không — bé chạm hình lạc | Bản sau (khó hơn với bé 3 tuổi) |
+| **Tìm từ đúng âm** | *"Which one starts with A?"* — 3 hình | Đáp án lấy từ dữ liệu; nhiễu không cùng chữ / cùng âm đầu |
+| **Chữ hoa – chữ thường** | *"Big F. Find the small F!"* — 3 chữ thường | Thẻ chọn **cùng một màu** (màu không lộ đáp án); không có cặp dễ nhầm hình (b/d, p/q, b/p, d/q, m/w, n/u) |
+| **Nghe từ, chọn chữ** | Hình cái nĩa + *"Fork! Which letter?"* — 3 thẻ "Aa" | Không có chữ cùng âm đầu (Kite: không có thẻ C/Q) |
+| **Bắt bóng chữ** | Bóng có chữ lơ lửng, *"Pop the B!"* — 4 bóng | Như chữ hoa – chữ thường |
 
-## 7. Tô chữ bằng ngón tay (đề xuất, bản sau)
-- Chữ to nét đứt, **có số và mũi tên thứ tự nét**; bé dùng ngón tay vuốt theo; vuốt đúng hướng thì nét sáng lên, xong chữ thì Bông khen.
-- Hợp với bé 3 tuổi (vận động tinh), chạy offline, không cần mic.
+Chọn sai: thẻ lắc, Bông nói thẻ đó là gì, mời chọn lại; sai 2 lần thì đáp án sáng lên, đi tiếp. Nút 🔊 nghe lại câu hỏi ở mọi trò.
 
-## 8. Bài hát / đọc vần (đề xuất)
-- Nút **🎵 "Sing"** ở màn sơ đồ: Bông đọc vần theo nhịp *"A, A, ant! A, A, apple! A, A, alligator!"* (dùng giọng đọc + nhịp vỗ tay của app), các thẻ sáng lần lượt theo nhịp. Bé nghe nhiều lần không chán.
+## 7. Tiến độ và sao
+- Mỗi chữ có khóa **`letter:a`** (riêng, không lẫn từ vựng). Trạng thái: **chưa học** (không có bản ghi) → **đang học** (`practiceCount > 0`) → **thuộc** (≥ 3⭐).
+- **Sao chỉ cộng khi chọn đúng ngay lần đầu** ở một trò, **tối đa một lần mỗi chữ mỗi lượt học**; tối đa 5⭐; **không bao giờ trừ**. Chọn sai chỉ ghi lịch sử (`attempts`).
+- Mở sơ đồ / chạm đủ từ **chỉ ghi "đã gặp"** (`practiceCount`), không cộng sao. Chơi lại vẫn được khen nhưng sao không tăng quá giới hạn trên.
+- **Từ trong sơ đồ:** chạm một từ ghi "đã gặp" cho từ đó trong tiến độ từ vựng (không cộng sao) → từ đó có thể xuất hiện trong Ôn tập; **tiến độ chữ cái và tiến độ thuộc từ là hai việc riêng**.
+- **Ôn tập / Trò chơi 🎲** có thêm câu hỏi "chữ hoa – chữ thường" và "nghe từ chọn chữ" cho chữ đã học.
+- Sao lưu / khôi phục / chia sẻ bài: như các loại bài khác (bài phonics có `letters`; tiến độ `letter:` gộp theo luật chung).
 
-## 9. Tạo thêm bài bằng AI (tùy chọn)
-- Góc bố mẹ → **Tạo bài phonics**: chọn chữ (hoặc nhóm chữ) → **Copy prompt** → AI trả JSON (chữ, âm, 4–6 từ + emoji + `imagePrompt`) → Dán → Xem trước → Lưu. Prompt dặn: từ **bắt đầu bằng âm chính** của chữ (không *arm* cho A), danh từ cụ thể dễ vẽ, phù hợp bé 3 tuổi, tránh từ đã có.
+## 8. Màn hình chính
+- Nút thứ 8 **🔤 Phonics / Chữ cái**; lưới 2 × 4 (iPhone / iPad dọc), 4 × 2 (iPad ngang) — vừa khít.
 
-## 10. Dữ liệu và tiến độ
-- Bài phonics lưu trong kho `lessons` với `kind: "phonics"` (như bài số) — **không nâng cấp IndexedDB**; ảnh trong kho `images`; sao lưu / chia sẻ bài như bài khác.
-- Tiến độ: khóa **`letter:a`** cho từng chữ (sao chỉ tăng, không trừ — giống câu / số); từ trong sơ đồ dùng chung tiến độ từ vựng (từ *apple* học ở đây cũng tính cho Ôn tập).
-- **Ôn tập / Trò chơi 🎲**: thêm loại câu hỏi "Nghe từ, chọn chữ" và "Chữ hoa – chữ thường" cho chữ đã học.
-- Màn hình chính: nút thứ 8 **🔤 Phonics / Chữ cái** (lưới 2 × 4 trên iPhone dọc, 4 × 2 trên iPad — đầy đủ, không lẻ).
+## 9. P-c (chưa làm): ghi âm âm rời, đọc vần, tô chữ
+- **Bố mẹ ghi âm âm của từng chữ** trong Góc bố mẹ; app phát bản ghi khi chạm chữ giữa sơ đồ (sau câu giới thiệu). Hướng dẫn ghi âm hiện ngay cạnh nút ghi:
+  - Âm **kéo dài được** (/s/, /f/, /m/, /n/, /l/, /z/, /v/, /h/ thở ra) đọc liền ~1 giây: "sssss".
+  - Âm **bật ngắn** (/p/, /t/, /k/, /b/, /d/, /ɡ/) đọc thật ngắn, **không kèm "ờ"** phía sau ("p", không phải "pờ").
+  - Nguyên âm đọc âm ngắn trong từ mẫu (/æ/ như đầu *ant*), không đọc tên chữ.
+- **Đọc vần theo nhịp:** nút 🎵 ở sơ đồ — *"A, A, ant! A, A, apple!"*, thẻ sáng theo nhịp.
+- **Tô chữ bằng ngón tay:** chữ nét đứt, số và mũi tên thứ tự nét; vuốt đúng thì nét sáng.
 
-## 11. Kế hoạch làm (đề xuất)
-| Bước | Nội dung |
-|---|---|
-| P-a | Nút Phonics + dữ liệu 26 chữ × 6 từ (emoji) + bài 1 (6 chữ) + màn **sơ đồ** + bước "Tìm từ đúng âm" + tiến độ `letter:` |
-| P-b | Trò **chữ hoa – chữ thường**, **nghe từ chọn chữ**, **bắt bóng chữ**; đưa vào Ôn tập / Trò chơi 🎲; ảnh lưới AI cho từ |
-| P-c | **Bố mẹ ghi âm âm chữ**; **bài hát / đọc vần**; **tô chữ bằng ngón tay** |
-| Sau | Ghép vần CVC (s-a-t → *sat*), tạo bài phonics bằng AI, "Ai lạc nhóm?" |
+## 10. Tạo bài phonics bằng AI (sau)
+Prompt dặn: từ có **âm đầu đúng âm mục tiêu** của chữ (không *arm* cho A, không *orange* cho O với giọng Mỹ), danh từ cụ thể dễ vẽ, kèm `sound`, đánh dấu ngoại lệ như X.
 
-## 12. Câu hỏi cần bố mẹ chốt
-| # | Câu hỏi | Đề xuất |
+## 11. Checklist nghiệm thu (P-a + P-b)
+| Mục | Trạng thái | Kiểm tra bởi |
 |---|---|---|
-| 1 | Thứ tự chữ: **bảng chữ cái A–Z** hay **s a t i p n…** (Jolly Phonics) | **A–Z** cho bé 3 tuổi (quen bài hát ABC, bố mẹ dễ theo); s-a-t-i-p-n hợp hơn khi bé bắt đầu ghép vần |
-| 2 | Âm của chữ: chỉ dùng **"A is for ant"** + tô chữ đầu, hay thêm **bố mẹ ghi âm** âm rời | Bản đầu dùng "A is for ant"; ghi âm âm rời ở P-c |
-| 3 | Mỗi chữ mấy từ | **6 từ** (iPhone hiện 4, vuốt / chạm "More" để xem 2 từ còn lại) — hay chỉ **4 từ** cho gọn |
-| 4 | Làm những phần nào trước | **P-a + P-b** một lượt |
-| 5 | Thêm nút thứ 8 trên màn hình chính | Đồng ý |
+| Đủ 26 chữ A–Z, hoa – thường đúng cặp | ✅ | unit |
+| Từ đúng âm mục tiêu; X có quy tắc ngoại lệ; không *arm*, *orange* | ✅ | unit |
+| Không trùng mã / hình, không thiếu emoji | ✅ | unit |
+| Sơ đồ đúng trên iPhone dọc và iPad | ✅ | ảnh chụp giả lập (chưa thử máy thật) |
+| Chạm được thẻ khi nhánh khác đang mọc | ✅ | UI |
+| Giọng đọc đọc đúng; chạm lại đọc lại; chạm chữ giữa chỉ đọc câu giới thiệu | ✅ | UI |
+| Nút ▶ luôn dùng được; quay lại bài không kẹt (Học tiếp / Học lại); chữ đã học mở ngay | ✅ | UI |
+| Sao không tăng nhiều lần trong một lượt; không trừ | ✅ | unit + UI |
+| Từ đã gặp liên kết với Ôn tập; chữ cái có trong Ôn tập / Trò chơi 🎲 | ✅ | unit + UI |
+| Sao lưu / khôi phục giữ bài và tiến độ | ✅ | dùng chung luật sao lưu (có test chung) |
+| Chạy offline bằng emoji khi chưa có ảnh | ✅ | mặc định (không cần mạng) |
+| Đáp án lấy từ dữ liệu, không theo vị trí cố định; nhiễu không cùng âm | ✅ | unit |
+| Không bắt nói / không dùng mic; chọn sai không bị phạt | ✅ | UI |
+| Máy cũ tự cập nhật bộ từ của bài có sẵn | ✅ | UI |
+
+## 12. Sau này
+Ghép vần CVC (s-a-t → *sat*), "Ai lạc nhóm?", tạo bài phonics bằng AI, P-c (mục 9).

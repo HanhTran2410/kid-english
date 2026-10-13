@@ -5,6 +5,7 @@ import { isAbort } from '../timing.js';
 import { normalizeWord } from '../text.js';
 import { mediaBlob, latestImageForWord } from '../db.js';
 import { isPhonicsLesson, buildPhonicsSteps } from '../phonics.js';
+import { letterRecords } from '../progress.js';
 import { activityLayout } from './layout.js';
 import { Teacher } from './teacher.js';
 import { startIndexFor, resumeAfter } from './plan.js';
@@ -73,6 +74,8 @@ export function phonicsLessonScreen(app, { lessonId, start = 'begin' }) {
       stage: layout.stage,
       nextBtn: layout.nextBtn,
       pickedThisRun: new Set(),
+      // Chữ bé đã học ở lần trước: sơ đồ mở ngay, không chạy lại hiệu ứng mọc nhánh.
+      seenLetters: new Set(letterRecords(await app.db.getAll('progress')).filter((r) => r.practiceCount > 0).map((r) => r.word.slice('letter:'.length))),
       imageOf: images.imageOf,
     };
 

@@ -121,28 +121,38 @@ export async function runMap(ctx, entry) {
   const map = h('div.mindmap', { style: { '--letter-color': letterColor(entry.letter) } }, svg, ...cards, center);
   ctx.stage.replaceChildren(h('div.mindmap-wrap', {}, map));
 
+  // Chữ đã học (lần trước): sơ đồ mở ngay, không chạy lại hiệu ứng mọc nhánh.
+  const seen = ctx.seenLetters?.has(entry.letter) ?? false;
   await markPracticed(app, letterKey(entry.letter), entry.words[0].emoji);
-  await teacher.say(letterIntro(entry));
-  // Nhánh mọc ra lần lượt trong lúc Bông đọc từng từ.
-  for (const [i, word] of entry.words.entries()) {
+  const showAll = () => entry.words.forEach((_, i) => {
     lines[i].classList.add('grown');
     cards[i].classList.add('shown');
-    await teacher.say(`${cap(word.en)}!`);
-    await teacher.pause(150);
-  }
+  });
 
-  // Bé chạm khám phá: chạm từ nào Bông đọc từ đó; chạm chữ giữa thì nghe lại câu giới thiệu.
-  await teacher.ask('Your turn! Tap a picture!');
-  const tapped = new Set();
-  while (tapped.size < n) {
-    const t = await teacher.waitTap([center, ...cards]);
-    if (t === center) {
-      center.classList.remove('pop');
-      void center.offsetWidth;
-      center.classList.add('pop');
-      await teacher.say(letterIntro(entry));
-      continue;
+  // Bé chạm được NGAY cả khi nhánh đang mọc: dừng đọc lần lượt, hiện hết nhánh, rồi đọc từ bé vừa chạm.
+  let early = null;
+  const onEarly = (e) => {
+    if (e.currentTarget.classList.contains('shown')) early ??= e.currentTarget;
+  };
+  cards.forEach((c) => c.addEventListener('click', onEarly));
+  if (seen) showAll();
+  await teacher.say(letterIntro(entry));
+  if (!seen) {
+    for (const [i, word] of entry.words.entries()) {
+      if (early) break;
+      lines[i].classList.add('grown');
+      cards[i].classList.add('shown');
+      await teacher.say(`${cap(word.en)}!`);
+      await teacher.pause(150);
     }
+    showAll();
+  }
+  cards.forEach((c) => c.removeEventListener('click', onEarly));
+
+  // Bé chạm khám phá: chạm từ nào Bông đọc từ đó; chạm chữ giữa thì nghe lại câu giới thiệu (không đọc lại cả 6 từ).
+  // Dấu ✓ (viền) chỉ là "đã chạm trong lượt này", không có nghĩa là bé đã thuộc từ.
+  const tapped = new Set();
+  const readWord = async (t) => {
     const i = cards.indexOf(t);
     const word = entry.words[i];
     t.classList.remove('pop');
@@ -154,6 +164,19 @@ export async function runMap(ctx, entry) {
       await markPracticed(app, word.en, word.emoji);
     }
     await teacher.say(entry.inside ? `${cap(word.en)}!` : `${L}, ${word.en}!`);
+  };
+  if (early) await readWord(early);
+  if (tapped.size < n) await teacher.ask('Your turn! Tap a picture!');
+  while (tapped.size < n) {
+    const t = await teacher.waitTap([center, ...cards]);
+    if (t === center) {
+      center.classList.remove('pop');
+      void center.offsetWidth;
+      center.classList.add('pop');
+      await teacher.say(letterIntro(entry));
+      continue;
+    }
+    await readWord(t);
   }
   teacher.endQuestion();
   play('ding');
@@ -207,7 +230,7 @@ export async function runCase(ctx, entry) {
 export async function runHear(ctx, entry) {
   const word = entry.words[Math.floor(Math.random() * entry.words.length)];
   const L = entry.letter.toUpperCase();
-  const options = letterChoices(entry.letter, ctx.lesson.letters.map((l) => l.letter));
+  const options = letterChoices(entry.letter, ctx.lesson.letters.map((l) => l.letter), Math.random, 3, { sound: true });
   const buttons = options.map((l) => h('button.choice.letter-choice', { type: 'button', 'aria-label': l, dataset: { letter: l } }, letterCard(l)));
   const correct = buttons[options.indexOf(entry.letter)];
   const picture = h('div.hear-word', {}, wordPicture(ctx, word));
