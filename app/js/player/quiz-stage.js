@@ -29,7 +29,7 @@ export async function runQuizStep(ctx, question, pool, emojiOf, options = {}) {
   });
   stage.replaceChildren(h('div.choices', { dataset: { count: String(buttons.length) } }, ...buttons));
 
-  await teacher.ask(question.ask);
+  await teacher.ask(question.ask, { meaning: ctx.meaningOf?.(question.answer) ?? '' });
 
   let wrong = 0;
   for (;;) {

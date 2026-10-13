@@ -53,6 +53,8 @@ export function lessonScreen(app, { lessonId, start = 'begin', continueDirectly 
       stage: layout.stage,
       nextBtn: layout.nextBtn,
       viSpoken: new Set(),
+      // Nghĩa tiếng Việt của từ (phụ đề khi chạm 🔊).
+      meaningOf: (w) => findWord(lesson, w)?.vi ?? '',
     };
     const questions = quizQuestions(lesson);
     const pool = lesson.words.map((w) => w.en);

@@ -254,6 +254,7 @@ Kết thúc bài: màn hình **"Hoan hô!"** kèm 1 sticker tặng bé. **Hộp 
 - Bé chạm → Bông đọc lại **đúng câu hỏi đó** (ví dụ *"Where is the cow?"*). Bông đang nói thì không đọc chồng lên.
 - Không hiện ở các bước bé phải **nói** (mic đang nghe — Bông đọc lại sẽ bị mic nghe nhầm thành tiếng bé).
 - Trò Chọn số: chạm dấu ❓ cũng đọc lại câu hỏi.
+- **Phụ đề (app 0.8.3):** chỉ khi chạm 🔊, phía trên màn hiện **câu tiếng Anh** (to) + **câu tiếng Việt** (nhỏ, dịch theo mẫu câu hỏi, kèm nghĩa của từ / câu nếu bài có), tự ẩn sau ~5 giây, chạm vào thì ẩn, hết câu hỏi thì ẩn. Không chạm loa thì không có phụ đề.
 
 ### 4.5. Học cùng Bông
 - Bông hỏi đáp với bé bằng các đoạn **hội thoại** (phần B) lấy từ các bài đã lưu. Ưu tiên bài mới học và từ chưa thuộc. Bài nào không có hội thoại thì dùng mẫu *"What's this?" → "It's a ___!"*.

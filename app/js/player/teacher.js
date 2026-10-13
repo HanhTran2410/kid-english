@@ -5,6 +5,9 @@ import { bongElement } from '../bong.js';
 import { listen, RESULT } from '../speech/listen.js';
 import { play } from '../speech/sfx.js';
 import { sleep, scaled, abortError } from '../timing.js';
+import { translateQuestion } from '../captions.js';
+
+const CAPTION_MS = 5000; // phụ đề khi chạm 🔊 hiện khoảng 5 giây
 
 const IDLE_CALL_MS = 20_000; // 20 giây không chạm → Bông gọi bé
 const IDLE_PAUSE_MS = 120_000; // 2 phút → tạm dừng, không tính giờ
@@ -48,8 +51,13 @@ export class Teacher {
   }
 
   /** Hỏi bé một câu đang chờ trả lời: hiện nút 🔊 để bé nghe lại khi lỡ không để ý. */
-  ask(text) {
+  /**
+   * @param {string} text câu hỏi tiếng Anh
+   * @param {{ meaning?: string }} [opts] meaning: nghĩa tiếng Việt của từ / câu trong câu hỏi (cho phụ đề khi chạm 🔊)
+   */
+  ask(text, { meaning = '' } = {}) {
     this.question = text;
+    this.questionMeaning = meaning;
     if (this.replayBtn) this.replayBtn.hidden = false;
     return this.say(text);
   }
@@ -62,15 +70,38 @@ export class Teacher {
       void btn.offsetWidth;
       btn.classList.add('pressed');
     }
-    if (!this.question || this.app.speaker.speaking || this.signal.aborted) return;
+    if (!this.question || this.signal.aborted) return;
+    // Phụ đề: câu tiếng Anh + tiếng Việt, hiện ~5 giây (chỉ khi chạm 🔊) — cả lúc Bông đang nói.
+    this.showCaption(this.question, translateQuestion(this.question, this.questionMeaning));
+    if (this.app.speaker.speaking) return;
     play('tap');
     this.bunny.set('idle');
     this.say(this.question).catch(() => {});
   }
 
+  /** Phụ đề phía trên màn hình; chạm vào thì ẩn, tự ẩn sau ~5 giây hoặc khi câu hỏi kết thúc. */
+  showCaption(en, vi) {
+    this.hideCaption();
+    const box = h('button.caption', { type: 'button', 'aria-label': 'Phụ đề câu hỏi' },
+      h('span.caption-en', { text: en }),
+      vi ? h('span.caption-vi', { text: vi }) : null);
+    box.addEventListener('click', () => this.hideCaption());
+    (this.stage.parentElement ?? document.body).append(box);
+    this.caption = box;
+    this.captionTimer = setTimeout(() => this.hideCaption(), CAPTION_MS);
+  }
+
+  hideCaption() {
+    clearTimeout(this.captionTimer);
+    this.caption?.remove();
+    this.caption = null;
+  }
+
   /** Câu hỏi đã xong (bé trả lời, hết bước): ẩn nút 🔊. */
   endQuestion() {
     this.question = null;
+    this.questionMeaning = '';
+    this.hideCaption();
     if (this.replayBtn) this.replayBtn.hidden = true;
   }
 

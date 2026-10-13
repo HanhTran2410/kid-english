@@ -49,3 +49,33 @@ test('bài câu: không có câu hỏi thì không có 🔊; tới lượt bé l
   await page.locator('.did-btn').click({ force: true });
   await expect(replay).toBeHidden();
 });
+
+test('chạm 🔊: hiện phụ đề tiếng Anh + tiếng Việt (có nghĩa của từ), chạm vào thì ẩn, tự ẩn sau ~5 giây; không chạm loa thì không có phụ đề', async ({ page }) => {
+  await startApp(page);
+  await page.getByRole('button', { name: 'Bài học' }).click();
+  await page.getByRole('button', { name: 'Animals', exact: true }).click();
+  await playThrough(page);
+  await page.locator('.done-btn').click();
+  await page.getByRole('button', { name: 'Ôn tập' }).click();
+  const replay = page.getByRole('button', { name: 'Nghe lại câu hỏi' });
+  await expect(replay).toBeVisible();
+  const caption = page.getByRole('button', { name: 'Phụ đề câu hỏi' });
+  await expect(caption).toHaveCount(0);
+
+  const question = (await spoken(page)).findLast((t) => /^(Where is the|Which one is)/.test(t));
+  const word = question.replace(/^Where is the |^Which one is |\?$/g, '');
+  const vi = await page.evaluate(async (w) => {
+    const lesson = (await window.kidEnglish.db.getAll('lessons')).find((l) => l.title === 'Animals');
+    return lesson.words.find((x) => x.en === w).vi;
+  }, word);
+  await replay.click();
+  await expect(caption.locator('.caption-en')).toHaveText(question);
+  await expect(caption.locator('.caption-vi')).toContainText(`"${word}" (${vi})`);
+  await caption.click();
+  await expect(caption).toHaveCount(0);
+
+  await replay.click();
+  await expect(caption).toBeVisible();
+  await page.waitForTimeout(5600);
+  await expect(caption).toHaveCount(0);
+});

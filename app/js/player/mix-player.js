@@ -96,7 +96,9 @@ export function mixScreen(app, { mode = 'review' } = {}) {
 
     const mastery = new Map(numberRecords(progress).map((r) => [Number(r.word.split(':')[1]), r.mastery]));
     const teacher = new Teacher(app, { signal, bunny: layout.bunny, stage: layout.stage, replayBtn: layout.replayBtn });
+    const meaningByWord = new Map(items.filter((i) => i.kind === 'word').map((i) => [i.en.toLowerCase(), i.data.vi ?? '']));
     const ctx = {
+      meaningOf: (w) => meaningByWord.get(String(w).toLowerCase()) ?? '',
       app, teacher, visuals, signal,
       stage: layout.stage,
       nextBtn: layout.nextBtn,

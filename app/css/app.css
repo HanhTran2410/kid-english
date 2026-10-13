@@ -1510,3 +1510,26 @@ a.btn { text-decoration: none; }
 /* Ảnh phủ đúng bằng khung hình của thẻ (khung có tỉ lệ cố định), ảnh co theo khung chứ không theo kích thước gốc */
 .word-pic { position: relative; }
 .word-pic img { position: absolute; inset: 0; width: 100%; height: 100%; }
+
+/* Phụ đề khi chạm 🔊: câu tiếng Anh (to) + tiếng Việt (nhỏ), phía trên màn, tự ẩn ~5 giây */
+.caption {
+  position: fixed;
+  left: 50%;
+  top: max(84px, calc(env(safe-area-inset-top) + 76px));
+  z-index: 20;
+  transform: translateX(-50%);
+  display: grid;
+  gap: 4px;
+  width: max-content;
+  max-width: min(92vw, 720px);
+  padding: 10px 18px;
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.97);
+  box-shadow: var(--shadow);
+  border: 3px solid var(--yellow);
+  text-align: center;
+  animation: caption-in 0.25s ease-out;
+}
+.caption-en { font-size: clamp(20px, 3.4vmin, 32px); font-weight: 900; color: var(--ink); }
+.caption-vi { font-size: clamp(15px, 2.6vmin, 22px); font-weight: 700; color: var(--ink-soft); }
+@keyframes caption-in { from { opacity: 0; transform: translate(-50%, -12px); } }

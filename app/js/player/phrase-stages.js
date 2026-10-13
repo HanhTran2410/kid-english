@@ -105,7 +105,7 @@ export async function runDo(ctx, phrase) {
   ctx.stage.querySelector('.phrase-card').append(did);
 
   scene.play();
-  await teacher.ask(`Your turn! ${phrase.en}!`);
+  await teacher.ask(`Your turn! ${phrase.en}!`, { meaning: phrase.vi });
   const didIt = await waitDid(ctx, did);
   teacher.endQuestion();
   if (didIt) {
@@ -140,7 +140,7 @@ export async function runSays(ctx) {
     const did = h('button.did-btn', { type: 'button', 'aria-label': 'Bé đã làm', text: '✔' });
     ctx.stage.querySelector('.phrase-card').append(did);
     scene.play();
-    await teacher.ask(`${phrase.en}!`);
+    await teacher.ask(`${phrase.en}!`, { meaning: phrase.vi });
     const didIt = await waitDid(ctx, did);
     teacher.endQuestion();
     if (didIt) {
@@ -230,7 +230,7 @@ export async function pickPhrase(ctx, target, options, { canAward = true } = {})
   ctx.stage.replaceChildren(h('div.choices', { dataset: { count: String(buttons.length) } }, ...buttons));
 
   scenes.forEach((s) => s.play(1));
-  await teacher.ask(`Which one is: ${target.en}?`);
+  await teacher.ask(`Which one is: ${target.en}?`, { meaning: target.vi });
 
   const key = phraseKey(target.en);
   let wrong = 0;
