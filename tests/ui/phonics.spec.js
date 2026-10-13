@@ -137,3 +137,23 @@ test('ảnh thật (512px) trong sơ đồ nằm gọn trong thẻ, thẻ có �
   expect(img.x + img.width).toBeLessThanOrEqual(card.x + card.width + 1);
   expect(img.y + img.height).toBeLessThanOrEqual(label.y + 1);
 });
+
+test('thẻ bài phonics: có ảnh đã thêm thì dùng ảnh làm bìa (thay emoji); bài chưa có ảnh vẫn là emoji', async ({ page }) => {
+  await startApp(page);
+  await page.evaluate(async () => {
+    const { setWordImage } = await import('/js/db.js');
+    const db = window.kidEnglish.db;
+    const lesson = (await db.getAll('lessons')).find((l) => l.builtin === 'phonics-a-f');
+    for (const word of ['bear', 'bus']) {
+      const c = document.createElement('canvas'); c.width = 64; c.height = 64;
+      c.getContext('2d').fillRect(0, 0, 64, 64);
+      const blob = await new Promise((r) => c.toBlob(r, 'image/png'));
+      await setWordImage(db, { lessonId: lesson.id, word, blob, mimeType: 'image/png', width: 64, height: 64 });
+    }
+  });
+  await page.getByRole('button', { name: 'Chữ cái' }).click();
+  const af = page.locator('.lesson-card[aria-label="Letters A–F"]');
+  await expect(af.locator('img')).toBeVisible();
+  expect(['bear', 'bus']).toContain(await af.getAttribute('data-cover'));
+  await expect(page.locator('.lesson-card[aria-label="Letters G–L"] img')).toHaveCount(0);
+});

@@ -55,6 +55,7 @@
 ```
   - Mã ổn định: chữ = `letter`, từ = `en` (trong một chữ); `builtin` cho bài có sẵn.
   - **Máy cũ:** khi mở app, bài có sẵn (`builtin`) **tự cập nhật** `letters` theo dữ liệu mới (ví dụ bỏ *orange*), giữ tên, số bài, chỗ học dở, số lần học.
+- **Ảnh bìa thẻ bài** (app 0.8.4): ảnh ngẫu nhiên trong các ảnh bố mẹ đã thêm cho bài; chưa có thì emoji.
 - **Ảnh:** emoji mặc định; Góc bố mẹ có mục **"Ảnh chữ Aa"** cho từng chữ — ảnh lưới AI, **mỗi ô một từ theo đúng thứ tự dữ liệu**, ảnh không có chữ in sẵn; lưu trong kho `images` theo bài + từ. Không có ảnh hoặc ảnh lỗi thì dùng emoji, bài không hỏng. Không bắt buộc tạo ảnh.
 
 ## 5. Các bước của một bài

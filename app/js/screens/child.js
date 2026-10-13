@@ -176,6 +176,12 @@ export function lessonsScreen(app, { kind = WORDS_KIND } = {}) {
       const images = await app.db.getAllByIndex('images', 'lessonId', lesson.id);
       const firstKey = normalizeWord(lesson.words[0]?.en ?? '');
       cover = images.find((img) => img.word === firstKey) ?? null;
+    } else if (lesson.letters?.length) {
+      // Bài phonics: ảnh NGẪU NHIÊN trong các ảnh bố mẹ đã thêm cho từ của bài; chưa có thì ảnh mới nhất của từ đầu tiên
+      // (ví dụ từ đó có ảnh ở bài từ vựng); không có nữa thì emoji.
+      const images = await app.db.getAllByIndex('images', 'lessonId', lesson.id);
+      cover = images.length ? images[Math.floor(Math.random() * images.length)]
+        : await latestImageForWord(app.db, lesson.letters[0].words[0]?.en ?? '');
     } else if (lesson.numbers?.length) {
       if (lesson.mode === 'game') {
         // Thẻ trò chơi: ảnh NGẪU NHIÊN của một đồ vật khác đồ vật đầu tiên (đồ vật đầu là ảnh bìa của bài đếm) — để
