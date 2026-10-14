@@ -103,7 +103,7 @@ export function homeScreen(app) {
   app.root.append(
     h('header.home-top', {}, parentButton(app, { dot: due })),
     h('div.home-grid', {},
-      big('📚', 'Lessons', 'Bài học', () => app.go('lessons'), '.lessons'),
+      big('📚', 'Words', 'Từ vựng', () => app.go('lessons'), '.lessons'),
       big('💬', 'Phrases', 'Câu nói', () => app.go('phrases'), '.phrases'),
       big('🔢', 'Numbers', 'Số đếm', () => app.go('numbers'), '.numbers'),
       // Chữ cái và âm (SPEC-phonics.md): nút thứ 8, lưới 2 × 4 / 4 × 2 vừa khít.

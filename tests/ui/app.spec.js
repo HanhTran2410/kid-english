@@ -55,7 +55,7 @@ test('nhập bài → xem trước → lưu → bài có trong danh sách → h�
   await page.getByRole('button', { name: '← Quay lại' }).click();
   await page.getByRole('button', { name: 'Về màn hình của bé' }).click();
 
-  await page.getByRole('button', { name: 'Bài học' }).click();
+  await page.getByRole('button', { name: 'Từ vựng' }).click();
   const card = page.getByRole('button', { name: 'Fruits', exact: true });
   await expect(card).toBeVisible();
   await expect(card.locator('.lesson-stars')).toHaveText('');
@@ -65,7 +65,7 @@ test('nhập bài → xem trước → lưu → bài có trong danh sách → h�
   await expect(page.locator('.prize-sticker')).toBeVisible();
   await page.locator('.done-btn').click();
 
-  await page.getByRole('button', { name: 'Bài học' }).click();
+  await page.getByRole('button', { name: 'Từ vựng' }).click();
   await expect(page.getByRole('button', { name: 'Fruits', exact: true }).locator('.lesson-stars')).toHaveText('⭐');
 
   const spoken = await page.evaluate(() => window.__spoken);
@@ -80,7 +80,7 @@ test('nhập bài → xem trước → lưu → bài có trong danh sách → h�
 test('không có nhận dạng giọng nói và không có mic: bài vẫn chạy hết (chế độ chỉ nghe)', async ({ page }) => {
   await fakeSpeech(page, { recognition: false, mic: false });
   await startApp(page);
-  await page.getByRole('button', { name: 'Bài học' }).click();
+  await page.getByRole('button', { name: 'Từ vựng' }).click();
   await page.getByRole('button', { name: 'Colors', exact: true }).click();
   await playThrough(page);
   await page.locator('.done-btn').click();
@@ -94,7 +94,7 @@ test('không có nhận dạng giọng nói và không có mic: bài vẫn chạ
 
 test('học dở rồi tải lại trang: Học tiếp vào đúng chỗ dừng, Học lại về đầu bài', async ({ page }) => {
   await startApp(page);
-  await page.getByRole('button', { name: 'Bài học' }).click();
+  await page.getByRole('button', { name: 'Từ vựng' }).click();
   await page.getByRole('button', { name: 'Animals', exact: true }).click();
   // Chờ học xong 3 thẻ từ (bước thứ 4 đang chạy).
   await expect.poll(async () => page.evaluate(async () => {
@@ -104,7 +104,7 @@ test('học dở rồi tải lại trang: Học tiếp vào đúng chỗ dừng,
 
   await page.reload();
   await page.getByRole('button', { name: 'Bắt đầu' }).click();
-  await page.getByRole('button', { name: 'Bài học' }).click();
+  await page.getByRole('button', { name: 'Từ vựng' }).click();
   const card = page.getByRole('button', { name: 'Animals', exact: true });
   await expect(card.locator('.resume-bar')).toBeVisible();
   const resume = await page.evaluate(async () => (await window.kidEnglish.db.getAll('lessons')).find((l) => l.title === 'Animals').resume);
@@ -117,7 +117,7 @@ test('học dở rồi tải lại trang: Học tiếp vào đúng chỗ dừng,
   await expect(page.locator('.word-label')).toHaveText(words[resume.index]);
 
   await page.getByRole('button', { name: 'Về màn hình chính' }).click();
-  await page.getByRole('button', { name: 'Bài học' }).click();
+  await page.getByRole('button', { name: 'Từ vựng' }).click();
   await page.getByRole('button', { name: 'Animals', exact: true }).click();
   await page.getByRole('button', { name: 'Học lại' }).click();
   await expect(page.locator('.word-label')).toHaveText('dog');
@@ -144,7 +144,7 @@ test('hết giờ thì Bông đi ngủ; nhấn giữ 🌙 cho học thêm', asyn
   await expect(page.locator('.sleep-bunny')).toBeVisible();
   expect(await page.evaluate(() => window.__spoken)).toContain("I'm sleepy! Bye-bye!");
   await hold(page, page.getByRole('button', { name: /cho học thêm 15 phút/ }));
-  await expect(page.getByRole('button', { name: 'Bài học' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Từ vựng' })).toBeVisible();
 });
 
 test('bộ sưu tập sticker: học xong được sticker, chạm vào thì Bông đọc tên', async ({ page }) => {
@@ -174,7 +174,7 @@ test('ôn tập: chưa học từ nào thì nút mờ; học xong thì ôn đư�
   await review.click();
   expect(await page.evaluate(() => window.__spoken)).toContain("Let's learn a lesson first!");
 
-  await page.getByRole('button', { name: 'Bài học' }).click();
+  await page.getByRole('button', { name: 'Từ vựng' }).click();
   await page.getByRole('button', { name: 'Animals', exact: true }).click();
   await playThrough(page);
   await page.locator('.done-btn').click();
@@ -196,7 +196,7 @@ test('tắt mạng vẫn mở được app và học được bài đã lưu (se
   await context.setOffline(true);
   await page.reload();
   await page.getByRole('button', { name: 'Bắt đầu' }).click();
-  await page.getByRole('button', { name: 'Bài học' }).click();
+  await page.getByRole('button', { name: 'Từ vựng' }).click();
   await page.getByRole('button', { name: 'Animals', exact: true }).click();
   await expect(page.locator('.word-label')).toHaveText('dog');
   await context.setOffline(false);
@@ -238,12 +238,12 @@ test('nghe lại giọng bé: lọc theo bài, chọn tất cả rồi xóa', as
 
 test('nút ▶ luôn hiện và bấm là sang bước tiếp ngay; nút 🏠 bấm là về menu chính', async ({ page }) => {
   await startApp(page);
-  await page.getByRole('button', { name: 'Bài học' }).click();
+  await page.getByRole('button', { name: 'Từ vựng' }).click();
   // Từ màn danh sách bài, bấm 🏠 là về menu chính.
   await page.getByRole('button', { name: 'Về màn hình chính' }).click();
   await expect(page.getByRole('button', { name: 'Nói chuyện với Bông' })).toBeVisible();
 
-  await page.getByRole('button', { name: 'Bài học' }).click();
+  await page.getByRole('button', { name: 'Từ vựng' }).click();
   await page.getByRole('button', { name: 'Animals', exact: true }).click();
   await expect(page.locator('.word-label')).toHaveText('dog');
   const next = page.getByRole('button', { name: 'Tiếp' });
@@ -256,13 +256,13 @@ test('nút ▶ luôn hiện và bấm là sang bước tiếp ngay; nút 🏠 b�
   await page.getByRole('button', { name: 'Về màn hình chính' }).click();
   await expect(page.getByRole('button', { name: 'Nói chuyện với Bông' })).toBeVisible();
   // Chỗ dừng đã được lưu để "Học tiếp".
-  await page.getByRole('button', { name: 'Bài học' }).click();
+  await page.getByRole('button', { name: 'Từ vựng' }).click();
   await expect(page.getByRole('button', { name: 'Animals', exact: true }).locator('.resume-bar')).toBeVisible();
 });
 
 test('bấm nhẹ ⚙️ thì hiện hướng dẫn nhấn giữ; màn hình chính có chữ giải thích', async ({ page }) => {
   await startApp(page);
-  for (const label of ['Bài học', 'Ôn tập', 'Nói chuyện với Bông', 'Sticker của bé', 'Bố mẹ (giữ 3 giây)']) {
+  for (const label of ['Từ vựng', 'Ôn tập', 'Nói chuyện với Bông', 'Sticker của bé', 'Bố mẹ (giữ 3 giây)']) {
     await expect(page.getByText(label, { exact: true })).toBeVisible();
   }
   await page.getByRole('button', { name: /Góc bố mẹ/ }).click();
@@ -293,7 +293,7 @@ test('Góc bố mẹ: bớt từng sticker và xóa hết sticker', async ({ pag
 
 test('chọn đúng hình thì sao bay ra ngay trên hình đó', async ({ page }) => {
   await startApp(page);
-  await page.getByRole('button', { name: 'Bài học' }).click();
+  await page.getByRole('button', { name: 'Từ vựng' }).click();
   await page.getByRole('button', { name: 'Animals', exact: true }).click();
   const next = page.getByRole('button', { name: 'Tiếp' });
   // Bấm ▶ để sang nhanh tới phần trò chơi.
@@ -473,7 +473,7 @@ test('chia sẻ bài: xuất file bài rồi nhập lại trên máy khác', asy
 
 test('học xong: hộp quà mở nắp, sticker bay vào, rồi mới hiện nút ✔', async ({ page }) => {
   await startApp(page);
-  await page.getByRole('button', { name: 'Bài học' }).click();
+  await page.getByRole('button', { name: 'Từ vựng' }).click();
   await page.getByRole('button', { name: 'Colors', exact: true }).click();
   await playThrough(page);
   await expect(page.locator('.gift')).toBeVisible();
@@ -498,7 +498,7 @@ test('bài cùng tên được đặt "Animals 2"; danh sách bài chia tab theo
   await page.getByRole('button', { name: '← Quay lại' }).click();
   await page.getByRole('button', { name: 'Về màn hình của bé' }).click();
 
-  await page.getByRole('button', { name: 'Bài học' }).click();
+  await page.getByRole('button', { name: 'Từ vựng' }).click();
   const tabs = page.locator('.topic-tab');
   await expect(tabs).toHaveText(['⭐All', '🐸Animals', '🌈Colors']);
   await expect(page.locator('.lesson-card')).toHaveCount(3);
@@ -519,7 +519,7 @@ test('ảnh không đọc được thì hiện emoji thay vì biểu tượng �
       mimeType: 'image/jpeg', createdAt: Date.now(),
     });
   });
-  await page.getByRole('button', { name: 'Bài học' }).click();
+  await page.getByRole('button', { name: 'Từ vựng' }).click();
   await page.getByRole('button', { name: 'Animals', exact: true }).click();
   await expect(page.locator('.word-label')).toHaveText('dog');
   await expect(page.locator('.visual.big .emoji')).toHaveText('🐶');

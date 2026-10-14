@@ -10,7 +10,7 @@ test.beforeEach(async ({ page }) => {
 
 test('ôn tập: bé chạm 🔊 thì Bông đọc lại câu hỏi "Where is the …?"', async ({ page }) => {
   await startApp(page);
-  await page.getByRole('button', { name: 'Bài học' }).click();
+  await page.getByRole('button', { name: 'Từ vựng' }).click();
   await page.getByRole('button', { name: 'Animals', exact: true }).click();
   await playThrough(page);
   await page.locator('.done-btn').click();
@@ -52,7 +52,7 @@ test('bài câu: không có câu hỏi thì không có 🔊; tới lượt bé l
 
 test('chạm 🔊: hiện phụ đề tiếng Anh + tiếng Việt (có nghĩa của từ), chạm vào thì ẩn, tự ẩn sau ~5 giây; không chạm loa thì không có phụ đề', async ({ page }) => {
   await startApp(page);
-  await page.getByRole('button', { name: 'Bài học' }).click();
+  await page.getByRole('button', { name: 'Từ vựng' }).click();
   await page.getByRole('button', { name: 'Animals', exact: true }).click();
   await playThrough(page);
   await page.locator('.done-btn').click();

@@ -17,7 +17,7 @@ for (const [name, viewport] of [['iphone', { width: 390, height: 844 }], ['ipad'
   await shot('1-start');
   await page.getByRole('button', { name: 'Bắt đầu' }).click();
   await shot('2-home');
-  await page.getByRole('button', { name: 'Bài học' }).click();
+  await page.getByRole('button', { name: 'Từ vựng' }).click();
   await page.waitForTimeout(300);
   await shot('3-lessons');
   await page.getByRole('button', { name: 'Animals' }).click();

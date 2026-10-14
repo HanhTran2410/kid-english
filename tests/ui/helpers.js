@@ -44,7 +44,7 @@ export async function fakeSpeech(page, { recognition = false, mic = true } = {})
 export async function startApp(page) {
   await page.goto('/?fast&nosw');
   await page.getByRole('button', { name: 'Bắt đầu' }).click();
-  await page.getByRole('button', { name: 'Bài học' }).waitFor();
+  await page.getByRole('button', { name: 'Từ vựng' }).waitFor();
 }
 
 /** Nhấn giữ một nút (⚙️ 3 giây, 🏠 1,5 giây...). */

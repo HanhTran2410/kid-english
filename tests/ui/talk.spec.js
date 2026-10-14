@@ -113,6 +113,8 @@ test('Hồ sơ của bé: lưu tên, tuổi, gia đình → bài My family hỏi
   await page.getByRole('button', { name: '🔊 Nghe thử' }).click();
   await expect.poll(async () => (await spoken(page)).includes('My name is Bin. Nice to meet you, Bin!')).toBe(true);
   await page.getByRole('button', { name: 'Lưu', exact: true }).click();
+  // Chờ lưu xong xuống bộ nhớ rồi mới tải lại trang (không thì mất hồ sơ vừa lưu).
+  await expect(page.getByText('Đã lưu hồ sơ của bé.')).toBeVisible();
   expect(await page.evaluate(() => window.kidEnglish.settings.childProfile)).toMatchObject({ name: 'Bin', age: 4, family: ['mummy', 'grandma'] });
 
   await page.goto('/?fast&nosw');
