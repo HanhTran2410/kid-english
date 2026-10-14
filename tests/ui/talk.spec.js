@@ -276,3 +276,24 @@ test('ảnh: bố mẹ thêm ảnh cho nút đập tay và ảnh thật của m�
   await page.getByRole('button', { name: 'My family', exact: true }).click();
   await page.waitForFunction(() => window.__sawMum === true, null, { timeout: 30000 });
 });
+
+test('bài có sẵn trong máy còn mô tả hình cũ (cùng số phiên bản) → mở app tự cập nhật; prompt ảnh My family ghi "Mother (Mummy)", không "One mummy"', async ({ page, context }) => {
+  await context.grantPermissions(['clipboard-read', 'clipboard-write']);
+  await fakeSpeech(page);
+  await startApp(page);
+  await page.evaluate(async () => {
+    const { db } = window.kidEnglish;
+    const lesson = (await db.getAll('lessons')).find((l) => l.builtin === 'talk-family');
+    for (const t of lesson.turns) if (t.id === 'mummy') { t.draw = 'Mummy'; delete t.pictureName; }
+    await db.put('lessons', lesson);
+  });
+  await page.goto('/?fast&nosw');
+  await page.getByRole('button', { name: 'Bắt đầu' }).click();
+  await openParent(page);
+  await page.getByRole('button', { name: 'Quản lý bài' }).click();
+  await page.getByRole('button', { name: /My family/ }).click();
+  await page.getByRole('button', { name: 'Copy prompt ảnh lưới' }).click();
+  const prompt = await page.evaluate(() => navigator.clipboard.readText());
+  expect(prompt).toContain('Cell 1 — Mother (Mummy): a smiling young mother');
+  expect(prompt).not.toMatch(/One mummy|— Mummy:/);
+});

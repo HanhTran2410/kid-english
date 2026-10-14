@@ -128,14 +128,19 @@ export async function upgradePhonicsLessons(app) {
 }
 
 /**
- * Bài hội thoại có sẵn đã có trên máy từ bản cũ (SPEC-talk mục 13.4): bản trên máy cũ hơn `builtinVersion` của app thì
+ * Bài hội thoại có sẵn đã có trên máy từ bản cũ (SPEC-talk mục 13.4): bản trên máy cũ hơn `builtinVersion` của app hoặc nội dung khác thì
  * thay phần lượt và câu kết. Giữ nguyên mã bài, tên bố mẹ đã đổi, số bài, ảnh, tiến độ (mã lượt cũ không đổi), số lần học.
  */
 export async function upgradeTalkLessons(app) {
   const fresh = new Map(builtInTalkLessons().map((l) => [l.builtin, l]));
   for (const lesson of await app.db.getAll('lessons')) {
     const src = fresh.get(lesson.builtin);
-    if (!src || (lesson.builtinVersion ?? 1) >= src.builtinVersion) continue;
+    if (!src) continue;
+    // Bài có sẵn bố mẹ không sửa được lượt: nội dung khác bản của app (kể cả mô tả hình cho prompt ảnh) là cập nhật,
+    // không chỉ dựa vào số phiên bản (0.10.1 sửa mô tả hình mà quên tăng số → prompt vẫn lấy bản cũ trong máy).
+    const same = (lesson.builtinVersion ?? 1) >= src.builtinVersion
+      && JSON.stringify([lesson.turns, lesson.outro, lesson.outroVi]) === JSON.stringify([src.turns, src.outro, src.outroVi]);
+    if (same) continue;
     await app.db.put('lessons', {
       ...lesson, turns: src.turns, outro: src.outro, outroVi: src.outroVi, builtinVersion: src.builtinVersion, resume: null,
     });

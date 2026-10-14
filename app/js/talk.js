@@ -10,7 +10,7 @@ export const MOODS = ['happy', 'surprise', 'sad', 'sleep'];
 /** Hiệu ứng khi bé chạm ở lượt động tác. */
 export const EFFECTS = ['clap', 'hearts', 'confetti'];
 /** Phiên bản nội dung 5 bài có sẵn: tăng khi đổi lượt để bài đã có trên máy tự cập nhật (SPEC-talk mục 13.4). */
-export const TALK_BUILTIN_VERSION = 2;
+export const TALK_BUILTIN_VERSION = 3;
 
 /**
  * Thành viên gia đình có thể chọn trong hồ sơ (Mummy, Daddy mặc định có).
