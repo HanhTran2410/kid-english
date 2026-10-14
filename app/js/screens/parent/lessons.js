@@ -10,6 +10,7 @@ import { isPhraseLesson, MOTION_NAMES, frameGroups, frameSteps, defaultFrameMapp
 import { buildFramesPrompt } from '../../prompts.js';
 import { isNumberLesson, numberKey, countPhrase } from '../../numbers.js';
 import { isPhonicsLesson, letterKey } from '../../phonics.js';
+import { isTalkLesson, talkKey } from '../../talk.js';
 import { getFrameSets, setFrameSet, removeFrameSet, frameBlobs } from '../../db.js';
 import { createFlipbook } from '../../player/flipbook.js';
 import { createScene } from '../../player/scene.js';
@@ -132,6 +133,10 @@ export function lessonDetailView(app, { lessonId }) {
 
     // Đổi tên và chủ đề
     const rename = renameSection(app, lesson);
+    if (isTalkLesson(lesson)) {
+      body.append(rename, await talkDetailSection(app, lesson), shareSection(app, lesson), section(null, deleteButton(app, lesson)));
+      return;
+    }
     if (isPhonicsLesson(lesson)) {
       body.append(rename, await phonicsDetailSection(app, lesson));
       // Ảnh cho từ của từng chữ: mỗi chữ một ảnh lưới (dùng lại phần ảnh lưới của bài từ vựng).
@@ -370,18 +375,37 @@ function shareSection(app, lesson) {
 
 /** Đổi số bài, tên bài, chủ đề (dùng chung cho bài từ vựng và bài câu). */
 function kindLabel(lesson) {
+  if (isTalkLesson(lesson)) return '🗨️ Hội thoại';
   if (isPhonicsLesson(lesson)) return '🔤 Chữ cái';
   if (isNumberLesson(lesson)) return lesson.mode === 'game' ? '🔢 Số đếm (trò chơi)' : '🔢 Số đếm';
   return isPhraseLesson(lesson) ? '💬 Câu nói' : '📚 Từ vựng';
 }
 
 function sizeLabel(lesson) {
+  if (isTalkLesson(lesson)) return `${lesson.turns.length} lượt`;
   if (isPhonicsLesson(lesson)) return `${lesson.letters.length} chữ`;
   if (isNumberLesson(lesson)) return `${lesson.numbers.length} số`;
   return isPhraseLesson(lesson) ? `${lesson.phrases.length} câu` : `${lesson.words.length} từ`;
 }
 
 /** Trang bài số (SPEC-numbers mục 7): nội dung có sẵn, chỉ xem tiến độ từng số. */
+/** Trang bài hội thoại: các lượt (kiểu, câu hỏi) và tiến độ nói của từng lượt (SPEC-talk mục 8). */
+async function talkDetailSection(app, lesson) {
+  const TYPE = { greeting: 'Chào – đáp', free: 'Trả lời', choice: 'Chọn hình rồi nói', yesNo: 'Có / Không', askBack: 'Đổi vai (bé hỏi)' };
+  const rows = [];
+  for (const t of lesson.turns) {
+    const rec = await app.db.get('progress', talkKey(lesson, t.id));
+    rows.push(h('li', {},
+      h('span.p-emoji', { text: t.picture ?? '💬' }),
+      h('span.p-word', { text: `${TYPE[t.type] ?? t.type}: ${t.type === 'askBack' ? t.ask : t.ask}${t.needs?.length ? ` (cần: ${t.needs.join(', ')})` : ''}` }),
+      h('span.p-stars', { text: rec?.mastery ? '⭐'.repeat(rec.mastery) : '—' }),
+      h('span.p-meta', { text: rec ? `gặp ${rec.practiceCount} lần` : 'chưa học' })));
+  }
+  return section('Các lượt hội thoại',
+    h('p.muted', { text: 'Bài hội thoại có sẵn. Câu trả lời dùng tên, tuổi, gia đình trong "Hồ sơ của bé". Bé có tiếng nói là được ghi nhận (không cần nói đúng), mỗi lượt tối đa 1 lần/ngày, tối đa 2⭐; không bao giờ trừ sao.' }),
+    h('ul.progress-list', {}, ...rows));
+}
+
 /** Trang bài phonics: tiến độ từng chữ và các từ của chữ (SPEC-phonics mục 10). */
 async function phonicsDetailSection(app, lesson) {
   const rows = [];

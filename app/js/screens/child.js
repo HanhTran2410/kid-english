@@ -15,6 +15,7 @@ import { groupByTopic } from '../lesson.js';
 import { lessonKind, PHRASE_KIND, WORDS_KIND } from '../phrase.js';
 import { NUMBER_KIND } from '../numbers.js';
 import { PHONICS_KIND } from '../phonics.js';
+import { TALK_KIND } from '../talk.js';
 
 const ALL = '__all__';
 import { bongElement } from '../bong.js';
@@ -110,7 +111,7 @@ export function homeScreen(app) {
       reviewBtn,
       // Trò chơi tổng hợp (SPEC-mix mục 4): mọi bài kể cả chưa học, chỉ chạm chọn.
       big('🎲', 'Play', 'Trò chơi', () => app.go('play'), '.play'),
-      big(bongElement('home-bong'), `Learn with ${characterName(app)}`, `Học cùng ${characterName(app)}`, () => app.go('learn'), '.learn'),
+      big(bongElement('home-bong'), `Talk with ${characterName(app)}`, `Nói chuyện với ${characterName(app)}`, () => app.go('learn'), '.learn'),
       // 7 nút trong một lưới: 4 cột trên màn rộng, 2 cột × 4 hàng trên iPhone dọc.
       big('🎁', 'Stickers', 'Sticker của bé', () => app.go('stickers'), '.stickers')),
     bunny.el,
@@ -131,7 +132,7 @@ export function homeScreen(app) {
  * Danh sách bài của bé: bài từ vựng (mặc định), bài câu (`kind: 'phrases'`, SPEC-v1.0 mục 6.2) hoặc bài số (SPEC-numbers mục 2).
  */
 export function lessonsScreen(app, { kind = WORDS_KIND } = {}) {
-  const playScreen = { [PHRASE_KIND]: 'phrase-lesson', [NUMBER_KIND]: 'number-lesson', [PHONICS_KIND]: 'phonics-lesson' }[kind] ?? 'lesson';
+  const playScreen = { [PHRASE_KIND]: 'phrase-lesson', [NUMBER_KIND]: 'number-lesson', [PHONICS_KIND]: 'phonics-lesson', [TALK_KIND]: 'talk-lesson' }[kind] ?? 'lesson';
   app.lessonTabs ??= {};
   app.root.className = `child-screen lessons ${kind}`;
   const grid = h('div.lesson-grid');
@@ -218,7 +219,8 @@ export function lessonsScreen(app, { kind = WORDS_KIND } = {}) {
     h('span.lesson-title', { text: lesson.title }),
     // Hàng emoji các từ trong bài: bé chưa biết đọc vẫn phân biệt được "Animals" và "Animals 2".
     // Bài phonics: hàng chữ cái của bài ("A B C D E F").
-    h('span.lesson-words', { text: lesson.letters ? lesson.letters.map((l) => l.letter.toUpperCase()).join(' ') : items.slice(0, 4).map((w) => w.emoji).join('') }),
+    h('span.lesson-words', { text: lesson.letters ? lesson.letters.map((l) => l.letter.toUpperCase()).join(' ')
+      : lesson.turns ? lesson.titleVi ?? '' : items.slice(0, 4).map((w) => w.emoji).join('') }),
     h('span.lesson-stars', { text: n ? (n <= 5 ? '⭐'.repeat(n) : `⭐×${n}`) : '' }),
     lesson.resume ? h('span.resume-bar', {}, h('span', { style: { width: `${Math.round((lesson.resume.progress ?? 0) * 100)}%` } })) : null);
   };
@@ -226,9 +228,13 @@ export function lessonsScreen(app, { kind = WORDS_KIND } = {}) {
   (async () => {
     const lessons = (await listLessons(app.db)).filter((l) => lessonKind(l) === kind);
     // Bài số: theo thứ tự bài (Đếm 1–10 trước Đếm 11–20), không theo bài mới nhất.
-    if (kind === NUMBER_KIND || kind === PHONICS_KIND) lessons.sort((a, b) => (a.no ?? 0) - (b.no ?? 0));
+    if ([NUMBER_KIND, PHONICS_KIND, TALK_KIND].includes(kind)) lessons.sort((a, b) => (a.no ?? 0) - (b.no ?? 0));
+    // Nói chuyện với Bông: thẻ cuối là "Ôn từ đã học" (màn Học cùng Bông cũ, giữ nguyên).
+    const extra = kind === TALK_KIND ? [h('button.lesson-card.review-card', {
+      type: 'button', 'aria-label': 'Ôn từ đã học', onclick: () => { play('tap'); app.go('learn-review'); },
+    }, wordVisual({ emoji: '⭐', word: 'Review' }, 'cover'), h('span.lesson-title', { text: 'Review words' }), h('span.lesson-words', { text: 'Ôn từ đã học' }))] : [];
     if (!lessons.length) {
-      grid.append(h('div.empty', { text: '📭' }));
+      grid.append(...(extra.length ? extra : [h('div.empty', { text: '📭' })]));
       return;
     }
     const cards = new Map();
@@ -239,7 +245,7 @@ export function lessonsScreen(app, { kind = WORDS_KIND } = {}) {
       app.lessonTabs[kind] = topic;
       for (const t of tabs.children) t.classList.toggle('active', t.dataset.topic === topic);
       const visible = topic === ALL ? lessons : groups.find((g) => g.topic === topic)?.lessons ?? lessons;
-      grid.replaceChildren(...visible.map((l) => cards.get(l.id)));
+      grid.replaceChildren(...visible.map((l) => cards.get(l.id)), ...extra);
     };
     const tab = (topic, emoji, label) => h('button.topic-tab', {
       type: 'button',

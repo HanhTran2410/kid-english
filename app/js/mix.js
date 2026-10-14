@@ -5,6 +5,7 @@ import { progressKey, isLearned, isUnknown, isStale } from './progress.js';
 import { phraseKey, lessonKind, PHRASE_KIND } from './phrase.js';
 import { NUMBER_KIND, numberKey } from './numbers.js';
 import { PHONICS_KIND, letterKey } from './phonics.js';
+import { TALK_KIND } from './talk.js';
 
 export const REVIEW_COUNT = 8;
 export const PLAY_COUNT = 10;
@@ -26,6 +27,7 @@ export function collectItems(lessons, records = new Map()) {
   };
   for (const lesson of lessons) {
     const kind = lessonKind(lesson);
+    if (kind === TALK_KIND) continue; // hội thoại chưa vào Ôn tập / Trò chơi (SPEC-talk T-b3)
     if (kind === PHONICS_KIND) {
       for (const l of lesson.letters ?? []) add('letter', letterKey(l.letter), l.letter.toUpperCase(), l.words[0]?.emoji ?? '', lesson.id, l);
     } else if (kind === NUMBER_KIND) {

@@ -17,6 +17,7 @@ import { settingsView } from './settings.js';
 import { backupView } from './backup.js';
 import { bongElement } from '../../bong.js';
 import { stickersAdminView } from './stickers.js';
+import { profileView } from './profile.js';
 
 const VIEWS = {
   menu: menuView,
@@ -30,6 +31,7 @@ const VIEWS = {
   settings: settingsView,
   backup: backupView,
   stickers: stickersAdminView,
+  profile: profileView,
 };
 
 export function parentScreen(app, params = {}) {
@@ -55,6 +57,7 @@ function menuView(app) {
       item('💬', 'Tạo bài câu', () => goParent(app, 'create-phrases')),
       item('📋', 'Dán bài', () => goParent(app, 'paste')),
       item('📚', 'Quản lý bài', () => goParent(app, 'lessons')),
+      item('🧒', 'Hồ sơ của bé', () => goParent(app, 'profile')),
       item('📈', 'Bé đã học', () => goParent(app, 'progress')),
       item('🎙️', 'Nghe lại giọng bé', () => goParent(app, 'recordings')),
       item('👩‍🏫', 'Copy prompt "cô giáo"', () => copyTeacherPrompt(teacherPrompt)),

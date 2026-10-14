@@ -153,7 +153,8 @@ test('bộ sưu tập sticker: học xong được sticker, chạm vào thì Bô
   await expect(page.locator('.sticker-count')).toHaveText('0/100');
   await page.getByRole('button', { name: 'Về màn hình chính' }).click();
 
-  await page.getByRole('button', { name: 'Học cùng Bông' }).click();
+  await page.getByRole('button', { name: 'Nói chuyện với Bông' }).click();
+  await page.getByRole('button', { name: 'Ôn từ đã học' }).click();
   await playThrough(page);
   await page.locator('.done-btn').click();
 
@@ -240,7 +241,7 @@ test('nút ▶ luôn hiện và bấm là sang bước tiếp ngay; nút 🏠 b�
   await page.getByRole('button', { name: 'Bài học' }).click();
   // Từ màn danh sách bài, bấm 🏠 là về menu chính.
   await page.getByRole('button', { name: 'Về màn hình chính' }).click();
-  await expect(page.getByRole('button', { name: 'Học cùng Bông' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Nói chuyện với Bông' })).toBeVisible();
 
   await page.getByRole('button', { name: 'Bài học' }).click();
   await page.getByRole('button', { name: 'Animals', exact: true }).click();
@@ -253,7 +254,7 @@ test('nút ▶ luôn hiện và bấm là sang bước tiếp ngay; nút 🏠 b�
   await expect(page.locator('.word-label')).toHaveText('cow');
 
   await page.getByRole('button', { name: 'Về màn hình chính' }).click();
-  await expect(page.getByRole('button', { name: 'Học cùng Bông' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Nói chuyện với Bông' })).toBeVisible();
   // Chỗ dừng đã được lưu để "Học tiếp".
   await page.getByRole('button', { name: 'Bài học' }).click();
   await expect(page.getByRole('button', { name: 'Animals', exact: true }).locator('.resume-bar')).toBeVisible();
@@ -261,7 +262,7 @@ test('nút ▶ luôn hiện và bấm là sang bước tiếp ngay; nút 🏠 b�
 
 test('bấm nhẹ ⚙️ thì hiện hướng dẫn nhấn giữ; màn hình chính có chữ giải thích', async ({ page }) => {
   await startApp(page);
-  for (const label of ['Bài học', 'Ôn tập', 'Học cùng Bông', 'Sticker của bé', 'Bố mẹ (giữ 3 giây)']) {
+  for (const label of ['Bài học', 'Ôn tập', 'Nói chuyện với Bông', 'Sticker của bé', 'Bố mẹ (giữ 3 giây)']) {
     await expect(page.getByText(label, { exact: true })).toBeVisible();
   }
   await page.getByRole('button', { name: /Góc bố mẹ/ }).click();
@@ -567,8 +568,8 @@ test('đổi tên nhân vật trong Cài đặt thì màn hình chính dùng tê
   await page.getByRole('textbox').first().press('Tab');
   await page.getByRole('button', { name: '← Quay lại' }).click();
   await page.getByRole('button', { name: 'Về màn hình của bé' }).click();
-  await expect(page.getByText('Learn with Thỏ', { exact: true })).toBeVisible();
-  await expect(page.getByText('Học cùng Thỏ', { exact: true })).toBeVisible();
+  await expect(page.getByText('Talk with Thỏ', { exact: true })).toBeVisible();
+  await expect(page.getByText('Nói chuyện với Thỏ', { exact: true })).toBeVisible();
 });
 
 test('tạo bài: loại trừ từ theo chủ đề — hiện danh sách từ cùng chủ đề, đổi chủ đề thì cập nhật, thêm từ muốn tránh', async ({ page, context }) => {

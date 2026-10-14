@@ -4,6 +4,7 @@ import { parseLesson, createLessonRecord, baseTitle } from './lesson.js';
 import { ensureLessonNumbers } from './db.js';
 import { builtInNumberLessons } from './numbers.js';
 import { builtInPhonicsLessons } from './phonics.js';
+import { builtInTalkLessons } from './talk.js';
 
 export const SAMPLE_FILES = ['lessons/animals.json', 'lessons/colors.json'];
 export const PHRASE_SAMPLE_FILES = ['lessons/morning.json', 'lessons/actions.json'];
@@ -93,6 +94,19 @@ export async function seedSamplesOnce(app) {
       await app.setSetting('phonicsLessonsSeeded', [...phonicsSeeded, ...newPhonics]);
     } catch (err) {
       console.error('Không thêm được bài phonics', err);
+    }
+  }
+  // Bài hội thoại có sẵn: mỗi bài chỉ tự thêm MỘT lần (mở app lại không sinh bản sao).
+  const talkSeeded = app.settings.talkLessonsSeeded ?? [];
+  const newTalk = builtInTalkLessons().filter((l) => !talkSeeded.includes(l.builtin));
+  if (newTalk.length) {
+    try {
+      const now = Date.now();
+      for (const [i, lesson] of newTalk.entries()) await app.db.put('lessons', createLessonRecord(lesson, now - newTalk.length + i));
+      await ensureLessonNumbers(app.db);
+      await app.setSetting('talkLessonsSeeded', [...talkSeeded, ...newTalk.map((l) => l.builtin)]);
+    } catch (err) {
+      console.error('Không thêm được bài hội thoại', err);
     }
   }
 }

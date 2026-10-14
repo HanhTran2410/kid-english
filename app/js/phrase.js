@@ -4,6 +4,7 @@ import { normalizeWord, tokenize, wordCount } from './text.js';
 import { MISSING_EMOJI } from './lesson.js';
 import { NUMBER_KIND, isNumberLesson } from './numbers.js';
 import { PHONICS_KIND, isPhonicsLesson } from './phonics.js';
+import { TALK_KIND, isTalkLesson } from './talk.js';
 
 export const PHRASE_KIND = 'phrases';
 export const WORDS_KIND = 'words';
@@ -63,6 +64,7 @@ const FILLER = new Set(['the', 'a', 'an', 'your', 'my', 'our', 'his', 'her', 'it
 export const lessonKind = (lesson) => {
   if (isNumberLesson(lesson)) return NUMBER_KIND;
   if (isPhonicsLesson(lesson)) return PHONICS_KIND;
+  if (isTalkLesson(lesson)) return TALK_KIND;
   return lesson?.kind === PHRASE_KIND || Array.isArray(lesson?.phrases) ? PHRASE_KIND : WORDS_KIND;
 };
 export const isWordLesson = (lesson) => lessonKind(lesson) === WORDS_KIND;

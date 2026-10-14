@@ -12,6 +12,7 @@ import { numberLessonScreen } from './player/number-player.js';
 import { phonicsLessonScreen } from './player/phonics-player.js';
 import { mixScreen } from './player/mix-player.js';
 import { learnScreen } from './screens/learn.js';
+import { talkLessonScreen } from './player/talk-player.js';
 import { parentScreen } from './screens/parent/index.js';
 
 async function registerServiceWorker(app) {
@@ -87,7 +88,10 @@ async function boot() {
   app.register('phonics-lesson', phonicsLessonScreen);
   app.register('review', (a) => mixScreen(a, { mode: 'review' }));
   app.register('play', (a) => mixScreen(a, { mode: 'play' }));
-  app.register('learn', learnScreen);
+  // "Nói chuyện với Bông" (SPEC-talk): danh sách bài hội thoại + thẻ "Ôn từ đã học" (màn Học cùng Bông cũ).
+  app.register('learn', (a) => lessonsScreen(a, { kind: 'talk' }));
+  app.register('learn-review', learnScreen);
+  app.register('talk-lesson', talkLessonScreen);
   app.register('stickers', stickersScreen);
   app.register('sleep', sleepScreen);
   app.register('parent', parentScreen);

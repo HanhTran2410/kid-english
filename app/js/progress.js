@@ -115,7 +115,9 @@ export function mergeProgress(current, incoming) {
 }
 
 /** Bỏ các bản ghi tiến độ của câu (`phrase:…`) và số (`number:…`) — dùng cho phần từ vựng. */
-export const wordRecords = (records) => records.filter((r) => !/^(phrase|number|letter):/.test(String(r.word)));
+export const wordRecords = (records) => records.filter((r) => !/^(phrase|number|letter|talk):/.test(String(r.word)));
+/** Chỉ các bản ghi tiến độ của lượt hội thoại (SPEC-talk mục 8). */
+export const talkRecords = (records) => records.filter((r) => String(r.word).startsWith('talk:'));
 /** Chỉ các bản ghi tiến độ của chữ cái (SPEC-phonics mục 10). */
 export const letterRecords = (records) => records.filter((r) => String(r.word).startsWith('letter:'));
 /** Chỉ các bản ghi tiến độ của số (SPEC-numbers mục 6). */

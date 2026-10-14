@@ -53,11 +53,13 @@ export class Teacher {
   /** Hỏi bé một câu đang chờ trả lời: hiện nút 🔊 để bé nghe lại khi lỡ không để ý. */
   /**
    * @param {string} text câu hỏi tiếng Anh
-   * @param {{ meaning?: string }} [opts] meaning: nghĩa tiếng Việt của từ / câu trong câu hỏi (cho phụ đề khi chạm 🔊)
+   * @param {{ meaning?: string, vi?: string }} [opts] meaning: nghĩa tiếng Việt của từ / câu trong câu hỏi;
+   *   vi: bản tiếng Việt có sẵn của cả câu (bài hội thoại) — dùng thay cho bản dịch theo mẫu (phụ đề khi chạm 🔊)
    */
-  ask(text, { meaning = '' } = {}) {
+  ask(text, { meaning = '', vi = '' } = {}) {
     this.question = text;
     this.questionMeaning = meaning;
+    this.questionVi = vi;
     if (this.replayBtn) this.replayBtn.hidden = false;
     return this.say(text);
   }
@@ -72,7 +74,7 @@ export class Teacher {
     }
     if (!this.question || this.signal.aborted) return;
     // Phụ đề: câu tiếng Anh + tiếng Việt, hiện ~5 giây (chỉ khi chạm 🔊) — cả lúc Bông đang nói.
-    this.showCaption(this.question, translateQuestion(this.question, this.questionMeaning));
+    this.showCaption(this.question, this.questionVi || translateQuestion(this.question, this.questionMeaning));
     if (this.app.speaker.speaking) return;
     play('tap');
     this.bunny.set('idle');
@@ -101,6 +103,7 @@ export class Teacher {
   endQuestion() {
     this.question = null;
     this.questionMeaning = '';
+    this.questionVi = '';
     this.hideCaption();
     if (this.replayBtn) this.replayBtn.hidden = true;
   }

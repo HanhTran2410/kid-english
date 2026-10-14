@@ -71,7 +71,8 @@ test('Học cùng Bông: có lượt câu nói (làm theo + nói) và lượt s�
   await seedLearned(page, PHRASE_AND_NUMBERS);
   await page.goto('/?fast&nosw');
   await page.getByRole('button', { name: 'Bắt đầu' }).click();
-  await page.getByRole('button', { name: 'Học cùng Bông' }).click();
+  await page.getByRole('button', { name: 'Nói chuyện với Bông' }).click();
+  await page.getByRole('button', { name: 'Ôn từ đã học' }).click();
   await playThrough(page);
   await expect(page.locator('.prize-sticker')).toBeVisible();
 
