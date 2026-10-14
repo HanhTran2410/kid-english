@@ -1573,3 +1573,31 @@ a.btn { text-decoration: none; }
   .child-avatar { font-size: 30px; }
 }
 .bubble.child.listening .bubble-body { color: var(--ink-soft); }
+
+/* Hội thoại hấp dẫn hơn (SPEC-talk mục 13): Bông nảy khi nói, ảnh thay emoji, lượt động tác, hiệu ứng, hộp quà. */
+.bubble.bong.talking .bubble-avatar { animation: bong-hop 0.5s ease-in-out infinite; }
+@keyframes bong-hop { 50% { transform: translateY(-5px) rotate(-4deg); } }
+img.bubble-pic { width: clamp(64px, 16vmin, 110px); height: clamp(64px, 16vmin, 110px); object-fit: cover; border-radius: 16px; display: block; margin-bottom: 6px; }
+img.talk-choice-emoji { width: clamp(56px, 13vmin, 84px); height: clamp(56px, 13vmin, 84px); object-fit: cover; border-radius: 14px; }
+.chat-choices.action-row { justify-content: center; padding-right: 0; }
+.talk-action { position: relative; display: grid; place-items: center; width: clamp(110px, 26vmin, 150px); height: clamp(110px, 26vmin, 150px); border-radius: 50%; }
+.talk-action-emoji { font-family: var(--emoji); font-size: clamp(60px, 15vmin, 90px); line-height: 1; }
+img.talk-action-emoji { width: 76%; height: 76%; object-fit: cover; border-radius: 50%; }
+.talk-action.wiggle { animation: action-wiggle 1.2s ease-in-out infinite; }
+.talk-action.tapped, .talk-action.demo { animation: action-pop 0.4s ease-out; }
+@keyframes action-wiggle { 0%, 60%, 100% { transform: rotate(0) scale(1); } 70% { transform: rotate(-10deg) scale(1.06); } 80% { transform: rotate(10deg) scale(1.06); } 90% { transform: rotate(-6deg); } }
+@keyframes action-pop { 50% { transform: scale(1.2); } }
+.talk-burst { position: absolute; inset: 0; pointer-events: none; display: grid; place-items: center; z-index: 3; }
+.talk-burst span { position: absolute; font-family: var(--emoji); font-size: 34px; --angle: calc(var(--i) * 36deg); animation: burst-small 1.3s ease-out forwards; }
+.talk-gift { position: relative; justify-self: center; font-family: var(--emoji); font-size: clamp(70px, 18vmin, 110px); line-height: 1; animation: action-wiggle 0.9s ease-in-out infinite; }
+.talk-gift.open { animation: action-pop 0.5s ease-out; }
+.progress.talk-progress { position: relative; overflow: visible; }
+.talk-hopper, .talk-goal { position: absolute; top: -5px; font-family: var(--emoji); font-size: 26px; line-height: 1; pointer-events: none; }
+.talk-hopper { left: calc(var(--p, 0) * 100%); margin-left: -13px; transition: left 400ms ease-out; animation: bong-hop 0.9s ease-in-out infinite; }
+.talk-goal { right: -6px; }
+@media (prefers-reduced-motion: reduce) {
+  .bubble.bong.talking .bubble-avatar, .talk-action.wiggle, .talk-gift, .talk-hopper { animation: none; }
+}
+.family-row { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 6px 12px; padding: 4px 0; border-bottom: 1px solid #f1ebe3; }
+.family-photo { display: flex; align-items: center; gap: 8px; }
+.family-thumb { width: 48px; height: 48px; }

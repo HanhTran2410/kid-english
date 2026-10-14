@@ -20,7 +20,15 @@ function eyes(mood) {
     <circle cx="117" cy="115" r="2" fill="#fff" opacity="0.8"/>`;
 }
 
+function brows(mood) {
+  if (mood === 'sad') return `<path d="M66 92 q12 -8 22 -2 M112 90 q10 -6 22 2" fill="none" stroke="${INK}" stroke-width="4" stroke-linecap="round"/>`;
+  if (mood === 'surprise') return `<path d="M68 88 q12 -10 24 0 M108 88 q12 -10 24 0" fill="none" stroke="${INK}" stroke-width="4" stroke-linecap="round"/>`;
+  return '';
+}
+
 function mouth(mood) {
+  if (mood === 'sad') return `<path d="M88 142 q12 -12 24 0" fill="none" stroke="${INK}" stroke-width="5" stroke-linecap="round"/>`;
+  if (mood === 'surprise') return `<ellipse cx="100" cy="140" rx="9" ry="11" fill="${INK}"/><ellipse cx="100" cy="145" rx="5" ry="4" fill="#ff7a9c"/>`;
   if (mood === 'sleep') return `<path d="M93 136 q7 5 14 0" fill="none" stroke="${INK}" stroke-width="4" stroke-linecap="round"/>`;
   // Cười tươi: miệng mở, có lưỡi hồng.
   return `
@@ -29,7 +37,7 @@ function mouth(mood) {
 }
 
 /**
- * @param {{ mood?: 'happy'|'sleep', title?: string }} [options]
+ * @param {{ mood?: 'happy'|'sleep'|'sad'|'surprise', title?: string }} [options]
  * @returns {string} mã SVG
  */
 export function bongSvg({ mood = 'happy', title = '' } = {}) {
@@ -45,6 +53,7 @@ export function bongSvg({ mood = 'happy', title = '' } = {}) {
     <ellipse cx="100" cy="120" rx="66" ry="58" fill="${FUR}" stroke="${FUR_SHADE}" stroke-width="3"/>
     <ellipse cx="100" cy="150" rx="40" ry="22" fill="#ffffff" opacity="0.7"/>
     ${eyes(mood)}
+    ${brows(mood)}
     <ellipse cx="62" cy="134" rx="12" ry="7" fill="${CHEEK}" opacity="0.75"/>
     <ellipse cx="138" cy="134" rx="12" ry="7" fill="${CHEEK}" opacity="0.75"/>
     <path d="M94 124 q6 6 12 0 q-6 -4 -12 0 z" fill="#ff7a9c"/>

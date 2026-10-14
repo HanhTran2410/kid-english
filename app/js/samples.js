@@ -128,6 +128,21 @@ export async function upgradePhonicsLessons(app) {
 }
 
 /**
+ * Bài hội thoại có sẵn đã có trên máy từ bản cũ (SPEC-talk mục 13.4): bản trên máy cũ hơn `builtinVersion` của app thì
+ * thay phần lượt và câu kết. Giữ nguyên mã bài, tên bố mẹ đã đổi, số bài, ảnh, tiến độ (mã lượt cũ không đổi), số lần học.
+ */
+export async function upgradeTalkLessons(app) {
+  const fresh = new Map(builtInTalkLessons().map((l) => [l.builtin, l]));
+  for (const lesson of await app.db.getAll('lessons')) {
+    const src = fresh.get(lesson.builtin);
+    if (!src || (lesson.builtinVersion ?? 1) >= src.builtinVersion) continue;
+    await app.db.put('lessons', {
+      ...lesson, turns: src.turns, outro: src.outro, outroVi: src.outroVi, builtinVersion: src.builtinVersion, resume: null,
+    });
+  }
+}
+
+/**
  * Bài câu mẫu đã có trên máy từ bản cũ: bổ sung mô tả khung hình chi tiết (frameScene, framePrompts) từ file mẫu mới,
  * chỉ cho những câu còn thiếu frameScene. Không đổi gì khác (tên, tiến độ, khung hình đã lưu…).
  */

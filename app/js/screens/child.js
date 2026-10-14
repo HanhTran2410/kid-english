@@ -183,6 +183,10 @@ export function lessonsScreen(app, { kind = WORDS_KIND } = {}) {
       const images = await app.db.getAllByIndex('images', 'lessonId', lesson.id);
       cover = images.length ? images[Math.floor(Math.random() * images.length)]
         : await latestImageForWord(app.db, lesson.letters[0].words[0]?.en ?? '');
+    } else if (lesson.turns?.length) {
+      // Bài hội thoại: ảnh NGẪU NHIÊN trong các ảnh bố mẹ đã thêm cho hình của bài; chưa có thì emoji.
+      const images = await app.db.getAllByIndex('images', 'lessonId', lesson.id);
+      cover = images.length ? images[Math.floor(Math.random() * images.length)] : null;
     } else if (lesson.numbers?.length) {
       if (lesson.mode === 'game') {
         // Thẻ trò chơi: ảnh NGẪU NHIÊN của một đồ vật khác đồ vật đầu tiên (đồ vật đầu là ảnh bìa của bài đếm) — để

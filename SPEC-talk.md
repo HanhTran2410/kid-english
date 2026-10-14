@@ -4,6 +4,7 @@
 > - draft1: hướng **nâng cấp nút "Học cùng Bông"** (không thêm nút thứ 9).
 > - **draft2 — sửa theo review (PO + QA):** tách rõ "nỗ lực nói" với nhận dạng; trạng thái hội thoại (một luồng tiếng tại một thời điểm); schema đầy đủ cho từng kiểu lượt (có `type` rõ ràng, mọi câu đọc đều có tiếng Việt); luật sao theo **từng lượt / ngày**; xử lý hồ sơ thiếu; 3 trạng thái bong bóng của bé (gợi ý / đang nghe / đã thử nói); thời gian nghe; rút gọn nội dung 5 bài; chia T-a thành 4 mốc nghiệm thu; ghi rõ phần nào cần mạng.
 > - Quyết định (theo đề xuất, khớp review): **T-a trước** (4 mốc); 📞 gọi điện ở T-b **bật mặc định**; lời chào mỗi ngày ở T-b **tắt mặc định**; giữ **5 bài hội thoại + thẻ "Ôn từ đã học"**; **có tiếng nói là ghi nhận nỗ lực** (không cần nhận dạng đúng); **tối đa 2⭐ cho mỗi lượt**, mỗi lượt cộng tối đa 1 lần/ngày.
+> - **draft3 (mục 13 — T-c):** bài dài 6–8 lượt có mạch chuyện, Bông đáp theo câu trả lời, lượt chạm làm động tác, thay ảnh + ảnh gia đình thật. **Đã làm cả 3 mốc T-c1–T-c3 trong app 0.10.0.**
 > - Trạng thái: **đã làm T-a trong app 0.9.0** (T-b để sau). Ghi chú khi code: bong bóng "đang nghe" giữ câu gợi ý (`🎤 câu gợi ý`); thẻ bài hội thoại hiện tên tiếng Việt; khôi phục bản sao lưu giữ hồ sơ đang có trên máy (cài đặt không bị ghi đè).
 
 ## 1. Mục tiêu
@@ -163,4 +164,54 @@ intro → bong_speaking → child_turn (listening) → feedback → next_turn �
 | Nhận dạng không nghe ra tên / câu tự do | Chỉ cần có tiếng nói là ghi nhận nỗ lực; không bắt đúng |
 | Bé chưa biết trả lời | Gợi ý luôn có + chạm để nghe; kiểu chọn hình / có-không để bé trả lời bằng chạm trước |
 | Đọc chồng tiếng / kẹt mic | Trạng thái hội thoại một luồng (mục 4); mic chỉ mở trong lượt bé |
-| Bài dài | 3–4 lượt mỗi bài; ▶ luôn bỏ qua được |
+| Bài dài | T-a: 3–4 lượt; T-c: 6–8 lượt (~2–3 phút) nhưng nhiều lượt chỉ cần chạm; ▶ luôn bỏ qua được |
+
+---
+
+## 13. T-c — Hội thoại dài hơn, hấp dẫn hơn, thay được ảnh (draft3, đã làm trong 0.10.0)
+
+Phản hồi sau khi dùng 0.9.0: bài quá ngắn (2–3 lượt), Bông chỉ hỏi rồi khen chung chung, hình chỉ là emoji.
+
+### 13.1 Bài dài hơn: 6–8 lượt, có mạch chuyện (~2–3 phút)
+Giữ mã lượt cũ (`hello`, `name`, `age`, `feel`, `color`…) để **không mất sao đã có**; lượt mới có mã mới.
+
+| Bài | Mạch chuyện (✨ = lượt mới) |
+|---|---|
+| **Hello & Goodbye** | Hello, {name}! → bé chào Bông → ✨ *How are you today?* (😊 / 😴 / 😋) → ✨ *Good morning or good night?* (☀️ / 🌙) → ✨ *Do you want to play with me?* (có / không) → ✨ *Give me a high five!* ✋ → Goodbye! → ✨ *Wave bye-bye!* 👋 *See you tomorrow!* |
+| **About me** | What's your name? → How old are you? → ✨ *Show me {age} fingers!* (Bông đếm *one, two, three!*) → bé hỏi tên Bông → ✨ bé hỏi tuổi Bông (*I'm two! I'm a small bunny!*) → ✨ *What's your favorite color?* (Bông **nhớ hồ sơ**: *I know! You like red!*) → ✨ *High five!* |
+| **How are you?** | How are you? (vui / buồn / buồn ngủ) — ✨ **Bông đáp theo lựa chọn** (buồn → *Oh no! Here's a big hug!* 🤗) → bé hỏi lại Bông → Are you hungry? → ✨ (nếu có) *What do you want to eat?* (🍌 / 🍞 / 🍚 → *Yummy! A banana!*) → ✨ *Let's smile together!* 😁 |
+| **I like…** | What color do you like? (✨ đáp theo màu: *Red! Like an apple!*) → ✨ *Which animal do you like?* (🐶 / 🐱 / 🐰 → Bông giả tiếng kêu *Woof woof!*) → Do you like apples? → Do you like dogs? → ✨ bé hỏi Bông *What do you like?* → *I like carrots!* 🥕 → ✨ *Do you like Bông?* → *I like you too!* ❤️ |
+| **My family** | Who is this? (từng người đã chọn, **ảnh thật** nếu bố mẹ đã thêm — mục 13.3) → ✨ *Do you love Mummy?* → *Mummy loves you too!* → ✨ *Give Mummy a kiss!* 😘 → ✨ bé chỉ vào Bông hỏi *Who is this?* → *It's me, Bông!* |
+
+Luật cũ giữ nguyên: ▶ luôn bỏ qua được, không bắt nói đúng, mic chỉ mở khi đến lượt bé, mọi câu có tiếng Việt cho phụ đề.
+
+### 13.2 Làm cho hấp dẫn hơn
+1. **Bông đáp theo câu trả lời của bé:** mỗi lựa chọn / có / không có `reply` riêng (thay cho "Great job!" chung chung). Lời khen cuối lượt đổi ngẫu nhiên: *Great job! / Wonderful! / Super! / Yay!*
+2. **Kiểu lượt mới `action` (chạm làm động tác):** Bông nói *Give me a high five!*, hiện một nút to ✋ / 👋 / 🤗 / 😘 / 😁. Bé chạm → hiệu ứng (tay đập, tim bay, pháo giấy nhỏ) + câu đáp. Không cần mic, **không tính sao** (chỉ ghi "đã gặp"). Chờ tối đa ~8 giây rồi Bông tự làm mẫu và đi tiếp.
+3. **Bông có biểu cảm:** avatar Bông nảy nhẹ khi nói; đổi mặt theo lượt (vui / ngạc nhiên / buồn khi bé buồn). Chỉ dùng CSS + emoji, không cần ảnh mới.
+4. **Bông "nhớ" bé:** dùng màu thích / món thích trong Hồ sơ (đã có ô nhập nhưng 0.9.0 chưa dùng). Có hồ sơ → *I know! You like red!*; chưa có → hỏi như thường.
+5. **Rẽ nhánh nhẹ:** lượt có thể `onlyIf` theo câu trả lời trước (vd. chỉ hỏi *What do you want to eat?* khi bé chọn "Yes, I'm hungry"). Chọn "No" thì bỏ lượt đó.
+6. **Kết bài có quà:** thanh tiến độ là Bông nhảy dần tới hộp quà 🎁; cuối bài hộp mở ra sticker (dùng màn quà sẵn có).
+
+### 13.3 Thay ảnh trong hội thoại
+- Mọi hình (hình của lượt, hình từng lựa chọn, nút động tác) mặc định là emoji; **bố mẹ thay được bằng ảnh**.
+- Góc bố mẹ → Quản lý bài → bài hội thoại: mỗi lượt / lựa chọn có **📷 Đổi ảnh** (chọn từ máy, tự cắt vuông, nén như các bài khác) và **Xóa ảnh** (về emoji). Lưu ở kho `images` theo `lessonId` + `word = pic:<mã lượt>` hoặc `pic:<mã lượt>:<mã lựa chọn>`.
+- **📋 Copy prompt tạo ảnh** cho cả bài (liệt kê các hình cần vẽ, cùng phong cách với các bài khác) + **cắt ảnh lưới** bằng công cụ đang có, gán lần lượt vào từng hình.
+- **Ảnh gia đình thật:** trong *Hồ sơ của bé*, mỗi người đã chọn có nút **📷 Ảnh** (ảnh mẹ, bố, bà…). Bài *My family* hiện ảnh thật thay emoji. Ảnh chỉ nằm trên máy, có trong bản sao lưu, **không kèm khi chia sẻ bài / tải lên Drive**.
+- Ảnh thẻ bài ngoài danh sách: dùng ảnh đầu tiên bố mẹ đã thêm (giống phonics); chưa có thì emoji.
+
+### 13.4 Cập nhật 5 bài đã có trên máy
+Bài có sẵn đã được thêm ở 0.9.0 nên "thêm một lần" không đủ. Thêm `builtinVersion` vào bài có sẵn: khi app thấy bài trên máy cũ hơn → **thay phần lượt**, giữ nguyên mã bài, tên bố mẹ đã đổi, ảnh đã thêm và tiến độ. Bài bố mẹ tự tạo (T-b) không bị đụng tới.
+
+### 13.5 Mốc làm
+| Mốc | Nội dung | Nghiệm thu |
+|---|---|---|
+| **T-c1** | Nội dung 6–8 lượt, `reply` theo lựa chọn, `onlyIf`, dùng màu/món thích, lời khen ngẫu nhiên, cập nhật bài cũ (13.4) | Bài cũ trên máy tự lên bản mới, sao cũ còn; không đọc chỗ trống |
+| **T-c2** | Kiểu lượt `action`, biểu cảm Bông, thanh tiến độ hộp quà | Không có mic vẫn chơi hết; chạm nhanh / ▶ liên tục không kẹt |
+| **T-c3** | Đổi ảnh từng hình, prompt + cắt lưới, ảnh gia đình trong Hồ sơ | Ảnh hiện trong bài + thẻ; xóa ảnh về emoji; chia sẻ bài không lộ ảnh gia đình |
+
+Đã làm cả 3 mốc trong **0.10.0**. Ghi chú khi code:
+- Bấm ▶ giữa lúc chọn hình / chạm động tác: hàng nút được dọn ngay (không để lại nút cũ bấm không ăn).
+- Bỏ qua lượt chọn bằng ▶ thì lượt phụ thuộc (`onlyIf`) cũng bỏ.
+- Ảnh gia đình lưu ở kho `images` với mã chủ `profile:family` (không thuộc bài nào) → gói chia sẻ bài không có; file sao lưu đầy đủ có.
+- Bông về nét mặt vui sau mỗi lượt; máy bật "giảm chuyển động" thì tắt nảy / lắc / hiệu ứng bay.

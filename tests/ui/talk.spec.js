@@ -62,7 +62,9 @@ test('chưa có hồ sơ: không đọc chỗ trống, gợi ý "Tell me your na
   await playThrough(page);
   const said = await spoken(page);
   expect(said).toContain('Nice to meet you!');
-  expect(said).not.toContain('How old are you?');
+  // Không hỏi tuổi bé (chỉ còn lượt bé hỏi tuổi Bông), không giơ ngón tay.
+  expect(said.some((t) => /^Wow,|^Show me/.test(t))).toBe(false);
+  expect(said).toContain("I'm two! I'm a small bunny!");
   expect(said).toContain('That was fun! See you!');
   expect(said.join(' ')).not.toMatch(/\{name\}|\{age\}|, !/);
 });
@@ -136,4 +138,141 @@ test('bấm ▶ liên tục giữa các lượt: không kẹt, không lỗi, v�
   await playThrough(page);
   await expect(page.locator('.prize-sticker')).toBeVisible();
   expect(errors).toEqual([]);
+});
+
+/** Chơi bài; khi có lựa chọn mang mã trong `want` thì chạm đúng lựa chọn đó (còn lại chạm lựa chọn đầu tiên). */
+async function playChoosing(page, want) {
+  const wanted = want.map((w) => `.talk-choice[data-id="${w}"]`).join(',');
+  for (let i = 0; i < 400; i++) {
+    if (await page.locator('.done-btn').isVisible()) return;
+    const target = page.locator(wanted).first();
+    if (await target.isVisible().catch(() => false)) {
+      await target.click({ timeout: 1000 }).catch(() => {});
+    } else {
+      const any = page.locator('.choice').first();
+      if (await any.isVisible().catch(() => false)) await any.click({ timeout: 1000 }).catch(() => {});
+    }
+    await page.waitForTimeout(150);
+  }
+  throw new Error('Không học hết được bài');
+}
+
+const tinyPng = (page, color) => page.evaluate((c) => {
+  const cv = document.createElement('canvas');
+  cv.width = 120;
+  cv.height = 120;
+  const g = cv.getContext('2d');
+  g.fillStyle = c;
+  g.fillRect(0, 0, 120, 120);
+  return cv.toDataURL('image/png').split(',')[1];
+}, color);
+
+test('Hello & Goodbye dài hơn: Bông đáp theo lựa chọn, lượt chạm đập tay / vẫy tay, thanh tiến độ có hộp quà', async ({ page }) => {
+  await fakeSpeech(page);
+  await startApp(page);
+  await page.getByRole('button', { name: 'Nói chuyện với Bông' }).click();
+  await page.getByRole('button', { name: 'Hello & Goodbye', exact: true }).click();
+  await expect(page.locator('.talk-hopper')).toBeVisible();
+  await expect(page.locator('.talk-goal')).toHaveText('🎁');
+  await playChoosing(page, ['sleepy', 'night', 'yes']);
+  await expect(page.locator('.prize-sticker')).toBeVisible();
+  const said = await spoken(page);
+  for (const line of ['How are you today?', "Sleepy? Let's stretch! Up, up, up!", 'Good night! Sweet dreams!', "Yay! Let's play!",
+    'Give me a high five!', 'High five! Yay!', 'Wave bye-bye!', 'Bye-bye! See you tomorrow!']) {
+    expect(said).toContain(line);
+  }
+  // Lượt động tác không tính sao.
+  const rec = await progressOf(page, 'talk:talk-hello:high-five');
+  expect(rec.mastery).toBe(0);
+});
+
+test('lượt có điều kiện: bé chọn buồn → Bông ôm; đói → hỏi ăn gì, Bông nhớ món thích trong hồ sơ', async ({ page }) => {
+  await fakeSpeech(page, { mic: false });
+  await startApp(page);
+  await setProfile(page, { name: 'Na', age: 3, food: 'ice cream' });
+  await page.getByRole('button', { name: 'Nói chuyện với Bông' }).click();
+  await page.getByRole('button', { name: 'How are you?', exact: true }).click();
+  await playChoosing(page, ['sad', 'yes', 'ice-cream']);
+  const said = await spoken(page);
+  for (const line of ["Oh no! Here's a big hug!", 'Give me a hug!', "Me too! Let's eat!", 'What do you want to eat?', 'Ice cream, please!', 'I know! You like ice cream!']) {
+    expect(said).toContain(line);
+  }
+  expect(said).not.toContain('Yummy! Cold ice cream!');
+
+  // Học lại, chọn vui + không đói: không ôm, không hỏi ăn gì.
+  await page.locator('.done-btn').click();
+  await page.evaluate(() => { window.__spoken.length = 0; });
+  await page.getByRole('button', { name: 'Nói chuyện với Bông' }).click();
+  await page.getByRole('button', { name: 'How are you?', exact: true }).click();
+  await playChoosing(page, ['happy', 'no']);
+  const again = await spoken(page);
+  expect(again).toContain("Yay! I'm happy too!");
+  expect(again).not.toContain('Give me a hug!');
+  expect(again).not.toContain('What do you want to eat?');
+  expect(again).toContain("Okay! Let's drink some water!");
+});
+
+test('bài hội thoại cũ (0.9.0) trên máy tự lên bản mới: thêm lượt, giữ tên bài và sao đã có', async ({ page }) => {
+  await fakeSpeech(page);
+  await startApp(page);
+  await page.evaluate(async () => {
+    const { db } = window.kidEnglish;
+    const lesson = (await db.getAll('lessons')).find((l) => l.builtin === 'talk-likes');
+    lesson.turns = lesson.turns.filter((t) => ['color', 'apples', 'dogs'].includes(t.id));
+    delete lesson.builtinVersion;
+    lesson.title = 'Bé thích gì';
+    await db.put('lessons', lesson);
+    await db.put('progress', { word: 'talk:talk-likes:color', emoji: '❤️', mastery: 2, practiceCount: 3, lastPracticedAt: Date.now(), lastVoiceDay: null });
+  });
+  await page.goto('/?fast&nosw');
+  await page.getByRole('button', { name: 'Bắt đầu' }).click();
+  const lesson = await page.evaluate(async () => (await window.kidEnglish.db.getAll('lessons')).find((l) => l.builtin === 'talk-likes'));
+  expect(lesson.title).toBe('Bé thích gì');
+  expect(lesson.turns.map((t) => t.id)).toEqual(['color', 'animal', 'apples', 'dogs', 'ask-like', 'like-bong', 'heart']);
+  expect((await progressOf(page, 'talk:talk-likes:color')).mastery).toBe(2);
+});
+
+test('ảnh: bố mẹ thêm ảnh cho nút đập tay và ảnh thật của mẹ → bài hiện ảnh thay emoji; ảnh gia đình không thuộc bài nào', async ({ page }) => {
+  await fakeSpeech(page, { mic: false });
+  await startApp(page);
+  await openParent(page);
+  await page.getByRole('button', { name: 'Hồ sơ của bé' }).click();
+  await page.locator('.family-row', { hasText: 'Mummy' }).locator('input[type=file]')
+    .setInputFiles({ name: 'mum.png', mimeType: 'image/png', buffer: Buffer.from(await tinyPng(page, '#f39'), 'base64') });
+  await expect(page.locator('.family-row', { hasText: 'Mummy' }).locator('img.family-thumb')).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Ảnh của Mummy' })).toHaveText('📷 Đổi ảnh');
+
+  await page.getByRole('button', { name: '← Quay lại' }).click();
+  await page.getByRole('button', { name: 'Quản lý bài' }).click();
+  await page.getByRole('button', { name: /Hello & Goodbye/ }).click();
+  await expect(page.getByRole('heading', { name: /Ảnh cho từng hình/ })).toBeVisible();
+  await page.locator('li[data-pic="high-five"] input[type=file]')
+    .setInputFiles({ name: 'hand.png', mimeType: 'image/png', buffer: Buffer.from(await tinyPng(page, '#3a9'), 'base64') });
+  await expect(page.locator('li[data-pic="high-five"] img.thumb')).toBeVisible();
+
+  // Ảnh gia đình không gắn với bài My family (gói chia sẻ bài chỉ lấy ảnh của bài).
+  const familyLessonImages = await page.evaluate(async () => {
+    const lesson = (await window.kidEnglish.db.getAll('lessons')).find((l) => l.builtin === 'talk-family');
+    return (await window.kidEnglish.db.getAllByIndex('images', 'lessonId', lesson.id)).length;
+  });
+  expect(familyLessonImages).toBe(0);
+
+  await page.goto('/?fast&nosw');
+  await page.getByRole('button', { name: 'Bắt đầu' }).click();
+  await page.getByRole('button', { name: 'Nói chuyện với Bông' }).click();
+  await expect(page.locator('.lesson-card[aria-label="Hello & Goodbye"] img')).toBeVisible();
+  // Nút động tác chỉ hiện chốc lát ở chế độ chạy nhanh: ghi lại lúc ảnh xuất hiện.
+  await page.evaluate(() => {
+    new MutationObserver(() => {
+      if (document.querySelector('.talk-action img.talk-action-emoji[data-pic="high-five"]')) window.__sawHighFive = true;
+      if (document.querySelector('.bubble.bong img.bubble-pic.photo')) window.__sawMum = true;
+    }).observe(document.body, { childList: true, subtree: true });
+  });
+  await page.getByRole('button', { name: 'Hello & Goodbye', exact: true }).click();
+  await playChoosing(page, []);
+  expect(await page.evaluate(() => window.__sawHighFive)).toBe(true);
+  await page.locator('.done-btn').click();
+  await page.getByRole('button', { name: 'Nói chuyện với Bông' }).click();
+  await page.getByRole('button', { name: 'My family', exact: true }).click();
+  await page.waitForFunction(() => window.__sawMum === true, null, { timeout: 30000 });
 });

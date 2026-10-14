@@ -2,7 +2,9 @@
 // Dùng chung khung màn hình, nút ▶ (bỏ qua lượt), 🔊 (nghe lại + phụ đề), 🏠, Học tiếp / Học lại.
 
 import { isAbort } from '../timing.js';
-import { isTalkLesson, lessonTurns, fillText } from '../talk.js';
+import { h } from '../ui.js';
+import { mediaBlob } from '../db.js';
+import { isTalkLesson, lessonTurns, fillText, turnAllowed, PROFILE_IMAGES } from '../talk.js';
 import { activityLayout } from './layout.js';
 import { Teacher } from './teacher.js';
 import { startIndexFor, resumeAfter } from './plan.js';
@@ -16,6 +18,7 @@ import { chatView, runTalkTurn, talkOutro } from './talk-stages.js';
 export function talkLessonScreen(app, { lessonId, start = 'begin' }) {
   const layout = activityLayout(app, 'talk-lesson');
   const signal = app.startActivity();
+  const urls = [];
 
   const saveLesson = async (lesson) => {
     try {
@@ -35,8 +38,28 @@ export function talkLessonScreen(app, { lessonId, start = 'begin' }) {
     // Lượt được ghép theo hồ sơ LÚC CHẠY (đổi hồ sơ thì lần học sau dùng ngay); thiếu hồ sơ thì bỏ lượt / dùng câu dự phòng.
     const turns = lessonTurns(lesson, profile);
     const teacher = new Teacher(app, { signal, bunny: layout.bunny, stage: layout.stage, replayBtn: layout.replayBtn });
-    const ctx = { app, teacher, lesson, signal, stage: layout.stage, nextBtn: layout.nextBtn };
+    // Ảnh bố mẹ đã thêm cho các hình của bài + ảnh gia đình thật trong Hồ sơ của bé (SPEC-talk mục 13.3).
+    const pictures = new Map();
+    for (const owner of [lesson.id, PROFILE_IMAGES]) {
+      const images = await app.db.getAllByIndex('images', 'lessonId', owner);
+      for (const img of images.sort((a, b) => (a.createdAt ?? 0) - (b.createdAt ?? 0))) {
+        const url = URL.createObjectURL(mediaBlob(img));
+        urls.push(url);
+        pictures.set(img.word, url);
+      }
+    }
+    const ctx = { app, teacher, lesson, signal, stage: layout.stage, nextBtn: layout.nextBtn, pictures };
     chatView(ctx);
+    // Thanh tiến độ: Bông nhảy dần tới hộp quà 🎁 ở cuối bài.
+    const bar = app.root.querySelector('.activity-top .progress');
+    const hopper = h('span.talk-hopper', { 'aria-hidden': 'true', text: '🐰' });
+    bar?.classList.add('talk-progress');
+    bar?.append(hopper, h('span.talk-goal', { 'aria-hidden': 'true', text: '🎁' }));
+    const setProgress = (f) => {
+      layout.setProgress(f);
+      hopper.style.setProperty('--p', String(f));
+    };
+    const picks = {}; // lượt → lựa chọn của bé (cho lượt có `onlyIf`)
 
     const steps = turns.map((t, index) => ({ stage: 'turn', index, id: t.id }));
     const resume = start === 'resume';
@@ -47,15 +70,20 @@ export function talkLessonScreen(app, { lessonId, start = 'begin' }) {
     }
 
     for (; i < steps.length; i++) {
-      layout.setProgress(i / Math.max(1, steps.length));
-      layout.stage.dataset.stage = `talk-${turns[i].type}`;
-      await runSkippable(ctx, signal, () => runTalkTurn(ctx, turns[i]));
+      setProgress(i / Math.max(1, steps.length));
+      const turn = turns[i];
+      if (turnAllowed(turn, picks)) {
+        layout.stage.dataset.stage = `talk-${turn.type}`;
+        await runSkippable(ctx, signal, async () => {
+          picks[turn.id] = await runTalkTurn(ctx, turn);
+        });
+      }
       lesson.resume = resumeAfter(steps, i);
       await saveLesson(lesson);
     }
 
     await runSkippable(ctx, signal, () => talkOutro(ctx, fillText(lesson.outro ?? '', profile), fillText(lesson.outroVi ?? '', profile)));
-    layout.setProgress(1);
+    setProgress(1);
     lesson.timesCompleted = (lesson.timesCompleted ?? 0) + 1;
     lesson.resume = null;
     await saveLesson(lesson);
@@ -71,5 +99,8 @@ export function talkLessonScreen(app, { lessonId, start = 'begin' }) {
     app.go('home');
   });
 
-  return () => layout.bunny.destroy();
+  return () => {
+    layout.bunny.destroy();
+    urls.forEach((u) => URL.revokeObjectURL(u));
+  };
 }

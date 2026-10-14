@@ -10,7 +10,7 @@ import { isPhraseLesson, MOTION_NAMES, frameGroups, frameSteps, defaultFrameMapp
 import { buildFramesPrompt } from '../../prompts.js';
 import { isNumberLesson, numberKey, countPhrase } from '../../numbers.js';
 import { isPhonicsLesson, letterKey } from '../../phonics.js';
-import { isTalkLesson, talkKey } from '../../talk.js';
+import { isTalkLesson, talkKey, talkPictures } from '../../talk.js';
 import { getFrameSets, setFrameSet, removeFrameSet, frameBlobs } from '../../db.js';
 import { createFlipbook } from '../../player/flipbook.js';
 import { createScene } from '../../player/scene.js';
@@ -134,7 +134,13 @@ export function lessonDetailView(app, { lessonId }) {
     // Đổi tên và chủ đề
     const rename = renameSection(app, lesson);
     if (isTalkLesson(lesson)) {
-      body.append(rename, await talkDetailSection(app, lesson), shareSection(app, lesson), section(null, deleteButton(app, lesson)));
+      // Ảnh cho các hình của bài (SPEC-talk mục 13.3): ảnh lưới cho cả bài hoặc từng hình; không có ảnh thì emoji.
+      const pics = talkPictures(lesson);
+      const picLesson = { id: lesson.id, words: pics.map((x) => ({ en: x.key, emoji: x.emoji, imagePrompt: x.draw })) };
+      body.append(rename, await talkDetailSection(app, lesson),
+        gridSection(app, picLesson, urls, 'Ảnh lưới — 1 ảnh cho các hình của bài'),
+        talkPicturesSection(app, lesson, pics, imageOf, urls),
+        shareSection(app, lesson), section(null, deleteButton(app, lesson)));
       return;
     }
     if (isPhonicsLesson(lesson)) {
@@ -391,19 +397,64 @@ function sizeLabel(lesson) {
 /** Trang bài số (SPEC-numbers mục 7): nội dung có sẵn, chỉ xem tiến độ từng số. */
 /** Trang bài hội thoại: các lượt (kiểu, câu hỏi) và tiến độ nói của từng lượt (SPEC-talk mục 8). */
 async function talkDetailSection(app, lesson) {
-  const TYPE = { greeting: 'Chào – đáp', free: 'Trả lời', choice: 'Chọn hình rồi nói', yesNo: 'Có / Không', askBack: 'Đổi vai (bé hỏi)' };
+  const TYPE = { greeting: 'Chào – đáp', free: 'Trả lời', choice: 'Chọn hình rồi nói', yesNo: 'Có / Không', askBack: 'Đổi vai (bé hỏi)', action: 'Chạm làm động tác' };
   const rows = [];
   for (const t of lesson.turns) {
     const rec = await app.db.get('progress', talkKey(lesson, t.id));
     rows.push(h('li', {},
-      h('span.p-emoji', { text: t.picture ?? '💬' }),
-      h('span.p-word', { text: `${TYPE[t.type] ?? t.type}: ${t.type === 'askBack' ? t.ask : t.ask}${t.needs?.length ? ` (cần: ${t.needs.join(', ')})` : ''}` }),
-      h('span.p-stars', { text: rec?.mastery ? '⭐'.repeat(rec.mastery) : '—' }),
+      h('span.p-emoji', { text: t.picture ?? t.emoji ?? '💬' }),
+      h('span.p-word', { text: `${TYPE[t.type] ?? t.type}: ${t.ask}${t.needs?.length ? ` (cần: ${t.needs.join(', ')})` : ''}${t.onlyIf ? ` (chỉ khi bé chọn "${t.onlyIf.pick}")` : ''}` }),
+      h('span.p-stars', { text: t.type === 'action' ? '' : rec?.mastery ? '⭐'.repeat(rec.mastery) : '—' }),
       h('span.p-meta', { text: rec ? `gặp ${rec.practiceCount} lần` : 'chưa học' })));
   }
   return section('Các lượt hội thoại',
-    h('p.muted', { text: 'Bài hội thoại có sẵn. Câu trả lời dùng tên, tuổi, gia đình trong "Hồ sơ của bé". Bé có tiếng nói là được ghi nhận (không cần nói đúng), mỗi lượt tối đa 1 lần/ngày, tối đa 2⭐; không bao giờ trừ sao.' }),
+    h('p.muted', { text: 'Bài hội thoại có sẵn. Câu trả lời dùng tên, tuổi, màu / món thích, gia đình trong "Hồ sơ của bé". Bé có tiếng nói là được ghi nhận (không cần nói đúng), mỗi lượt tối đa 1 lần/ngày, tối đa 2⭐; không bao giờ trừ sao. Lượt chạm làm động tác không tính sao.' }),
     h('ul.progress-list', {}, ...rows));
+}
+
+/** Từng hình của bài hội thoại: chọn / đổi / xóa ảnh (xóa thì bé thấy emoji). Ảnh gia đình thật thêm ở "Hồ sơ của bé". */
+function talkPicturesSection(app, lesson, pics, imageOf, urls) {
+  const rows = pics.map((pic) => {
+    const img = imageOf(pic.key);
+    let thumb;
+    if (img) {
+      const url = URL.createObjectURL(mediaBlob(img));
+      urls.push(url);
+      thumb = h('img.thumb', { src: url, alt: pic.key });
+    } else {
+      thumb = h('span.thumb.emoji', { text: pic.emoji });
+    }
+    const input = h('input', { type: 'file', accept: 'image/*', hidden: true });
+    input.addEventListener('change', async () => {
+      const file = input.files?.[0];
+      if (!file) return;
+      try {
+        const resized = await resizeImage(file);
+        await setWordImage(app.db, { lessonId: lesson.id, word: pic.key, ...resized });
+        toast(`Đã thêm ảnh cho "${pic.key}".`);
+        goParent(app, 'lesson', { lessonId: lesson.id });
+      } catch (err) {
+        toast(imageErrorMessage(err), 4000);
+      }
+    });
+    return h('li.word-admin', { dataset: { pic: pic.key } },
+      thumb,
+      h('span.grow', {}, h('b', { text: pic.key }), h('span.muted', { text: ` ${pic.label}` })),
+      h('div.row-actions', {},
+        h('button.btn.small', { type: 'button', text: img ? 'Đổi ảnh' : 'Chọn ảnh', onclick: () => input.click() }),
+        img ? h('button.btn.small', {
+          type: 'button',
+          text: 'Xóa ảnh',
+          onclick: async () => {
+            await removeWordImage(app.db, lesson.id, pic.key);
+            goParent(app, 'lesson', { lessonId: lesson.id });
+          },
+        }) : null),
+      input);
+  });
+  return section('Ảnh cho từng hình',
+    notice('info', 'Mỗi hình trong bài (lựa chọn, nút động tác, hình câu hỏi) thay được bằng ảnh. Ảnh thật của người trong gia đình thêm ở Góc bố mẹ → "Hồ sơ của bé" (ảnh đó không đi kèm khi chia sẻ bài).'),
+    h('ul.word-admin-list', {}, ...rows));
 }
 
 /** Trang bài phonics: tiến độ từng chữ và các từ của chữ (SPEC-phonics mục 10). */
