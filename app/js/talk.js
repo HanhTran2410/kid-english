@@ -14,17 +14,18 @@ export const TALK_BUILTIN_VERSION = 3;
 
 /**
  * Thành viên gia đình có thể chọn trong hồ sơ (Mummy, Daddy mặc định có).
- * name / draw: tên ô và mô tả hình trong prompt ảnh — "Mummy" một mình dễ bị AI vẽ thành xác ướp, nên luôn ghi rõ là
- * mẹ (người), kèm dấu hiệu nhận ra từng người (ông bà tóc bạc, anh chị em là trẻ con).
+ * name / draw: tên ô và mô tả hình trong prompt ảnh — "Mummy" một mình dễ bị AI vẽ thành xác ướp, nên tên ô là "Mother" và
+ * mô tả ghi rõ là mẹ (người), kèm dấu hiệu nhận ra từng người (ông bà tóc bạc, anh chị em là trẻ con). Tên ô ngắn, không
+ * ngoặc (tên kiểu "Mother (Mummy)" bị AI viết lên ảnh như chú thích).
  */
 export const FAMILY = [
-  { id: 'mummy', en: 'Mummy', vi: 'Mẹ', emoji: '👩', name: 'Mother (Mummy)',
+  { id: 'mummy', en: 'Mummy', vi: 'Mẹ', emoji: '👩', name: 'Mother',
     draw: "a smiling young mother — a human woman, the child's mom — with shoulder-length brown hair and a pink top, upper body, waving warmly (a loving mom, not a bandaged Egyptian mummy)" },
-  { id: 'daddy', en: 'Daddy', vi: 'Bố', emoji: '👨', name: 'Father (Daddy)',
+  { id: 'daddy', en: 'Daddy', vi: 'Bố', emoji: '👨', name: 'Father',
     draw: "a smiling young father — a human man, the child's dad — with short dark hair and a blue shirt, upper body, waving warmly" },
-  { id: 'grandma', en: 'Grandma', vi: 'Bà', emoji: '👵', name: 'Grandmother (Grandma)',
+  { id: 'grandma', en: 'Grandma', vi: 'Bà', emoji: '👵', name: 'Grandmother',
     draw: 'a smiling grandmother — an older human woman — with gray hair in a bun and round glasses, upper body' },
-  { id: 'grandpa', en: 'Grandpa', vi: 'Ông', emoji: '👴', name: 'Grandfather (Grandpa)',
+  { id: 'grandpa', en: 'Grandpa', vi: 'Ông', emoji: '👴', name: 'Grandfather',
     draw: 'a smiling grandfather — an older human man — with short gray hair and a gray mustache, upper body' },
   { id: 'brother', en: 'my brother', vi: 'anh / em trai', emoji: '👦', name: 'Brother',
     draw: 'a cheerful young boy — a human child about 6 years old — in a green T-shirt, full body, clearly a child (smaller than the adults)' },

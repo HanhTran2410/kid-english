@@ -406,6 +406,7 @@ export function buildGridImagePrompt(words, { cols, rows }) {
     `Separate adjacent cells with thin, straight, light-gray divider lines that run across the whole image: exactly ${cols - 1} vertical line(s) and ${rows - 1} horizontal line(s), perfectly aligned. Do not draw an outer border around the canvas.`,
     '',
     'EXACT CELL ORDER — LEFT TO RIGHT, TOP TO BOTTOM',
+    'The cell names below (before each colon) are only for your reference. NEVER write them in the image — no titles, names or captions above, below or inside any picture.',
     ...placement,
     '',
     'ILLUSTRATION STYLE',
@@ -424,7 +425,7 @@ export function buildGridImagePrompt(words, { cols, rows }) {
       ? [`- ARROWS: only cells ${items.flatMap((it, i) => (needsPointer(it) ? [i + 1] : [])).join(', ')} get one thick bright-red arrow pointing at the named part (the part is the learning word, not the whole face or body). All other cells have no arrows, pointers or highlights.`]
       : []),
     `- Only thin light-gray divider lines between adjacent cells: exactly ${cols - 1} vertical and ${rows - 1} horizontal. No outer border, no extra frames, no rounded cell corners, no additional grid lines.`,
-    '- No text, letters, numbers, captions, labels, logos or watermarks.',
+    '- No text anywhere in the image: no words, letters, numbers, names, titles, captions, labels, logos or watermarks — not even the cell names listed above. Pictures only.',
     '- Do not merge cells, resize individual cells, or let illustrations cross cell boundaries.',
   ].join('\n');
 }

@@ -145,8 +145,12 @@ test('prompt ảnh bài My family: ghi rõ mẹ là người (không phải xác
   const pics = talkPictures(by('talk-family'));
   const words = pics.map((x) => ({ en: x.key, label: x.name, emoji: x.emoji, imagePrompt: x.draw }));
   const prompt = buildGridImagePrompt(words, { cols: 3, rows: 3 });
-  assert.match(prompt, /Cell 1 — Mother \(Mummy\): a smiling young mother — a human woman/);
-  assert.match(prompt, /Grandmother \(Grandma\): .*gray hair/);
+  assert.match(prompt, /Cell 1 — Mother: a smiling young mother — a human woman/);
+  assert.match(prompt, /Grandmother: .*gray hair/);
+  // Tên ô không bị AI viết lên ảnh: tên ô không có ngoặc, prompt cấm chữ ngay trước danh sách ô và trong phần luật.
+  assert.doesNotMatch(prompt, /Cell \d+ — [^:]*\(/);
+  assert.match(prompt, /NEVER write them in the image/);
+  assert.match(prompt, /not even the cell names listed above/);
   assert.match(prompt, /Brother: .*human child/);
   assert.doesNotMatch(prompt, /One mummy|Cell \d+ — Mummy:/i);
   assert.doesNotMatch(prompt, /Kiss-mummy/);

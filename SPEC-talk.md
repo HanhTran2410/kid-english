@@ -216,4 +216,5 @@ Bài có sẵn đã được thêm ở 0.9.0 nên "thêm một lần" không đ�
 - Ảnh gia đình lưu ở kho `images` với mã chủ `profile:family` (không thuộc bài nào) → gói chia sẻ bài không có; file sao lưu đầy đủ có.
 - 0.10.1: prompt ảnh bài My family ghi tên ô rõ nghĩa ("Mother (Mummy)", "Grandmother (Grandma)"…) và mô tả từng người là người thật (mẹ tóc nâu, ông bà tóc bạc, anh chị em là trẻ con) — "One mummy" bị AI vẽ thành xác ướp.
 - 0.10.2: 0.10.1 sửa mô tả hình nhưng không tăng `builtinVersion` nên bài trong máy giữ bản cũ (prompt vẫn "One mummy"). Giờ bài có sẵn được cập nhật khi **số phiên bản cũ hơn HOẶC nội dung lượt / câu kết khác** bản của app.
+- 0.10.3: Gemini viết tên ô ("Mother (Mummy)"…) lên ảnh → tên ô rút gọn không ngoặc ("Mother", "Grandmother"…); mọi prompt ảnh lưới thêm câu "tên ô chỉ để tham chiếu, NEVER write them in the image" ngay trước danh sách ô và luật "no text … not even the cell names".
 - Bông về nét mặt vui sau mỗi lượt; máy bật "giảm chuyển động" thì tắt nảy / lắc / hiệu ứng bay.
