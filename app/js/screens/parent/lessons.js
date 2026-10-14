@@ -136,7 +136,7 @@ export function lessonDetailView(app, { lessonId }) {
     if (isTalkLesson(lesson)) {
       // Ảnh cho các hình của bài (SPEC-talk mục 13.3): ảnh lưới cho cả bài hoặc từng hình; không có ảnh thì emoji.
       const pics = talkPictures(lesson);
-      const picLesson = { id: lesson.id, words: pics.map((x) => ({ en: x.key, emoji: x.emoji, imagePrompt: x.draw })) };
+      const picLesson = { id: lesson.id, words: pics.map((x) => ({ en: x.key, label: x.name, emoji: x.emoji, imagePrompt: x.draw })) };
       body.append(rename, await talkDetailSection(app, lesson),
         gridSection(app, picLesson, urls, 'Ảnh lưới — 1 ảnh cho các hình của bài'),
         talkPicturesSection(app, lesson, pics, imageOf, urls),

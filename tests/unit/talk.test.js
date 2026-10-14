@@ -139,3 +139,15 @@ test('hình thay được bằng ảnh: mỗi bài có danh sách hình với kh
   // Hình chung (chó ở "Which animal" và "Do you like dogs?") dùng chung một ảnh.
   assert.equal(talkPictures(by('talk-likes')).filter((p) => p.key === 'dog').length, 1);
 });
+
+test('prompt ảnh bài My family: ghi rõ mẹ là người (không phải xác ướp), ông bà / anh chị em có dấu hiệu nhận ra', async () => {
+  const { buildGridImagePrompt } = await import('../../app/js/prompts.js');
+  const pics = talkPictures(by('talk-family'));
+  const words = pics.map((x) => ({ en: x.key, label: x.name, emoji: x.emoji, imagePrompt: x.draw }));
+  const prompt = buildGridImagePrompt(words, { cols: 3, rows: 3 });
+  assert.match(prompt, /Cell 1 — Mother \(Mummy\): a smiling young mother — a human woman/);
+  assert.match(prompt, /Grandmother \(Grandma\): .*gray hair/);
+  assert.match(prompt, /Brother: .*human child/);
+  assert.doesNotMatch(prompt, /One mummy|Cell \d+ — Mummy:/i);
+  assert.doesNotMatch(prompt, /Kiss-mummy/);
+});

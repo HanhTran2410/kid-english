@@ -214,4 +214,5 @@ Bài có sẵn đã được thêm ở 0.9.0 nên "thêm một lần" không đ�
 - Bấm ▶ giữa lúc chọn hình / chạm động tác: hàng nút được dọn ngay (không để lại nút cũ bấm không ăn).
 - Bỏ qua lượt chọn bằng ▶ thì lượt phụ thuộc (`onlyIf`) cũng bỏ.
 - Ảnh gia đình lưu ở kho `images` với mã chủ `profile:family` (không thuộc bài nào) → gói chia sẻ bài không có; file sao lưu đầy đủ có.
+- 0.10.1: prompt ảnh bài My family ghi tên ô rõ nghĩa ("Mother (Mummy)", "Grandmother (Grandma)"…) và mô tả từng người là người thật (mẹ tóc nâu, ông bà tóc bạc, anh chị em là trẻ con) — "One mummy" bị AI vẽ thành xác ướp.
 - Bông về nét mặt vui sau mỗi lượt; máy bật "giảm chuyển động" thì tắt nảy / lắc / hiệu ứng bay.

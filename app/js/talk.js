@@ -12,14 +12,24 @@ export const EFFECTS = ['clap', 'hearts', 'confetti'];
 /** Phiên bản nội dung 5 bài có sẵn: tăng khi đổi lượt để bài đã có trên máy tự cập nhật (SPEC-talk mục 13.4). */
 export const TALK_BUILTIN_VERSION = 2;
 
-/** Thành viên gia đình có thể chọn trong hồ sơ (Mummy, Daddy mặc định có). */
+/**
+ * Thành viên gia đình có thể chọn trong hồ sơ (Mummy, Daddy mặc định có).
+ * name / draw: tên ô và mô tả hình trong prompt ảnh — "Mummy" một mình dễ bị AI vẽ thành xác ướp, nên luôn ghi rõ là
+ * mẹ (người), kèm dấu hiệu nhận ra từng người (ông bà tóc bạc, anh chị em là trẻ con).
+ */
 export const FAMILY = [
-  { id: 'mummy', en: 'Mummy', vi: 'Mẹ', emoji: '👩' },
-  { id: 'daddy', en: 'Daddy', vi: 'Bố', emoji: '👨' },
-  { id: 'grandma', en: 'Grandma', vi: 'Bà', emoji: '👵' },
-  { id: 'grandpa', en: 'Grandpa', vi: 'Ông', emoji: '👴' },
-  { id: 'brother', en: 'my brother', vi: 'anh / em trai', emoji: '👦' },
-  { id: 'sister', en: 'my sister', vi: 'chị / em gái', emoji: '👧' },
+  { id: 'mummy', en: 'Mummy', vi: 'Mẹ', emoji: '👩', name: 'Mother (Mummy)',
+    draw: "a smiling young mother — a human woman, the child's mom — with shoulder-length brown hair and a pink top, upper body, waving warmly (a loving mom, not a bandaged Egyptian mummy)" },
+  { id: 'daddy', en: 'Daddy', vi: 'Bố', emoji: '👨', name: 'Father (Daddy)',
+    draw: "a smiling young father — a human man, the child's dad — with short dark hair and a blue shirt, upper body, waving warmly" },
+  { id: 'grandma', en: 'Grandma', vi: 'Bà', emoji: '👵', name: 'Grandmother (Grandma)',
+    draw: 'a smiling grandmother — an older human woman — with gray hair in a bun and round glasses, upper body' },
+  { id: 'grandpa', en: 'Grandpa', vi: 'Ông', emoji: '👴', name: 'Grandfather (Grandpa)',
+    draw: 'a smiling grandfather — an older human man — with short gray hair and a gray mustache, upper body' },
+  { id: 'brother', en: 'my brother', vi: 'anh / em trai', emoji: '👦', name: 'Brother',
+    draw: 'a cheerful young boy — a human child about 6 years old — in a green T-shirt, full body, clearly a child (smaller than the adults)' },
+  { id: 'sister', en: 'my sister', vi: 'chị / em gái', emoji: '👧', name: 'Sister',
+    draw: 'a cheerful young girl — a human child about 6 years old — with two pigtails and a yellow dress, full body, clearly a child (smaller than the adults)' },
 ];
 
 /** Ảnh thật của người trong gia đình (Hồ sơ của bé): kho `images`, không thuộc bài nào nên không đi kèm khi chia sẻ bài. */
@@ -181,19 +191,19 @@ export const isTalkLesson = (lesson) => lesson?.kind === TALK_KIND || Array.isAr
 
 /**
  * Các hình trong bài (hình của lượt, nút động tác, hình từng lựa chọn) — bố mẹ thay được bằng ảnh (SPEC-talk mục 13.3).
- * `key` là khóa ảnh trong kho `images` của bài (một hình dùng ở nhiều lượt thì chung một ảnh).
- * @returns {{ key: string, emoji: string, label: string, draw: string }[]}
+ * `key` là khóa ảnh trong kho `images` của bài (một hình dùng ở nhiều lượt thì chung một ảnh); `name` là tên ô trong prompt ảnh.
+ * @returns {{ key: string, emoji: string, label: string, draw: string, name: string }[]}
  */
 export function talkPictures(lesson) {
   const out = new Map();
-  const add = (key, emoji, label, draw) => {
-    if (key && emoji && !out.has(key)) out.set(key, { key, emoji, label, draw: draw || label });
+  const add = (key, emoji, label, draw, name) => {
+    if (key && emoji && !out.has(key)) out.set(key, { key, emoji, label, draw: draw || label, name: name || cap(key.replace(/-/g, ' ')) });
   };
   for (const t of lesson.turns ?? []) {
-    if (t.picture) add(t.pictureKey ?? t.id, t.picture, t.ask, t.draw);
-    if (t.type === 'action') add(t.id, t.emoji, t.ask, t.draw);
+    if (t.picture) add(t.pictureKey ?? t.id, t.picture, t.ask, t.draw, t.pictureName);
+    if (t.type === 'action') add(t.id, t.emoji, t.ask, t.draw, t.pictureName);
     const choices = t.pool ? POOLS[t.pool] ?? [] : t.choices ?? [];
-    for (const c of choices) add(c.id, c.emoji, c.answer, c.draw);
+    for (const c of choices) add(c.id, c.emoji, c.answer, c.draw, c.name);
   }
   return [...out.values()];
 }
@@ -341,7 +351,7 @@ export function builtInTalkLessons() {
       builtin: 'talk-family', title: 'My family', titleVi: 'Gia đình', emoji: '👨‍👩‍👧',
       turns: [
         ...FAMILY.map((m) => ({
-          id: m.id, type: 'free', needs: [`family:${m.id}`], picture: m.emoji, photo: familyPhotoKey(m.id), draw: m.en.replace(/^my /, ''),
+          id: m.id, type: 'free', needs: [`family:${m.id}`], picture: m.emoji, photo: familyPhotoKey(m.id), draw: m.draw, pictureName: m.name,
           ask: 'Who is this?', askVi: 'Đây là ai?',
           answer: `It's ${m.en}!`, answerVi: `Đây là ${m.vi}!`, keywords: [m.en.replace(/^my /, '').toLowerCase()],
           reply: `Yes! ${cap(m.en)}!`, replyVi: `Đúng rồi! ${cap(m.vi)}!`,
@@ -351,10 +361,10 @@ export function builtInTalkLessons() {
           ...yesNo({ answerVi: 'Có, con yêu mẹ!', reply: 'Mummy loves you too!', replyVi: 'Mẹ cũng yêu con!', mood: 'happy' },
             { answerVi: 'Không ạ!', reply: 'Mummy loves you very much!', replyVi: 'Mẹ yêu con nhiều lắm!', mood: 'surprise' }) },
         action('kiss-mummy', '😘', 'Give Mummy a kiss!', 'Hôn mẹ một cái nào!', 'Mwah! Mummy is so happy!', 'Chụt! Mẹ vui lắm!', 'hearts',
-          { needs: ['family:mummy'], draw: 'a kissing face with a small heart' }),
+          { needs: ['family:mummy'], pictureName: 'Kiss for Mother', draw: 'a happy little human child blowing a kiss, with one small red heart floating from the lips' }),
         { id: 'who-bong', type: 'askBack', intro: 'Now point at me and ask!', introVi: 'Giờ con chỉ vào Bông và hỏi nhé!',
           ask: 'Who is this?', askVi: 'Đây là ai?', reply: "It's me, Bông!", replyVi: 'Là Bông đây!', keywords: ['who'], mood: 'happy' },
-        action('group-hug', '🤗', 'Family hug!', 'Cả nhà ôm nhau nào!', 'I love your family!', 'Bông yêu gia đình con!', 'hearts', { draw: 'a happy family hugging' }),
+        action('group-hug', '🤗', 'Family hug!', 'Cả nhà ôm nhau nào!', 'I love your family!', 'Bông yêu gia đình con!', 'hearts', { pictureName: 'Family hug', draw: 'a happy human family hugging together: a mother, a father and one small child' }),
       ],
     },
   ];

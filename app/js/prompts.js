@@ -393,7 +393,7 @@ export function buildGridImagePrompt(words, { cols, rows }) {
         const hint = note ? '' : visualHint(item); // bộ phận trong bảng: chỉ dùng cách vẽ của app
         const arrow = needsPointer(item);
         const what = note || (hint ? sentence(hint) : `${/[^s]s$/i.test(item.en) ? capitalize(item.en) : `One ${item.en}`}.`);
-        placement.push(`Cell ${i + 1} — ${capitalize(item.en)}: ${what} ${arrow ? 'Only this one subject (plus its arrow) in the cell.' : 'Only this one subject in the cell.'}`);
+        placement.push(`Cell ${i + 1} — ${capitalize(item.label ?? item.en)}: ${what} ${arrow ? 'Only this one subject (plus its arrow) in the cell.' : 'Only this one subject in the cell.'}`);
       } else {
         placement.push(`Cell ${i + 1} — EMPTY CELL: completely blank, uniform pure white (#FFFFFF). Absolutely nothing inside: no illustration, no object, no icon, no pattern, no shadow, no texture, no decoration, no stray marks.`);
       }
