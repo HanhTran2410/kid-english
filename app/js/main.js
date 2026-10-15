@@ -13,6 +13,7 @@ import { phonicsLessonScreen } from './player/phonics-player.js';
 import { mixScreen } from './player/mix-player.js';
 import { learnScreen } from './screens/learn.js';
 import { talkLessonScreen } from './player/talk-player.js';
+import { stickerSceneScreen } from './screens/sticker-scene.js';
 import { parentScreen } from './screens/parent/index.js';
 
 async function registerServiceWorker(app) {
@@ -94,6 +95,8 @@ async function boot() {
   app.register('learn-review', learnScreen);
   app.register('talk-lesson', talkLessonScreen);
   app.register('stickers', stickersScreen);
+  // Dán tranh (SPEC-scenes.md): kéo sticker vào tranh, Bông nói câu có giới từ.
+  app.register('sticker-scene', stickerSceneScreen);
   app.register('sleep', sleepScreen);
   app.register('parent', parentScreen);
 

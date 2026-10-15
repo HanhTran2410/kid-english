@@ -283,7 +283,16 @@ export function stickersScreen(app) {
   const counter = h('span.sticker-count');
   // 5 album × 20 sticker: mỗi lần xem một album, mở sẵn album bé đang sưu tập.
   const albums = h('nav.sticker-albums', { 'aria-label': 'Album sticker' });
-  app.root.append(h('header.child-top', {}, homeButton(app), counter), albums, grid);
+  // Dán tranh (SPEC-scenes.md): sticker đã có dùng để dán vào tranh.
+  const sceneBtn = h('button.sp-open', {
+    type: 'button',
+    'aria-label': 'Dán tranh',
+    onclick: () => {
+      play('tap');
+      app.go('sticker-scene');
+    },
+  }, h('span.sp-open-emoji', { text: '🎨' }), h('span.home-text', {}, h('span.home-en', { text: 'Play' }), h('span.home-vi', { text: 'Dán tranh' })));
+  app.root.append(h('header.child-top', {}, homeButton(app), sceneBtn, counter), albums, grid);
 
   getStickers(app.db).then((owned) => {
     const have = STICKERS.filter((s) => owned[s.id]).length;

@@ -75,6 +75,10 @@ Nếu AI trả bài bị cắt ngang, nhắn cho AI chữ `continue` rồi copy 
 
 Góc bố mẹ → **Tạo bài câu** → chọn tình huống (Morning, Getting dressed, Going out…), số câu (4 hoặc 6) → **Copy prompt** → dán vào ChatGPT/Gemini → **Dán bài** (cùng chỗ với bài từ vựng). Bé học ở nút **💬 Phrases / Câu nói** trên màn hình chính: xem Bông làm → làm theo (chạm ✔) → nói theo → chọn hình đúng câu. Trong Quản lý bài, bố mẹ đổi được hiệu ứng chuyển động của từng câu và xem "Câu dùng trong ngày". Chi tiết ở [SPEC-v1.0.md](SPEC-v1.0.md).
 
+### Dán tranh (Sticker Play)
+
+Màn **🎁 Sticker của bé → 🎨 Dán tranh**: bé kéo sticker đã có vào 3 bức tranh (nông trại, bãi biển, phòng ngủ), Bông nói câu có giới từ (*"The lion is in the tree!"*) và thỉnh thoảng giao việc (*"Put the duck in the water!"*). Bé chạm sticker rồi chạm chỗ trong tranh cũng được. Chi tiết ở [SPEC-scenes.md](SPEC-scenes.md).
+
 ## 6. Test
 
 ```bash
