@@ -171,6 +171,7 @@ Góc bố mẹ → **🎨 Ảnh Dán tranh** → danh sách 7 tranh (ghi đang d
   2. **Chỗ dán sticker**: các vùng rõ và trống, nhiều khoảng yên tĩnh; vật không chồng lên nhau (trừ chỗ nối liền); không bị cắt ở mép (trừ vùng chạm mép); không họa tiết dày; **danh sách không được vẽ thêm riêng từng tranh** (nông trại: đồi, đường đi, hàng rào, hoa, nấm, đá, bụi cây…).
   3. **Phong cách**: 2D phẳng cho bé 3 tuổi, nét viền mềm, chính diện, ít phối cảnh, không 3D / ánh sáng mạnh / bóng sâu.
   4. **Cấm**: con vật, người, nhân vật; đồ ăn, đồ chơi, xe cộ, vật thừa **ngoài các vật đã liệt kê** (để không cấm nhầm tên lửa, thuyền, nồi); chữ, logo, khung, lưới; chỉ 1 ảnh.
+- **Ảnh bố cục mẫu (app 0.12.2)** — chạy thử thấy AI vẽ đúng vật nhưng lệch vị trí / cỡ (AI vẽ ảnh không đo được %). Cách chính xác hơn: **(1) Tải ảnh bố cục mẫu** = hình vẽ sẵn của tranh xuất ra PNG 1600 × 1200 (đúng các chỗ của app; tạo sẵn khi mở trang để iOS cho mở bảng Chia sẻ ngay) → **(2) Copy prompt kèm ảnh mẫu**: prompt mở đầu "I attached a REFERENCE LAYOUT IMAGE… keep the composition EXACTLY… do not move, enlarge, shrink, add or remove any object; only improve the drawing style", phần tọa độ % chỉ để AI đối chiếu → bố mẹ **đính kèm ảnh mẫu** khi gửi → **(3) Chọn ảnh tranh**. Vẫn giữ nút "Copy prompt không cần ảnh mẫu".
 - **Chọn ảnh tranh**: app **cắt giữa về đúng 4:3** (cạnh dài 1200 px), hiện xem trước **kèm khung hồng các chỗ** để bố mẹ kiểm tra ảnh AI vẽ có khớp chỗ của app không → **Lưu**. Lệch nhiều thì nhờ AI vẽ lại (app không chỉnh chỗ theo ảnh).
 - **Xóa ảnh**: quay lại hình vẽ sẵn.
 

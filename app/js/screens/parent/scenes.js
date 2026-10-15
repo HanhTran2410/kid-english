@@ -10,6 +10,7 @@ import {
 import { loadSceneImages, sceneArt, itemFace } from '../sticker-scene.js';
 import { parentLayout, goParent, section, notice } from './common.js';
 import { gridSection, imageErrorMessage } from './lessons.js';
+import { saveFile } from './backup.js';
 
 export function scenesView(app) {
   const body = parentLayout(app, { title: 'Ảnh Dán tranh', back: () => goParent(app) });
@@ -57,8 +58,29 @@ function zonesPreview(scene, art) {
   }));
 }
 
+/** Ảnh bố cục mẫu (PNG 1600 × 1200) từ hình vẽ sẵn của tranh — đúng các chỗ của app, để AI vẽ lại theo. */
+export async function layoutImage(scene, width = 1600, height = 1200) {
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 400 300" preserveAspectRatio="none">${scene.svg}</svg>`;
+  const url = URL.createObjectURL(new Blob([svg], { type: 'image/svg+xml' }));
+  try {
+    const img = new Image();
+    img.src = url;
+    await img.decode();
+    const canvas = document.createElement('canvas');
+    canvas.width = width;
+    canvas.height = height;
+    canvas.getContext('2d').drawImage(img, 0, 0, width, height);
+    const blob = await new Promise((resolve) => canvas.toBlob(resolve, 'image/png'));
+    if (!blob) throw new Error('toBlob');
+    return blob;
+  } finally {
+    URL.revokeObjectURL(url);
+  }
+}
+
 function backgroundSection(app, scene, images, urls, reload) {
   const prompt = sceneBackgroundPrompt(scene);
+  const referencePrompt = sceneBackgroundPrompt(scene, { reference: true });
   const input = h('input', { type: 'file', accept: 'image/*', hidden: true });
   const work = h('div.grid-preview');
   const hasImage = images.background.has(scene.id);
@@ -98,16 +120,44 @@ function backgroundSection(app, scene, images, urls, reload) {
         h('button.btn', { type: 'button', text: 'Hủy', onclick: () => work.replaceChildren() })));
   });
 
+  // Ảnh bố cục mẫu: tạo sẵn ngay khi mở trang để bấm "Tải" là mở được bảng Chia sẻ (iOS chỉ cho mở ngay sau lần chạm).
+  let layout = null;
+  const layoutBtn = h('button.btn.primary', {
+    type: 'button',
+    text: '1. Tải ảnh bố cục mẫu',
+    disabled: true,
+    onclick: async () => {
+      if (layout && await saveFile(layout, `bo-cuc-${scene.id}.png`)) toast('Đã lưu ảnh bố cục mẫu.');
+    },
+  });
+  layoutImage(scene).then((blob) => {
+    layout = blob;
+    layoutBtn.disabled = false;
+  }).catch(() => {
+    layoutBtn.textContent = 'Không tạo được ảnh bố cục';
+  });
+
   return section('Ảnh tranh',
-    notice('info', 'Bấm "Copy prompt ảnh tranh", dán vào ChatGPT/Gemini, lưu ảnh về máy rồi bấm "Chọn ảnh tranh". Prompt đã ghi rõ vật nào nằm ở đâu để khớp các chỗ bé dán sticker.'),
+    notice('info', 'AI vẽ ảnh không đo được vị trí theo %, nên ảnh hay bị lệch so với các chỗ của app. Cách chính xác nhất: ',
+      h('b', { text: '(1) tải ảnh bố cục mẫu' }), ' (chính là hình vẽ sẵn bên dưới), ',
+      h('b', { text: '(2) copy prompt kèm ảnh mẫu' }), ', mở ChatGPT/Gemini, ',
+      h('b', { text: 'đính kèm ảnh mẫu' }), ' rồi dán prompt — AI sẽ vẽ lại giữ đúng vị trí và cỡ từng vật. Lưu ảnh AI vẽ về máy rồi ',
+      h('b', { text: '(3) Chọn ảnh tranh' }), ' và kiểm tra các khung hồng.'),
     zonesPreview(scene, sceneArt(scene, images)),
+    h('div.actions', {},
+      layoutBtn,
+      h('button.btn.primary', {
+        type: 'button',
+        text: '2. Copy prompt kèm ảnh mẫu',
+        onclick: () => copyText(referencePrompt).then((ok) => toast(ok ? 'Đã copy. Nhớ đính kèm ảnh bố cục mẫu khi gửi cho AI.' : 'Không copy được.', 4000)),
+      }),
+      h('button.btn.primary', { type: 'button', text: '3. Chọn ảnh tranh', onclick: () => input.click() })),
     h('div.actions', {},
       h('button.btn', {
         type: 'button',
-        text: 'Copy prompt ảnh tranh',
+        text: 'Copy prompt không cần ảnh mẫu',
         onclick: () => copyText(prompt).then((ok) => toast(ok ? 'Đã copy prompt ảnh tranh.' : 'Không copy được.')),
       }),
-      h('button.btn.primary', { type: 'button', text: 'Chọn ảnh tranh', onclick: () => input.click() }),
       hasImage ? h('button.btn.danger', {
         type: 'button',
         text: 'Xóa ảnh (dùng hình vẽ sẵn)',

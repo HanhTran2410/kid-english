@@ -8,7 +8,7 @@ import { parentLayout, goParent, section, notice } from './common.js';
 
 /** Lưu file: mở bảng Chia sẻ (iOS) nếu được, không thì tải về. */
 export async function saveFile(blob, filename) {
-  const file = new File([blob], filename, { type: 'application/zip' });
+  const file = new File([blob], filename, { type: blob.type || 'application/zip' });
   if (navigator.canShare?.({ files: [file] })) {
     try {
       await navigator.share({ files: [file], title: filename });

@@ -24,8 +24,7 @@ const FARM_SVG = `
 <g fill="#ff6b6b"><circle cx="48" cy="80" r="5"/><circle cx="86" cy="70" r="5"/><circle cx="96" cy="108" r="5"/></g>
 <rect x="262" y="120" width="106" height="95" fill="#e4574b"/>
 <path d="M250 124 L315 72 L380 124 Z" fill="#b83b33"/>
-<rect x="295" y="160" width="40" height="55" fill="#8c2d27" stroke="#fff" stroke-width="4"/>
-<path d="M295 160 L335 215 M335 160 L295 215" stroke="#fff" stroke-width="3"/>
+<rect x="295" y="160" width="40" height="55" fill="#5a1d19" stroke="#fff" stroke-width="4"/>
 <ellipse cx="215" cy="255" rx="75" ry="28" fill="#6ec6f0"/><ellipse cx="198" cy="247" rx="30" ry="6" fill="#a8e0f8"/>
 <g fill="#fff"><circle cx="150" cy="215" r="4"/><circle cx="380" cy="250" r="4"/><circle cx="30" cy="268" r="4"/></g>
 <g fill="#ffd166"><circle cx="150" cy="215" r="2"/><circle cx="380" cy="250" r="2"/><circle cx="30" cy="268" r="2"/></g>`;
@@ -408,8 +407,10 @@ const PROMPT_HINTS = {
 /**
  * Prompt ảnh tranh: mỗi vật một mục (A, B, C…) với vùng tính bằng % theo đúng các chỗ của app, vật nào nối liền vật nào,
  * thứ tự lớp, chỗ trống cho sticker, phong cách, và những thứ cấm vẽ (con vật, người, chữ…) để bé tự dán sticker vào.
+ * `reference`: bố mẹ đính kèm ảnh bố cục mẫu (hình vẽ sẵn của app) — AI vẽ lại giữ nguyên vị trí, cỡ của từng vật
+ * (AI vẽ ảnh không đo được %, nhưng giữ bố cục của ảnh mẫu tốt hơn nhiều).
  */
-export function sceneBackgroundPrompt(scene) {
+export function sceneBackgroundPrompt(scene, { reference = false } = {}) {
   const hints = PROMPT_HINTS[scene.id] ?? { avoid: [], zones: {} };
   const isBackdrop = (z) => z.rect[2] === SCENE_W; // vùng nền trải hết chiều ngang (trời, cỏ, tường, sàn…)
   const objects = scene.zones.filter((z) => !isBackdrop(z));
@@ -441,12 +442,21 @@ export function sceneBackgroundPrompt(scene) {
   };
   const joinedPairs = objects.filter((o) => hints.zones[o.id]?.joins).map((o) => `${letter(o)}–${letter(byId.get(hints.zones[o.id].joins))}`);
 
-  return [
+  const intro = reference ? [
+    `I attached a REFERENCE LAYOUT IMAGE: a simple drawing of ${scene.setting}. Redraw it as ONE new, nicer illustration with the same exact 4:3 aspect ratio (for example 1600 × 1200 pixels). It is a static background for a sticker-placement game for a 3-year-old child: the child will drag separate stickers of animals, toys and food onto it.`,
+    'MOST IMPORTANT: keep the composition of the attached image EXACTLY. Trace it: every object stays at the same position, with the same size and the same outline shape as in the attached image; the line where the sky meets the ground stays at the same height. Do not move, enlarge, shrink, add or remove any object. Only improve the drawing style (cleaner shapes, nicer colors, simple soft details).',
+    '',
+    '1. COMPOSITION (same as the attached image)',
+    'The coordinates below describe the attached image (percentages of the canvas from the top-left corner: x = from the left, y = from the top) — use them only to double-check.',
+  ] : [
     `Create ONE landscape illustration with an exact 4:3 aspect ratio (for example 1600 × 1200 pixels). This is a static background for a sticker-placement game for a 3-year-old child: the child will drag separate stickers of animals, toys and food onto it.`,
     `The scene is ${scene.setting}, in a simple, colorful, flat vector illustration style.`,
     '',
     '1. EXACT COMPOSITION AND PLACEMENT',
     'Coordinates are percentages of the canvas measured from the top-left corner (x = from the left, y = from the top). Keep each main object inside its area, except for the natural connections listed below.',
+  ];
+  return [
+    ...intro,
     `Layer order: the background areas (${backdrops.map(letter).join(', ')}) are at the back; every main object (${objects.map(letter).join(', ')}) is drawn on top of them and stays clearly visible.`,
     '',
     ...ordered.flatMap(block),
