@@ -1,14 +1,15 @@
-// Màn Dán tranh (SPEC-scenes.md): bé kéo sticker vào tranh, Bông nói câu có giới từ và thỉnh thoảng giao việc.
+// Dán tranh (SPEC-scenes.md): chọn tranh, rồi bé kéo sticker theo chủ đề tranh vào tranh; Bông nói câu có giới từ
+// và thỉnh thoảng giao việc.
 
 import { h } from '../ui.js';
 import { play } from '../speech/sfx.js';
-import { getStickers } from '../db.js';
-import { STICKER_BY_ID } from '../stickers.js';
+import { mediaBlob } from '../db.js';
+import { normalizeWord } from '../text.js';
 import { homeButton } from '../player/layout.js';
 import { createBunny } from '../player/teacher.js';
 import {
-  SCENES, SCENE_BY_ID, MAX_PER_SCENE, DROPS_PER_REQUEST,
-  zoneAt, zoneBox, placedSentence, requestSentence, ownedStickers, remaining, cleanPlacements, pickRequest,
+  SCENES, SCENE_BY_ID, ITEM_BY_ID, MAX_PER_SCENE, DROPS_PER_REQUEST, STICKER_IMAGES, BACKGROUND_IMAGES,
+  zoneAt, zoneBox, placedSentence, requestSentence, cleanPlacements, pickRequest,
 } from '../sticker-scenes.js';
 
 const DRAG_START_PX = 8; // dịch ngón tay quá chừng này thì là kéo, không phải chạm
@@ -20,13 +21,92 @@ const capital = (s) => s.charAt(0).toUpperCase() + s.slice(1);
 const clamp = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
 const round1 = (n) => Math.round(n * 10) / 10;
 
+/**
+ * Ảnh bố mẹ đã thay (SPEC-scenes mục 10): sticker theo tên, tranh theo mã tranh.
+ * @returns {Promise<{ sticker: Map<string,string>, background: Map<string,string>, revoke: () => void }>}
+ */
+export async function loadSceneImages(db) {
+  const urls = [];
+  const toMap = (list) => new Map(list.map((img) => {
+    const url = URL.createObjectURL(mediaBlob(img));
+    urls.push(url);
+    return [img.word, url];
+  }));
+  const [stickers, backgrounds] = await Promise.all([
+    db.getAllByIndex('images', 'lessonId', STICKER_IMAGES),
+    db.getAllByIndex('images', 'lessonId', BACKGROUND_IMAGES),
+  ]);
+  return {
+    sticker: toMap(stickers),
+    background: toMap(backgrounds),
+    revoke: () => urls.forEach((u) => URL.revokeObjectURL(u)),
+  };
+}
+
+/** Hình của sticker: ảnh bố mẹ đã thay, không thì emoji. */
+export function itemFace(item, images) {
+  const url = images?.sticker.get(normalizeWord(item.name));
+  return url ? h('img.sp-img', { src: url, alt: '', draggable: 'false' }) : document.createTextNode(item.emoji);
+}
+
+/** Nền của tranh: ảnh bố mẹ đã thay, không thì hình vẽ SVG có sẵn. */
+export function sceneArt(scene, images) {
+  const art = h('div.sp-art', { 'aria-hidden': 'true' });
+  const url = images?.background.get(scene.id);
+  if (url) art.append(h('img.sp-bg', { src: url, alt: '', draggable: 'false' }));
+  else art.innerHTML = `<svg viewBox="0 0 400 300" preserveAspectRatio="none">${scene.svg}</svg>`;
+  return art;
+}
+
+// ---------- Chọn tranh ----------
+
+export function scenePickerScreen(app) {
+  app.root.className = 'child-screen sp-picker';
+  const grid = h('div.sp-cards');
+  const back = h('button.sp-back', {
+    type: 'button',
+    'aria-label': 'Về trò chơi',
+    text: '🎲',
+    onclick: () => {
+      play('tap');
+      app.go('play');
+    },
+  });
+  app.root.append(h('header.child-top', {}, homeButton(app), back), grid);
+  let images = null;
+  loadSceneImages(app.db).then((loaded) => {
+    images = loaded;
+    const state = app.settings.stickerScenes ?? {};
+    grid.replaceChildren(...SCENES.map((scene) => {
+      const n = cleanPlacements(state[scene.id]).length;
+      return h(`button.sp-card${state.last === scene.id ? '.last' : ''}`, {
+        type: 'button',
+        'aria-label': scene.vi,
+        dataset: { scene: scene.id },
+        onclick: () => {
+          play('tap');
+          app.go('sticker-scene', { scene: scene.id });
+        },
+      },
+      h('div.sp-thumb', {}, sceneArt(scene, images), n ? h('span.sp-thumb-count', { text: `${n}` }) : null),
+      h('span.sp-card-text', {}, h('span.sp-card-en', { text: `${scene.emoji} ${scene.en}` }), h('span.sp-card-vi', { text: scene.vi })));
+    }));
+  });
+  say(app, 'Pick a picture!');
+  return () => images?.revoke();
+}
+
+const say = (app, text) => app.speaker.speak(text).catch(() => {});
+
+// ---------- Dán tranh ----------
+
 export function stickerSceneScreen(app, params = {}) {
   const signal = app.startActivity();
   app.root.className = 'child-screen sp-play';
   const state = { ...(app.settings.stickerScenes ?? {}) };
-  let scene = SCENE_BY_ID.get(params.scene) ?? SCENE_BY_ID.get(state.last) ?? SCENES[0];
-  let owned = {};
-  let placed = []; // [{ s, x, y }] của tranh đang mở
+  const scene = SCENE_BY_ID.get(params.scene) ?? SCENE_BY_ID.get(state.last) ?? SCENES[0];
+  let images = null;
+  let placed = cleanPlacements(state[scene.id]); // [{ s, x, y }]
   let selected = null; // sticker đang chọn trong khay (chạm sticker → chạm chỗ trong tranh)
   let request = null; // việc Bông giao: { sticker, zone }
   let lastRequest = null;
@@ -50,34 +130,26 @@ export function stickerSceneScreen(app, params = {}) {
     hidden: true,
     onclick: () => {
       play('tap');
-      if (request) talk([requestLine(request)]);
+      if (request) {
+        showWanted();
+        talk([requestLine(request)]);
+      }
     },
   });
-  const tabs = h('nav.sp-tabs', { 'aria-label': 'Tranh' }, ...SCENES.map((s) => h('button.sp-tab', {
+  const backBtn = h('button.sp-back', {
     type: 'button',
-    'aria-label': s.vi,
-    dataset: { scene: s.id },
-    text: s.emoji,
+    'aria-label': 'Chọn tranh khác',
+    text: '🖼️',
     onclick: () => {
       play('tap');
-      if (s !== scene) openScene(s);
-    },
-  })));
-  const albumBtn = h('button.sp-album', {
-    type: 'button',
-    'aria-label': 'Album sticker',
-    text: '🎁',
-    onclick: () => {
-      play('tap');
-      app.go('stickers');
+      app.go('sticker-scenes');
     },
   });
-  const art = h('div.sp-art', { 'aria-hidden': 'true' });
   const layer = h('div.sp-layer');
-  const sceneEl = h('div.sp-scene', {}, art, layer);
+  const sceneEl = h('div.sp-scene', { 'aria-label': scene.vi, dataset: { scene: scene.id } }, layer);
   const tray = h('div.sp-tray', { 'aria-label': 'Khay sticker' });
   app.root.append(
-    h('header.child-top.sp-top', {}, homeButton(app), albumBtn, tabs, requestCard, bongBtn),
+    h('header.child-top.sp-top', {}, homeButton(app), backBtn, h('span.sp-title', { text: `${scene.emoji} ${scene.en}` }), requestCard, bongBtn),
     h('div.sp-wrap', {}, sceneEl),
     tray,
   );
@@ -122,15 +194,14 @@ export function stickerSceneScreen(app, params = {}) {
 
   function renderPlaced() {
     layer.replaceChildren(...placed.map((p, index) => {
-      const sticker = STICKER_BY_ID.get(p.s);
+      const sticker = ITEM_BY_ID.get(p.s);
       const zone = zoneAt(scene, p.x, p.y);
       const el = h('button.placed', {
         type: 'button',
         'aria-label': `${capital(sticker.name)} ${zone.en}`,
         dataset: { sticker: p.s, zone: zone.id },
         style: { left: `${p.x}%`, top: `${p.y}%` },
-        text: sticker.emoji,
-      });
+      }, itemFace(sticker, images));
       el.addEventListener('pointerdown', (e) => beginPress(e, { kind: 'placed', index, el, sid: p.s }));
       return el;
     }));
@@ -142,7 +213,7 @@ export function stickerSceneScreen(app, params = {}) {
     requestCard.hidden = !request;
     for (const b of tray.children) b.classList.toggle('wanted', Boolean(request) && b.dataset.sticker === request.sticker.id);
     if (!request) return;
-    requestCard.textContent = request.sticker.emoji;
+    requestCard.replaceChildren(itemFace(request.sticker, images));
     requestCard.dataset.sticker = request.sticker.id;
     sceneEl.insertBefore(zoneDiv('zone-target', request.zone), layer);
   }
@@ -162,15 +233,10 @@ export function stickerSceneScreen(app, params = {}) {
   }
 
   function renderTray() {
-    const list = ownedStickers(owned);
-    if (!list.length) {
-      tray.replaceChildren(h('p.tray-empty', { text: 'Học bài để nhận sticker nhé! 🎁' }));
-      return;
-    }
-    tray.replaceChildren(...list.map((s) => {
+    tray.replaceChildren(...scene.items.map((s) => {
       const btn = h('button.tray-sticker', {
         type: 'button', 'aria-label': capital(s.name), dataset: { sticker: s.id },
-      }, h('span.tray-emoji', { text: s.emoji }), h('span.tray-left'));
+      }, h('span.tray-emoji', {}, itemFace(s, images)));
       btn.addEventListener('pointerdown', (e) => beginPress(e, { kind: 'tray', sid: s.id }));
       return btn;
     }));
@@ -178,44 +244,25 @@ export function stickerSceneScreen(app, params = {}) {
   }
 
   function updateTray() {
+    const full = placed.length >= MAX_PER_SCENE;
     [...tray.querySelectorAll('.tray-sticker')].forEach((btn, i) => {
-      const id = btn.dataset.sticker;
-      const left = remaining(owned, placed, id);
-      btn.classList.toggle('used-up', left <= 0);
-      btn.classList.toggle('selected', selected === id);
+      btn.classList.toggle('used-up', full);
+      btn.classList.toggle('selected', selected === btn.dataset.sticker);
       btn.classList.toggle('hint', i === 0 && !placed.length && !selected);
-      btn.lastChild.textContent = owned[id].count > 1 ? String(Math.max(0, left)) : '';
     });
     renderTarget();
   }
 
-  function openScene(s, { greet = true } = {}) {
-    scene = s;
-    placed = cleanPlacements(state[s.id], owned);
-    request = null;
-    lastRequest = null;
-    freeDrops = 0;
-    selected = null;
-    sceneEl.dataset.scene = s.id;
-    sceneEl.setAttribute('aria-label', s.vi);
-    for (const b of tabs.children) b.classList.toggle('active', b.dataset.scene === s.id);
-    art.innerHTML = `<svg viewBox="0 0 400 300" preserveAspectRatio="none">${s.svg}</svg>`;
-    renderPlaced();
-    updateTray();
-    save();
-    if (greet) talk([[s.intro, s.vi]]);
-  }
-
   // ---------- Dán, giao việc ----------
   function put(id, xPct, yPct, from = -1) {
-    if (from < 0 && (remaining(owned, placed, id) <= 0 || placed.length >= MAX_PER_SCENE)) {
+    if (from < 0 && placed.length >= MAX_PER_SCENE) {
       play('boing');
       return;
     }
     if (from >= 0) placed.splice(from, 1);
     const pos = { s: id, x: round1(clamp(xPct, 3, 97)), y: round1(clamp(yPct, 4, 96)) };
     placed.push(pos);
-    const sticker = STICKER_BY_ID.get(id);
+    const sticker = ITEM_BY_ID.get(id);
     const zone = zoneAt(scene, pos.x, pos.y);
     selected = null;
     play('pop');
@@ -236,13 +283,24 @@ export function stickerSceneScreen(app, params = {}) {
     }
     const lines = [placedLine(sticker, zone)];
     freeDrops += 1;
+    let asked = false;
     if (!request && freeDrops >= DROPS_PER_REQUEST) {
-      request = pickRequest(scene, owned, placed, lastRequest);
+      request = pickRequest(scene, placed, lastRequest);
+      asked = Boolean(request);
       if (request) lines.push(requestLine(request));
     }
     renderPlaced();
     updateTray();
+    if (asked) showWanted();
     talk(lines);
+  }
+
+  /** Khay cuộn tới sticker Bông đang cần (sticker cuối khay có thể đang nằm ngoài màn hình). */
+  function showWanted() {
+    const btn = request && tray.querySelector(`.tray-sticker[data-sticker="${request.sticker.id}"]`);
+    if (!btn) return;
+    const reduce = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+    btn.scrollIntoView({ block: 'nearest', inline: 'center', behavior: reduce ? 'auto' : 'smooth' });
   }
 
   function remove(index) {
@@ -254,19 +312,18 @@ export function stickerSceneScreen(app, params = {}) {
   }
 
   function giveRequest() {
-    if (!ownedStickers(owned).length) {
-      talk([["Let's learn a lesson first!", 'Học bài để nhận sticker nhé!']]);
-      return;
-    }
     // Đang có việc: chỉ nhắc lại, không giao việc mới.
     if (!request) {
-      request = pickRequest(scene, owned, placed, lastRequest);
+      request = pickRequest(scene, placed, lastRequest);
       freeDrops = 0;
       renderTarget();
     }
-    // Không còn việc nào làm được (mọi sticker đã ở mọi chỗ…): Bông khen, bé chơi tự do.
+    // Không còn việc nào làm được (tranh đầy…): Bông khen, bé chơi tự do.
     if (!request) talk([['Great job!', 'Giỏi quá!']]);
-    else talk([requestLine(request)]);
+    else {
+      showWanted();
+      talk([requestLine(request)]);
+    }
   }
 
   // ---------- Chạm / kéo (một ngón tay một lúc) ----------
@@ -285,7 +342,7 @@ export function stickerSceneScreen(app, params = {}) {
   }
 
   function startDrag(e) {
-    if (press.kind === 'tray' && remaining(owned, placed, press.sid) <= 0) {
+    if (press.kind === 'tray' && placed.length >= MAX_PER_SCENE) {
       play('boing');
       press = null;
       return;
@@ -296,7 +353,7 @@ export function stickerSceneScreen(app, params = {}) {
     updateTray();
     play('tap');
     const size = sceneEl.getBoundingClientRect().width * STICKER_SIZE;
-    ghost = h('div.drag-ghost', { text: STICKER_BY_ID.get(press.sid).emoji, style: { fontSize: `${size}px` } });
+    ghost = h('div.drag-ghost', { style: { fontSize: `${size}px` } }, itemFace(ITEM_BY_ID.get(press.sid), images));
     document.body.append(ghost);
     moveGhost(e);
   }
@@ -355,16 +412,13 @@ export function stickerSceneScreen(app, params = {}) {
 
   function tap(p, e) {
     if (p.kind === 'tray') {
-      const sticker = STICKER_BY_ID.get(p.sid);
-      if (remaining(owned, placed, p.sid) <= 0) play('boing');
-      else {
-        play('pop');
-        selected = selected === p.sid ? null : p.sid;
-        updateTray();
-      }
+      const sticker = ITEM_BY_ID.get(p.sid);
+      play('pop');
+      selected = selected === p.sid ? null : p.sid;
+      updateTray();
       talk([[`${capital(sticker.name)}!`, sticker.emoji]]);
     } else if (p.kind === 'placed') {
-      const sticker = STICKER_BY_ID.get(p.sid);
+      const sticker = ITEM_BY_ID.get(p.sid);
       const { x, y } = placed[p.index];
       p.el.classList.remove('bounce');
       void p.el.offsetWidth;
@@ -382,11 +436,17 @@ export function stickerSceneScreen(app, params = {}) {
     app.idlePaused = Date.now() - app.lastTouchAt > IDLE_PAUSE_MS;
   }, 5000);
 
-  getStickers(app.db).then((list) => {
-    if (signal.aborted) return;
-    owned = list;
+  loadSceneImages(app.db).catch(() => null).then((loaded) => {
+    images = loaded;
+    if (signal.aborted) {
+      images?.revoke();
+      return;
+    }
+    sceneEl.prepend(sceneArt(scene, images));
     renderTray();
-    openScene(scene);
+    renderPlaced();
+    save();
+    talk([[scene.intro, scene.vi]]);
   });
 
   return () => {
@@ -394,5 +454,6 @@ export function stickerSceneScreen(app, params = {}) {
     clearTimeout(captionTimer);
     endDrag();
     bunny.destroy();
+    images?.revoke();
   };
 }

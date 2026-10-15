@@ -77,7 +77,9 @@ Góc bố mẹ → **Tạo bài câu** → chọn tình huống (Morning, Gettin
 
 ### Dán tranh (Sticker Play)
 
-Màn **🎁 Sticker của bé → 🎨 Dán tranh**: bé kéo sticker đã có vào 3 bức tranh (nông trại, bãi biển, phòng ngủ), Bông nói câu có giới từ (*"The lion is in the tree!"*) và thỉnh thoảng giao việc (*"Put the duck in the water!"*). Bé chạm sticker rồi chạm chỗ trong tranh cũng được. Chi tiết ở [SPEC-scenes.md](SPEC-scenes.md).
+Nút **🎲 Play / Trò chơi** mở Góc trò chơi: **🎨 Dán tranh**, **🎲 Chọn từ** (trò tổng hợp), **🎯 Chọn số**. Dán tranh có 7 tranh (nông trại, bãi biển, phòng ngủ, công viên, nhà bếp, vũ trụ, rừng xanh), mỗi tranh một bộ sticker theo chủ đề; bé kéo sticker vào tranh, Bông nói câu có giới từ (*"The cow is in the barn!"*) và thỉnh thoảng giao việc (*"Put the duck in the water!"*).
+
+Muốn ảnh đẹp hơn emoji / hình vẽ sẵn: Góc bố mẹ → **🎨 Ảnh Dán tranh** → chọn tranh → **Copy prompt ảnh tranh** (prompt ghi rõ vật nào nằm ở đâu) và **Copy prompt ảnh lưới** cho sticker → dán vào ChatGPT/Gemini → chọn ảnh AI vẽ. App tự cắt ảnh tranh về 4:3 và tự bỏ nền trắng của sticker. Chi tiết ở [SPEC-scenes.md](SPEC-scenes.md).
 
 ## 6. Test
 

@@ -228,10 +228,11 @@ export async function getWordImage(db, lessonId, word) {
   return images.filter((img) => img.word === key).sort((a, b) => (b.createdAt ?? 0) - (a.createdAt ?? 0))[0] ?? null;
 }
 
-/** Ảnh mới nhất của một từ trong mọi bài (dùng khi ôn tập). */
+/** Ảnh mới nhất của một từ trong mọi bài (dùng khi ôn tập). Không lấy ảnh sticker / ảnh tranh của Dán tranh. */
 export async function latestImageForWord(db, word) {
   const images = await db.getAllByIndex('images', 'word', normalizeWord(word));
-  return images.sort((a, b) => b.createdAt - a.createdAt)[0] ?? null;
+  return images.filter((img) => !String(img.lessonId ?? '').startsWith('scene:'))
+    .sort((a, b) => b.createdAt - a.createdAt)[0] ?? null;
 }
 
 /** Đặt hoặc thay ảnh cho một từ của bài. */

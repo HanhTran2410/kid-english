@@ -26,7 +26,7 @@ import { saveFile } from './backup.js';
 import { driveUploadButton, driveImportButton, linkImportButton } from './drive.js';
 import { appDrive } from '../../drive.js';
 
-function imageErrorMessage(err) {
+export function imageErrorMessage(err) {
   if (err instanceof ImageError) return err.message;
   if (isQuotaError(err)) return 'Bộ nhớ đầy, không lưu được ảnh. Hãy xóa bớt ghi âm cũ.';
   return 'Không đọc được ảnh này, hãy chọn ảnh khác.';
@@ -238,10 +238,15 @@ export function lessonDetailView(app, { lessonId }) {
  * AI hay vẽ sai số cột/hàng, xếp lộn thứ tự hoặc vẽ thừa ô, nên: app tự đoán lưới thật trong ảnh,
  * bố mẹ chọn lại được kiểu lưới, và chọn từ cho từng ô (ô thừa thì bỏ qua).
  */
-function gridSection(app, lesson, urls, title = null) {
+/**
+ * Ảnh lưới: copy prompt → chọn ảnh → app cắt từng ô → bố mẹ chọn từ cho từng ô → lưu.
+ * Dùng lại cho ảnh sticker của Dán tranh (SPEC-scenes mục 10): `promptNote` thêm vào cuối prompt, `process` xử lý
+ * từng ô sau khi cắt (bỏ nền trắng), `onSaved` thay cho việc quay lại trang bài.
+ */
+export function gridSection(app, lesson, urls, title = null, { promptNote = '', process = null, onSaved = null, previewClass = '' } = {}) {
   const words = lesson.words.map((w) => w.en);
   const expected = gridShape(words.length);
-  const prompt = buildGridImagePrompt(lesson.words, expected);
+  const prompt = buildGridImagePrompt(lesson.words, expected) + promptNote;
   const input = h('input', { type: 'file', accept: 'image/*', hidden: true });
   const previewBox = h('div.grid-preview');
   const SKIP = '';
@@ -277,6 +282,8 @@ function gridSection(app, lesson, urls, title = null) {
       cellsBox.replaceChildren(h('p.muted', { text: 'Đang cắt ảnh…' }));
       try {
         tiles = await sliceGrid(image, { cols, rows });
+        // Ô trống (xử lý báo lỗi) thì giữ ô gốc; bố mẹ chọn "bỏ qua" cho ô đó.
+        if (process) tiles = await Promise.all(tiles.map((t) => process(t).catch(() => t)));
       } catch (err) {
         cellsBox.replaceChildren(notice('error', imageErrorMessage(err)));
         return;
@@ -292,7 +299,7 @@ function gridSection(app, lesson, urls, title = null) {
       cellsBox.replaceChildren(...tiles.map((t, i) => {
         const url = URL.createObjectURL(t.blob);
         urls.push(url);
-        return h('figure.grid-cell', {}, h('img', { src: url, alt: `Ô ${i + 1}` }), pickers[i]);
+        return h('figure.grid-cell', {}, h('img', { src: url, alt: `Ô ${i + 1}`, class: previewClass }), pickers[i]);
       }));
     };
     shapeSel.addEventListener('change', render);
@@ -311,7 +318,8 @@ function gridSection(app, lesson, urls, title = null) {
       try {
         for (const [word, t] of chosen) await setWordImage(app.db, { lessonId: lesson.id, word, ...t });
         toast(`Đã lưu ${chosen.length} ảnh.`);
-        goParent(app, 'lesson', { lessonId: lesson.id });
+        if (onSaved) onSaved();
+        else goParent(app, 'lesson', { lessonId: lesson.id });
       } catch (err) {
         toast(imageErrorMessage(err), 4000);
       }

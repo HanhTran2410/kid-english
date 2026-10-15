@@ -288,3 +288,111 @@ export async function sliceGrid({ source, w0, h0, detected }, { cols, rows }, ma
   }
   return tiles;
 }
+
+// ---------- Dán tranh: sticker cắt nền, ảnh tranh 4:3 (SPEC-scenes mục 10) ----------
+
+/**
+ * Mặt nạ nền trắng: loang từ mép ảnh qua các điểm SÁNG (cả 3 kênh màu ≥ `soft`) — nền trắng nối với mép ảnh
+ * thành trong suốt, chỗ trắng nằm trong viền của hình vẫn giữ. Điểm gần trắng (≥ `hard`) trong suốt hẳn, điểm
+ * sáng vừa (giữa soft và hard, thường là mép khử răng cưa) trong suốt một phần.
+ * @param {Uint8ClampedArray|number[]} rgba dữ liệu điểm ảnh (4 số mỗi điểm)
+ * @returns {Uint8ClampedArray} độ đục (0–255) cho từng điểm
+ */
+export function whiteBackgroundAlpha(rgba, width, height, { hard = 238, soft = 200 } = {}) {
+  const n = width * height;
+  const alpha = new Uint8ClampedArray(n).fill(255);
+  const light = (i) => Math.min(rgba[i * 4], rgba[i * 4 + 1], rgba[i * 4 + 2]);
+  const seen = new Uint8Array(n);
+  const queue = [];
+  const push = (i) => {
+    if (seen[i] || light(i) < soft) return;
+    seen[i] = 1;
+    queue.push(i);
+  };
+  for (let x = 0; x < width; x++) {
+    push(x);
+    push((height - 1) * width + x);
+  }
+  for (let y = 0; y < height; y++) {
+    push(y * width);
+    push(y * width + width - 1);
+  }
+  for (let q = 0; q < queue.length; q++) {
+    const i = queue[q];
+    const v = light(i);
+    alpha[i] = v >= hard ? 0 : Math.round((255 * (hard - v)) / (hard - soft));
+    const x = i % width;
+    if (x > 0) push(i - 1);
+    if (x < width - 1) push(i + 1);
+    if (i >= width) push(i - width);
+    if (i < n - width) push(i + width);
+  }
+  return alpha;
+}
+
+/**
+ * Sticker từ một ô ảnh lưới: bỏ nền trắng (thành trong suốt), cắt sát hình (chừa 4%), xuất PNG.
+ * Ô không còn gì (ô trống) thì báo lỗi.
+ */
+export async function cutOutSticker(blob, max = 320) {
+  const { source, w0, h0 } = await decode(blob);
+  const scale = Math.min(1, max / Math.max(w0, h0));
+  const width = Math.max(1, Math.round(w0 * scale));
+  const height = Math.max(1, Math.round(h0 * scale));
+  const canvas = document.createElement('canvas');
+  canvas.width = width;
+  canvas.height = height;
+  const ctx = canvas.getContext('2d', { willReadFrequently: true });
+  ctx.drawImage(source, 0, 0, width, height);
+  source.close?.();
+  const img = ctx.getImageData(0, 0, width, height);
+  const alpha = whiteBackgroundAlpha(img.data, width, height);
+  let x0 = width;
+  let y0 = height;
+  let x1 = -1;
+  let y1 = -1;
+  for (let i = 0; i < alpha.length; i++) {
+    img.data[i * 4 + 3] = alpha[i];
+    if (alpha[i] > 40) {
+      const x = i % width;
+      const y = (i - x) / width;
+      if (x < x0) x0 = x;
+      if (x > x1) x1 = x;
+      if (y < y0) y0 = y;
+      if (y > y1) y1 = y;
+    }
+  }
+  if (x1 < 0) throw new ImageError('Ô này không có hình.');
+  ctx.putImageData(img, 0, 0);
+  const pad = Math.round(Math.max(x1 - x0, y1 - y0) * 0.04);
+  const sx = Math.max(0, x0 - pad);
+  const sy = Math.max(0, y0 - pad);
+  const sw = Math.min(width, x1 + pad + 1) - sx;
+  const sh = Math.min(height, y1 + pad + 1) - sy;
+  const out = document.createElement('canvas');
+  out.width = sw;
+  out.height = sh;
+  out.getContext('2d').drawImage(canvas, sx, sy, sw, sh, 0, 0, sw, sh);
+  const png = await new Promise((resolve) => out.toBlob(resolve, 'image/png'));
+  if (!png) throw new ImageError('Không xử lý được ảnh này, hãy chọn ảnh khác.');
+  return { blob: png, width: sw, height: sh, mimeType: 'image/png' };
+}
+
+/** Vùng cắt giữa ảnh theo đúng tỉ lệ `ratio` (rộng / cao), bỏ bớt hai bên hoặc trên dưới. */
+export function coverCrop(w0, h0, ratio) {
+  if (w0 / h0 > ratio) {
+    const sw = h0 * ratio;
+    return { sx: (w0 - sw) / 2, sy: 0, sw, sh: h0 };
+  }
+  const sh = w0 / ratio;
+  return { sx: 0, sy: (h0 - sh) / 2, sw: w0, sh };
+}
+
+/** Ảnh tranh: cắt giữa đúng tỉ lệ 4:3, cạnh dài tối đa `max`. */
+export async function resizeCover(file, ratio = 4 / 3, max = 1200) {
+  const { source, w0, h0 } = await decode(file);
+  const { sx, sy, sw, sh } = coverCrop(w0, h0, ratio);
+  const out = await crop(source, sx, sy, sw, sh, max);
+  source.close?.();
+  return out;
+}

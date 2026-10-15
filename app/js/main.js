@@ -13,7 +13,8 @@ import { phonicsLessonScreen } from './player/phonics-player.js';
 import { mixScreen } from './player/mix-player.js';
 import { learnScreen } from './screens/learn.js';
 import { talkLessonScreen } from './player/talk-player.js';
-import { stickerSceneScreen } from './screens/sticker-scene.js';
+import { stickerSceneScreen, scenePickerScreen } from './screens/sticker-scene.js';
+import { gamesScreen } from './screens/games.js';
 import { parentScreen } from './screens/parent/index.js';
 
 async function registerServiceWorker(app) {
@@ -89,13 +90,16 @@ async function boot() {
   app.register('phonics', (a) => lessonsScreen(a, { kind: 'phonics' }));
   app.register('phonics-lesson', phonicsLessonScreen);
   app.register('review', (a) => mixScreen(a, { mode: 'review' }));
-  app.register('play', (a) => mixScreen(a, { mode: 'play' }));
+  // Góc trò chơi (SPEC-scenes mục 11): Dán tranh, Chọn từ (trò tổng hợp), Chọn số.
+  app.register('play', gamesScreen);
+  app.register('play-mix', (a) => mixScreen(a, { mode: 'play' }));
   // "Nói chuyện với Bông" (SPEC-talk): danh sách bài hội thoại + thẻ "Ôn từ đã học" (màn Học cùng Bông cũ).
   app.register('learn', (a) => lessonsScreen(a, { kind: 'talk' }));
   app.register('learn-review', learnScreen);
   app.register('talk-lesson', talkLessonScreen);
   app.register('stickers', stickersScreen);
-  // Dán tranh (SPEC-scenes.md): kéo sticker vào tranh, Bông nói câu có giới từ.
+  // Dán tranh (SPEC-scenes.md): chọn tranh → kéo sticker vào tranh, Bông nói câu có giới từ.
+  app.register('sticker-scenes', scenePickerScreen);
   app.register('sticker-scene', stickerSceneScreen);
   app.register('sleep', sleepScreen);
   app.register('parent', parentScreen);

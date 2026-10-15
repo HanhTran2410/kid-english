@@ -28,6 +28,7 @@ test.beforeEach(async ({ page }) => {
 test('Trò chơi tổng hợp: 10 câu từ mọi bài kể cả chưa học, chỉ chạm chọn, không bật mic, không cộng sao cho mục đoán trúng', async ({ page }) => {
   await startApp(page);
   await page.getByRole('button', { name: 'Trò chơi' }).click();
+  await page.getByRole('button', { name: 'Chọn từ' }).click();
   await expect(page.locator('.choice').first()).toBeVisible();
   await playThrough(page);
   await expect(page.locator('.prize-sticker')).toBeVisible();

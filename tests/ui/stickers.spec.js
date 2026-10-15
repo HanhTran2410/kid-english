@@ -27,6 +27,7 @@ test('đủ 40 sticker cũ: màn sticker mở album 3, album 1–2 có ✅, xem 
   // Học xong một bài → sticker mới thuộc album 3.
   await page.locator('.home-btn-small').click();
   await page.getByRole('button', { name: 'Trò chơi' }).click();
+  await page.getByRole('button', { name: 'Chọn từ' }).click();
   const { playThrough } = await import('./helpers.js');
   await playThrough(page);
   const prize = await page.locator('.prize-sticker').getAttribute('aria-label');
