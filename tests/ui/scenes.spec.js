@@ -37,13 +37,15 @@ async function openScene(page, name) {
   await expect(page.locator('.tray-sticker').first()).toBeVisible();
 }
 
-test('góc trò chơi: thẻ Dán tranh, Chọn từ, Chọn số; Dán tranh có 7 tranh, mỗi tranh đủ bộ sticker theo chủ đề', async ({ page }) => {
+test('góc trò chơi: thẻ Dán tranh, Mặc đồ, Chọn từ (không có Chọn số); Dán tranh có 7 tranh, mỗi tranh đủ bộ sticker theo chủ đề', async ({ page }) => {
   await fakeSpeech(page);
   await startApp(page);
   await page.getByRole('button', { name: 'Trò chơi' }).click();
   await expect(page.getByRole('button', { name: 'Dán tranh' })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Chọn từ' })).toBeVisible();
-  await expect(page.getByRole('button', { name: 'Chọn số', exact: true })).toBeVisible();
+  // Trò Chọn số đã có ở mục Số đếm: không có trong Góc trò chơi.
+  await expect(page.getByRole('button', { name: /Chọn số/ })).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'Mặc đồ' })).toBeVisible();
   await page.getByRole('button', { name: 'Dán tranh' }).click();
   await expect(page.locator('.sp-card')).toHaveCount(7);
   // Không cần sticker trong album: tranh nào cũng có đủ bộ sticker theo chủ đề.

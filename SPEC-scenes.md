@@ -190,8 +190,9 @@ Góc bố mẹ → **🎨 Ảnh Dán tranh** → danh sách 7 tranh (ghi đang d
   |---|---|
   | 🎨 Sticker Play / Dán tranh | màn chọn tranh |
   | 🎲 Pick it / Chọn từ | Trò chơi tổng hợp (SPEC-mix mục 4, như nút 🎲 trước đây) |
-  | 🎯 Number game / Chọn số, Chọn số 11–20 | trò chơi số có sẵn (SPEC-numbers mục 5) |
+  | 👗 Dress up / Mặc đồ | trò Mặc đồ (SPEC-dressup.md, app 0.13.0) |
 - Bông nói *"Let's play a game!"*. Sau này thêm trò mới = thêm thẻ.
+- App 0.13.0: **bỏ thẻ Chọn số** (đã có ở mục Số đếm). Thẻ **tự xuống hàng**: màn rộng 3 thẻ một hàng, điện thoại 2 thẻ (trước đây dàn một hàng ngang, trên điện thoại đè lên nhau).
 
 ### 10.3. Dùng lại ảnh có sẵn (app 0.12.3)
 - Vẽ từng sticker bằng AI rất lâu. Ảnh bố mẹ **đã thêm ở bài học** (từ vựng, số đếm, phonics, hội thoại) có **cùng tên** với sticker (cow, apple, egg…) được dùng lại làm sticker: app tự bỏ nền trắng, lưu thành ảnh sticker riêng (ảnh bài học giữ nguyên).

@@ -1604,10 +1604,15 @@ img.talk-action-emoji { width: 76%; height: 76%; object-fit: cover; border-radiu
 
 /* ---------- Góc trò chơi (SPEC-scenes mục 11) ---------- */
 .child-screen.games { display: grid; grid-template-rows: auto 1fr; }
-.games-grid { grid-template-columns: repeat(auto-fit, minmax(0, max-content)); }
+/* Thẻ trò chơi: tự xuống hàng — màn rộng 3 thẻ một hàng, điện thoại 2 thẻ (không dàn một hàng ngang đè lên nhau). */
+.home-grid.games-grid { display: flex; flex-direction: row; flex-wrap: wrap; justify-content: center; align-content: center; gap: clamp(14px, 3vw, 36px); padding-bottom: 24px; }
+.home-grid.games-grid .home-btn { width: clamp(130px, min(26vw, 34vh), 240px); }
+@media (max-width: 760px) {
+  .home-grid.games-grid { flex-direction: row; }
+  .home-grid.games-grid .home-btn { width: min(42vw, 190px); }
+}
 .home-btn.game-scenes { background: var(--lilac); }
 .home-btn.game-mix { background: var(--sky); }
-.home-btn.game-number { background: var(--coral); }
 
 /* ---------- Dán tranh (SPEC-scenes.md) ---------- */
 /* Chọn tranh */
@@ -1727,3 +1732,54 @@ img.talk-action-emoji { width: 76%; height: 76%; object-fit: cover; border-radiu
 .checker { background: repeating-conic-gradient(#eee 0 25%, #fff 0 50%) 0 0 / 16px 16px; }
 .sp-admin-title { margin: 18px 0 8px; font-size: 20px; }
 details > summary { cursor: pointer; font-weight: 800; padding: 6px 0; }
+
+/* ---------- Mặc đồ (SPEC-dressup.md) ---------- */
+.home-btn.game-dress { background: var(--pink); }
+.child-screen.du-choose { display: grid; grid-template-rows: auto 1fr; }
+.du-kids { display: flex; justify-content: center; align-items: center; gap: clamp(20px, 6vw, 64px); flex-wrap: wrap; }
+.du-kid {
+  display: grid; justify-items: center; gap: 8px; padding: 16px 24px 14px; border-radius: 36px;
+  background: var(--card); box-shadow: var(--shadow);
+}
+.du-kid:nth-child(1) { background: #dff1ff; }
+.du-kid:nth-child(2) { background: #ffe3ec; }
+.du-kid.last { outline: 6px solid var(--lilac); }
+.du-kid .home-en { color: var(--ink); text-shadow: none; }
+.du-kid .home-vi { color: var(--ink-soft); }
+.du-kid-doll { height: min(46vh, 340px); aspect-ratio: 1 / 2; }
+.du-kid-doll svg, .du-body svg { width: 100%; height: 100%; display: block; }
+
+.child-screen.du-play { display: grid; grid-template-columns: minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr) auto; gap: 10px; height: 100dvh; min-height: 0; }
+.du-stage {
+  display: grid; place-items: center; min-height: 0;
+  background: radial-gradient(ellipse at 50% 60%, #fff 0 30%, transparent 60%);
+}
+.du-doll { position: relative; height: 100%; max-height: 100%; aspect-ratio: 1 / 2; max-width: 100%; touch-action: none; user-select: none; -webkit-user-select: none; border-radius: 30px; transition: background 150ms; }
+.du-doll.drop-here { background: rgba(177, 151, 252, 0.18); outline: 4px dashed var(--lilac); }
+.du-body { position: absolute; inset: 0; }
+.du-worn-layer { position: absolute; inset: 0; }
+.du-piece { position: absolute; padding: 0; touch-action: none; -webkit-touch-callout: none; }
+.du-piece svg { width: 100%; height: 100%; display: block; overflow: visible; pointer-events: none; }
+.du-piece text, .du-cloth { font-family: var(--emoji); }
+.du-piece.mirror svg { transform: scaleX(-1); }
+.du-piece.lifted { opacity: 0.25; }
+.du-piece.pop-in { animation: du-pop 0.35s ease-out; }
+.du-piece.bounce { animation: du-pop 0.45s; }
+@keyframes du-pop { 0% { transform: scale(0.6); } 60% { transform: scale(1.12); } 100% { transform: scale(1); } }
+.du-check {
+  position: absolute; top: 4px; right: 6px; display: none;
+  font-size: 18px; font-weight: 900; color: #fff; background: var(--green); border-radius: 999px; padding: 0 6px; line-height: 1.3;
+}
+.du-cloth.on .du-check { display: block; }
+.du-cloth.on { background: #eafaf2; }
+@media (max-width: 600px) {
+  .du-kid-doll { height: min(34vh, 260px); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .du-piece.pop-in, .du-piece.bounce { animation: none; }
+}
+/* Phụ đề Mặc đồ: iPad bên trái bạn nhỏ, iPhone đè lên mép tủ đồ (không chặn chạm) — không che người bạn nhỏ */
+.du-play .sp-caption { top: auto; bottom: max(12px, env(safe-area-inset-bottom)); max-width: min(92vw, 520px); }
+@media (min-width: 760px) {
+  .du-play .sp-caption { left: max(24px, env(safe-area-inset-left)); top: 42%; bottom: auto; transform: none; max-width: calc(50vw - 170px); animation: none; }
+}
