@@ -85,3 +85,12 @@ Thay món đồ / bạn nhỏ bằng ảnh AI vẽ (như Dán tranh); màu sắc
 
 ## 9. Trình bày (app 0.13.0)
 - Phụ đề Mặc đồ không che bạn nhỏ: iPad hiện bên trái bạn nhỏ; iPhone đè lên mép tủ đồ (không chặn chạm).
+
+## 10. Vẽ lại quần áo + xoay người (app 0.13.2)
+Chạy thử 0.13.0: quần áo là emoji kéo giãn nên to / nhỏ không vừa người, ba lô không nằm sau lưng.
+- **Mỗi món đồ vẽ bằng SVG theo đúng dáng bạn nhỏ** (cùng khung 200 × 400, kiểu búp bê giấy): áo đúng vai, tay áo trùm tay, quần trùm chân, giày đúng bàn chân, mũ đúng đầu, kính đúng mắt. Mỗi món một màu cố định. **Tủ đồ hiện đúng hình món đồ** (không dùng emoji) — trong tủ thế nào mặc vào y như thế. Emoji chỉ còn trong phụ đề.
+- **Mặt trước / mặt sau**: **chạm bạn nhỏ** (hoặc nút 🔄) → xoay người (thu hẹp → đổi mặt → mở rộng, ~0,4 giây), bạn nhỏ nói *"Turn around!"* (phụ đề *Quay lưng lại nào!* / *Quay lại nào!*). Sau lưng: đầu toàn tóc (bé gái tóc dài phủ lưng, dưới ba lô / mũ), không có mặt.
+- **Ba lô**: mặt trước chỉ thấy 2 quai trên vai, **mặt sau thấy cả ba lô**; **vừa đeo ba lô thì tự quay lưng** để thấy. Kính / kính râm chỉ thấy ở mặt trước: đang quay lưng mà đeo thì **tự quay lại**. Ô đổi sang tay bên kia khi quay lưng. Áo sơ mi / áo khoác mặt sau không có cúc, cổ.
+- Chạm bạn nhỏ = xoay người; muốn nghe lại câu của món đang mặc thì chạm món đó trong tủ. Kéo món đang mặc ra khỏi người vẫn là cởi.
+- Thứ tự lớp: quần · giày · áo · váy · áo khoác · ba lô · (tóc — chỉ sau lưng) · khăn · kính · mũ · ô.
+- iPhone: ẩn chữ "Dress up" trên thanh trên cùng để đủ chỗ cho các nút.

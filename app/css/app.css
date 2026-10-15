@@ -1756,18 +1756,19 @@ details > summary { cursor: pointer; font-weight: 800; padding: 6px 0; }
   display: grid; place-items: center; min-height: 0;
   background: radial-gradient(ellipse at 50% 60%, #fff 0 30%, transparent 60%);
 }
-.du-doll { position: relative; height: 100%; max-height: 100%; aspect-ratio: 1 / 2; max-width: 100%; touch-action: none; user-select: none; -webkit-user-select: none; border-radius: 30px; transition: background 150ms; }
+.du-doll { position: relative; height: 100%; max-height: 100%; aspect-ratio: 1 / 2; max-width: 100%; touch-action: none; user-select: none; -webkit-user-select: none; border-radius: 30px; transition: background 150ms; cursor: pointer; }
 .du-doll.drop-here { background: rgba(177, 151, 252, 0.18); outline: 4px dashed var(--lilac); }
-.du-body { position: absolute; inset: 0; }
-.du-worn-layer { position: absolute; inset: 0; }
-.du-piece { position: absolute; padding: 0; touch-action: none; -webkit-touch-callout: none; }
-.du-piece svg { width: 100%; height: 100%; display: block; overflow: visible; pointer-events: none; }
-.du-piece text, .du-cloth { font-family: var(--emoji); }
-.du-piece.mirror svg { transform: scaleX(-1); }
+.du-art { position: absolute; inset: 0; transition: transform 180ms ease-in; }
+.du-art.flip { transform: scaleX(0.04); }
+.du-art svg { width: 100%; height: 100%; display: block; }
+.du-piece { transform-box: fill-box; transform-origin: center; }
 .du-piece.lifted { opacity: 0.25; }
 .du-piece.pop-in { animation: du-pop 0.35s ease-out; }
-.du-piece.bounce { animation: du-pop 0.45s; }
-@keyframes du-pop { 0% { transform: scale(0.6); } 60% { transform: scale(1.12); } 100% { transform: scale(1); } }
+@keyframes du-pop { 0% { transform: scale(0.7); } 60% { transform: scale(1.08); } 100% { transform: scale(1); } }
+.du-icon { display: block; width: 76%; aspect-ratio: 1; pointer-events: none; }
+.du-icon svg, .sp-request svg, .du-ghost svg { width: 100%; height: 100%; display: block; }
+.sp-request svg { width: 78%; height: 78%; }
+.du-ghost { filter: drop-shadow(0 4px 4px rgba(61, 44, 94, 0.3)); }
 .du-check {
   position: absolute; top: 4px; right: 6px; display: none;
   font-size: 18px; font-weight: 900; color: #fff; background: var(--green); border-radius: 999px; padding: 0 6px; line-height: 1.3;
@@ -1778,10 +1779,13 @@ details > summary { cursor: pointer; font-weight: 800; padding: 6px 0; }
   .du-kid-doll { height: min(34vh, 260px); }
 }
 @media (prefers-reduced-motion: reduce) {
-  .du-piece.pop-in, .du-piece.bounce { animation: none; }
+  .du-piece.pop-in, .du-art { animation: none; transition: none; }
 }
 /* Phụ đề Mặc đồ: iPad bên trái bạn nhỏ, iPhone đè lên mép tủ đồ (không chặn chạm) — không che người bạn nhỏ */
 .du-play .sp-caption { top: auto; bottom: max(12px, env(safe-area-inset-bottom)); max-width: min(92vw, 520px); }
 @media (min-width: 760px) {
   .du-play .sp-caption { left: max(24px, env(safe-area-inset-left)); top: 42%; bottom: auto; transform: none; max-width: calc(50vw - 170px); animation: none; }
+}
+@media (max-width: 600px) {
+  .du-play .sp-title { display: none; }
 }

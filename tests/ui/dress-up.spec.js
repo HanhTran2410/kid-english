@@ -5,7 +5,9 @@ import { fakeSpeech, startApp } from './helpers.js';
 
 const spoken = (page) => page.evaluate(() => window.__spoken.slice());
 const lastSpoken = async (page) => (await spoken(page)).at(-1);
-const worn = (page) => page.evaluate(() => [...new Set([...document.querySelectorAll('.du-piece')].map((e) => e.dataset.item))].sort());
+// Món đang mặc (cả món không thấy ở mặt đang xem, ví dụ kính khi quay lưng).
+const worn = (page) => page.evaluate(() => (document.querySelector('.du-doll').dataset.worn || '').split(' ').filter(Boolean).sort());
+const view = (page) => page.locator('.du-doll').getAttribute('data-view');
 
 async function drag(page, from, to) {
   const a = await from.boundingBox().then((b) => ({ x: b.x + b.width / 2, y: b.y + b.height / 2 }));
@@ -56,7 +58,6 @@ test('mặc đồ: chọn bé gái → chạm áo phông, kéo quần bò, thay 
   await cloth(page, 'boots').scrollIntoViewIfNeeded();
   await cloth(page, 'boots').click();
   await expect.poll(() => worn(page)).toEqual(['boots', 'dress']);
-  await expect(page.locator('.du-piece[data-item="boots"]')).toHaveCount(2);
   await expect.poll(() => lastSpoken(page)).toMatch(/^(I'm wearing boots!|Put on your|It's|Let's)/);
 
   // Kéo váy ra khỏi người → cởi.
@@ -105,4 +106,31 @@ test('mặc đồ: Bông giao việc có ngữ cảnh → mặc đúng → khen;
   await expect(page.locator('.du-kid.last')).toHaveAttribute('aria-label', 'Bé gái');
   await page.getByRole('button', { name: 'Bé trai' }).click();
   await expect.poll(() => worn(page)).toEqual(['cap']);
+});
+
+test('mặc đồ: chạm bạn nhỏ để xoay người; đeo ba lô thì tự quay lưng (thấy cả ba lô), đeo kính khi đang quay lưng thì tự quay lại', async ({ page }) => {
+  await fakeSpeech(page);
+  await startApp(page);
+  await openDressUp(page, 'Bé trai');
+  await expect.poll(() => view(page)).toBe('front');
+  const doll = await page.locator('.du-doll').boundingBox();
+  await page.mouse.click(doll.x + doll.width / 2, doll.y + doll.height * 0.45);
+  await expect.poll(() => view(page)).toBe('back');
+  await expect.poll(() => lastSpoken(page)).toBe('Turn around!');
+  await page.getByRole('button', { name: 'Xoay người' }).click();
+  await expect.poll(() => view(page)).toBe('front');
+
+  // Ba lô: mặt trước chỉ có quai; vừa đeo thì quay lưng.
+  await cloth(page, 'backpack').scrollIntoViewIfNeeded();
+  await cloth(page, 'backpack').click();
+  await expect.poll(() => view(page)).toBe('back');
+  await expect(page.locator('.du-art [data-item="backpack"] rect').first()).toBeVisible();
+  await expect.poll(() => lastSpoken(page)).toBe("I'm wearing a backpack!");
+
+  // Đang quay lưng mà đeo kính: quay lại để thấy kính.
+  await cloth(page, 'glasses').scrollIntoViewIfNeeded();
+  await cloth(page, 'glasses').click();
+  await expect.poll(() => view(page)).toBe('front');
+  await expect(page.locator('.du-art [data-item="glasses"]')).toHaveCount(1);
+  await expect.poll(() => worn(page)).toEqual(['backpack', 'glasses']);
 });

@@ -129,6 +129,12 @@ test('ảnh thật (512px) trong sơ đồ nằm gọn trong thẻ, thẻ có �
   await expect(ant.locator('img')).toBeVisible();
   await expect(page.locator('.mind-word.shown')).toHaveCount(6);
   const box = (l) => l.boundingBox();
+  // Thẻ mọc ra có hiệu ứng: đợi thẻ "ant" và "axe" cùng cỡ (hết hiệu ứng) rồi mới đo — tránh test chập chờn.
+  const axe = page.getByRole('button', { name: 'axe', exact: true });
+  await expect.poll(async () => {
+    const [a, b] = await Promise.all([box(ant), box(axe)]);
+    return Math.abs(a.width - b.width) < 3 && Math.abs(a.height - b.height) < 3;
+  }, { timeout: 5000 }).toBe(true);
   const [card, img, label, other] = await Promise.all([box(ant), box(ant.locator('img')), box(ant.locator('.word-label')),
     box(page.getByRole('button', { name: 'axe', exact: true }))]);
   expect(Math.abs(card.width - other.width)).toBeLessThan(3);

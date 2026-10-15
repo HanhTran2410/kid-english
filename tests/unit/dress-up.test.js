@@ -3,26 +3,40 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  ITEMS, ITEM_BY_ID, SLOTS, SLOT_BY_ID, DOLL_W, DOLL_H, itemBoxes, wear, cleanOutfit, layerOrder,
+  ITEMS, ITEM_BY_ID, SLOTS, SLOT_BY_ID, DOLL_W, DOLL_H, wear, cleanOutfit, layerOrder, itemArt, itemIcon, visibleIn, viewFor,
   wearSentence, takeOffSentence, requestSentence, wearVi, takeOffVi, pickRequest, dollSvg,
 } from '../../app/js/dress-up.js';
 
-test('tủ đồ: 21 món, mã không trùng, món nào cũng có chỗ, tên Việt, emoji; vùng vẽ nằm trong khung bạn nhỏ', () => {
+test('tủ đồ: 21 món, mã không trùng, món nào cũng có chỗ, tên Việt, hình vẽ mặt trước, khung biểu tượng nằm trong khung bạn nhỏ', () => {
   assert.equal(ITEMS.length, 21);
   assert.equal(new Set(ITEMS.map((i) => i.id)).size, ITEMS.length);
   for (const it of ITEMS) {
     assert.ok(SLOT_BY_ID.has(it.slot), it.id);
     assert.ok(it.vi && it.emoji, it.id);
-    for (const [x, y, w, h] of [it.rect ?? SLOT_BY_ID.get(it.slot).rect]) {
-      assert.ok(x >= 0 && y >= 0 && x + w <= DOLL_W && y + h <= DOLL_H, it.id);
-    }
+    assert.ok(it.art?.front?.includes('<'), `${it.id} thiếu hình vẽ`);
+    const [x, y, w, h] = it.art.box;
+    assert.ok(x >= 0 && y >= 0 && x + w <= DOLL_W && y + h <= DOLL_H, it.id);
+    assert.match(itemIcon(it), /^<svg viewBox="\d+ \d+ \d+ \d+"/);
   }
   for (const s of SLOTS) assert.ok(s.verb, s.id);
-  // Giày: hai chiếc, chiếc thứ hai lật ngược.
-  const shoes = itemBoxes(ITEM_BY_ID.get('boots'));
-  assert.equal(shoes.length, 2);
-  assert.ok(!shoes[0].mirror && shoes[1].mirror);
-  assert.equal(itemBoxes(ITEM_BY_ID.get('cap')).length, 1);
+});
+
+test('mặt trước / sau: ba lô chỉ thấy quai ở trước, cả ba lô ở sau và vừa đeo thì quay lưng; kính chỉ thấy ở trước; ô đổi tay khi quay lưng', () => {
+  const backpack = ITEM_BY_ID.get('backpack');
+  assert.notEqual(itemArt(backpack, 'front'), itemArt(backpack, 'back'));
+  assert.match(itemArt(backpack, 'back'), /<rect/);
+  assert.equal(viewFor(backpack, 'front'), 'back');
+  const glasses = ITEM_BY_ID.get('glasses');
+  assert.ok(visibleIn(glasses, 'front') && !visibleIn(glasses, 'back'));
+  assert.equal(viewFor(glasses, 'back'), 'front');
+  assert.equal(viewFor(ITEM_BY_ID.get('t-shirt'), 'back'), 'back'); // áo thấy cả hai mặt: không xoay
+  assert.ok(itemArt(ITEM_BY_ID.get('umbrella'), 'back').includes('scale(-1 1)'));
+  // Mỗi món vẽ thành một nhóm data-item; kính không có ở mặt sau.
+  const front = dollSvg('girl', 'front', ['glasses', 'dress']);
+  const back = dollSvg('girl', 'back', ['glasses', 'dress']);
+  assert.match(front, /data-item="glasses"/);
+  assert.doesNotMatch(back, /data-item="glasses"/);
+  assert.match(back, /data-item="dress"/);
 });
 
 test('mặc: cùng chỗ thì thay món cũ; váy ↔ áo / quần; áo khoác mặc ngoài áo hoặc váy được', () => {
@@ -46,7 +60,8 @@ test('mặc: cùng chỗ thì thay món cũ; váy ↔ áo / quần; áo khoác m
 test('dọn bộ đồ đã lưu: bỏ mã lạ / trùng, món sau thắng khi xung đột; thứ tự lớp dưới → trên', () => {
   assert.deepEqual(cleanOutfit(['t-shirt', 'x', 'jeans', 'dress', 'cap', 'cap']), ['dress', 'cap']);
   assert.deepEqual(cleanOutfit(undefined), []);
-  assert.deepEqual(layerOrder(['cap', 'coat', 'jeans', 't-shirt', 'backpack']), ['backpack', 'jeans', 't-shirt', 'coat', 'cap']);
+  // Ba lô vẽ đè lên áo khoác (quai trên vai ở mặt trước, cả ba lô ở mặt sau).
+  assert.deepEqual(layerOrder(['cap', 'coat', 'jeans', 't-shirt', 'backpack']), ['jeans', 't-shirt', 'coat', 'backpack', 'cap']);
 });
 
 test('câu: a / không "a" cho số nhiều, cởi, giao việc có ngữ cảnh; phụ đề đúng động từ', () => {
@@ -77,9 +92,14 @@ test('giao việc: chỉ món chưa mặc, khác việc vừa xong; mặc hết 
   assert.equal(pickRequest(allButCap, last).id, 'cap');
 });
 
-test('bạn nhỏ: bé trai và bé gái khác tóc, cùng khung 200 × 400', () => {
-  const boy = dollSvg('boy');
-  const girl = dollSvg('girl');
-  assert.notEqual(boy, girl);
-  for (const svg of [boy, girl]) assert.match(svg, /viewBox="0 0 200 400"/);
+test('bạn nhỏ: bé trai và bé gái khác tóc; mặt trước có mặt (mắt), mặt sau không; cùng khung 200 × 400', () => {
+  for (const kid of ['boy', 'girl']) for (const v of ['front', 'back']) assert.match(dollSvg(kid, v), /viewBox="0 0 200 400"/);
+  assert.notEqual(dollSvg('boy'), dollSvg('girl'));
+  assert.notEqual(dollSvg('boy', 'back'), dollSvg('girl', 'back'));
+  assert.match(dollSvg('boy', 'front'), /<ellipse cx="85" cy="74"/);
+  assert.doesNotMatch(dollSvg('boy', 'back'), /<ellipse cx="85" cy="74"/);
+  // Sau lưng: tóc vẽ đè lên áo, dưới ba lô.
+  const back = dollSvg('girl', 'back', ['coat', 'backpack']);
+  const hair = back.indexOf('<circle cx="100" cy="70" r="43"');
+  assert.ok(back.indexOf('data-item="coat"') < hair && hair < back.indexOf('data-item="backpack"'));
 });

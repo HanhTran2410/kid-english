@@ -1,34 +1,168 @@
-// Trò chơi Mặc đồ (SPEC-dressup.md): tủ đồ, chỗ mặc trên người bạn nhỏ, câu nói, Bông giao việc.
-// Tọa độ chỗ mặc theo khung vẽ bạn nhỏ 200 × 400.
+// Trò chơi Mặc đồ (SPEC-dressup.md): tủ đồ, chỗ mặc, câu nói, Bông giao việc, hình vẽ bạn nhỏ + quần áo.
+// Bạn nhỏ và quần áo vẽ bằng SVG trên cùng khung 200 × 400 (kiểu búp bê giấy) nên món nào cũng vừa người;
+// có mặt trước và mặt sau (chạm bạn nhỏ để xoay người — ba lô nằm sau lưng).
 
 export const DOLL_W = 200;
 export const DOLL_H = 400;
 export const KIDS = ['boy', 'girl'];
+export const VIEWS = ['front', 'back'];
 /** Mặc bao nhiêu lần (chưa có việc) thì Bông tự giao việc. */
 export const WEARS_PER_REQUEST = 3;
 
-/**
- * Chỗ mặc. rect: [x, y, rộng, cao] theo khung 200 × 400; pair: hai chiếc (giày) — chiếc thứ hai lật ngược;
- * verb: động từ tiếng Việt cho phụ đề. Thứ tự = thứ tự lớp vẽ (dưới → trên).
- */
+/** Chỗ mặc; thứ tự = thứ tự lớp vẽ (dưới → trên). verb: động từ tiếng Việt cho phụ đề. */
 export const SLOTS = [
-  { id: 'back', verb: 'đeo', rect: [126, 118, 70, 80] },
-  { id: 'bottom', verb: 'mặc', rect: [58, 198, 84, 152] },
-  { id: 'top', verb: 'mặc', rect: [32, 106, 136, 116] },
-  { id: 'dress', verb: 'mặc', rect: [36, 106, 128, 194] },
-  { id: 'outer', verb: 'mặc', rect: [26, 102, 148, 150] },
-  { id: 'neck', verb: 'quàng', rect: [60, 106, 80, 44] },
-  { id: 'feet', verb: 'đi', rect: [54, 320, 48, 44], pair: [98, 320, 48, 44] },
-  { id: 'hand', verb: 'cầm', rect: [144, 112, 56, 116] },
-  { id: 'eyes', verb: 'đeo', rect: [62, 52, 76, 36] },
-  { id: 'head', verb: 'đội', rect: [48, 4, 104, 60] },
+  { id: 'bottom', verb: 'mặc' },
+  { id: 'feet', verb: 'đi' },
+  { id: 'top', verb: 'mặc' },
+  { id: 'dress', verb: 'mặc' },
+  { id: 'outer', verb: 'mặc' },
+  { id: 'back', verb: 'đeo' },
+  { id: 'neck', verb: 'quàng' },
+  { id: 'eyes', verb: 'đeo' },
+  { id: 'head', verb: 'đội' },
+  { id: 'hand', verb: 'cầm' },
 ];
 export const SLOT_BY_ID = new Map(SLOTS.map((s) => [s.id, s]));
 
 const PLURAL = new Set(['jeans', 'shorts', 'glasses', 'sunglasses', 'goggles', 'sneakers', 'boots', 'sandals']);
 
+// ---------- Hình vẽ quần áo (khung 200 × 400, khớp người bạn nhỏ) ----------
+
+const LINE = 'stroke="#3d2c5e" stroke-opacity="0.35" stroke-width="2" stroke-linejoin="round"';
+/** Chiếc bên phải = chiếc bên trái lật qua trục giữa người (x = 100). */
+const pair = (left) => `${left}<g transform="translate(200 0) scale(-1 1)">${left}</g>`;
+
+const ART = {
+  't-shirt': {
+    front: `<path d="M76 108 Q100 124 124 108 L136 112 L162 146 L146 160 L136 148 L136 216 L64 216 L64 148 L54 160 L38 146 L64 112 Z" fill="#ff7a7a" ${LINE}/>
+      <path d="M82 110 Q100 124 118 110" fill="none" stroke="#e05555" stroke-width="3"/>
+      <rect x="64" y="176" width="72" height="8" fill="#ffd166" opacity="0.8"/>`,
+    back: `<path d="M76 108 Q100 114 124 108 L136 112 L162 146 L146 160 L136 148 L136 216 L64 216 L64 148 L54 160 L38 146 L64 112 Z" fill="#ff7a7a" ${LINE}/>
+      <rect x="64" y="176" width="72" height="8" fill="#ffd166" opacity="0.8"/>`,
+    box: [36, 104, 128, 116],
+  },
+  shirt: {
+    front: `<path d="M64 112 L40 122 L40 212 L64 212 Z" fill="#74c0fc" ${LINE}/><path d="M136 112 L160 122 L160 212 L136 212 Z" fill="#74c0fc" ${LINE}/>
+      <rect x="62" y="108" width="76" height="110" rx="10" fill="#74c0fc" ${LINE}/>
+      <path d="M84 106 L100 126 L116 106 L110 103 L100 116 L90 103 Z" fill="#fff" ${LINE}/>
+      <g fill="#fff"><circle cx="100" cy="140" r="3"/><circle cx="100" cy="160" r="3"/><circle cx="100" cy="180" r="3"/><circle cx="100" cy="200" r="3"/></g>`,
+    back: `<path d="M64 112 L40 122 L40 212 L64 212 Z" fill="#74c0fc" ${LINE}/><path d="M136 112 L160 122 L160 212 L136 212 Z" fill="#74c0fc" ${LINE}/>
+      <rect x="62" y="108" width="76" height="110" rx="10" fill="#74c0fc" ${LINE}/><rect x="84" y="102" width="32" height="10" rx="4" fill="#fff" ${LINE}/>`,
+    box: [36, 100, 128, 120],
+  },
+  coat: {
+    front: `<path d="M62 110 L36 120 L36 214 L62 214 Z" fill="#c9783f" ${LINE}/><path d="M138 110 L164 120 L164 214 L138 214 Z" fill="#c9783f" ${LINE}/>
+      <path d="M60 106 L140 106 L144 258 L56 258 Z" fill="#c9783f" ${LINE}/>
+      <path d="M84 106 L100 142 L116 106" fill="#a8622e" ${LINE}/>
+      <g fill="#5a3418"><circle cx="100" cy="166" r="4"/><circle cx="100" cy="196" r="4"/><circle cx="100" cy="226" r="4"/></g>
+      <path d="M68 212 L86 212 M114 212 L132 212" stroke="#5a3418" stroke-width="3" stroke-linecap="round"/>`,
+    back: `<path d="M62 110 L36 120 L36 214 L62 214 Z" fill="#c9783f" ${LINE}/><path d="M138 110 L164 120 L164 214 L138 214 Z" fill="#c9783f" ${LINE}/>
+      <path d="M60 106 L140 106 L144 258 L56 258 Z" fill="#c9783f" ${LINE}/><path d="M100 200 L100 258" stroke="#a8622e" stroke-width="3"/>`,
+    box: [32, 102, 136, 160],
+  },
+  dress: {
+    front: `<path d="M70 112 Q100 126 130 112 L134 170 L158 294 L42 294 L66 170 Z" fill="#ff8fab" ${LINE}/>
+      <rect x="65" y="164" width="70" height="10" fill="#ff6b9a"/>
+      <g fill="#fff" opacity="0.8"><circle cx="80" cy="220" r="5"/><circle cx="110" cy="240" r="5"/><circle cx="130" cy="270" r="5"/><circle cx="70" cy="270" r="5"/><circle cx="96" cy="196" r="5"/></g>`,
+    back: `<path d="M70 112 Q100 116 130 112 L134 170 L158 294 L42 294 L66 170 Z" fill="#ff8fab" ${LINE}/>
+      <rect x="65" y="164" width="70" height="10" fill="#ff6b9a"/><path d="M92 170 L84 186 M108 170 L116 186" stroke="#ff6b9a" stroke-width="5" stroke-linecap="round"/>`,
+    box: [40, 108, 120, 190],
+  },
+  swimsuit: {
+    front: `<path d="M74 114 L82 114 Q100 130 118 114 L126 114 L134 214 Q132 248 114 252 L100 236 L86 252 Q68 248 66 214 Z" fill="#3ccfcf" ${LINE}/>
+      <path d="M68 176 L132 176" stroke="#fff" stroke-width="6"/><path d="M68 190 L132 190" stroke="#ffd166" stroke-width="4"/>`,
+    back: `<path d="M74 114 L82 114 Q100 120 118 114 L126 114 L134 214 Q132 248 114 252 L100 236 L86 252 Q68 248 66 214 Z" fill="#3ccfcf" ${LINE}/>
+      <path d="M68 176 L132 176" stroke="#fff" stroke-width="6"/><path d="M68 190 L132 190" stroke="#ffd166" stroke-width="4"/>`,
+    box: [62, 110, 76, 146],
+  },
+  jeans: {
+    front: `<path d="M64 204 L136 204 L134 342 L104 342 L100 240 L96 342 L66 342 Z" fill="#4d7cc7" ${LINE}/>
+      <path d="M64 216 L136 216" stroke="#2f5ea8" stroke-width="3"/><path d="M76 222 Q84 232 92 222 M108 222 Q116 232 124 222" fill="none" stroke="#9cc0ff" stroke-width="2"/>
+      <path d="M81 300 L81 342 M119 300 L119 342" stroke="#9cc0ff" stroke-width="1.5" stroke-dasharray="4 3"/>`,
+    box: [62, 200, 76, 146],
+  },
+  shorts: {
+    front: `<path d="M64 204 L136 204 L134 264 L104 264 L100 238 L96 264 L66 264 Z" fill="#ffd166" ${LINE}/>
+      <path d="M64 214 L136 214" stroke="#f4a940" stroke-width="3"/><path d="M96 214 L94 226 M104 214 L106 226" stroke="#f4a940" stroke-width="2"/>`,
+    box: [62, 200, 76, 68],
+  },
+  cap: {
+    front: `<path d="M58 58 Q58 20 100 20 Q142 20 142 58 Z" fill="#4d96ff" ${LINE}/><ellipse cx="100" cy="58" rx="50" ry="8" fill="#2f6fd6" ${LINE}/><circle cx="100" cy="21" r="4" fill="#2f6fd6"/>`,
+    back: `<path d="M58 60 Q58 20 100 20 Q142 20 142 60 Z" fill="#4d96ff" ${LINE}/><rect x="88" y="50" width="24" height="10" rx="3" fill="#cfe3ff"/><circle cx="100" cy="21" r="4" fill="#2f6fd6"/>`,
+    box: [48, 14, 104, 54],
+  },
+  'sun-hat': {
+    front: `<ellipse cx="100" cy="52" rx="74" ry="13" fill="#f4c26b" ${LINE}/><path d="M68 52 Q68 14 100 14 Q132 14 132 52 Z" fill="#f4c26b" ${LINE}/><rect x="68" y="40" width="64" height="9" fill="#ff6b9a"/>`,
+    box: [24, 10, 152, 58],
+  },
+  helmet: {
+    front: `<path d="M54 64 Q54 14 100 14 Q146 14 146 64 Z" fill="#ff6b6b" ${LINE}/><path d="M78 22 L78 44 M100 16 L100 44 M122 22 L122 44" stroke="#fff" stroke-width="5" stroke-linecap="round"/>
+      <path d="M58 62 L76 106 L124 106 L142 62" fill="none" stroke="#3d2c5e" stroke-width="3" stroke-opacity="0.7"/>`,
+    back: `<path d="M54 64 Q54 14 100 14 Q146 14 146 64 Z" fill="#ff6b6b" ${LINE}/><path d="M78 22 L78 44 M100 16 L100 44 M122 22 L122 44" stroke="#fff" stroke-width="5" stroke-linecap="round"/>`,
+    box: [50, 10, 100, 100],
+  },
+  crown: {
+    front: `<path d="M66 44 L66 14 L82 30 L100 6 L118 30 L134 14 L134 44 Z" fill="#ffd166" ${LINE}/><g fill="#ff6b9a"><circle cx="100" cy="34" r="5"/><circle cx="78" cy="38" r="3.5"/><circle cx="122" cy="38" r="3.5"/></g>`,
+    box: [62, 2, 76, 46],
+  },
+  bow: {
+    front: `<path d="M128 34 L110 22 L110 46 Z M128 34 L146 22 L146 46 Z" fill="#ff6b9a" ${LINE}/><circle cx="128" cy="34" r="6" fill="#ff4f86"/>`,
+    box: [106, 18, 44, 32],
+  },
+  glasses: {
+    front: `<circle cx="85" cy="74" r="12" fill="#bfe9ff" fill-opacity="0.35" stroke="#3d2c5e" stroke-width="3"/><circle cx="115" cy="74" r="12" fill="#bfe9ff" fill-opacity="0.35" stroke="#3d2c5e" stroke-width="3"/>
+      <path d="M97 73 Q100 69 103 73 M73 71 L60 69 M127 71 L140 69" fill="none" stroke="#3d2c5e" stroke-width="3" stroke-linecap="round"/>`,
+    back: '',
+    box: [56, 58, 88, 32],
+  },
+  sunglasses: {
+    front: `<rect x="70" y="65" width="29" height="18" rx="8" fill="#2b2b3a"/><rect x="101" y="65" width="29" height="18" rx="8" fill="#2b2b3a"/>
+      <path d="M97 70 L103 70 M70 69 L60 67 M130 69 L140 67" stroke="#2b2b3a" stroke-width="3" stroke-linecap="round"/><path d="M76 70 L84 70" stroke="#fff" stroke-width="2" opacity="0.6"/>`,
+    back: '',
+    box: [56, 60, 88, 28],
+  },
+  goggles: {
+    front: `<rect x="54" y="68" width="92" height="9" rx="4" fill="#4d96ff"/><ellipse cx="85" cy="74" rx="14" ry="11" fill="#74c0fc" stroke="#2f6fd6" stroke-width="3"/><ellipse cx="115" cy="74" rx="14" ry="11" fill="#74c0fc" stroke="#2f6fd6" stroke-width="3"/>`,
+    back: '<rect x="56" y="66" width="88" height="10" rx="5" fill="#4d96ff"/>',
+    box: [50, 60, 100, 30],
+  },
+  scarf: {
+    front: `<rect x="76" y="98" width="48" height="18" rx="9" fill="#ff6b6b" ${LINE}/><rect x="108" y="108" width="15" height="52" rx="5" fill="#ff6b6b" ${LINE}/>
+      <path d="M108 126 L123 126 M108 142 L123 142" stroke="#fff" stroke-width="4"/>`,
+    back: `<rect x="76" y="98" width="48" height="18" rx="9" fill="#ff6b6b" ${LINE}/>`,
+    box: [72, 94, 56, 70],
+  },
+  sneakers: {
+    front: pair(`<path d="M64 346 Q64 336 76 336 L88 336 Q100 340 101 350 L101 356 L64 356 Z" fill="#fff" ${LINE}/><rect x="63" y="353" width="39" height="6" rx="3" fill="#4d96ff"/><path d="M74 340 L86 340 M76 345 L88 345" stroke="#4d96ff" stroke-width="2"/>`),
+    box: [60, 332, 80, 30],
+  },
+  boots: {
+    front: pair(`<path d="M68 304 L96 304 L96 344 Q104 346 104 358 L66 358 Z" fill="#ffd166" ${LINE}/><rect x="66" y="302" width="32" height="8" rx="3" fill="#f4a940"/>`),
+    box: [62, 298, 76, 64],
+  },
+  sandals: {
+    front: pair(`<ellipse cx="82" cy="357" rx="19" ry="5" fill="#c9783f"/><path d="M68 350 L96 350 M73 343 L91 343" stroke="#ff6b9a" stroke-width="4" stroke-linecap="round"/>`),
+    box: [60, 338, 80, 26],
+  },
+  backpack: {
+    // Phía trước chỉ thấy 2 quai trên vai; phía sau thấy cả ba lô.
+    front: '<path d="M72 112 L76 198 M128 112 L124 198" stroke="#ff8a65" stroke-width="9" stroke-linecap="round" fill="none"/>',
+    back: `<path d="M90 120 Q100 104 110 120" fill="none" stroke="#e8673f" stroke-width="5"/><rect x="62" y="118" width="76" height="92" rx="18" fill="#ff8a65" ${LINE}/>
+      <rect x="74" y="162" width="52" height="36" rx="9" fill="#ff6b4a" ${LINE}/><path d="M84 162 L116 162" stroke="#ffd166" stroke-width="3"/>`,
+    icon: 'back',
+    showBack: true,
+    box: [58, 100, 84, 114],
+  },
+  umbrella: {
+    front: `<path d="M147 222 L147 118" stroke="#6c5a8a" stroke-width="4"/><path d="M147 222 Q147 232 139 230" fill="none" stroke="#6c5a8a" stroke-width="4" stroke-linecap="round"/>
+      <path d="M101 120 Q147 54 193 120 Q181 112 170 120 Q158 112 147 120 Q136 112 124 120 Q113 112 101 120 Z" fill="#b197fc" ${LINE}/>`,
+    mirrorBack: true, // sau lưng: tay cầm ô nằm bên kia
+    box: [98, 56, 100, 180],
+  },
+};
+
 /**
- * Tủ đồ. [tên tiếng Anh, emoji, chỗ, tên tiếng Việt, ngữ cảnh khi Bông giao việc, rect riêng (nếu khác chỗ)].
+ * Tủ đồ. [tên tiếng Anh, emoji (phụ đề), chỗ, tên tiếng Việt, ngữ cảnh khi Bông giao việc].
  */
 export const ITEMS = [
   ['T-shirt', '👕', 'top', 'áo phông'],
@@ -37,12 +171,12 @@ export const ITEMS = [
   ['dress', '👗', 'dress', 'váy'],
   ['swimsuit', '🩱', 'dress', 'đồ bơi', "Let's go swimming!"],
   ['jeans', '👖', 'bottom', 'quần bò'],
-  ['shorts', '🩳', 'bottom', 'quần soóc', "It's sunny!", [58, 198, 84, 66]],
+  ['shorts', '🩳', 'bottom', 'quần soóc', "It's sunny!"],
   ['cap', '🧢', 'head', 'mũ lưỡi trai', "It's sunny!"],
-  ['sun hat', '👒', 'head', 'mũ rộng vành', "It's sunny!", [36, 0, 128, 70]],
+  ['sun hat', '👒', 'head', 'mũ rộng vành', "It's sunny!"],
   ['helmet', '⛑️', 'head', 'mũ bảo hiểm', "Let's ride a bike!"],
-  ['crown', '👑', 'head', 'vương miện', "Let's have a party!", [62, 0, 76, 46]],
-  ['bow', '🎀', 'head', 'nơ', "Let's have a party!", [112, 16, 46, 36]],
+  ['crown', '👑', 'head', 'vương miện', "Let's have a party!"],
+  ['bow', '🎀', 'head', 'nơ', "Let's have a party!"],
   ['glasses', '👓', 'eyes', 'kính'],
   ['sunglasses', '🕶️', 'eyes', 'kính râm', "It's sunny!"],
   ['goggles', '🥽', 'eyes', 'kính bơi', "Let's go swimming!"],
@@ -52,25 +186,40 @@ export const ITEMS = [
   ['sandals', '👡', 'feet', 'dép', "It's sunny!"],
   ['backpack', '🎒', 'back', 'ba lô', "Let's go to school!"],
   ['umbrella', '☂️', 'hand', 'ô', "It's raining!"],
-].map(([name, emoji, slot, vi, context = '', rect = null]) => ({
-  id: name.toLowerCase().replace(/\s+/g, '-'), name, emoji, slot, vi, context, rect,
-}));
+].map(([name, emoji, slot, vi, context = '']) => {
+  const id = name.toLowerCase().replace(/\s+/g, '-');
+  return { id, name, emoji, slot, vi, context, art: ART[id] };
+});
 export const ITEM_BY_ID = new Map(ITEMS.map((it) => [it.id, it]));
 
-/** Vùng vẽ của món đồ (theo % khung bạn nhỏ); giày trả về 2 vùng. */
-export function itemBoxes(item) {
-  const slot = SLOT_BY_ID.get(item.slot);
-  const toBox = ([x, y, w, h]) => ({ left: (x / DOLL_W) * 100, top: (y / DOLL_H) * 100, width: (w / DOLL_W) * 100, height: (h / DOLL_H) * 100 });
-  const boxes = [toBox(item.rect ?? slot.rect)];
-  if (slot.pair) boxes.push({ ...toBox(slot.pair), mirror: true });
-  return boxes;
+/** Hình món đồ ở mặt trước / sau (chuỗi SVG, có thể rỗng — ví dụ kính nhìn từ sau). */
+export function itemArt(item, view) {
+  const { art } = item;
+  if (view === 'front') return art.front;
+  if (art.mirrorBack) return `<g transform="translate(200 0) scale(-1 1)">${art.front}</g>`;
+  return art.back ?? art.front;
+}
+
+/** Món đồ nhìn thấy được ở mặt này không (kính: chỉ mặt trước). */
+export const visibleIn = (item, view) => itemArt(item, view).trim() !== '';
+
+/** Mặt nên quay ra khi vừa mặc món này: ba lô → sau lưng; món không thấy ở mặt hiện tại → quay lại. */
+export function viewFor(item, view) {
+  if (item.art.showBack) return 'back';
+  return visibleIn(item, view) ? view : VIEWS.find((v) => visibleIn(item, v));
+}
+
+/** Biểu tượng trong tủ đồ: hình chính món đồ, cắt sát theo khung `box`. */
+export function itemIcon(item) {
+  const [x, y, w, h] = item.art.box;
+  return `<svg viewBox="${x} ${y} ${w} ${h}" aria-hidden="true">${itemArt(item, item.art.icon ?? 'front')}</svg>`;
 }
 
 /** Hai món không mặc cùng lúc: cùng chỗ, hoặc váy với áo / quần. */
 function clashes(a, b) {
   if (a.slot === b.slot) return true;
-  const pair = new Set([a.slot, b.slot]);
-  return pair.has('dress') && (pair.has('top') || pair.has('bottom'));
+  const both = new Set([a.slot, b.slot]);
+  return both.has('dress') && (both.has('top') || both.has('bottom'));
 }
 
 /**
@@ -122,23 +271,20 @@ export function pickRequest(outfit, last = null, rng = Math.random) {
   return pool.length ? pool[Math.floor(rng() * pool.length)] : null;
 }
 
-// ---------- Bạn nhỏ (SVG) ----------
+// ---------- Bạn nhỏ ----------
 
 const SKIN = '#f6d2b4';
 const INK = '#4a3360';
 const HAIR = '#6b4423';
 
-/** Bạn nhỏ mặc sẵn áo lót trắng + quần đùi xám; bé trai / bé gái chỉ khác tóc. */
-export function dollSvg(kid) {
-  const longHair = kid === 'girl'
+/** Người bạn nhỏ (mặc sẵn áo lót trắng + quần đùi xám); bé trai / bé gái khác tóc; mặt sau không có mặt. */
+function bodySvg(kid, view) {
+  const girl = kid === 'girl';
+  const longHair = girl
     ? `<path d="M52 66 Q48 150 70 156 L130 156 Q152 150 148 66 Z" fill="${HAIR}"/>
        <circle cx="48" cy="96" r="14" fill="${HAIR}"/><circle cx="152" cy="96" r="14" fill="${HAIR}"/>`
     : '';
-  const fringe = kid === 'girl'
-    ? `<path d="M56 70 Q58 24 100 24 Q142 24 144 70 Q130 50 112 48 Q104 60 88 52 Q70 50 56 70 Z" fill="${HAIR}"/>`
-    : `<path d="M57 66 Q58 22 100 22 Q142 22 143 66 Q136 44 118 40 Q110 50 96 44 Q76 40 57 66 Z" fill="${HAIR}"/>`;
-  return `<svg viewBox="0 0 ${DOLL_W} ${DOLL_H}" preserveAspectRatio="none" aria-hidden="true">
-${longHair}
+  const body = `
 <rect x="72" y="236" width="24" height="110" rx="11" fill="${SKIN}"/><rect x="104" y="236" width="24" height="110" rx="11" fill="${SKIN}"/>
 <ellipse cx="82" cy="350" rx="17" ry="9" fill="${SKIN}"/><ellipse cx="118" cy="350" rx="17" ry="9" fill="${SKIN}"/>
 <rect x="64" y="204" width="72" height="50" rx="14" fill="#cfd8e3"/>
@@ -146,12 +292,44 @@ ${longHair}
 <circle cx="53" cy="222" r="12" fill="${SKIN}"/><circle cx="147" cy="222" r="12" fill="${SKIN}"/>
 <rect x="64" y="110" width="72" height="104" rx="22" fill="#ffffff" stroke="#e3e3e3" stroke-width="2"/>
 <rect x="90" y="100" width="20" height="16" fill="${SKIN}"/>
-<circle cx="58" cy="74" r="9" fill="${SKIN}"/><circle cx="142" cy="74" r="9" fill="${SKIN}"/>
+<circle cx="58" cy="74" r="9" fill="${SKIN}"/><circle cx="142" cy="74" r="9" fill="${SKIN}"/>`;
+  if (view === 'back') return body; // đầu (toàn tóc) vẽ riêng ở backHair, đè lên áo
+  const fringe = girl
+    ? `<path d="M56 70 Q58 24 100 24 Q142 24 144 70 Q130 50 112 48 Q104 60 88 52 Q70 50 56 70 Z" fill="${HAIR}"/>`
+    : `<path d="M57 66 Q58 22 100 22 Q142 22 143 66 Q136 44 118 40 Q110 50 96 44 Q76 40 57 66 Z" fill="${HAIR}"/>`;
+  return `${longHair}${body}
 <circle cx="100" cy="70" r="42" fill="${SKIN}"/>
 ${fringe}
 <ellipse cx="85" cy="74" rx="5" ry="6.5" fill="${INK}"/><ellipse cx="115" cy="74" rx="5" ry="6.5" fill="${INK}"/>
 <circle cx="87" cy="72" r="1.8" fill="#fff"/><circle cx="117" cy="72" r="1.8" fill="#fff"/>
 <circle cx="74" cy="88" r="7" fill="#ff9ab5" opacity="0.6"/><circle cx="126" cy="88" r="7" fill="#ff9ab5" opacity="0.6"/>
-<path d="M90 92 Q100 102 110 92" fill="none" stroke="${INK}" stroke-width="3.5" stroke-linecap="round"/>
-</svg>`;
+<path d="M90 92 Q100 102 110 92" fill="none" stroke="${INK}" stroke-width="3.5" stroke-linecap="round"/>`;
+}
+
+/** Sau lưng: đầu toàn tóc; bé gái tóc dài phủ xuống lưng (đè lên áo, dưới ba lô / mũ). */
+function backHair(kid) {
+  const girl = kid === 'girl';
+  return `<circle cx="100" cy="70" r="43" fill="${HAIR}"/>
+${girl ? `<path d="M56 74 Q54 150 72 158 L128 158 Q146 150 144 74 Z" fill="${HAIR}"/><circle cx="48" cy="96" r="14" fill="${HAIR}"/><circle cx="152" cy="96" r="14" fill="${HAIR}"/>`
+    : '<path d="M84 104 Q100 112 116 104 L116 98 L84 98 Z" fill="#5a381c"/>'}`;
+}
+
+/** Sau lưng, tóc nằm trên lớp này trở đi (ba lô, khăn, kính, mũ, ô vẽ đè lên tóc). */
+const ABOVE_HAIR = SLOTS.findIndex((s) => s.id === 'back');
+
+/**
+ * Cả bạn nhỏ + quần áo đang mặc (mỗi món một nhóm <g data-item> để chạm / kéo).
+ * @param {'boy'|'girl'} kid
+ * @param {'front'|'back'} view
+ */
+export function dollSvg(kid, view = 'front', outfit = []) {
+  const piece = (id) => {
+    const art = itemArt(ITEM_BY_ID.get(id), view);
+    return art ? `<g class="du-piece" data-item="${id}">${art}</g>` : '';
+  };
+  const layer = (id) => SLOTS.findIndex((s) => s.id === ITEM_BY_ID.get(id).slot);
+  const ordered = layerOrder(outfit);
+  const below = ordered.filter((id) => view === 'front' || layer(id) < ABOVE_HAIR).map(piece).join('');
+  const above = view === 'back' ? backHair(kid) + ordered.filter((id) => layer(id) >= ABOVE_HAIR).map(piece).join('') : '';
+  return `<svg viewBox="0 0 ${DOLL_W} ${DOLL_H}" aria-hidden="true">${bodySvg(kid, view)}${below}${above}</svg>`;
 }

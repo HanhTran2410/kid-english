@@ -1,18 +1,19 @@
 // Trò chơi Mặc đồ (SPEC-dressup.md): chọn bé trai / bé gái → chạm hoặc kéo đồ trong tủ vào người bạn nhỏ;
-// bạn nhỏ nói "I'm wearing…", Bông thỉnh thoảng giao việc ("It's cold! Put on your scarf!").
+// chạm bạn nhỏ để xoay người (xem sau lưng — ba lô); bạn nhỏ nói "I'm wearing…", Bông thỉnh thoảng giao việc.
 
 import { h } from '../ui.js';
 import { play } from '../speech/sfx.js';
 import { homeButton } from '../player/layout.js';
 import { createBunny } from '../player/teacher.js';
 import {
-  KIDS, ITEMS, ITEM_BY_ID, WEARS_PER_REQUEST, itemBoxes, wear, cleanOutfit, layerOrder,
+  KIDS, ITEMS, ITEM_BY_ID, WEARS_PER_REQUEST, wear, cleanOutfit, viewFor, itemIcon,
   wearSentence, takeOffSentence, requestSentence, wearVi, takeOffVi, requestVi, pickRequest, dollSvg,
 } from '../dress-up.js';
 
 const DRAG_START_PX = 8;
 const CAPTION_MS = 3500;
 const IDLE_PAUSE_MS = 120_000;
+const TURN_MS = 180; // nửa vòng xoay (thu hẹp → đổi mặt → mở rộng)
 const KID_LABEL = { boy: { emoji: '👦', en: 'Boy', vi: 'Bé trai' }, girl: { emoji: '👧', en: 'Girl', vi: 'Bé gái' } };
 
 const capital = (s) => s.charAt(0).toUpperCase() + s.slice(1);
@@ -20,11 +21,6 @@ const loadState = (app) => {
   const saved = app.settings.dressUp ?? {};
   return { kid: KIDS.includes(saved.kid) ? saved.kid : null, outfits: { ...(saved.outfits ?? {}) } };
 };
-
-/** Món đồ vẽ bằng emoji kéo giãn vừa khung (SVG để giãn được cả chiều ngang lẫn dọc). */
-function itemArt(item) {
-  return `<svg viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true"><text x="50" y="54" font-size="92" text-anchor="middle" dominant-baseline="central">${item.emoji}</text></svg>`;
-}
 
 // ---------- Chọn bé ----------
 
@@ -38,7 +34,7 @@ export function dressUpChooser(app) {
       play('tap');
       app.go('dress-up-play', { kid });
     },
-  }, h('div.du-kid-doll', { html: dollSvg(kid) }),
+  }, h('div.du-kid-doll', { html: dollSvg(kid, 'front', cleanOutfit(state.outfits[kid])) }),
   h('span.home-text', {}, h('span.home-en', { text: KID_LABEL[kid].en }), h('span.home-vi', { text: KID_LABEL[kid].vi })));
   const back = h('button.sp-back', {
     type: 'button', 'aria-label': 'Về trò chơi', text: '🎲',
@@ -59,11 +55,13 @@ export function dressUpScreen(app, params = {}) {
   const state = loadState(app);
   const kid = KIDS.includes(params.kid) ? params.kid : (state.kid ?? 'girl');
   let outfit = cleanOutfit(state.outfits[kid]);
+  let view = 'front';
   let request = null;
   let lastRequest = null;
   let wears = 0;
   let press = null;
   let ghost = null;
+  let turnTimer = null;
 
   // ---------- Giao diện ----------
   const bunny = createBunny(app);
@@ -94,6 +92,13 @@ export function dressUpScreen(app, params = {}) {
       app.go('dress-up');
     },
   });
+  const turnBtn = h('button.sp-back', {
+    type: 'button', 'aria-label': 'Xoay người', text: '🔄',
+    onclick: () => {
+      play('tap');
+      turn();
+    },
+  });
   const resetBtn = h('button.sp-back', {
     type: 'button',
     'aria-label': 'Cởi hết',
@@ -116,11 +121,11 @@ export function dressUpScreen(app, params = {}) {
       talk([['Take off everything?', 'Cởi hết đồ ra nhé?']]);
     },
   });
-  const worn = h('div.du-worn-layer');
-  const doll = h('div.du-doll', { 'aria-label': KID_LABEL[kid].vi, dataset: { kid } }, h('div.du-body', { html: dollSvg(kid) }), worn);
+  const art = h('div.du-art');
+  const doll = h('div.du-doll', { 'aria-label': KID_LABEL[kid].vi, dataset: { kid, view } }, art);
   const tray = h('div.sp-tray.du-tray', { 'aria-label': 'Tủ đồ' });
   app.root.append(
-    h('header.child-top.sp-top', {}, homeButton(app), kidBtn, resetBtn, h('span.sp-title', { text: '👗 Dress up' }), requestCard, bongBtn),
+    h('header.child-top.sp-top', {}, homeButton(app), kidBtn, turnBtn, resetBtn, h('span.sp-title', { text: '👗 Dress up' }), requestCard, bongBtn),
     h('div.du-stage', {}, doll),
     tray,
   );
@@ -158,30 +163,37 @@ export function dressUpScreen(app, params = {}) {
     app.setSetting('dressUp', { kid, outfits: { ...state.outfits } }).catch(() => {});
   }
 
-  function renderWorn() {
-    worn.replaceChildren(...layerOrder(outfit).flatMap((id) => {
-      const item = ITEM_BY_ID.get(id);
-      return itemBoxes(item).map((b) => {
-        const el = h(`button.du-piece${b.mirror ? '.mirror' : ''}`, {
-          type: 'button',
-          'aria-label': capital(item.name),
-          dataset: { item: id, slot: item.slot },
-          style: { left: `${b.left}%`, top: `${b.top}%`, width: `${b.width}%`, height: `${b.height}%` },
-          html: itemArt(item),
-        });
-        el.addEventListener('pointerdown', (e) => beginPress(e, { kind: 'worn', id, el }));
-        return el;
-      });
-    }));
+  /** Vẽ lại bạn nhỏ; `pop`: món vừa mặc nảy lên. */
+  function renderDoll(pop = null) {
+    art.innerHTML = dollSvg(kid, view, outfit);
+    doll.dataset.view = view;
+    doll.setAttribute('data-worn', outfit.join(' '));
+    if (pop) art.querySelector(`[data-item="${pop}"]`)?.classList.add('pop-in');
     resetBtn.hidden = !outfit.length;
     updateTray();
+  }
+
+  /** Xoay người: thu hẹp → đổi mặt → mở rộng. */
+  function turn(to = view === 'front' ? 'back' : 'front', then = null) {
+    clearTimeout(turnTimer);
+    if (to === view) {
+      then?.();
+      return;
+    }
+    art.classList.add('flip');
+    turnTimer = setTimeout(() => {
+      view = to;
+      renderDoll();
+      art.classList.remove('flip');
+      then?.();
+    }, TURN_MS);
   }
 
   function renderTray() {
     tray.replaceChildren(...ITEMS.map((item) => {
       const btn = h('button.tray-sticker.du-cloth', {
         type: 'button', 'aria-label': capital(item.name), dataset: { item: item.id },
-      }, h('span.tray-emoji', { text: item.emoji }), h('span.du-check', { text: '✔' }));
+      }, h('span.du-icon', { html: itemIcon(item) }), h('span.du-check', { text: '✔' }));
       btn.addEventListener('pointerdown', (e) => beginPress(e, { kind: 'tray', id: item.id }));
       return btn;
     }));
@@ -195,8 +207,10 @@ export function dressUpScreen(app, params = {}) {
       btn.classList.toggle('hint', i === 0 && !outfit.length);
     });
     requestCard.hidden = !request;
-    if (request) requestCard.textContent = request.emoji;
-    if (request) requestCard.dataset.item = request.id;
+    if (request) {
+      requestCard.innerHTML = itemIcon(request);
+      requestCard.dataset.item = request.id;
+    }
   }
 
   function showWanted() {
@@ -212,8 +226,10 @@ export function dressUpScreen(app, params = {}) {
     outfit = wear(outfit, id).outfit;
     play('pop');
     save();
-    renderWorn();
-    for (const el of worn.querySelectorAll(`[data-item="${id}"]`)) el.classList.add('pop-in');
+    // Ba lô: quay lưng cho thấy; món không thấy ở mặt đang xem (kính khi quay lưng): quay lại.
+    const show = viewFor(item, view);
+    if (show !== view) turn(show, () => art.querySelector(`[data-item="${id}"]`)?.classList.add('pop-in'));
+    else renderDoll(id);
     if (request && request.id === id) {
       lastRequest = request;
       request = null;
@@ -243,7 +259,7 @@ export function dressUpScreen(app, params = {}) {
     outfit = outfit.filter((o) => o !== id);
     play('whoosh');
     save();
-    renderWorn();
+    renderDoll();
     talk([[takeOffSentence(item), takeOffVi(item)]]);
   }
 
@@ -254,7 +270,7 @@ export function dressUpScreen(app, params = {}) {
     wears = 0;
     play('whoosh');
     save();
-    renderWorn();
+    renderDoll();
     talk([["Let's start again!", 'Mình mặc lại từ đầu nhé!']]);
   }
 
@@ -278,24 +294,34 @@ export function dressUpScreen(app, params = {}) {
     press = { ...target, pointerId: e.pointerId, x0: e.clientX, y0: e.clientY, dragging: false };
   }
 
+  // Chạm bạn nhỏ: xoay người. Bắt đầu kéo trên một món đang mặc: kéo món đó ra để cởi.
+  doll.addEventListener('pointerdown', (e) => {
+    const id = e.target.closest?.('[data-item]')?.dataset.item ?? null;
+    beginPress(e, { kind: 'doll', id });
+  });
+
   const onDoll = (cx, cy) => {
     const r = doll.getBoundingClientRect();
     return cx >= r.left && cx <= r.right && cy >= r.top && cy <= r.bottom;
   };
 
   function startDrag(e) {
+    if (press.kind === 'doll' && !press.id) {
+      press = null; // kéo trên người (không trúng món nào): bỏ qua
+      return;
+    }
     press.dragging = true;
-    if (press.kind === 'worn') for (const el of worn.querySelectorAll(`[data-item="${press.id}"]`)) el.classList.add('lifted');
+    if (press.kind === 'doll') art.querySelector(`[data-item="${press.id}"]`)?.classList.add('lifted');
     play('tap');
-    const size = Math.min(140, doll.getBoundingClientRect().width * 0.45);
-    ghost = h('div.drag-ghost', { text: ITEM_BY_ID.get(press.id).emoji, style: { fontSize: `${size}px` } });
+    const size = Math.min(150, doll.getBoundingClientRect().width * 0.6);
+    ghost = h('div.drag-ghost.du-ghost', { html: itemIcon(ITEM_BY_ID.get(press.id)), style: { width: `${size}px`, height: `${size}px` } });
     document.body.append(ghost);
     moveGhost(e);
   }
   function moveGhost(e) {
     ghost.style.left = `${e.clientX}px`;
     ghost.style.top = `${e.clientY}px`;
-    doll.classList.toggle('drop-here', onDoll(e.clientX, e.clientY));
+    doll.classList.toggle('drop-here', press?.kind === 'tray' && onDoll(e.clientX, e.clientY));
   }
   function endDrag() {
     ghost?.remove();
@@ -308,6 +334,7 @@ export function dressUpScreen(app, params = {}) {
     if (!press.dragging) {
       if (Math.hypot(e.clientX - press.x0, e.clientY - press.y0) < DRAG_START_PX) return;
       startDrag(e);
+      if (!press) return;
     }
     e.preventDefault();
     moveGhost(e);
@@ -321,8 +348,8 @@ export function dressUpScreen(app, params = {}) {
       endDrag();
       const inside = onDoll(e.clientX, e.clientY);
       if (p.kind === 'tray' && inside) putOn(p.id);
-      else if (p.kind === 'worn' && !inside) takeOff(p.id);
-      else renderWorn(); // thả lại chỗ cũ / ra ngoài khi kéo từ tủ: không đổi gì
+      else if (p.kind === 'doll' && !inside) takeOff(p.id);
+      else renderDoll(); // thả lại chỗ cũ: không đổi gì
       return;
     }
     if (p.kind === 'tray') {
@@ -330,14 +357,9 @@ export function dressUpScreen(app, params = {}) {
       if (outfit.includes(p.id)) talk([[wearSentence(ITEM_BY_ID.get(p.id)), wearVi(ITEM_BY_ID.get(p.id))]]);
       else putOn(p.id);
     } else {
-      const item = ITEM_BY_ID.get(p.id);
-      for (const el of worn.querySelectorAll(`[data-item="${p.id}"]`)) {
-        el.classList.remove('bounce');
-        void el.offsetWidth;
-        el.classList.add('bounce');
-      }
-      play('pop');
-      talk([[wearSentence(item), wearVi(item)]]);
+      play('whoosh');
+      turn();
+      talk([['Turn around!', view === 'front' ? 'Quay lưng lại nào!' : 'Quay lại nào!']]);
     }
   }, { signal });
 
@@ -345,7 +367,7 @@ export function dressUpScreen(app, params = {}) {
     if (!press || e.pointerId !== press.pointerId) return;
     press = null;
     endDrag();
-    renderWorn();
+    renderDoll();
   }, { signal });
 
   const idleTimer = setInterval(() => {
@@ -353,13 +375,14 @@ export function dressUpScreen(app, params = {}) {
   }, 5000);
 
   renderTray();
-  renderWorn();
+  renderDoll();
   save();
   talk([["Let's get dressed!", 'Mình mặc đồ nhé!']]);
 
   return () => {
     clearInterval(idleTimer);
     clearTimeout(captionTimer);
+    clearTimeout(turnTimer);
     endDrag();
     bunny.destroy();
   };
