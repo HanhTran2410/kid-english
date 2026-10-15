@@ -876,6 +876,8 @@ a.btn { text-decoration: none; }
 .topic-tab.active { background: var(--sky); color: #fff; }
 .topic-emoji { font-size: 32px; font-family: var(--emoji); line-height: 1; }
 .lesson-words { font-family: var(--emoji); font-size: 22px; letter-spacing: 2px; min-height: 1.2em; }
+/* Dòng chữ dưới tên bài (tên tiếng Việt bài hội thoại, chữ cái phonics): cùng font Nunito với cả app, không giãn chữ */
+.lesson-words.text { font-family: inherit; font-size: 18px; font-weight: 700; letter-spacing: normal; color: var(--ink-soft); text-align: center; }
 
 .review-picker { display: grid; gap: 8px; }
 .review-group { display: grid; gap: 6px; }

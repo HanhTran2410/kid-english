@@ -224,7 +224,8 @@ export function lessonsScreen(app, { kind = WORDS_KIND } = {}) {
     h('span.lesson-title', { text: lesson.title }),
     // Hàng emoji các từ trong bài: bé chưa biết đọc vẫn phân biệt được "Animals" và "Animals 2".
     // Bài phonics: hàng chữ cái của bài ("A B C D E F").
-    h('span.lesson-words', { text: lesson.letters ? lesson.letters.map((l) => l.letter.toUpperCase()).join(' ')
+    // Dòng chữ (tên tiếng Việt của bài hội thoại, chữ cái phonics) dùng font Nunito như cả app; chỉ hàng emoji dùng font emoji.
+    h(`span.lesson-words${lesson.letters || lesson.turns ? '.text' : ''}`, { text: lesson.letters ? lesson.letters.map((l) => l.letter.toUpperCase()).join(' ')
       : lesson.turns ? lesson.titleVi ?? '' : items.slice(0, 4).map((w) => w.emoji).join('') }),
     h('span.lesson-stars', { text: n ? (n <= 5 ? '⭐'.repeat(n) : `⭐×${n}`) : '' }),
     lesson.resume ? h('span.resume-bar', {}, h('span', { style: { width: `${Math.round((lesson.resume.progress ?? 0) * 100)}%` } })) : null);
