@@ -176,7 +176,8 @@ export function lessonsScreen(app, { kind = WORDS_KIND } = {}) {
     if (lesson.words) {
       const images = await app.db.getAllByIndex('images', 'lessonId', lesson.id);
       const firstKey = normalizeWord(lesson.words[0]?.en ?? '');
-      cover = images.find((img) => img.word === firstKey) ?? null;
+      // Ảnh từ đầu tiên của bài; bài chưa có thì ảnh mới nhất của từ đó ở bài khác (như khi học bài).
+      cover = images.find((img) => img.word === firstKey) ?? await latestImageForWord(app.db, lesson.words[0]?.en ?? '');
     } else if (lesson.letters?.length) {
       // Bài phonics: ảnh NGẪU NHIÊN trong các ảnh bố mẹ đã thêm cho từ của bài; chưa có thì ảnh mới nhất của từ đầu tiên
       // (ví dụ từ đó có ảnh ở bài từ vựng); không có nữa thì emoji.

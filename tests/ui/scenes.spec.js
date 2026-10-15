@@ -88,15 +88,18 @@ test('dán tranh: kéo vào tranh, chạm chọn → chạm chỗ, dán nhiều 
   await expect(page.locator('.zone-target')).toHaveCount(0);
   await expect(page.locator('.sp-request')).toBeHidden();
 
-  // 5. Chạm sticker đã dán: Bông nói lại câu.
-  await page.locator('.placed[data-sticker="cow"]').first().click();
-  await expect.poll(() => lastSpoken(page)).toMatch(/^The cow is /);
+  // 5. Chạm sticker đã dán: Bông nói lại câu. Dùng sticker dán sau cùng (nằm trên cùng — sticker của việc vừa xong
+  // có thể đè lên cow nếu Bông giao việc "in the tree").
+  const top = page.locator('.placed').last();
+  const topName = await top.getAttribute('data-sticker');
+  await top.click();
+  await expect.poll(() => lastSpoken(page)).toMatch(new RegExp(`^The ${topName.replace(/-/g, ' ')} (is|are) `));
 
-  // 6. Kéo cow vào khay → gỡ khỏi tranh.
-  const cows = await page.locator('.placed[data-sticker="cow"]').count();
+  // 6. Kéo sticker đó vào khay → gỡ khỏi tranh.
+  const before = await page.locator('.placed').count();
   const tray = await page.locator('.sp-tray').boundingBox();
-  await drag(page, page.locator('.placed[data-sticker="cow"]').first(), { x: tray.x + tray.width / 2, y: tray.y + tray.height / 2 });
-  await expect(page.locator('.placed[data-sticker="cow"]')).toHaveCount(cows - 1);
+  await drag(page, top, { x: tray.x + tray.width / 2, y: tray.y + tray.height / 2 });
+  await expect(page.locator('.placed')).toHaveCount(before - 1);
 
   // 7. Về màn chọn tranh: Nông trại có số sticker đã dán; tranh khác trống; mở lại vẫn còn.
   const total = await page.locator('.placed').count();
@@ -108,7 +111,7 @@ test('dán tranh: kéo vào tranh, chạm chọn → chạm chỗ, dán nhiều 
   await expect(page.locator('.placed')).toHaveCount(0);
   await page.getByRole('button', { name: 'Chọn tranh khác' }).click();
   await page.getByRole('button', { name: 'Nông trại' }).click();
-  await expect(page.locator('.placed[data-sticker="duck"]')).toHaveCount(2);
+  await expect(page.locator('.placed')).toHaveCount(total);
 });
 
 test('dán tranh: thả ngoài tranh và ngoài khay → về chỗ cũ; chạm Bông lần 2 không đổi việc; sticker khác vào đúng chỗ không tính xong', async ({ page }) => {
@@ -180,6 +183,9 @@ test('Góc bố mẹ: thay ảnh một sticker (tự bỏ nền trắng) và ả
   await page.getByRole('button', { name: '2. Copy prompt kèm ảnh mẫu' }).click();
   await expect.poll(() => page.evaluate(() => window.__copied)).toMatch(/^I attached a REFERENCE LAYOUT IMAGE/);
   await expect(page.getByRole('button', { name: '1. Tải ảnh bố cục mẫu' })).toBeEnabled();
+  const download = page.waitForEvent('download');
+  await page.getByRole('button', { name: '1. Tải ảnh bố cục mẫu' }).click();
+  expect((await download).suggestedFilename()).toBe('bo-cuc-farm.png');
   const layout = await page.evaluate(async () => {
     const { layoutImage } = await import('/js/screens/parent/scenes.js');
     const { SCENE_BY_ID } = await import('/js/sticker-scenes.js');
@@ -282,4 +288,81 @@ test('Góc bố mẹ: dùng lại ảnh có sẵn ở bài học làm sticker (t
   const copied = await page.evaluate(() => window.__copied);
   expect(copied).not.toMatch(/— Cow:/);
   expect(copied).toMatch(/— Pig:/);
+});
+
+test('dán tranh: nút 🧹 dán lại từ đầu — hỏi lại, ✖ thì giữ, ✔ thì xóa hết tranh này (tranh khác giữ nguyên)', async ({ page }) => {
+  await fakeSpeech(page);
+  await startApp(page);
+  await page.evaluate(() => window.kidEnglish.setSetting('stickerScenes', {
+    last: 'farm', farm: [{ s: 'cow', x: 17, y: 25 }, { s: 'duck', x: 54, y: 85 }], beach: [{ s: 'fish', x: 50, y: 40 }],
+  }));
+  await page.getByRole('button', { name: 'Trò chơi' }).click();
+  await page.getByRole('button', { name: 'Dán tranh' }).click();
+  await page.getByRole('button', { name: 'Bãi biển' }).click();
+  await expect(page.locator('.placed')).toHaveCount(1);
+  await page.getByRole('button', { name: 'Chọn tranh khác' }).click();
+  await page.getByRole('button', { name: 'Nông trại' }).click();
+  await expect(page.locator('.placed')).toHaveCount(2);
+
+  await page.getByRole('button', { name: 'Dán lại từ đầu' }).click();
+  await expect.poll(() => lastSpoken(page)).toBe('Start again?');
+  await page.getByRole('button', { name: 'Không xóa' }).click();
+  await expect(page.locator('.placed')).toHaveCount(2);
+
+  await page.getByRole('button', { name: 'Dán lại từ đầu' }).click();
+  await page.getByRole('button', { name: 'Xóa hết, dán lại' }).click();
+  await expect(page.locator('.placed')).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'Dán lại từ đầu' })).toBeHidden();
+  await expect.poll(() => lastSpoken(page)).toBe("Let's start again!");
+  const saved = await page.evaluate(() => window.kidEnglish.settings.stickerScenes);
+  expect(saved.farm).toEqual([]);
+  expect(saved.beach).toHaveLength(1);
+});
+
+test('dùng lại ảnh cho bài từ vựng: từ bài này chưa có ảnh thì lấy ảnh mới nhất ở bài khác; ảnh của chính bài được ưu tiên; ảnh gia đình thật và ảnh sticker không bị lấy', async ({ page }) => {
+  await fakeSpeech(page);
+  await startApp(page);
+  const result = await page.evaluate(async () => {
+    const { setWordImage, latestImageForWord } = await import('/js/db.js');
+    const { loadLessonVisuals } = await import('/js/player/visuals.js');
+    const db = window.kidEnglish.db;
+    const png = async (color) => {
+      const c = document.createElement('canvas');
+      c.width = 10;
+      c.height = 10;
+      const ctx = c.getContext('2d');
+      ctx.fillStyle = color;
+      ctx.fillRect(0, 0, 10, 10);
+      return new Promise((r) => c.toBlob(r, 'image/png'));
+    };
+    const put = async (lessonId, word, color, at) => setWordImage(db, { lessonId, word, blob: await png(color), mimeType: 'image/png', width: 10, height: 10 }, at);
+    await put('lesson-fruits', 'apple', 'red', 1000);
+    await put('lesson-snacks', 'apple', 'green', 2000); // mới hơn
+    await put('lesson-food', 'bread', 'brown', 500); // ảnh của chính bài Food
+    await put('lesson-other', 'bread', 'yellow', 3000);
+    await put('profile:family', 'mummy', 'pink', 4000);
+    await put('scene:stickers', 'banana', 'yellow', 4000);
+    const food = { id: 'lesson-food', words: [{ en: 'apple', emoji: '🍎' }, { en: 'bread', emoji: '🍞' }, { en: 'banana', emoji: '🍌' }, { en: 'mummy', emoji: '👩' }] };
+    const visuals = await loadLessonVisuals(db, food);
+    const colorOf = async (word) => {
+      const url = visuals.get(word).url;
+      if (!url) return null;
+      const bmp = await createImageBitmap(await (await fetch(url)).blob());
+      const c = document.createElement('canvas');
+      c.width = 1;
+      c.height = 1;
+      const ctx = c.getContext('2d');
+      ctx.drawImage(bmp, 0, 0, 1, 1);
+      return [...ctx.getImageData(0, 0, 1, 1).data.slice(0, 3)].join(',');
+    };
+    return {
+      apple: await colorOf('apple'), bread: await colorOf('bread'), banana: await colorOf('banana'), mummy: await colorOf('mummy'),
+      mummyLatest: await latestImageForWord(db, 'mummy'),
+    };
+  });
+  expect(result.apple).toBe('0,128,0'); // ảnh mới nhất ở bài khác (green)
+  expect(result.bread).toBe('165,42,42'); // ảnh của chính bài (brown), dù bài khác có ảnh mới hơn
+  expect(result.banana).toBeNull(); // ảnh sticker không dùng cho bài học
+  expect(result.mummy).toBeNull(); // ảnh gia đình thật không dùng cho bài khác
+  expect(result.mummyLatest).toBeNull();
 });

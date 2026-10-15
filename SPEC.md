@@ -240,6 +240,7 @@ Kết thúc bài: màn hình **"Hoan hô!"** kèm 1 sticker tặng bé. **Hộp 
 ### 4.4. Ôn tập
 - "Từ đã học" là từ có `practiceCount > 0`. Chưa có từ nào thì nút ⭐ hiện mờ, bấm vào Bông nói *"Let's learn a lesson first!"*.
 - Một từ có ở nhiều bài: dùng ảnh mới nhất, không có ảnh thì dùng emoji.
+- **Dùng lại ảnh giữa các bài (app 0.12.4):** học bài từ vựng, "Ôn từ đã học" và ảnh bìa thẻ bài từ vựng dùng **ảnh của chính bài trước**; từ nào bài đó chưa có ảnh thì lấy **ảnh mới nhất của từ đó ở bài khác** (cùng tên, không phân biệt hoa/thường) — bố mẹ chỉ cần thêm ảnh một lần. Không lấy ảnh sticker / ảnh tranh của Dán tranh và **ảnh gia đình thật** trong Hồ sơ của bé (ảnh thật chỉ hiện ở bài My family).
 - Lấy 6 từ (có ít hơn 6 thì lấy hết) từ tất cả các bài đã học, theo thứ tự ưu tiên:
   1. Từ **chưa thuộc** (`mastery` < 3).
   2. Từ **lâu chưa gặp** (`lastPracticedAt` quá 7 ngày).

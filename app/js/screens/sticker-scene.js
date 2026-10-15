@@ -145,11 +145,36 @@ export function stickerSceneScreen(app, params = {}) {
       app.go('sticker-scenes');
     },
   });
+  // Dán lại từ đầu: hỏi lại bằng 2 nút hình to (✔ / ✖) để bé không lỡ tay xóa hết tranh.
+  const resetBtn = h('button.sp-back.sp-reset', {
+    type: 'button',
+    'aria-label': 'Dán lại từ đầu',
+    text: '🧹',
+    hidden: true,
+    onclick: () => {
+      play('tap');
+      const close = () => overlay.remove();
+      const overlay = h('div.choice-overlay', { onclick: (e) => e.target === overlay && close() },
+        h('div.choice-pair', {},
+          h('button.choice-big.restart', {
+            type: 'button',
+            'aria-label': 'Xóa hết, dán lại',
+            text: '✔',
+            onclick: () => {
+              close();
+              clearAll();
+            },
+          }),
+          h('button.choice-big.continue', { type: 'button', 'aria-label': 'Không xóa', text: '✖', onclick: close })));
+      app.root.append(overlay);
+      talk([['Start again?', 'Dán lại từ đầu?']]);
+    },
+  });
   const layer = h('div.sp-layer');
   const sceneEl = h('div.sp-scene', { 'aria-label': scene.vi, dataset: { scene: scene.id } }, layer);
   const tray = h('div.sp-tray', { 'aria-label': 'Khay sticker' });
   app.root.append(
-    h('header.child-top.sp-top', {}, homeButton(app), backBtn, h('span.sp-title', { text: `${scene.emoji} ${scene.en}` }), requestCard, bongBtn),
+    h('header.child-top.sp-top', {}, homeButton(app), backBtn, resetBtn, h('span.sp-title', { text: `${scene.emoji} ${scene.en}` }), requestCard, bongBtn),
     h('div.sp-wrap', {}, sceneEl),
     tray,
   );
@@ -193,6 +218,7 @@ export function stickerSceneScreen(app, params = {}) {
   }
 
   function renderPlaced() {
+    resetBtn.hidden = !placed.length;
     layer.replaceChildren(...placed.map((p, index) => {
       const sticker = ITEM_BY_ID.get(p.s);
       const zone = zoneAt(scene, p.x, p.y);
@@ -301,6 +327,19 @@ export function stickerSceneScreen(app, params = {}) {
     if (!btn) return;
     const reduce = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
     btn.scrollIntoView({ block: 'nearest', inline: 'center', behavior: reduce ? 'auto' : 'smooth' });
+  }
+
+  function clearAll() {
+    placed = [];
+    request = null;
+    lastRequest = null;
+    freeDrops = 0;
+    selected = null;
+    play('whoosh');
+    save();
+    renderPlaced();
+    updateTray();
+    talk([["Let's start again!", 'Mình dán lại từ đầu nhé!']]);
   }
 
   function remove(index) {

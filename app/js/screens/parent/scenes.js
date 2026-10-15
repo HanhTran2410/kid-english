@@ -10,7 +10,7 @@ import {
 import { loadSceneImages, sceneArt, itemFace } from '../sticker-scene.js';
 import { parentLayout, goParent, section, notice } from './common.js';
 import { gridSection, imageErrorMessage } from './lessons.js';
-import { saveFile } from './backup.js';
+import { downloadFile } from './backup.js';
 
 /**
  * Ảnh dùng lại được (SPEC-scenes mục 10.3): ảnh bố mẹ đã thêm ở bài học (từ vựng, số đếm, phonics, hội thoại…) có
@@ -174,14 +174,16 @@ function backgroundSection(app, scene, images, urls, reload) {
         h('button.btn', { type: 'button', text: 'Hủy', onclick: () => work.replaceChildren() })));
   });
 
-  // Ảnh bố cục mẫu: tạo sẵn ngay khi mở trang để bấm "Tải" là mở được bảng Chia sẻ (iOS chỉ cho mở ngay sau lần chạm).
+  // Ảnh bố cục mẫu: tạo sẵn ngay khi mở trang, bấm là tải thẳng về máy (iOS chỉ cho tải ngay sau lần chạm).
   let layout = null;
   const layoutBtn = h('button.btn.primary', {
     type: 'button',
     text: '1. Tải ảnh bố cục mẫu',
     disabled: true,
-    onclick: async () => {
-      if (layout && await saveFile(layout, `bo-cuc-${scene.id}.png`)) toast('Đã lưu ảnh bố cục mẫu.');
+    onclick: () => {
+      if (!layout) return;
+      downloadFile(layout, `bo-cuc-${scene.id}.png`);
+      toast('Đã tải ảnh bố cục mẫu về máy (thư mục Tải về / Downloads).', 4000);
     },
   });
   layoutImage(scene).then((blob) => {

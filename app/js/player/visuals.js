@@ -29,12 +29,18 @@ export class VisualSet {
   }
 }
 
-/** Hình cho mọi từ của một bài. */
+/**
+ * Hình cho mọi từ của một bài: ảnh của chính bài; từ nào bài này chưa có ảnh thì dùng lại ảnh mới nhất của từ đó
+ * ở bài khác (thêm ảnh một lần, mọi bài dùng chung); không có nữa thì emoji.
+ */
 export async function loadLessonVisuals(db, lesson, into = new VisualSet()) {
   const images = await db.getAllByIndex('images', 'lessonId', lesson.id);
   // Ảnh mới nhất của mỗi từ (sắp xếp cũ → mới, ảnh sau ghi đè ảnh trước).
   const byWord = new Map([...images].sort((a, b) => (a.createdAt ?? 0) - (b.createdAt ?? 0)).map((img) => [img.word, mediaBlob(img)]));
-  for (const w of lesson.words) into.add(w.en, w.emoji, byWord.get(normalizeWord(w.en)));
+  for (const w of lesson.words) {
+    const own = byWord.get(normalizeWord(w.en));
+    into.add(w.en, w.emoji, own ?? mediaBlob(await latestImageForWord(db, w.en)));
+  }
   return into;
 }
 

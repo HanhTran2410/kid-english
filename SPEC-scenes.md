@@ -197,3 +197,8 @@ Góc bố mẹ → **🎨 Ảnh Dán tranh** → danh sách 7 tranh (ghi đang d
 - Vẽ từng sticker bằng AI rất lâu. Ảnh bố mẹ **đã thêm ở bài học** (từ vựng, số đếm, phonics, hội thoại) có **cùng tên** với sticker (cow, apple, egg…) được dùng lại làm sticker: app tự bỏ nền trắng, lưu thành ảnh sticker riêng (ảnh bài học giữ nguyên).
 - Nút **♻️ Dùng lại N ảnh** ở trang danh sách (cho cả 7 tranh; sticker trùng tên ở nhiều tranh chỉ tính 1) và ở trang từng tranh. Chỉ lấy cho sticker **chưa có ảnh**; ảnh mới nhất nếu một từ có nhiều ảnh.
 - Trang tranh xếp lại theo thứ tự nên làm: **Dùng lại ảnh có sẵn** → **Ảnh lưới chỉ gồm sticker còn thiếu ảnh** (lưới nhỏ hơn thì AI vẽ nhanh và đúng hơn; đủ ảnh rồi thì lưới vẽ lại cả bộ) → **Thay từng sticker** (mục thu gọn, chỉ dùng khi ảnh lưới lỗi vài ô).
+
+### 10.4. App 0.12.4
+- **Tải ảnh bố cục mẫu**: bấm là **tải thẳng file PNG về máy** (`bo-cuc-<tranh>.png`, thư mục Tải về / Downloads), không mở bảng Chia sẻ.
+- **🧹 Dán lại từ đầu** (màn dán, cạnh nút 🖼️; chỉ hiện khi tranh có sticker): Bông hỏi *"Start again?"* với 2 nút hình to ✔ (vàng, xóa hết) / ✖ (xanh, giữ nguyên) để bé không lỡ tay xóa. ✔ → xóa mọi sticker **của tranh này** (tranh khác giữ nguyên), hết việc đang giao, Bông nói *"Let's start again!"*.
+- Bài từ vựng dùng lại ảnh giữa các bài (SPEC.md mục 4.4): ảnh của chính bài trước, chưa có thì ảnh mới nhất của từ đó ở bài khác; không lấy ảnh Dán tranh và ảnh gia đình thật.

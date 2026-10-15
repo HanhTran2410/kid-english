@@ -18,13 +18,18 @@ export async function saveFile(blob, filename) {
     }
   }
   // Dự phòng: tải về.
+  downloadFile(blob, filename);
+  return true;
+}
+
+/** Tải thẳng file về máy (không mở bảng Chia sẻ). */
+export function downloadFile(blob, filename) {
   const url = URL.createObjectURL(blob);
   const a = h('a', { href: url, download: filename });
   document.body.append(a);
   a.click();
   a.remove();
   setTimeout(() => URL.revokeObjectURL(url), 60_000);
-  return true;
 }
 
 export function backupView(app) {
