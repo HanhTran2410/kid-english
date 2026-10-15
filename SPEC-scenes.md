@@ -192,3 +192,8 @@ Góc bố mẹ → **🎨 Ảnh Dán tranh** → danh sách 7 tranh (ghi đang d
   | 🎲 Pick it / Chọn từ | Trò chơi tổng hợp (SPEC-mix mục 4, như nút 🎲 trước đây) |
   | 🎯 Number game / Chọn số, Chọn số 11–20 | trò chơi số có sẵn (SPEC-numbers mục 5) |
 - Bông nói *"Let's play a game!"*. Sau này thêm trò mới = thêm thẻ.
+
+### 10.3. Dùng lại ảnh có sẵn (app 0.12.3)
+- Vẽ từng sticker bằng AI rất lâu. Ảnh bố mẹ **đã thêm ở bài học** (từ vựng, số đếm, phonics, hội thoại) có **cùng tên** với sticker (cow, apple, egg…) được dùng lại làm sticker: app tự bỏ nền trắng, lưu thành ảnh sticker riêng (ảnh bài học giữ nguyên).
+- Nút **♻️ Dùng lại N ảnh** ở trang danh sách (cho cả 7 tranh; sticker trùng tên ở nhiều tranh chỉ tính 1) và ở trang từng tranh. Chỉ lấy cho sticker **chưa có ảnh**; ảnh mới nhất nếu một từ có nhiều ảnh.
+- Trang tranh xếp lại theo thứ tự nên làm: **Dùng lại ảnh có sẵn** → **Ảnh lưới chỉ gồm sticker còn thiếu ảnh** (lưới nhỏ hơn thì AI vẽ nhanh và đúng hơn; đủ ảnh rồi thì lưới vẽ lại cả bộ) → **Thay từng sticker** (mục thu gọn, chỉ dùng khi ảnh lưới lỗi vài ô).

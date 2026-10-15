@@ -1725,3 +1725,5 @@ img.talk-action-emoji { width: 76%; height: 76%; object-fit: cover; border-radiu
 .sp-admin-item { display: grid; justify-items: center; gap: 4px; padding: 8px; border-radius: 14px; background: #fff; border: 1px solid #f1ebe3; font-size: 14px; font-weight: 700; }
 .sp-admin-face { font-family: var(--emoji); font-size: 44px; line-height: 1; }
 .checker { background: repeating-conic-gradient(#eee 0 25%, #fff 0 50%) 0 0 / 16px 16px; }
+.sp-admin-title { margin: 18px 0 8px; font-size: 20px; }
+details > summary { cursor: pointer; font-weight: 800; padding: 6px 0; }

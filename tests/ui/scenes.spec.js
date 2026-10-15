@@ -190,11 +190,12 @@ test('Góc bố mẹ: thay ảnh một sticker (tự bỏ nền trắng) và ả
   expect(layout).toEqual({ type: 'image/png', w: 1600, h: 1200 });
 
   // Ảnh một sticker: cow.
+  await page.getByText('Thay từng sticker').click(); // mở mục thu gọn
   const cowItem = page.locator('.sp-admin-item').filter({ has: page.getByText('cow', { exact: true }) });
   const chooser = page.waitForEvent('filechooser');
   await cowItem.getByRole('button', { name: 'Chọn ảnh' }).click();
   await (await chooser).setFiles(await testImage(page, 400, 400));
-  await expect(page.locator('.sp-admin-item').filter({ has: page.getByText('cow', { exact: true }) }).locator('img.sp-img')).toBeVisible();
+  await expect(page.locator('.sp-admin-item').filter({ has: page.getByText('cow', { exact: true }) }).locator('img.sp-img')).toHaveCount(1);
   const saved = await page.evaluate(async () => {
     const list = await window.kidEnglish.db.getAllByIndex('images', 'lessonId', 'scene:stickers');
     return list.map((r) => ({ word: r.word, mimeType: r.mimeType, width: r.width, height: r.height }));
@@ -230,4 +231,55 @@ test('Góc bố mẹ: thay ảnh một sticker (tự bỏ nền trắng) và ả
   await expect(page.locator('.tray-sticker[data-sticker="pig"] img')).toHaveCount(0);
   await drag(page, page.locator('.tray-sticker[data-sticker="cow"]'), await zonePoint(page, 'farm', 'grass'));
   await expect(page.locator('.placed[data-sticker="cow"] img.sp-img')).toBeVisible();
+});
+
+test('Góc bố mẹ: dùng lại ảnh có sẵn ở bài học làm sticker (tự bỏ nền); ảnh lưới chỉ gồm sticker còn thiếu ảnh', async ({ page }) => {
+  await fakeSpeech(page);
+  await startApp(page);
+  // Ảnh "cow" và "apple" bố mẹ đã thêm ở bài học (nền trắng, hình có viền đậm).
+  await page.evaluate(async () => {
+    const { setWordImage } = await import('/js/db.js');
+    for (const word of ['cow', 'apple']) {
+      const c = document.createElement('canvas');
+      c.width = 300;
+      c.height = 300;
+      const ctx = c.getContext('2d');
+      ctx.fillStyle = '#fff';
+      ctx.fillRect(0, 0, 300, 300);
+      ctx.fillStyle = '#e33';
+      ctx.strokeStyle = '#000';
+      ctx.lineWidth = 8;
+      ctx.beginPath();
+      ctx.arc(150, 150, 70, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+      const blob = await new Promise((r) => c.toBlob(r, 'image/jpeg', 0.9));
+      await setWordImage(window.kidEnglish.db, { lessonId: 'lesson-animals', word, blob, mimeType: 'image/jpeg', width: 300, height: 300 });
+    }
+  });
+  await openParent(page);
+  await page.getByRole('button', { name: /Ảnh Dán tranh/ }).click();
+  // Trang danh sách: dùng lại cho cả 7 tranh (cow ở Nông trại; apple ở Nông trại + Nhà bếp → 1 ảnh).
+  await expect(page.getByRole('button', { name: 'Dùng lại 2 ảnh' })).toBeVisible();
+  await page.getByRole('button', { name: 'Dùng lại 2 ảnh' }).click();
+  await expect(page.getByText(/Không có ảnh nào trong bài học trùng tên sticker/)).toBeVisible();
+  const saved = await page.evaluate(async () => (await window.kidEnglish.db.getAllByIndex('images', 'lessonId', 'scene:stickers'))
+    .map((r) => [r.word, r.mimeType]).sort());
+  expect(saved).toEqual([['apple', 'image/png'], ['cow', 'image/png']]);
+  // Ảnh bài học vẫn còn nguyên (không bị chuyển đi).
+  expect(await page.evaluate(async () => (await window.kidEnglish.db.getAllByIndex('images', 'lessonId', 'lesson-animals')).length)).toBe(2);
+
+  // Trang Nông trại: 2/16 đã có ảnh; ảnh lưới chỉ cho 14 sticker còn thiếu.
+  await page.getByRole('button', { name: /Nông trại/ }).click();
+  await expect(page.getByRole('heading', { name: 'Ảnh sticker — 2/16 đã có ảnh' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: /Ảnh lưới — 1 ảnh cho 14 sticker chưa có ảnh/ })).toBeVisible();
+  await page.evaluate(() => {
+    window.__copied = '';
+    navigator.clipboard.writeText = async (t) => { window.__copied = t; };
+  });
+  await page.getByRole('button', { name: 'Copy prompt ảnh lưới' }).click();
+  await expect.poll(() => page.evaluate(() => window.__copied)).toMatch(/4-column × 4-row/);
+  const copied = await page.evaluate(() => window.__copied);
+  expect(copied).not.toMatch(/— Cow:/);
+  expect(copied).toMatch(/— Pig:/);
 });

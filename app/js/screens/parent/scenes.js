@@ -1,7 +1,7 @@
 // Góc bố mẹ → Ảnh Dán tranh (SPEC-scenes mục 10): thay ảnh tranh và ảnh sticker bằng ảnh AI vẽ.
 
 import { h, toast, copyText, confirmDialog } from '../../ui.js';
-import { setWordImage, removeWordImage } from '../../db.js';
+import { setWordImage, removeWordImage, latestImageForWord, mediaBlob } from '../../db.js';
 import { normalizeWord } from '../../text.js';
 import { resizeCover, cutOutSticker, resizeImage } from '../../image.js';
 import {
@@ -12,6 +12,59 @@ import { parentLayout, goParent, section, notice } from './common.js';
 import { gridSection, imageErrorMessage } from './lessons.js';
 import { saveFile } from './backup.js';
 
+/**
+ * Ảnh dùng lại được (SPEC-scenes mục 10.3): ảnh bố mẹ đã thêm ở bài học (từ vựng, số đếm, phonics, hội thoại…) có
+ * cùng tên với sticker chưa có ảnh — ví dụ ảnh "cow" của bài Animals làm sticker cow.
+ * @returns {Promise<Array<{ item: object, img: object }>>}
+ */
+export async function reusableImages(db, items, images) {
+  const found = [];
+  const seen = new Set();
+  for (const item of items) {
+    const key = normalizeWord(item.name);
+    if (seen.has(key) || images.sticker.has(key)) continue;
+    seen.add(key);
+    const img = await latestImageForWord(db, item.name);
+    if (img) found.push({ item, img });
+  }
+  return found;
+}
+
+/** Lưu các ảnh dùng lại thành sticker (tự bỏ nền trắng). Trả về số ảnh đã lưu. */
+async function reuseImages(app, found) {
+  let saved = 0;
+  for (const { item, img } of found) {
+    try {
+      await setWordImage(app.db, { lessonId: STICKER_IMAGES, word: item.name, ...await cutOutSticker(mediaBlob(img)) });
+      saved++;
+    } catch {
+      // ảnh hỏng: bỏ qua, sticker vẫn dùng emoji
+    }
+  }
+  return saved;
+}
+
+/** Khung "Dùng lại ảnh có sẵn" cho một nhóm sticker (một tranh hoặc mọi tranh). */
+function reuseSection(app, items, images, reload, scope) {
+  const box = section('♻️ Dùng lại ảnh có sẵn', h('p.muted', { text: 'Đang tìm ảnh trong các bài học…' }));
+  reusableImages(app.db, items, images).then((found) => {
+    const body = found.length ? [
+      notice('info', `Có ${found.length} ảnh bố mẹ đã thêm ở bài học trùng tên sticker ${scope} (${found.slice(0, 8).map((f) => f.item.name).join(', ')}${found.length > 8 ? '…' : ''}). App dùng lại làm sticker và tự bỏ nền trắng — không cần nhờ AI vẽ.`),
+      h('div.actions', {}, h('button.btn.primary', {
+        type: 'button',
+        text: `Dùng lại ${found.length} ảnh`,
+        onclick: async (e) => {
+          e.currentTarget.disabled = true;
+          toast(`Đã dùng lại ${await reuseImages(app, found)} ảnh.`);
+          reload();
+        },
+      })),
+    ] : [h('p.muted', { text: `Không có ảnh nào trong bài học trùng tên sticker ${scope} còn thiếu ảnh.` })];
+    box.replaceChildren(h('h2', { text: '♻️ Dùng lại ảnh có sẵn' }), ...body);
+  });
+  return box;
+}
+
 export function scenesView(app) {
   const body = parentLayout(app, { title: 'Ảnh Dán tranh', back: () => goParent(app) });
   body.append(notice('info', 'Tranh và sticker có sẵn hình vẽ, bé chơi được ngay. Muốn đẹp hơn: vào từng tranh, copy prompt dán vào ChatGPT/Gemini, lưu ảnh AI vẽ về máy rồi chọn ảnh đó.'));
@@ -20,6 +73,7 @@ export function scenesView(app) {
   let images = null;
   loadSceneImages(app.db).then((loaded) => {
     images = loaded;
+    list.before(reuseSection(app, SCENES.flatMap((s) => s.items), images, () => goParent(app, 'scenes'), 'của cả 7 tranh'));
     list.replaceChildren(...SCENES.map((scene) => {
       const done = scene.items.filter((it) => images.sticker.has(normalizeWord(it.name))).length;
       return h('button.menu-item', { type: 'button', onclick: () => goParent(app, 'scene', { sceneId: scene.id }) },
@@ -175,8 +229,11 @@ function backgroundSection(app, scene, images, urls, reload) {
 const singleStickerPrompt = (item) => `One cute ${item.name}, children's sticker illustration for a 3-year-old: simple flat vector, bright gentle colors, friendly face, centered, about 70% of a square image.${STICKER_PROMPT_NOTE.replace('in every cell', '')}`;
 
 function stickerSection(app, scene, images, urls, reload) {
-  const grid = gridSection(app, { id: STICKER_IMAGES, words: scene.items.map((it) => ({ en: it.name })) }, urls,
-    `Ảnh sticker — 1 ảnh lưới cho ${scene.items.length} sticker`,
+  // Ảnh lưới chỉ gồm sticker CHƯA có ảnh (sau khi dùng lại ảnh có sẵn thì lưới nhỏ hơn, AI vẽ nhanh và đúng hơn).
+  const missing = scene.items.filter((it) => !images.sticker.has(normalizeWord(it.name)));
+  const gridItems = missing.length ? missing : scene.items;
+  const grid = gridSection(app, { id: STICKER_IMAGES, words: gridItems.map((it) => ({ en: it.name })) }, urls,
+    missing.length ? `Ảnh lưới — 1 ảnh cho ${missing.length} sticker chưa có ảnh` : `Ảnh lưới — vẽ lại cả ${scene.items.length} sticker`,
     { promptNote: `\n${STICKER_PROMPT_NOTE}`, process: (tile) => cutOutSticker(tile.blob), onSaved: reload, previewClass: 'checker' });
 
   const items = h('div.sp-admin-items', {}, ...scene.items.map((item) => {
@@ -217,8 +274,11 @@ function stickerSection(app, scene, images, urls, reload) {
   }));
 
   return h('div', {},
+    h('h2.sp-admin-title', { text: `Ảnh sticker — ${scene.items.length - missing.length}/${scene.items.length} đã có ảnh` }),
+    reuseSection(app, scene.items, images, reload, 'của tranh này'),
     grid,
-    section('Từng sticker',
-      notice('info', 'Ảnh AI vẽ được tự bỏ nền trắng để thành sticker (ô kẻ ca-rô là phần trong suốt). Có thể thay riêng từng sticker hoặc xóa để dùng lại emoji.'),
-      items));
+    section(null, h('details', {},
+      h('summary', { text: 'Thay từng sticker (khi ảnh lưới bị lỗi vài ô)' }),
+      notice('info', 'Ảnh được tự bỏ nền trắng để thành sticker (ô kẻ ca-rô là phần trong suốt). Có thể thay riêng từng sticker hoặc xóa để dùng lại emoji.'),
+      items)));
 }
