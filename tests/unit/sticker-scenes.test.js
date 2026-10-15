@@ -177,7 +177,24 @@ test('prompt ảnh tranh: có đủ các chỗ kèm vị trí %, cấm chữ và
     assert.match(p, /no animals/i);
     for (const z of scene.zones) assert.ok(p.includes(z.draw.charAt(0).toUpperCase() + z.draw.slice(1)), `${scene.id}/${z.id}`);
   }
-  assert.match(sceneBackgroundPrompt(SCENE_BY_ID.get('farm')), /pond: from 35% to 73% of the width/);
+  const farm = sceneBackgroundPrompt(SCENE_BY_ID.get('farm'));
+  assert.ok(farm.includes('E. A small blue pond\n- Position: x = 35%–73%, y = 76%–94%.'));
+  assert.match(farm, /across the full width, y = 0%–53%, wherever not occupied/);
+});
+
+test('prompt ảnh tranh theo review: đủ 4 phần, thứ tự lớp, chỗ nối liền, danh sách không vẽ thêm, không cấm chính vật của tranh', () => {
+  for (const scene of SCENES) {
+    const p = sceneBackgroundPrompt(scene);
+    for (const head of ['1. EXACT COMPOSITION AND PLACEMENT', '2. STICKER-PLACEMENT REQUIREMENTS', '3. VISUAL STYLE', '4. STRICT EXCLUSIONS']) assert.ok(p.includes(head), `${scene.id}: ${head}`);
+    assert.match(p, /Layer order: the background areas/);
+    assert.match(p, /- Do not add: /, scene.id);
+    assert.match(p, /other than the main objects listed above/); // tên lửa, thuyền, nồi… không bị cấm
+    assert.ok(!/undefined|null/.test(p), scene.id);
+  }
+  const farm = sceneBackgroundPrompt(SCENE_BY_ID.get('farm'));
+  assert.match(farm, /A\. The red triangular roof of the barn[\s\S]*It must connect directly to B /);
+  assert.ok(farm.includes('except the connected parts (A–B, C–D)'));
+  assert.match(sceneBackgroundPrompt(SCENE_BY_ID.get('bedroom')), /under the bed[\s\S]*It must connect directly to A \(the top of a bed/);
 });
 
 test('ảnh của Dán tranh không lẫn với ảnh bài học', () => {

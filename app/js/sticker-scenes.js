@@ -320,28 +320,157 @@ const pct = (n) => Math.round(n);
 const capitalize = (s) => s.charAt(0).toUpperCase() + s.slice(1);
 
 /**
- * Prompt ảnh tranh: bố cục theo đúng các chỗ của app (vị trí tính bằng % chiều rộng / chiều cao), không vẽ
- * con vật / người / chữ để bé tự dán sticker vào.
+ * Ghi chú thêm cho prompt ảnh tranh (theo review prompt): từng chỗ có thể có `notes` (yêu cầu riêng) và `joins`
+ * (chỗ phải nối liền, ví dụ mái — thân chuồng); mỗi tranh có `avoid` (chi tiết trang trí không được vẽ thêm,
+ * để giữ chỗ trống cho sticker).
+ */
+const PROMPT_HINTS = {
+  farm: {
+    avoid: ['hills', 'paths', 'fences', 'flowers', 'mushrooms', 'rocks', 'bushes', 'extra trees', 'decorative plants'],
+    zones: {
+      roof: { joins: 'barn', notes: ['One simple, clearly recognizable triangular roof.'] },
+      barn: { notes: ['The doorway is empty and unobstructed.', 'Keep the barn upright, front-facing and simple: no signs, no decorative windows.'] },
+      tree: { joins: 'under-tree', notes: ['A few simple overlapping rounded shapes suggest the leaves; no fruit and no birds in it.'] },
+      'under-tree': { notes: ['One simple brown trunk; keep the grass around and under the trunk open and uncluttered.'] },
+      water: { notes: ['A simple, horizontally oriented oval with at most two subtle ripple marks, clearly separate from the grass.', 'No fish, frogs, ducks, lily pads or reeds.'] },
+      sky: { notes: ['Exactly one simple sun and exactly two small fluffy white clouds.', 'No birds, rainbows or flying objects.'] },
+      grass: { notes: ['One broad, continuous, flat area of bright green grass, mostly open and visually quiet.'] },
+    },
+  },
+  beach: {
+    avoid: ['palm trees', 'rocks', 'shells', 'starfish', 'sand castles', 'towels', 'chairs', 'seagulls', 'islands'],
+    zones: {
+      boat: { notes: ['One simple boat in side view floating on the water; its inside is clearly visible and empty.'] },
+      bucket: { notes: ['Open at the top, empty, side view; no spade and no sand castle next to it.'] },
+      umbrella: { notes: ['The umbrella pole stands in the sand; keep the shady sand under it empty (no towel, no chair).'] },
+      water: { notes: ['Calm and simple, with a few small wave marks; no swimmers, fish or rocks.'] },
+      sky: { notes: ['Exactly one simple sun and at most two small clouds; no birds or flying objects.'] },
+      sand: { notes: ['Broad, flat and open; no shells, starfish, footprints, towels or toys.'] },
+    },
+  },
+  bedroom: {
+    avoid: ['lamps', 'posters', 'pictures on the wall', 'patterned curtains', 'toys', 'books', 'clothes', 'plants', 'other furniture'],
+    zones: {
+      bed: { notes: ['Side view; the top of the blanket is flat and empty (no toys).', 'The bed has visible legs with a clear, dark, empty space under it.'] },
+      'under-bed': { joins: 'bed', notes: ['Completely empty: no boxes, shoes or toys under the bed.'] },
+      box: { notes: ['Open at the top and empty, front view.'] },
+      shelf: { notes: ['A single plain board fixed on the wall, with nothing on it.'] },
+      wall: { notes: ['Plain, light, calm color with one simple window; nothing else hangs on the wall except the shelf.'] },
+      floor: { notes: ['Plain boards with one small simple rug; nothing else on the floor.'] },
+    },
+  },
+  park: {
+    avoid: ['trees', 'flowers', 'paths', 'fences', 'sandpits', 'see-saws', 'extra playground equipment', 'balls', 'kites'],
+    zones: {
+      swing: { notes: ['A simple swing frame with ONE empty seat hanging on two ropes; the seat is inside this area.'] },
+      'under-slide': { joins: 'slide', notes: ['Keep the ground under the slide empty.'] },
+      slide: { notes: ['One simple slide with a short ladder on its left; the sliding surface is inside this area.'] },
+      'under-bench': { joins: 'bench', notes: ['Keep the ground under the bench empty.'] },
+      bench: { notes: ['Front view, one simple empty bench with visible legs.'] },
+      sky: { notes: ['Exactly one simple sun and at most two small clouds; no birds, kites or balloons.'] },
+      grass: { notes: ['Broad, flat and open green grass.'] },
+    },
+  },
+  kitchen: {
+    avoid: ['chairs', 'cabinets', 'stoves', 'sinks', 'utensils', 'food', 'plants', 'windows', 'clocks'],
+    zones: {
+      pot: { joins: 'table', notes: ['Open at the top, empty, side view, no lid; at most a little steam above it.'] },
+      fridge: { notes: ['The fridge door is wide open; the inside is light with two or three EMPTY shelves.'] },
+      table: { notes: ['Front view, a simple wooden table with visible legs; the top is empty except for the pot.'] },
+      'under-table': { joins: 'table', notes: ['Keep the floor under the table empty (no chairs).'] },
+      shelf: { notes: ['A single plain board on the wall with nothing on it.'] },
+      wall: { notes: ['Plain light tiles.'] },
+      floor: { notes: ['Plain and empty.'] },
+    },
+  },
+  space: {
+    avoid: ['astronauts', 'aliens', 'other planets', 'satellites', 'spaceships', 'comets', 'the Earth'],
+    zones: {
+      rocket: { notes: ['Upright and simple, with ONE big round window; nobody inside.'] },
+      planet: { notes: ['One planet with one ring; no face.'] },
+      moon: { notes: ['A big curve of the moon surface with a few simple craters; nothing standing on it.'] },
+      space: { notes: ['Dark navy with small scattered stars and at most one bigger star.'] },
+    },
+  },
+  jungle: {
+    avoid: ['animals', 'flowers', 'fruit', 'extra trees in front', 'logs', 'paths', 'waterfalls'],
+    zones: {
+      tree: { joins: 'under-tree', notes: ['Big simple rounded leaf shapes; no fruit and no animals in it.'] },
+      'under-tree': { notes: ['One trunk with one or two simple hanging vines; the ground under it is open.'] },
+      rock: { notes: ['One big smooth rock whose flat top is empty.'] },
+      water: { notes: ['A calm river crossing the whole width with a few ripple marks; no rocks, logs or animals in it.'] },
+      sky: { notes: ['Light and calm; no birds.'] },
+      grass: { notes: ['Mostly open, with only a few small, low bushes far in the back.'] },
+    },
+  },
+};
+
+/**
+ * Prompt ảnh tranh: mỗi vật một mục (A, B, C…) với vùng tính bằng % theo đúng các chỗ của app, vật nào nối liền vật nào,
+ * thứ tự lớp, chỗ trống cho sticker, phong cách, và những thứ cấm vẽ (con vật, người, chữ…) để bé tự dán sticker vào.
  */
 export function sceneBackgroundPrompt(scene) {
+  const hints = PROMPT_HINTS[scene.id] ?? { avoid: [], zones: {} };
   const isBackdrop = (z) => z.rect[2] === SCENE_W; // vùng nền trải hết chiều ngang (trời, cỏ, tường, sàn…)
-  const area = (z) => {
+  const objects = scene.zones.filter((z) => !isBackdrop(z));
+  const backdrops = scene.zones.filter(isBackdrop);
+  const ordered = [...objects, ...backdrops];
+  const letter = (z) => String.fromCharCode(65 + ordered.indexOf(z));
+  const byId = new Map(scene.zones.map((z) => [z.id, z]));
+  const range = (a, b) => `${pct(a)}%–${pct(b)}%`;
+  const position = (z) => {
     const b = zoneBox(z);
-    return `from ${pct(b.left)}% to ${pct(b.left + b.width)}% of the width (from the left) and from ${pct(b.top)}% to ${pct(b.top + b.height)}% of the height (from the top)`;
+    const y = range(b.top, b.top + b.height);
+    return isBackdrop(z)
+      ? `across the full width, y = ${y}, wherever not occupied by the objects above`
+      : `x = ${range(b.left, b.left + b.width)}, y = ${y}`;
   };
+  const block = (z) => {
+    const hint = hints.zones[z.id] ?? {};
+    const joined = hint.joins && byId.get(hint.joins);
+    const joinedBy = objects.filter((o) => hints.zones[o.id]?.joins === z.id);
+    return [
+      `${letter(z)}. ${capitalize(z.draw)}`,
+      `- Position: ${position(z)}.`,
+      ...(hint.notes ?? []).map((n) => `- ${n}`),
+      joined ? `- It must connect directly to ${letter(joined)} (${joined.draw}) with no visible gap.` : null,
+      ...joinedBy.map((o) => `- ${letter(o)} (${o.draw}) connects directly to it.`),
+      isBackdrop(z) ? null : '- Do not extend it beyond its area.',
+      '',
+    ].filter((line) => line !== null);
+  };
+  const joinedPairs = objects.filter((o) => hints.zones[o.id]?.joins).map((o) => `${letter(o)}–${letter(byId.get(hints.zones[o.id].joins))}`);
+
   return [
-    `Create ONE landscape illustration, aspect ratio exactly 4:3 (for example 1600 × 1200 pixels), of ${scene.setting}. It is the background of a sticker game for a 3-year-old child: the child will drag stickers (animals, toys, food) onto it.`,
+    `Create ONE landscape illustration with an exact 4:3 aspect ratio (for example 1600 × 1200 pixels). This is a static background for a sticker-placement game for a 3-year-old child: the child will drag separate stickers of animals, toys and food onto it.`,
+    `The scene is ${scene.setting}, in a simple, colorful, flat vector illustration style.`,
     '',
-    'EXACT LAYOUT — every element must be inside its area (percentages of the image):',
-    ...scene.zones.filter((z) => !isBackdrop(z)).map((z) => `- ${capitalize(z.draw)}: ${area(z)}.`),
-    ...scene.zones.filter(isBackdrop).map((z) => `- ${capitalize(z.draw)}: ${area(z)}, everywhere not used above.`),
+    '1. EXACT COMPOSITION AND PLACEMENT',
+    'Coordinates are percentages of the canvas measured from the top-left corner (x = from the left, y = from the top). Keep each main object inside its area, except for the natural connections listed below.',
+    `Layer order: the background areas (${backdrops.map(letter).join(', ')}) are at the back; every main object (${objects.map(letter).join(', ')}) is drawn on top of them and stays clearly visible.`,
     '',
-    'RULES',
-    '- Keep every area above clearly visible and EMPTY enough to put a sticker on: no animals, no people, no characters, no food, no toys anywhere in the picture.',
-    '- Absolutely no text, letters, numbers, labels or logos.',
-    '- Simple flat vector style for young children: clean shapes, soft dark outlines, bright gentle colors, few small details.',
-    '- Straight front view (no tilted camera), the whole scene fills the canvas edge to edge, no border or frame.',
-  ].join('\n');
+    ...ordered.flatMap(block),
+    '2. STICKER-PLACEMENT REQUIREMENTS',
+    '- Every area above stays clearly visible and empty enough to put a sticker on.',
+    '- Leave large, uncluttered, visually quiet areas, especially in the center and the lower foreground.',
+    `- Main objects do not overlap each other${joinedPairs.length ? `, except the connected parts (${joinedPairs.join(', ')})` : ''}.`,
+    '- No main object is cut off by the canvas edges, except where its area touches the edge.',
+    '- No dense textures, patterns, grass blades, shadows or decorations that would compete with the stickers.',
+    hints.avoid.length ? `- Do not add: ${hints.avoid.join(', ')}.` : null,
+    '',
+    '3. VISUAL STYLE',
+    '- Simple flat 2D vector art for preschool children aged 3: bright, gentle, cheerful colors.',
+    '- Clean shapes with consistent, soft, dark outlines; minimal details; smooth edges; clear silhouettes.',
+    '- Straight-on, front-facing view with minimal perspective: no view from above, no tilted camera, no deep perspective.',
+    '- No realistic 3D rendering, photorealism, complex textures, dramatic lighting or deep shadows.',
+    '- The illustration fills the canvas edge to edge.',
+    '',
+    '4. STRICT EXCLUSIONS',
+    '- Absolutely no animals, people, children or characters, and no food, toys, vehicles or extra objects other than the main objects listed above.',
+    '- No text, letters, numbers, labels, signs, logos, watermarks, interface elements, sticker outlines or sample stickers.',
+    '- No outer border, frame, panel layout, grid or collage.',
+    '- Return exactly ONE complete illustration.',
+  ].filter((line) => line !== null).join('\n');
 }
 
 /** Phần thêm vào prompt ảnh lưới khi vẽ sticker: viền đậm khép kín, nền trắng để app tự cắt nền. */

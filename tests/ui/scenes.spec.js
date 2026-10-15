@@ -174,7 +174,7 @@ test('Góc bố mẹ: thay ảnh một sticker (tự bỏ nền trắng) và ả
     navigator.clipboard.writeText = async (t) => { window.__copied = t; };
   });
   await page.getByRole('button', { name: 'Copy prompt ảnh tranh' }).click();
-  await expect.poll(() => page.evaluate(() => window.__copied)).toMatch(/A small blue pond: from 35% to 73%/);
+  await expect.poll(() => page.evaluate(() => window.__copied)).toContain('A small blue pond\n- Position: x = 35%–73%, y = 76%–94%');
 
   // Ảnh một sticker: cow.
   const cowItem = page.locator('.sp-admin-item').filter({ has: page.getByText('cow', { exact: true }) });
