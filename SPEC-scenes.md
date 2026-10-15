@@ -202,3 +202,8 @@ Góc bố mẹ → **🎨 Ảnh Dán tranh** → danh sách 7 tranh (ghi đang d
 - **Tải ảnh bố cục mẫu**: bấm là **tải thẳng file PNG về máy** (`bo-cuc-<tranh>.png`, thư mục Tải về / Downloads), không mở bảng Chia sẻ.
 - **🧹 Dán lại từ đầu** (màn dán, cạnh nút 🖼️; chỉ hiện khi tranh có sticker): Bông hỏi *"Start again?"* với 2 nút hình to ✔ (vàng, xóa hết) / ✖ (xanh, giữ nguyên) để bé không lỡ tay xóa. ✔ → xóa mọi sticker **của tranh này** (tranh khác giữ nguyên), hết việc đang giao, Bông nói *"Let's start again!"*.
 - Bài từ vựng dùng lại ảnh giữa các bài (SPEC.md mục 4.4): ảnh của chính bài trước, chưa có thì ảnh mới nhất của từ đó ở bài khác; không lấy ảnh Dán tranh và ảnh gia đình thật.
+
+### 10.5. Chia sẻ ảnh Dán tranh sang máy khác (app 0.12.5)
+- Trang **Ảnh Dán tranh** có mục **Chia sẻ ảnh sang máy khác**, dùng lại đúng cách chia sẻ bài: **1. Tạo file ảnh** → file `dan-tranh-anh-YYYY-MM-DD.zip` chỉ gồm **ảnh sticker + ảnh tranh** (không có bài học, tiến độ, ghi âm, và không có tranh bé đã dán — mỗi máy giữ tranh riêng) → **2. Gửi file** (Files/iCloud, AirDrop, Zalo…) hoặc **3. Tải lên Google Drive** (có link nhập nếu đã cài API key).
+- Máy kia: **Nhập ảnh từ file** / từ Google Drive / từ link ở trang Ảnh Dán tranh; hoặc Quản lý bài → **Nhập bài từ file** (nhận cả file ảnh Dán tranh, báo "nhận N ảnh Dán tranh").
+- Gộp như ảnh bài học: mỗi sticker / mỗi tranh chỉ giữ **một ảnh — ảnh mới hơn thắng**; nhập lại file cũ không làm mất ảnh mới hơn đang có.

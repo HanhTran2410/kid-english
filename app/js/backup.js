@@ -56,7 +56,7 @@ export async function estimateBackupSize(db, { includeRecordings = true } = {}) 
  * Tạo file sao lưu.
  * @returns {Promise<{ blob: Blob, filename: string, counts: object }>}
  */
-export async function createBackup(db, { includeRecordings = true, now = Date.now(), appVersion = '', JSZip = globalThis.JSZip, lessonIds = null } = {}) {
+export async function createBackup(db, { includeRecordings = true, now = Date.now(), appVersion = '', JSZip = globalThis.JSZip, lessonIds = null, filename = null } = {}) {
   const data = await readAll(db);
   if (lessonIds) {
     // Gói bài để chia sẻ sang máy khác: chỉ bài và ảnh của bài, không có ghi âm, tiến độ, sticker, cài đặt.
@@ -118,9 +118,9 @@ export async function createBackup(db, { includeRecordings = true, now = Date.no
   return {
     blob: new Blob([bytes], { type: 'application/zip' }),
     // Gói 1 bài: "03-animals.zip" (số đứng đầu, ngắn gọn). Sao lưu toàn bộ: "kid-english-backup-2026-10-09.zip".
-    filename: lessonIds && data.lessons.length === 1
+    filename: filename ?? (lessonIds && data.lessons.length === 1
       ? lessonFileName(data.lessons[0])
-      : `kid-english-${lessonIds ? 'bai' : 'backup'}-${dayKey(new Date(now))}.zip`,
+      : `kid-english-${lessonIds ? 'bai' : 'backup'}-${dayKey(new Date(now))}.zip`),
     counts,
   };
 }

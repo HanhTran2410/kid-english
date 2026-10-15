@@ -25,6 +25,7 @@ import { lessonPreview } from './create.js';
 import { saveFile } from './backup.js';
 import { driveUploadButton, driveImportButton, linkImportButton } from './drive.js';
 import { appDrive } from '../../drive.js';
+import { isSceneImage } from '../../sticker-scenes.js';
 
 export function imageErrorMessage(err) {
   if (err instanceof ImageError) return err.message;
@@ -44,7 +45,9 @@ export function lessonsView(app) {
   const importFile = async (file) => {
     try {
       const payload = await readBackup(file);
-      if (!payload.lessons.length) throw new BackupError('File này không có bài học nào.');
+      // File ảnh Dán tranh (SPEC-scenes mục 10.5) nhập ở đây cũng được.
+      const sceneImages = payload.images.filter(isSceneImage).length;
+      if (!payload.lessons.length && !sceneImages) throw new BackupError('File này không có bài học nào.');
       const existing = await listLessons(app.db);
       const before = new Set(existing.map((l) => l.id));
       // Bài mới trùng tên với bài đang có thì đặt tên "… 2", "… 3".
@@ -62,6 +65,7 @@ export function lessonsView(app) {
       const parts = [];
       if (added) parts.push(`nhập ${added} bài mới`);
       if (updated) parts.push(`cập nhật ${updated} bài đã có`);
+      if (sceneImages) parts.push(`nhận ${sceneImages} ảnh Dán tranh`);
       const summary = parts.length ? `Đã ${parts.join(', ')}` : 'Không có gì thay đổi';
       toast(`${summary}.`, 3500);
       // Ghi lại đã nhập file nào, để biết file nào nhập rồi / chưa nhập.

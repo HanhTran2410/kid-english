@@ -2,15 +2,19 @@
 
 import { h, toast, copyText, confirmDialog } from '../../ui.js';
 import { setWordImage, removeWordImage, latestImageForWord, mediaBlob } from '../../db.js';
-import { normalizeWord } from '../../text.js';
+import { normalizeWord, dayKey } from '../../text.js';
 import { resizeCover, cutOutSticker, resizeImage } from '../../image.js';
 import {
-  SCENES, SCENE_BY_ID, STICKER_IMAGES, BACKGROUND_IMAGES, STICKER_PROMPT_NOTE, zoneBox, sceneBackgroundPrompt,
+  SCENES, SCENE_BY_ID, STICKER_IMAGES, BACKGROUND_IMAGES, STICKER_PROMPT_NOTE, zoneBox, sceneBackgroundPrompt, isSceneImage,
 } from '../../sticker-scenes.js';
+import { createBackup, readBackup, applyBackup, BackupError } from '../../backup.js';
+import { APP_VERSION } from '../../app.js';
+import { appDrive } from '../../drive.js';
+import { driveUploadButton, driveImportButton, linkImportButton } from './drive.js';
 import { loadSceneImages, sceneArt, itemFace } from '../sticker-scene.js';
 import { parentLayout, goParent, section, notice } from './common.js';
 import { gridSection, imageErrorMessage } from './lessons.js';
-import { downloadFile } from './backup.js';
+import { downloadFile, saveFile } from './backup.js';
 
 /**
  * Ảnh dùng lại được (SPEC-scenes mục 10.3): ảnh bố mẹ đã thêm ở bài học (từ vựng, số đếm, phonics, hội thoại…) có
@@ -80,8 +84,88 @@ export function scenesView(app) {
         h('span.menu-emoji', { text: scene.emoji }),
         h('span', { text: `${scene.vi} — tranh: ${images.background.has(scene.id) ? 'ảnh AI' : 'hình vẽ sẵn'} · sticker: ${done}/${scene.items.length} ảnh` }));
     }));
+    list.after(shareSection(app, images.sticker.size + images.background.size));
   });
   return () => images?.revoke();
+}
+
+/**
+ * Chia sẻ ảnh Dán tranh sang máy khác (SPEC-scenes mục 10.5) — dùng lại cách chia sẻ bài: tạo file .zip chỉ gồm
+ * ảnh sticker + ảnh tranh → gửi file (AirDrop, Zalo…) / Google Drive; máy kia nhập từ file, Drive hoặc link.
+ * Không gồm tranh bé đã dán (mỗi máy giữ tranh riêng).
+ */
+function shareSection(app, count) {
+  const status = h('p.muted');
+  let made = null;
+  const sendBtn = h('button.btn.primary', {
+    type: 'button',
+    text: '2. Gửi file',
+    hidden: true,
+    onclick: async () => {
+      if (made && await saveFile(made.blob, made.filename)) toast('Đã xuất file ảnh Dán tranh.');
+    },
+  });
+  const makeBtn = h('button.btn', {
+    type: 'button',
+    text: '1. Tạo file ảnh',
+    disabled: !count,
+    onclick: async () => {
+      makeBtn.disabled = true;
+      try {
+        made = await createBackup(app.db, {
+          lessonIds: [STICKER_IMAGES, BACKGROUND_IMAGES], appVersion: APP_VERSION, filename: `dan-tranh-anh-${dayKey()}.zip`,
+        });
+        status.textContent = `Đã tạo ${made.filename} (${made.counts.images} ảnh). Bấm "Gửi file" để lưu vào Files/iCloud hoặc gửi AirDrop, Zalo…${appDrive(app) ? ', hoặc "Tải lên Google Drive".' : ''}`;
+        sendBtn.hidden = false;
+        driveBtn.hidden = !appDrive(app);
+      } catch (err) {
+        console.error(err);
+        status.textContent = 'Không tạo được file ảnh.';
+      } finally {
+        makeBtn.disabled = false;
+      }
+    },
+  });
+  const { btn: driveBtn, linkBox } = driveUploadButton(app, () => made, status);
+
+  // Nhập: chỉ lấy ảnh Dán tranh trong file; ảnh mới hơn thay ảnh cũ của cùng sticker / cùng tranh.
+  const importFile = async (file) => {
+    try {
+      const payload = await readBackup(file);
+      const images = payload.images.filter(isSceneImage);
+      if (!images.length) throw new BackupError('File này không có ảnh Dán tranh.');
+      await applyBackup(app.db, {
+        ...payload, lessons: [], images, frameSets: [], recordings: [], progress: [], stickers: [], settings: [],
+      }, 'merge');
+      toast(`Đã nhận ${images.length} ảnh Dán tranh (ảnh mới hơn thay ảnh cũ).`, 3500);
+      goParent(app, 'scenes');
+    } catch (err) {
+      toast(err instanceof BackupError ? err.message : 'Không đọc được file ảnh.', 4000);
+    }
+  };
+  const input = h('input', { type: 'file', accept: '.zip,application/zip', hidden: true });
+  input.addEventListener('change', async () => {
+    const file = input.files?.[0];
+    input.value = '';
+    if (file) await importFile(file);
+  });
+  const fromDrive = driveImportButton(app, importFile);
+  const fromLink = linkImportButton(app, importFile);
+
+  return section('Chia sẻ ảnh sang máy khác',
+    h('p', { text: count
+      ? `Máy này có ${count} ảnh Dán tranh (sticker + tranh). Tạo file ảnh rồi gửi sang máy kia; trên máy kia: Góc bố mẹ → Ảnh Dán tranh → "Nhập ảnh từ file" (hoặc Quản lý bài → "Nhập bài từ file" cũng được). Tranh bé đã dán không đi theo.`
+      : 'Máy này chưa có ảnh Dán tranh nào để gửi. Máy kia gửi sang thì bấm "Nhập ảnh từ file" ở đây.' }),
+    h('div.actions', {}, makeBtn, sendBtn, driveBtn),
+    status,
+    linkBox,
+    h('div.actions', {},
+      h('button.btn.primary', { type: 'button', text: 'Nhập ảnh từ file', onclick: () => input.click() }),
+      input,
+      fromDrive.btn,
+      fromLink.btn),
+    fromLink.box,
+    fromDrive.box);
 }
 
 export function sceneDetailView(app, { sceneId }) {

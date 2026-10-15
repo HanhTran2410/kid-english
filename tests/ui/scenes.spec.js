@@ -366,3 +366,64 @@ test('dùng lại ảnh cho bài từ vựng: từ bài này chưa có ảnh th�
   expect(result.mummy).toBeNull(); // ảnh gia đình thật không dùng cho bài khác
   expect(result.mummyLatest).toBeNull();
 });
+
+test('chia sẻ ảnh Dán tranh: tạo file .zip chỉ gồm ảnh sticker + ảnh tranh → máy khác nhập từ file (ở Ảnh Dán tranh hoặc Quản lý bài)', async ({ page }) => {
+  await fakeSpeech(page);
+  await startApp(page);
+  await page.evaluate(async () => {
+    const { setWordImage } = await import('/js/db.js');
+    const png = async (color) => {
+      const c = document.createElement('canvas');
+      c.width = 10;
+      c.height = 10;
+      const ctx = c.getContext('2d');
+      ctx.fillStyle = color;
+      ctx.fillRect(0, 0, 10, 10);
+      return new Promise((r) => c.toBlob(r, 'image/png'));
+    };
+    const db = window.kidEnglish.db;
+    await setWordImage(db, { lessonId: 'scene:stickers', word: 'cow', blob: await png('red'), mimeType: 'image/png', width: 10, height: 10 });
+    await setWordImage(db, { lessonId: 'scene:bg', word: 'farm', blob: await png('green'), mimeType: 'image/png', width: 10, height: 10 });
+    await setWordImage(db, { lessonId: 'lesson-x', word: 'apple', blob: await png('blue'), mimeType: 'image/png', width: 10, height: 10 });
+    await window.kidEnglish.setSetting('stickerScenes', { last: 'farm', farm: [{ s: 'cow', x: 10, y: 10 }] });
+  });
+  await openParent(page);
+  await page.getByRole('button', { name: /Ảnh Dán tranh/ }).click();
+  await expect(page.getByText(/Máy này có 2 ảnh Dán tranh/)).toBeVisible();
+  await page.getByRole('button', { name: '1. Tạo file ảnh' }).click();
+  await expect(page.getByText(/Đã tạo dan-tranh-anh-.*\.zip \(2 ảnh\)/)).toBeVisible();
+  const download = page.waitForEvent('download');
+  await page.getByRole('button', { name: '2. Gửi file' }).click();
+  const file = await (await download).path();
+  expect((await download).suggestedFilename()).toMatch(/^dan-tranh-anh-\d{4}-\d{2}-\d{2}\.zip$/);
+
+  // "Máy khác": xóa ảnh Dán tranh rồi nhập lại từ file.
+  const clear = () => page.evaluate(async () => {
+    const db = window.kidEnglish.db;
+    for (const id of ['scene:stickers', 'scene:bg']) for (const img of await db.getAllByIndex('images', 'lessonId', id)) await db.delete('images', img.id);
+  });
+  const sceneWords = () => page.evaluate(async () => {
+    const db = window.kidEnglish.db;
+    const all = [...await db.getAllByIndex('images', 'lessonId', 'scene:stickers'), ...await db.getAllByIndex('images', 'lessonId', 'scene:bg')];
+    return all.map((i) => `${i.lessonId}|${i.word}`).sort();
+  });
+  await clear();
+  await page.evaluate(() => window.kidEnglish.go('parent', { view: 'scenes' }));
+  const chooser = page.waitForEvent('filechooser');
+  await page.getByRole('button', { name: 'Nhập ảnh từ file' }).click();
+  await (await chooser).setFiles(file);
+  await expect(page.getByText(/Máy này có 2 ảnh Dán tranh/)).toBeVisible();
+  expect(await sceneWords()).toEqual(['scene:bg|farm', 'scene:stickers|cow']);
+  // File chỉ gồm ảnh Dán tranh: không mang theo ảnh bài học, không đổi tranh bé đã dán.
+  expect(await page.evaluate(async () => (await window.kidEnglish.db.getAllByIndex('images', 'word', 'apple')).length)).toBe(1);
+  expect(await page.evaluate(() => window.kidEnglish.settings.stickerScenes.farm.length)).toBe(1);
+
+  // Nhập ở Quản lý bài cũng được.
+  await clear();
+  await page.evaluate(() => window.kidEnglish.go('parent', { view: 'lessons' }));
+  const chooser2 = page.waitForEvent('filechooser');
+  await page.getByRole('button', { name: 'Nhập bài từ file' }).click();
+  await (await chooser2).setFiles(file);
+  await expect(page.getByText('Đã nhận 2 ảnh Dán tranh.', { exact: true })).toBeVisible();
+  await expect.poll(sceneWords).toEqual(['scene:bg|farm', 'scene:stickers|cow']);
+});
