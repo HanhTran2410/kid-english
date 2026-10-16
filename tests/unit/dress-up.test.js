@@ -4,11 +4,12 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   ITEMS, ITEM_BY_ID, SLOTS, SLOT_BY_ID, DOLL_W, DOLL_H, wear, cleanOutfit, layerOrder, itemArt, itemIcon, visibleIn, viewFor,
+  wardrobeFor, setCustomItems, imageKey, itemBox,
   wearSentence, takeOffSentence, requestSentence, wearVi, takeOffVi, pickRequest, dollSvg,
 } from '../../app/js/dress-up.js';
 
-test('tủ đồ: 21 món, mã không trùng, món nào cũng có chỗ, tên Việt, hình vẽ mặt trước, khung biểu tượng nằm trong khung bạn nhỏ', () => {
-  assert.equal(ITEMS.length, 21);
+test('tủ đồ có sẵn: 26 món, mã không trùng, món nào cũng có chỗ, tên Việt, hình vẽ mặt trước, khung biểu tượng nằm trong khung bạn nhỏ', () => {
+  assert.equal(ITEMS.length, 26);
   assert.equal(new Set(ITEMS.map((i) => i.id)).size, ITEMS.length);
   for (const it of ITEMS) {
     assert.ok(SLOT_BY_ID.has(it.slot), it.id);
@@ -102,4 +103,69 @@ test('bạn nhỏ: bé trai và bé gái khác tóc; mặt trước có mặt (m
   const back = dollSvg('girl', 'back', ['coat', 'backpack']);
   const hair = back.indexOf('<circle cx="100" cy="70" r="43"');
   assert.ok(back.indexOf('data-item="coat"') < hair && hair < back.indexOf('data-item="backpack"'));
+});
+
+test('tủ đồ riêng: bé trai không có váy / nơ, bé gái không có cà vạt / quần bơi; đồ chung có cho cả hai; bộ đồ cũ bỏ món không phải của bé', () => {
+  const boy = wardrobeFor('boy').map((i) => i.id);
+  const girl = wardrobeFor('girl').map((i) => i.id);
+  for (const id of ['dress', 'skirt', 'swimsuit', 'bow', 'crown', 'sun-hat']) {
+    assert.ok(girl.includes(id) && !boy.includes(id), id);
+  }
+  for (const id of ['tie', 'swim-shorts']) assert.ok(boy.includes(id) && !girl.includes(id), id);
+  for (const id of ['t-shirt', 'jeans', 'socks', 'sneakers', 'backpack', 'umbrella']) assert.ok(boy.includes(id) && girl.includes(id), id);
+  assert.deepEqual(cleanOutfit(['t-shirt', 'skirt', 'bow'], 'boy'), ['t-shirt']);
+  assert.deepEqual(cleanOutfit(['t-shirt', 'skirt', 'bow'], 'girl'), ['t-shirt', 'skirt', 'bow']);
+  // Chân váy là "quần": thay quần bò; tất mặc cùng giày.
+  assert.deepEqual(wear(['jeans', 'sneakers'], 'skirt').outfit, ['sneakers', 'skirt']);
+  assert.deepEqual(wear(['sneakers'], 'socks').outfit, ['sneakers', 'socks']);
+  assert.equal(wearSentence(ITEM_BY_ID.get('socks')), "I'm wearing socks!");
+  assert.equal(wearSentence(ITEM_BY_ID.get('swim-shorts')), "I'm wearing swim shorts!");
+  assert.equal(wearSentence(ITEM_BY_ID.get('tie')), "I'm wearing a tie!");
+  assert.ok(!visibleIn(ITEM_BY_ID.get('tie'), 'back'));
+});
+
+test('đồ bố mẹ thêm: nạp từ cài đặt, đúng chỗ / đúng bé, bỏ món hỏng hoặc trùng tên; nạp lại thì thay danh sách cũ', () => {
+  try {
+    setCustomItems([
+      { id: 'c-1', name: 'raincoat', vi: 'áo mưa', slot: 'outer', kids: ['boy'] },
+      { id: 'c-2', name: 'pajamas', vi: 'đồ ngủ', slot: 'dress', kids: ['girl', 'boy'], plural: true },
+      { id: 'c-3', name: 'T-shirt', slot: 'top' }, // trùng tên món có sẵn
+      { id: 'c-4', name: 'x', slot: 'nowhere' }, // chỗ mặc không có
+      { name: 'no id', slot: 'top' },
+    ]);
+    assert.equal(ITEMS.length, 28);
+    const raincoat = ITEM_BY_ID.get('c-1');
+    assert.ok(raincoat.custom && raincoat.art === null);
+    assert.ok(wardrobeFor('boy').includes(raincoat) && !wardrobeFor('girl').includes(raincoat));
+    assert.equal(wearSentence(raincoat), "I'm wearing a raincoat!");
+    assert.equal(wearSentence(ITEM_BY_ID.get('c-2')), "I'm wearing pajamas!");
+    assert.deepEqual(itemBox(raincoat), SLOT_BY_ID.get('outer').box);
+    // Váy liền thêm vào cũng thay áo + quần như váy có sẵn.
+    assert.deepEqual(wear(['t-shirt', 'jeans'], 'c-2').outfit, ['c-2']);
+    // Đồ thêm cần ảnh: không có ảnh thì không vẽ lên người, biểu tượng là emoji của chỗ mặc.
+    assert.equal(itemArt(raincoat, 'front'), '');
+    assert.match(itemIcon(raincoat), /🧥/);
+    const images = new Map([[imageKey(raincoat), 'blob:raincoat']]);
+    assert.match(itemArt(raincoat, 'front', images), /<image href="blob:raincoat" x="32" y="102" width="136" height="160"/);
+    assert.match(dollSvg('boy', 'front', ['c-1'], images), /data-item="c-1"/);
+    setCustomItems([{ id: 'c-9', name: 'tutu', slot: 'bottom', kids: ['girl'] }]);
+    assert.equal(ITEMS.length, 27);
+    assert.ok(!ITEM_BY_ID.has('c-1') && ITEM_BY_ID.has('c-9'));
+  } finally {
+    setCustomItems([]);
+  }
+  assert.equal(ITEMS.length, 26);
+});
+
+test('ảnh bố mẹ thay cho món có sẵn: đặt vừa khung món đó; kính không hiện khi quay lưng; ba lô: quai ở trước, ảnh ở sau; ô đổi tay', () => {
+  const map = (id, url) => new Map([[imageKey(ITEM_BY_ID.get(id)), url]]);
+  const tshirt = ITEM_BY_ID.get('t-shirt');
+  assert.match(itemArt(tshirt, 'front', map('t-shirt', 'u1')), /<image href="u1" x="36" y="104" width="128" height="116"/);
+  assert.match(itemArt(tshirt, 'back', map('t-shirt', 'u1')), /href="u1"/);
+  assert.equal(itemArt(ITEM_BY_ID.get('glasses'), 'back', map('glasses', 'u2')), '');
+  const bp = ITEM_BY_ID.get('backpack');
+  assert.doesNotMatch(itemArt(bp, 'front', map('backpack', 'u3')), /<image/);
+  assert.match(itemArt(bp, 'back', map('backpack', 'u3')), /href="u3"/);
+  assert.match(itemArt(ITEM_BY_ID.get('umbrella'), 'back', map('umbrella', 'u4')), /scale\(-1 1\)[\s\S]*href="u4"/);
+  assert.match(itemIcon(tshirt, map('t-shirt', 'u1')), /viewBox="0 0 100 100"[\s\S]*href="u1"/);
 });

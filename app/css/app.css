@@ -1789,3 +1789,6 @@ details > summary { cursor: pointer; font-weight: 800; padding: 6px 0; }
 @media (max-width: 600px) {
   .du-play .sp-title { display: none; }
 }
+/* Góc bố mẹ: ảnh đồ Mặc đồ */
+.du-admin-face { display: block; width: 64px; height: 64px; border-radius: 10px; }
+.du-admin-face svg { width: 100%; height: 100%; display: block; }

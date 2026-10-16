@@ -2,7 +2,7 @@
 // Mỗi lần sửa code: tăng VERSION (trùng APP_VERSION trong js/app.js) để máy tải bản mới.
 // Thêm/bớt file trong app/ thì cập nhật ASSETS (test tests/unit/sw.test.js sẽ báo nếu thiếu).
 
-const VERSION = '0.13.2';
+const VERSION = '0.14.0';
 const CACHE = `kid-english-${VERSION}`;
 
 const ASSETS = [
@@ -58,6 +58,7 @@ const ASSETS = [
   'js/screens/dress-up.js',
   'js/dress-up.js',
   'js/screens/parent/scenes.js',
+  'js/screens/parent/dress.js',
   'js/screens/parent/backup.js',
   'js/screens/parent/common.js',
   'js/screens/parent/create.js',

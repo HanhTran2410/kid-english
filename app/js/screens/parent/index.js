@@ -19,6 +19,7 @@ import { bongElement } from '../../bong.js';
 import { stickersAdminView } from './stickers.js';
 import { profileView } from './profile.js';
 import { scenesView, sceneDetailView } from './scenes.js';
+import { dressAdminView } from './dress.js';
 
 const VIEWS = {
   menu: menuView,
@@ -35,6 +36,7 @@ const VIEWS = {
   profile: profileView,
   scenes: scenesView,
   scene: sceneDetailView,
+  dress: dressAdminView,
 };
 
 export function parentScreen(app, params = {}) {
@@ -67,6 +69,7 @@ function menuView(app) {
       item('💾', 'Sao lưu / Khôi phục', () => goParent(app, 'backup'), due),
       item('🎁', 'Sticker của bé', () => goParent(app, 'stickers')),
       item('🎨', 'Ảnh Dán tranh (tranh + sticker)', () => goParent(app, 'scenes')),
+      item('👗', 'Đồ Mặc đồ (thay ảnh, thêm đồ)', () => goParent(app, 'dress')),
       item('⚙️', 'Cài đặt & chẩn đoán', () => goParent(app, 'settings'))),
     h('button.exit-to-child', { type: 'button', onclick: () => app.go('home') },
       bongElement('menu-bong'), h('span', { text: 'Về màn hình của bé' })),

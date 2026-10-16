@@ -229,12 +229,12 @@ export async function getWordImage(db, lessonId, word) {
 }
 
 /**
- * Ảnh mới nhất của một từ trong mọi bài (dùng lại ảnh giữa các bài). Không lấy ảnh sticker / ảnh tranh của Dán tranh
+ * Ảnh mới nhất của một từ trong mọi bài (dùng lại ảnh giữa các bài). Không lấy ảnh sticker / ảnh tranh của Dán tranh, ảnh đồ của Mặc đồ
  * và ảnh gia đình thật trong Hồ sơ của bé (ảnh thật chỉ hiện đúng chỗ bố mẹ đã đặt).
  */
 export async function latestImageForWord(db, word) {
   const images = await db.getAllByIndex('images', 'word', normalizeWord(word));
-  return images.filter((img) => !/^(scene|profile):/.test(String(img.lessonId ?? '')))
+  return images.filter((img) => !/^(scene|profile|dress):/.test(String(img.lessonId ?? '')))
     .sort((a, b) => b.createdAt - a.createdAt)[0] ?? null;
 }
 

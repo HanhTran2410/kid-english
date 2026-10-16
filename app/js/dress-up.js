@@ -11,20 +11,23 @@ export const WEARS_PER_REQUEST = 3;
 
 /** Chỗ mặc; thứ tự = thứ tự lớp vẽ (dưới → trên). verb: động từ tiếng Việt cho phụ đề. */
 export const SLOTS = [
-  { id: 'bottom', verb: 'mặc' },
-  { id: 'feet', verb: 'đi' },
-  { id: 'top', verb: 'mặc' },
-  { id: 'dress', verb: 'mặc' },
-  { id: 'outer', verb: 'mặc' },
-  { id: 'back', verb: 'đeo' },
-  { id: 'neck', verb: 'quàng' },
-  { id: 'eyes', verb: 'đeo' },
-  { id: 'head', verb: 'đội' },
-  { id: 'hand', verb: 'cầm' },
+  { id: 'socks', verb: 'đi', vi: 'Tất', emoji: '🧦', box: [60, 290, 80, 70] },
+  { id: 'bottom', verb: 'mặc', vi: 'Quần / chân váy', emoji: '👖', box: [62, 200, 76, 146] },
+  { id: 'feet', verb: 'đi', vi: 'Giày / dép', emoji: '👟', box: [60, 330, 80, 32] },
+  { id: 'top', verb: 'mặc', vi: 'Áo', emoji: '👕', box: [36, 104, 128, 116] },
+  { id: 'dress', verb: 'mặc', vi: 'Váy liền / đồ liền', emoji: '👗', box: [40, 108, 120, 190] },
+  { id: 'outer', verb: 'mặc', vi: 'Áo khoác', emoji: '🧥', box: [32, 102, 136, 160] },
+  { id: 'back', verb: 'đeo', vi: 'Đeo sau lưng', emoji: '🎒', box: [58, 108, 84, 106] },
+  { id: 'neck', verb: 'quàng', vi: 'Cổ (khăn, cà vạt)', emoji: '🧣', box: [72, 94, 56, 70] },
+  { id: 'eyes', verb: 'đeo', vi: 'Mắt (kính)', emoji: '👓', box: [56, 58, 88, 32] },
+  { id: 'head', verb: 'đội', vi: 'Đầu (mũ, nơ)', emoji: '🧢', box: [48, 8, 104, 60] },
+  { id: 'hand', verb: 'cầm', vi: 'Cầm tay', emoji: '✋', box: [98, 56, 100, 180] },
 ];
 export const SLOT_BY_ID = new Map(SLOTS.map((s) => [s.id, s]));
 
-const PLURAL = new Set(['jeans', 'shorts', 'glasses', 'sunglasses', 'goggles', 'sneakers', 'boots', 'sandals']);
+const PLURAL = new Set(['jeans', 'shorts', 'swim shorts', 'glasses', 'sunglasses', 'goggles', 'sneakers', 'boots', 'sandals', 'socks']);
+/** Ảnh bố mẹ thay / đồ bố mẹ thêm nằm trong kho ảnh với "mã bài" riêng (SPEC-dressup mục 11). */
+export const DRESS_IMAGES = 'dress:items';
 
 // ---------- Hình vẽ quần áo (khung 200 × 400, khớp người bạn nhỏ) ----------
 
@@ -159,60 +162,154 @@ const ART = {
     mirrorBack: true, // sau lưng: tay cầm ô nằm bên kia
     box: [98, 56, 100, 180],
   },
+  sweater: {
+    front: `<path d="M64 112 L40 122 L40 214 L64 214 Z" fill="#63d2a8" ${LINE}/><path d="M136 112 L160 122 L160 214 L136 214 Z" fill="#63d2a8" ${LINE}/>
+      <rect x="62" y="108" width="76" height="112" rx="12" fill="#63d2a8" ${LINE}/>
+      <path d="M84 108 Q100 122 116 108" fill="none" stroke="#3fae86" stroke-width="5"/>
+      <path d="M70 150 L80 160 L90 150 L100 160 L110 150 L120 160 L130 150" fill="none" stroke="#fff" stroke-width="3"/>
+      <rect x="62" y="206" width="76" height="12" fill="#3fae86"/><rect x="40" y="202" width="24" height="12" fill="#3fae86"/><rect x="136" y="202" width="24" height="12" fill="#3fae86"/>`,
+    back: `<path d="M64 112 L40 122 L40 214 L64 214 Z" fill="#63d2a8" ${LINE}/><path d="M136 112 L160 122 L160 214 L136 214 Z" fill="#63d2a8" ${LINE}/>
+      <rect x="62" y="108" width="76" height="112" rx="12" fill="#63d2a8" ${LINE}/><rect x="86" y="104" width="28" height="8" rx="4" fill="#3fae86"/>
+      <rect x="62" y="206" width="76" height="12" fill="#3fae86"/><rect x="40" y="202" width="24" height="12" fill="#3fae86"/><rect x="136" y="202" width="24" height="12" fill="#3fae86"/>`,
+    box: [36, 102, 128, 120],
+  },
+  skirt: {
+    front: `<path d="M66 204 L134 204 L152 272 L48 272 Z" fill="#b197fc" ${LINE}/><rect x="65" y="202" width="70" height="10" rx="3" fill="#8f73e0"/>
+      <path d="M84 212 L78 272 M100 212 L100 272 M116 212 L122 272" stroke="#8f73e0" stroke-width="2"/>`,
+    box: [46, 198, 108, 78],
+  },
+  'swim-shorts': {
+    front: `<path d="M64 204 L136 204 L134 262 L104 262 L100 238 L96 262 L66 262 Z" fill="#4dabf7" ${LINE}/><rect x="64" y="204" width="72" height="8" fill="#1c7ed6"/>
+      <path d="M66 238 Q74 232 82 238 T98 238 M102 238 Q110 232 118 238 T134 238" fill="none" stroke="#fff" stroke-width="3"/>`,
+    box: [62, 200, 76, 66],
+  },
+  socks: {
+    front: pair(`<path d="M72 294 L96 294 L96 342 Q102 346 100 356 L66 356 Q64 348 72 342 Z" fill="#fff" ${LINE}/><path d="M72 304 L96 304 M72 314 L96 314" stroke="#ff6b6b" stroke-width="4"/>`),
+    box: [60, 290, 80, 70],
+  },
+  tie: {
+    front: `<path d="M94 106 L106 106 L103 118 L97 118 Z" fill="#e05555" ${LINE}/><path d="M97 118 L103 118 L109 172 L100 184 L91 172 Z" fill="#ff6b6b" ${LINE}/>
+      <path d="M95 140 L105 134 M94 156 L106 150" stroke="#ffd166" stroke-width="3"/>`,
+    back: '',
+    box: [86, 102, 28, 86],
+  },
 };
 
+const BOTH = ['boy', 'girl'];
+const GIRL = ['girl'];
+const BOY = ['boy'];
+
 /**
- * Tủ đồ. [tên tiếng Anh, emoji (phụ đề), chỗ, tên tiếng Việt, ngữ cảnh khi Bông giao việc].
+ * Tủ đồ có sẵn. [tên tiếng Anh, emoji (phụ đề), chỗ, tên tiếng Việt, dành cho, ngữ cảnh khi Bông giao việc].
+ * Chọn bé trai chỉ thấy đồ bé trai + đồ chung; bé gái tương tự.
  */
-export const ITEMS = [
-  ['T-shirt', '👕', 'top', 'áo phông'],
-  ['shirt', '👔', 'top', 'áo sơ mi'],
-  ['coat', '🧥', 'outer', 'áo khoác', "It's cold!"],
-  ['dress', '👗', 'dress', 'váy'],
-  ['swimsuit', '🩱', 'dress', 'đồ bơi', "Let's go swimming!"],
-  ['jeans', '👖', 'bottom', 'quần bò'],
-  ['shorts', '🩳', 'bottom', 'quần soóc', "It's sunny!"],
-  ['cap', '🧢', 'head', 'mũ lưỡi trai', "It's sunny!"],
-  ['sun hat', '👒', 'head', 'mũ rộng vành', "It's sunny!"],
-  ['helmet', '⛑️', 'head', 'mũ bảo hiểm', "Let's ride a bike!"],
-  ['crown', '👑', 'head', 'vương miện', "Let's have a party!"],
-  ['bow', '🎀', 'head', 'nơ', "Let's have a party!"],
-  ['glasses', '👓', 'eyes', 'kính'],
-  ['sunglasses', '🕶️', 'eyes', 'kính râm', "It's sunny!"],
-  ['goggles', '🥽', 'eyes', 'kính bơi', "Let's go swimming!"],
-  ['scarf', '🧣', 'neck', 'khăn quàng', "It's cold!"],
-  ['sneakers', '👟', 'feet', 'giày thể thao'],
-  ['boots', '👢', 'feet', 'ủng', "It's cold!"],
-  ['sandals', '👡', 'feet', 'dép', "It's sunny!"],
-  ['backpack', '🎒', 'back', 'ba lô', "Let's go to school!"],
-  ['umbrella', '☂️', 'hand', 'ô', "It's raining!"],
-].map(([name, emoji, slot, vi, context = '']) => {
+const BUILTIN = [
+  ['T-shirt', '👕', 'top', 'áo phông', BOTH],
+  ['shirt', '👔', 'top', 'áo sơ mi', BOTH],
+  ['sweater', '🧶', 'top', 'áo len', BOTH, "It's cold!"],
+  ['coat', '🧥', 'outer', 'áo khoác', BOTH, "It's cold!"],
+  ['dress', '👗', 'dress', 'váy', GIRL],
+  ['swimsuit', '🩱', 'dress', 'đồ bơi', GIRL, "Let's go swimming!"],
+  ['skirt', '👗', 'bottom', 'chân váy', GIRL],
+  ['jeans', '👖', 'bottom', 'quần bò', BOTH],
+  ['shorts', '🩳', 'bottom', 'quần soóc', BOTH, "It's sunny!"],
+  ['swim shorts', '🩳', 'bottom', 'quần bơi', BOY, "Let's go swimming!"],
+  ['socks', '🧦', 'socks', 'tất', BOTH, "It's cold!"],
+  ['cap', '🧢', 'head', 'mũ lưỡi trai', BOTH, "It's sunny!"],
+  ['sun hat', '👒', 'head', 'mũ rộng vành', GIRL, "It's sunny!"],
+  ['helmet', '⛑️', 'head', 'mũ bảo hiểm', BOTH, "Let's ride a bike!"],
+  ['crown', '👑', 'head', 'vương miện', GIRL, "Let's have a party!"],
+  ['bow', '🎀', 'head', 'nơ', GIRL, "Let's have a party!"],
+  ['glasses', '👓', 'eyes', 'kính', BOTH],
+  ['sunglasses', '🕶️', 'eyes', 'kính râm', BOTH, "It's sunny!"],
+  ['goggles', '🥽', 'eyes', 'kính bơi', BOTH, "Let's go swimming!"],
+  ['scarf', '🧣', 'neck', 'khăn quàng', BOTH, "It's cold!"],
+  ['tie', '👔', 'neck', 'cà vạt', BOY, "Let's have a party!"],
+  ['sneakers', '👟', 'feet', 'giày thể thao', BOTH],
+  ['boots', '👢', 'feet', 'ủng', BOTH, "It's cold!"],
+  ['sandals', '👡', 'feet', 'dép', BOTH, "It's sunny!"],
+  ['backpack', '🎒', 'back', 'ba lô', BOTH, "Let's go to school!"],
+  ['umbrella', '☂️', 'hand', 'ô', BOTH, "It's raining!"],
+].map(([name, emoji, slot, vi, kids, context = '']) => {
   const id = name.toLowerCase().replace(/\s+/g, '-');
-  return { id, name, emoji, slot, vi, context, art: ART[id] };
+  return { id, name, emoji, slot, vi, kids, context, art: ART[id] };
 });
+
+/** Mọi món (có sẵn + bố mẹ thêm). Đồ bố mẹ thêm được nạp bằng setCustomItems. */
+export const ITEMS = [...BUILTIN];
 export const ITEM_BY_ID = new Map(ITEMS.map((it) => [it.id, it]));
 
-/** Hình món đồ ở mặt trước / sau (chuỗi SVG, có thể rỗng — ví dụ kính nhìn từ sau). */
-export function itemArt(item, view) {
+/** Khóa ảnh của một món (theo tên, giống ảnh bài học). */
+export const imageKey = (item) => String(item.name).toLowerCase().replace(/[’‘]/g, "'").replace(/\s+/g, ' ').trim();
+
+/**
+ * Đồ bố mẹ thêm (cài đặt `dressUpCustom`): { id, name, vi, slot, kids, plural }. Bỏ món hỏng, tên trùng món khác.
+ * Gọi lại mỗi lần mở trò chơi / Góc bố mẹ.
+ */
+export function setCustomItems(list) {
+  for (let i = ITEMS.length - 1; i >= 0; i--) if (ITEMS[i].custom) ITEM_BY_ID.delete(ITEMS.splice(i, 1)[0].id);
+  for (const c of Array.isArray(list) ? list : []) {
+    const name = String(c?.name ?? '').trim();
+    const slot = SLOT_BY_ID.get(c?.slot);
+    if (!c?.id || !name || !slot || ITEM_BY_ID.has(c.id) || ITEMS.some((it) => imageKey(it) === imageKey({ name }))) continue;
+    const kids = KIDS.filter((k) => (Array.isArray(c.kids) ? c.kids : KIDS).includes(k));
+    const item = {
+      id: c.id, name, emoji: slot.emoji, slot: slot.id, vi: String(c.vi ?? '').trim() || name,
+      kids: kids.length ? kids : [...KIDS], context: '', art: null, custom: true, plural: Boolean(c.plural),
+    };
+    ITEMS.push(item);
+    ITEM_BY_ID.set(item.id, item);
+  }
+}
+
+/** Tủ đồ của một bé: đồ dành cho bé đó + đồ chung. */
+export const wardrobeFor = (kid) => ITEMS.filter((it) => it.kids.includes(kid));
+
+/** Khung đặt ảnh: khung của hình vẽ sẵn (vừa món đó), đồ bố mẹ thêm thì khung của chỗ mặc. */
+export const itemBox = (item) => item.art?.box ?? SLOT_BY_ID.get(item.slot).box;
+
+const mirror = (svg) => `<g transform="translate(200 0) scale(-1 1)">${svg}</g>`;
+
+/** Món đồ nhìn thấy được ở mặt này không (kính, cà vạt: chỉ mặt trước; ba lô: cả hai — trước là quai). */
+export function visibleIn(item, view) {
+  if (item.art) return builtinArt(item, view).trim() !== '';
+  return !(item.slot === 'eyes' && view === 'back') && !(item.slot === 'back' && view === 'front');
+}
+
+function builtinArt(item, view) {
   const { art } = item;
   if (view === 'front') return art.front;
-  if (art.mirrorBack) return `<g transform="translate(200 0) scale(-1 1)">${art.front}</g>`;
+  if (art.mirrorBack) return mirror(art.front);
   return art.back ?? art.front;
 }
 
-/** Món đồ nhìn thấy được ở mặt này không (kính: chỉ mặt trước). */
-export const visibleIn = (item, view) => itemArt(item, view).trim() !== '';
+/**
+ * Hình món đồ ở mặt trước / sau (chuỗi SVG, có thể rỗng). `images`: Map khóa ảnh → URL ảnh bố mẹ thay;
+ * ảnh đặt vừa khung của món (giữ tỉ lệ). Ba lô: mặt trước vẫn là quai, ảnh ở mặt sau; đồ cầm tay đổi tay khi quay lưng.
+ */
+export function itemArt(item, view, images = null) {
+  const url = images?.get(imageKey(item));
+  if (!url) return item.art ? builtinArt(item, view) : '';
+  if (!visibleIn(item, view)) return item.slot === 'back' && item.art ? item.art.front : '';
+  if (item.slot === 'back' && view === 'front') return item.art?.front ?? '';
+  const [x, y, w, h] = itemBox(item);
+  const img = `<image href="${url}" x="${x}" y="${y}" width="${w}" height="${h}" preserveAspectRatio="xMidYMid meet"/>`;
+  return item.slot === 'hand' && view === 'back' ? mirror(img) : img;
+}
 
 /** Mặt nên quay ra khi vừa mặc món này: ba lô → sau lưng; món không thấy ở mặt hiện tại → quay lại. */
 export function viewFor(item, view) {
-  if (item.art.showBack) return 'back';
+  if (item.art?.showBack || item.slot === 'back') return 'back';
   return visibleIn(item, view) ? view : VIEWS.find((v) => visibleIn(item, v));
 }
 
-/** Biểu tượng trong tủ đồ: hình chính món đồ, cắt sát theo khung `box`. */
-export function itemIcon(item) {
+/** Biểu tượng trong tủ đồ: ảnh bố mẹ thay, không thì hình vẽ sẵn cắt sát theo khung `box`. */
+export function itemIcon(item, images = null) {
+  const url = images?.get(imageKey(item));
+  if (url) return `<svg viewBox="0 0 100 100" aria-hidden="true"><image href="${url}" x="0" y="0" width="100" height="100" preserveAspectRatio="xMidYMid meet"/></svg>`;
+  if (!item.art) return `<svg viewBox="0 0 100 100" aria-hidden="true"><text x="50" y="54" font-size="70" text-anchor="middle" dominant-baseline="central">${item.emoji}</text></svg>`;
   const [x, y, w, h] = item.art.box;
-  return `<svg viewBox="${x} ${y} ${w} ${h}" aria-hidden="true">${itemArt(item, item.art.icon ?? 'front')}</svg>`;
+  return `<svg viewBox="${x} ${y} ${w} ${h}" aria-hidden="true">${builtinArt(item, item.art.icon ?? 'front')}</svg>`;
 }
 
 /** Hai món không mặc cùng lúc: cùng chỗ, hoặc váy với áo / quần. */
@@ -233,10 +330,13 @@ export function wear(outfit, id) {
   return { outfit: [...outfit.filter((o) => o !== id && !removed.includes(o)), id], removed };
 }
 
-/** Bộ đồ đã lưu: bỏ mã không có / trùng; món sau thắng khi xung đột. */
-export function cleanOutfit(list) {
+/** Bộ đồ đã lưu: bỏ mã không có / trùng / không phải đồ của bé (`kid`); món sau thắng khi xung đột. */
+export function cleanOutfit(list, kid = null) {
   let outfit = [];
-  for (const id of Array.isArray(list) ? list : []) if (ITEM_BY_ID.has(id)) outfit = wear(outfit, id).outfit;
+  for (const id of Array.isArray(list) ? list : []) {
+    const item = ITEM_BY_ID.get(id);
+    if (item && (!kid || item.kids.includes(kid))) outfit = wear(outfit, id).outfit;
+  }
   return outfit;
 }
 
@@ -244,7 +344,7 @@ export function cleanOutfit(list) {
 export const layerOrder = (outfit) => [...outfit].sort((a, b) => SLOTS.findIndex((s) => s.id === ITEM_BY_ID.get(a).slot)
   - SLOTS.findIndex((s) => s.id === ITEM_BY_ID.get(b).slot));
 
-const isPlural = (item) => PLURAL.has(item.name);
+const isPlural = (item) => Boolean(item.plural) || PLURAL.has(item.name);
 const article = (item) => (isPlural(item) ? '' : /^[aeiou]/i.test(item.name) ? 'an ' : 'a ');
 /** Đồ cầm tay (ô): không "wear" / "put on" mà "have" / "take". */
 const isHeld = (item) => item.slot === 'hand';
@@ -265,8 +365,8 @@ export function requestVi(item) {
 }
 
 /** Bông giao việc: một món chưa mặc, khác món của việc vừa xong. Mặc hết rồi → null. */
-export function pickRequest(outfit, last = null, rng = Math.random) {
-  let pool = ITEMS.filter((it) => !outfit.includes(it.id));
+export function pickRequest(outfit, last = null, rng = Math.random, items = ITEMS) {
+  let pool = items.filter((it) => !outfit.includes(it.id));
   if (last && pool.length > 1) pool = pool.filter((it) => it.id !== last.id);
   return pool.length ? pool[Math.floor(rng() * pool.length)] : null;
 }
@@ -322,9 +422,9 @@ const ABOVE_HAIR = SLOTS.findIndex((s) => s.id === 'back');
  * @param {'boy'|'girl'} kid
  * @param {'front'|'back'} view
  */
-export function dollSvg(kid, view = 'front', outfit = []) {
+export function dollSvg(kid, view = 'front', outfit = [], images = null) {
   const piece = (id) => {
-    const art = itemArt(ITEM_BY_ID.get(id), view);
+    const art = itemArt(ITEM_BY_ID.get(id), view, images);
     return art ? `<g class="du-piece" data-item="${id}">${art}</g>` : '';
   };
   const layer = (id) => SLOTS.findIndex((s) => s.id === ITEM_BY_ID.get(id).slot);

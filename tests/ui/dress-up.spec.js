@@ -35,7 +35,7 @@ test('mặc đồ: chọn bé gái → chạm áo phông, kéo quần bò, thay 
   await page.getByRole('button', { name: 'Bé gái' }).click();
   await expect(page.locator('.du-doll')).toHaveAttribute('data-kid', 'girl');
   await expect.poll(() => spoken(page)).toContain("Let's get dressed!");
-  await expect(page.locator('.du-cloth')).toHaveCount(21);
+  await expect(page.locator('.du-cloth')).toHaveCount(24); // tủ đồ bé gái: đồ riêng bé gái + đồ chung
 
   // Chạm áo phông → mặc.
   await cloth(page, 't-shirt').click();
@@ -133,4 +133,89 @@ test('mặc đồ: chạm bạn nhỏ để xoay người; đeo ba lô thì tự
   await expect.poll(() => view(page)).toBe('front');
   await expect(page.locator('.du-art [data-item="glasses"]')).toHaveCount(1);
   await expect.poll(() => worn(page)).toEqual(['backpack', 'glasses']);
+});
+
+/** Ảnh thử: nền trắng, hình chữ nhật đỏ viền đen ở giữa (PNG). */
+async function testImage(page) {
+  const b64 = await page.evaluate(() => {
+    const c = document.createElement('canvas');
+    c.width = 300;
+    c.height = 300;
+    const ctx = c.getContext('2d');
+    ctx.fillStyle = '#fff';
+    ctx.fillRect(0, 0, 300, 300);
+    ctx.fillStyle = '#e33';
+    ctx.strokeStyle = '#000';
+    ctx.lineWidth = 8;
+    ctx.fillRect(70, 50, 160, 200);
+    ctx.strokeRect(70, 50, 160, 200);
+    return c.toDataURL('image/png').split(',')[1];
+  });
+  return { name: 'cloth.png', mimeType: 'image/png', buffer: Buffer.from(b64, 'base64') };
+}
+
+test('mặc đồ: tủ đồ riêng — bé trai không thấy váy / nơ, có cà vạt; bé gái có váy, chân váy, không có cà vạt', async ({ page }) => {
+  await fakeSpeech(page);
+  await startApp(page);
+  await openDressUp(page, 'Bé trai');
+  await expect(page.locator('.du-cloth')).toHaveCount(20);
+  await expect(cloth(page, 'tie')).toHaveCount(1);
+  await expect(cloth(page, 'dress')).toHaveCount(0);
+  await expect(cloth(page, 'bow')).toHaveCount(0);
+  await page.getByRole('button', { name: 'Đổi bé' }).click();
+  await page.getByRole('button', { name: 'Bé gái' }).click();
+  await expect(page.locator('.du-cloth')).toHaveCount(24);
+  await expect(cloth(page, 'skirt')).toHaveCount(1);
+  await expect(cloth(page, 'tie')).toHaveCount(0);
+  await cloth(page, 'socks').scrollIntoViewIfNeeded();
+  await cloth(page, 'socks').click();
+  await expect.poll(() => lastSpoken(page)).toBe("I'm wearing socks!");
+});
+
+test('Góc bố mẹ → Đồ Mặc đồ: thêm đồ mới cho bé trai (có ảnh) → chỉ bé trai thấy, mặc được, câu đúng; thay ảnh áo phông → trò chơi dùng ảnh', async ({ page }) => {
+  await fakeSpeech(page);
+  await startApp(page);
+  const { openParent } = await import('./helpers.js');
+  await openParent(page);
+  await page.getByRole('button', { name: /Đồ Mặc đồ/ }).click();
+  await expect(page.getByRole('heading', { name: /Đồ riêng bé gái/ })).toBeVisible();
+
+  // Thêm "raincoat" (áo khoác) cho bé trai.
+  await page.getByLabel(/Tên tiếng Anh/).fill('raincoat');
+  await page.getByLabel(/Tên tiếng Việt/).fill('áo mưa');
+  await page.getByLabel('Mặc ở đâu').selectOption('outer');
+  await page.getByLabel('Dành cho').selectOption('boy');
+  const chooser = page.waitForEvent('filechooser');
+  await page.getByRole('button', { name: 'Chọn ảnh & thêm vào tủ đồ' }).click();
+  await (await chooser).setFiles(await testImage(page));
+  await expect(page.locator('.sp-admin-item', { hasText: 'raincoat' })).toBeVisible();
+  const custom = await page.evaluate(() => window.kidEnglish.settings.dressUpCustom);
+  expect(custom).toHaveLength(1);
+  expect(custom[0]).toMatchObject({ name: 'raincoat', vi: 'áo mưa', slot: 'outer', kids: ['boy'] });
+  const id = custom[0].id;
+
+  // Tên trùng thì báo, không thêm.
+  await page.getByLabel(/Tên tiếng Anh/).fill('T-shirt');
+  await page.getByRole('button', { name: 'Chọn ảnh & thêm vào tủ đồ' }).click();
+  await expect(page.getByText('Đã có món "T-shirt" trong tủ đồ.')).toBeVisible();
+
+  // Thay ảnh áo phông.
+  const tshirt = page.locator('.sp-admin-item[data-item="t-shirt"]');
+  const chooser2 = page.waitForEvent('filechooser');
+  await tshirt.getByRole('button', { name: 'Chọn ảnh' }).click();
+  await (await chooser2).setFiles(await testImage(page));
+  await expect(page.locator('.sp-admin-item[data-item="t-shirt"] image')).toHaveCount(1);
+
+  // Trò chơi: bé trai có raincoat (ảnh), mặc được; bé gái không có.
+  await page.evaluate(() => window.kidEnglish.go('home'));
+  await openDressUp(page, 'Bé trai');
+  await expect(cloth(page, id)).toHaveCount(1);
+  await expect(cloth(page, 't-shirt').locator('image')).toHaveCount(1);
+  await cloth(page, id).scrollIntoViewIfNeeded();
+  await cloth(page, id).click();
+  await expect.poll(() => lastSpoken(page)).toBe("I'm wearing a raincoat!");
+  await expect(page.locator(`.du-art [data-item="${id}"] image`)).toHaveCount(1);
+  await page.getByRole('button', { name: 'Đổi bé' }).click();
+  await page.getByRole('button', { name: 'Bé gái' }).click();
+  await expect(cloth(page, id)).toHaveCount(0);
 });

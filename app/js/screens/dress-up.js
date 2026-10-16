@@ -2,11 +2,12 @@
 // chạm bạn nhỏ để xoay người (xem sau lưng — ba lô); bạn nhỏ nói "I'm wearing…", Bông thỉnh thoảng giao việc.
 
 import { h } from '../ui.js';
+import { mediaBlob } from '../db.js';
 import { play } from '../speech/sfx.js';
 import { homeButton } from '../player/layout.js';
 import { createBunny } from '../player/teacher.js';
 import {
-  KIDS, ITEMS, ITEM_BY_ID, WEARS_PER_REQUEST, wear, cleanOutfit, viewFor, itemIcon,
+  KIDS, ITEM_BY_ID, WEARS_PER_REQUEST, DRESS_IMAGES, wear, cleanOutfit, viewFor, itemIcon, setCustomItems, wardrobeFor,
   wearSentence, takeOffSentence, requestSentence, wearVi, takeOffVi, requestVi, pickRequest, dollSvg,
 } from '../dress-up.js';
 
@@ -17,6 +18,22 @@ const TURN_MS = 180; // nửa vòng xoay (thu hẹp → đổi mặt → mở r�
 const KID_LABEL = { boy: { emoji: '👦', en: 'Boy', vi: 'Bé trai' }, girl: { emoji: '👧', en: 'Girl', vi: 'Bé gái' } };
 
 const capital = (s) => s.charAt(0).toUpperCase() + s.slice(1);
+/**
+ * Ảnh đồ bố mẹ thay / thêm (SPEC-dressup mục 11) + nạp đồ bố mẹ thêm vào tủ.
+ * @returns {Promise<{ map: Map<string,string>, revoke: () => void }>}
+ */
+export async function loadDressImages(app) {
+  setCustomItems(app.settings.dressUpCustom);
+  const urls = [];
+  const map = new Map();
+  for (const img of await app.db.getAllByIndex('images', 'lessonId', DRESS_IMAGES).catch(() => [])) {
+    const url = URL.createObjectURL(mediaBlob(img));
+    urls.push(url);
+    map.set(img.word, url);
+  }
+  return { map, revoke: () => urls.forEach((u) => URL.revokeObjectURL(u)) };
+}
+
 const loadState = (app) => {
   const saved = app.settings.dressUp ?? {};
   return { kid: KIDS.includes(saved.kid) ? saved.kid : null, outfits: { ...(saved.outfits ?? {}) } };
@@ -34,7 +51,7 @@ export function dressUpChooser(app) {
       play('tap');
       app.go('dress-up-play', { kid });
     },
-  }, h('div.du-kid-doll', { html: dollSvg(kid, 'front', cleanOutfit(state.outfits[kid])) }),
+  }, h('div.du-kid-doll', { dataset: { kid } }),
   h('span.home-text', {}, h('span.home-en', { text: KID_LABEL[kid].en }), h('span.home-vi', { text: KID_LABEL[kid].vi })));
   const back = h('button.sp-back', {
     type: 'button', 'aria-label': 'Về trò chơi', text: '🎲',
@@ -43,8 +60,18 @@ export function dressUpChooser(app) {
       app.go('play');
     },
   });
-  app.root.append(h('header.child-top', {}, homeButton(app), back), h('div.du-kids', {}, btn('boy'), btn('girl')));
+  const kids = h('div.du-kids', {}, btn('boy'), btn('girl'));
+  app.root.append(h('header.child-top', {}, homeButton(app), back), kids);
+  let images = null;
+  loadDressImages(app).then((loaded) => {
+    images = loaded;
+    for (const el of kids.querySelectorAll('.du-kid-doll')) {
+      const { kid } = el.dataset;
+      el.innerHTML = dollSvg(kid, 'front', cleanOutfit(state.outfits[kid], kid), images.map);
+    }
+  });
   app.speaker.speak('Who do you want to dress?').catch(() => {});
+  return () => images?.revoke();
 }
 
 // ---------- Mặc đồ ----------
@@ -54,7 +81,9 @@ export function dressUpScreen(app, params = {}) {
   app.root.className = 'child-screen du-play';
   const state = loadState(app);
   const kid = KIDS.includes(params.kid) ? params.kid : (state.kid ?? 'girl');
-  let outfit = cleanOutfit(state.outfits[kid]);
+  let outfit = [];
+  let wardrobe = [];
+  let images = null;
   let view = 'front';
   let request = null;
   let lastRequest = null;
@@ -165,7 +194,7 @@ export function dressUpScreen(app, params = {}) {
 
   /** Vẽ lại bạn nhỏ; `pop`: món vừa mặc nảy lên. */
   function renderDoll(pop = null) {
-    art.innerHTML = dollSvg(kid, view, outfit);
+    art.innerHTML = dollSvg(kid, view, outfit, images?.map);
     doll.dataset.view = view;
     doll.setAttribute('data-worn', outfit.join(' '));
     if (pop) art.querySelector(`[data-item="${pop}"]`)?.classList.add('pop-in');
@@ -190,10 +219,10 @@ export function dressUpScreen(app, params = {}) {
   }
 
   function renderTray() {
-    tray.replaceChildren(...ITEMS.map((item) => {
+    tray.replaceChildren(...wardrobe.map((item) => {
       const btn = h('button.tray-sticker.du-cloth', {
         type: 'button', 'aria-label': capital(item.name), dataset: { item: item.id },
-      }, h('span.du-icon', { html: itemIcon(item) }), h('span.du-check', { text: '✔' }));
+      }, h('span.du-icon', { html: itemIcon(item, images?.map) }), h('span.du-check', { text: '✔' }));
       btn.addEventListener('pointerdown', (e) => beginPress(e, { kind: 'tray', id: item.id }));
       return btn;
     }));
@@ -208,7 +237,7 @@ export function dressUpScreen(app, params = {}) {
     });
     requestCard.hidden = !request;
     if (request) {
-      requestCard.innerHTML = itemIcon(request);
+      requestCard.innerHTML = itemIcon(request, images?.map);
       requestCard.dataset.item = request.id;
     }
   }
@@ -244,7 +273,7 @@ export function dressUpScreen(app, params = {}) {
     const lines = [[wearSentence(item), wearVi(item)]];
     wears += 1;
     if (!request && wears >= WEARS_PER_REQUEST) {
-      request = pickRequest(outfit, lastRequest);
+      request = pickRequest(outfit, lastRequest, Math.random, wardrobe);
       if (request) {
         lines.push(requestLine(request));
         updateTray();
@@ -276,7 +305,7 @@ export function dressUpScreen(app, params = {}) {
 
   function giveRequest() {
     if (!request) {
-      request = pickRequest(outfit, lastRequest);
+      request = pickRequest(outfit, lastRequest, Math.random, wardrobe);
       wears = 0;
       updateTray();
     }
@@ -314,7 +343,7 @@ export function dressUpScreen(app, params = {}) {
     if (press.kind === 'doll') art.querySelector(`[data-item="${press.id}"]`)?.classList.add('lifted');
     play('tap');
     const size = Math.min(150, doll.getBoundingClientRect().width * 0.6);
-    ghost = h('div.drag-ghost.du-ghost', { html: itemIcon(ITEM_BY_ID.get(press.id)), style: { width: `${size}px`, height: `${size}px` } });
+    ghost = h('div.drag-ghost.du-ghost', { html: itemIcon(ITEM_BY_ID.get(press.id), images?.map), style: { width: `${size}px`, height: `${size}px` } });
     document.body.append(ghost);
     moveGhost(e);
   }
@@ -374,12 +403,20 @@ export function dressUpScreen(app, params = {}) {
     app.idlePaused = Date.now() - app.lastTouchAt > IDLE_PAUSE_MS;
   }, 5000);
 
-  renderTray();
-  renderDoll();
-  save();
+  // Nạp đồ bố mẹ thêm + ảnh đồ rồi mới vẽ (tủ đồ của bé: đồ của bé đó + đồ chung).
+  loadDressImages(app).then((loaded) => {
+    images = loaded;
+    if (signal.aborted) return;
+    wardrobe = wardrobeFor(kid);
+    outfit = cleanOutfit(state.outfits[kid], kid);
+    renderTray();
+    renderDoll();
+    save();
+  });
   talk([["Let's get dressed!", 'Mình mặc đồ nhé!']]);
 
   return () => {
+    images?.revoke();
     clearInterval(idleTimer);
     clearTimeout(captionTimer);
     clearTimeout(turnTimer);

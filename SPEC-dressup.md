@@ -94,3 +94,14 @@ Chạy thử 0.13.0: quần áo là emoji kéo giãn nên to / nhỏ không vừ
 - Chạm bạn nhỏ = xoay người; muốn nghe lại câu của món đang mặc thì chạm món đó trong tủ. Kéo món đang mặc ra khỏi người vẫn là cởi.
 - Thứ tự lớp: quần · giày · áo · váy · áo khoác · ba lô · (tóc — chỉ sau lưng) · khăn · kính · mũ · ô.
 - iPhone: ẩn chữ "Dress up" trên thanh trên cùng để đủ chỗ cho các nút.
+
+## 11. Tủ đồ riêng bé trai / bé gái, đồ mới, thay ảnh, thêm đồ (app 0.14.0)
+- **Tủ đồ riêng**: mỗi món có "dành cho" (bé trai / bé gái / cả hai). Chọn bé trai chỉ thấy đồ bé trai + đồ chung; bé gái tương tự. Bộ đồ đã lưu bỏ món không phải của bé.
+  - Riêng bé gái: váy, **chân váy**, đồ bơi, nơ, vương miện, mũ rộng vành. Riêng bé trai: **cà vạt**, **quần bơi**. Dùng chung: áo phông, áo sơ mi, **áo len**, áo khoác, quần bò, quần soóc, **tất**, giày, ủng, dép, mũ lưỡi trai, mũ bảo hiểm, kính, kính râm, kính bơi, khăn, ba lô, ô (26 món có sẵn).
+  - Chỗ mặc mới **tất** (dưới quần, dưới giày). Chân váy ở chỗ quần (thay quần). Cà vạt ở chỗ cổ (thay khăn), chỉ thấy ở mặt trước.
+- Góc bố mẹ → **👗 Đồ Mặc đồ**:
+  - **Thay ảnh từng món**: Copy prompt (chỉ vẽ món đồ, không người / móc áo, viền đậm, nền trắng, hình dạng ảnh theo khung món đó trên người) → Chọn ảnh → app tự bỏ nền trắng, đặt ảnh **vừa khung món đó** (giữ tỉ lệ). "Dùng hình vẽ" để quay lại hình vẽ sẵn.
+  - **Ảnh lưới**: mọi món chia nhóm 9 (lưới 3 × 3) → mỗi nhóm một ảnh, app cắt ô + bỏ nền.
+  - **Thêm đồ mới**: tên tiếng Anh (chỉ chữ cái, không trùng món có sẵn), tên tiếng Việt, **mặc ở đâu** (11 chỗ), **dành cho** bé gái / bé trai / cả hai, tên số nhiều (không "a"), ảnh (bắt buộc). Lưu ở cài đặt `dressUpCustom`; ảnh ở kho ảnh mã `dress:items` (theo tên). Món thêm hiện trong tủ, mặc được, có câu *I'm wearing a …!*. **Xóa món** đã thêm được.
+  - Ảnh đồ: kính / cà vạt không hiện khi quay lưng; ba lô: mặt trước vẫn là quai vẽ sẵn, ảnh ở mặt sau; đồ cầm tay đổi tay khi quay lưng.
+- Ảnh đồ Mặc đồ không lẫn vào ảnh bài học (từ "socks" trong bài từ vựng không lấy ảnh tất của Mặc đồ). Đi cùng bản sao lưu toàn bộ (chưa có nút chia sẻ riêng).
