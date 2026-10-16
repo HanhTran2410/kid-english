@@ -27,8 +27,14 @@ export function chatView(ctx) {
 /** Hình của lượt / lựa chọn: ảnh bố mẹ đã thêm (ảnh gia đình thật được ưu tiên), không có thì emoji. */
 function picture(ctx, { key, emoji, photo = null, className = 'bubble-pic' }) {
   const url = (photo && ctx.pictures?.get(photo)) || (key && ctx.pictures?.get(key));
-  if (url) return h(`img.${className}.photo`, { src: url, alt: '', dataset: { pic: key ?? '' } });
-  return emoji ? h(`span.${className}`, { text: emoji }) : null;
+  const fallback = () => (emoji ? h(`span.${className}`, { text: emoji }) : null);
+  if (url) {
+    const img = h(`img.${className}.photo`, { src: url, alt: '', dataset: { pic: key ?? '' } });
+    // Ảnh không đọc được (lỗi lưu trữ…): về emoji, không hiện biểu tượng ảnh vỡ.
+    img.addEventListener('error', () => img.replaceWith(fallback() ?? ''), { once: true });
+    return img;
+  }
+  return fallback();
 }
 
 /** Nét mặt của Bông (bong bóng mới nhất và Bông to ở góc màn hình). */

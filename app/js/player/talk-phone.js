@@ -85,9 +85,11 @@ export function startCall(ctx) {
     clock);
   wrap.classList.add('on-call');
   wrap.prepend(bar);
+  // Đồng hồ tính từ lúc nghe máy (không đếm từng nhịp), dừng khi rời bài / app ra nền.
   const timer = setInterval(() => {
     clock.textContent = callTime(Date.now() - startedAt);
   }, 1000);
+  ctx.signal?.addEventListener('abort', () => clearInterval(timer), { once: true });
   return {
     bar,
     stop() {

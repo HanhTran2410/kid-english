@@ -187,6 +187,16 @@ test('gói bài để chia sẻ: chỉ bài được chọn và ảnh của bài
   assert.deepEqual([p.recordings.length, p.progress.length, p.stickers.length, p.settings.length], [0, 0, 0, 0]);
 });
 
+test('ảnh gia đình thật (profile:family) không đi theo gói chia sẻ bài, nhưng có trong bản sao lưu đầy đủ', async () => {
+  const db = await open();
+  await seed(db);
+  await setWordImage(db, { lessonId: 'profile:family', word: 'family:mummy', blob: blob('mum', 'image/jpeg'), mimeType: 'image/jpeg' });
+  const share = await readBackup((await createBackup(db, { lessonIds: ['L1'], JSZip })).blob, { JSZip });
+  assert.equal(share.images.some((i) => i.lessonId === 'profile:family'), false);
+  const full = await readBackup((await createBackup(db, { JSZip })).blob, { JSZip });
+  assert.equal(full.images.some((i) => i.lessonId === 'profile:family' && i.word === 'family:mummy'), true);
+});
+
 test('nhập lại file bài đã sửa: cập nhật nội dung và ảnh mới hơn, giữ số lần học và chỗ đang học', async () => {
   // "Máy tính": tạo bài L1 có ảnh cũ, chia sẻ sang "điện thoại".
   const pc = await open();

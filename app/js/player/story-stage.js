@@ -110,7 +110,10 @@ function storyStage(ctx, actors, { tint = 0, extraClass = '' } = {}) {
 
   const say = (text) => {
     if (!text) return;
-    if (app.speaker.speaking || app.listening) {
+    // Lượt Tìm đang chờ bé chạm: tiếng lúc này chỉ là tiếng chạm → chạm mới thay tiếng cũ (speak tự hủy câu đang đọc),
+    // không xếp hàng đợi hết trang.
+    const tapOnly = route && !app.listening;
+    if (!tapOnly && (app.speaker.speaking || app.listening)) {
       pending = app.listening ? null : text; // mic đang nghe: không phát tiếng (mic thu nhầm)
       return;
     }

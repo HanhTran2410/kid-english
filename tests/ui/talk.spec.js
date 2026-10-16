@@ -151,6 +151,8 @@ async function playChoosing(page, want) {
     const target = page.locator(wanted).first();
     if (await target.isVisible().catch(() => false)) {
       await target.click({ timeout: 1000 }).catch(() => {});
+    } else if (wanted && await page.locator('.talk-choice').count() && await page.locator(wanted).count()) {
+      // Hàng lựa chọn vừa hiện, hình muốn chọn chưa kịp hiện (máy chậm): đợi, không chọn bừa hình đầu.
     } else {
       const any = page.locator('.choice').first();
       if (await any.isVisible().catch(() => false)) await any.click({ timeout: 1000 }).catch(() => {});
@@ -351,4 +353,51 @@ test('📞 tắt trong Cài đặt: vào bài là hội thoại ngay, không có
   await expect(page.locator('.call-incoming')).toHaveCount(0);
   await expect(page.locator('.call-bar')).toHaveCount(0);
   expect(await spoken(page)).not.toContain('Ring, ring!');
+});
+
+test('app ra nền giữa bài hội thoại rồi quay lại: học tiếp đúng lượt (không học lại từ đầu, không mất chỗ học dở)', async ({ page }) => {
+  await fakeSpeech(page);
+  await startApp(page);
+  await setProfile(page, { name: 'Na', age: 3 });
+  await page.getByRole('button', { name: 'Nói chuyện với Bông' }).click();
+  await page.getByRole('button', { name: 'About me', exact: true }).click();
+  const resumeIndex = () => page.evaluate(async () => (await window.kidEnglish.db.getAll('lessons')).find((l) => l.builtin === 'talk-about-me').resume?.index ?? null);
+  await expect.poll(resumeIndex, { timeout: 20000 }).toBeGreaterThanOrEqual(2);
+  const setVisible = (state) => page.evaluate((s) => {
+    Object.defineProperty(document, 'visibilityState', { value: s, configurable: true });
+    document.dispatchEvent(new Event('visibilitychange'));
+  }, state);
+  await setVisible('hidden');
+  const saved = await resumeIndex();
+  expect(saved).toBeGreaterThanOrEqual(2);
+  await setVisible('visible');
+  await page.locator('.resume-overlay .start-btn').click();
+  // Học tiếp: chỗ học dở không bị xóa về đầu; lượt hỏi tên (lượt 1) không chạy lại.
+  await expect.poll(resumeIndex).toBeGreaterThanOrEqual(saved);
+  await playThrough(page);
+  await expect(page.locator('.prize-sticker')).toBeVisible();
+  expect((await spoken(page)).filter((t) => t === 'Nice to meet you, Na!').length).toBe(1);
+});
+
+test('ảnh gia đình bị hỏng: bài My family hiện emoji thay vì ảnh vỡ', async ({ page }) => {
+  await fakeSpeech(page);
+  await startApp(page);
+  await setProfile(page, { name: 'Na', age: 3, family: ['mummy'] });
+  await page.evaluate(async () => {
+    const { setWordImage } = await import('/js/db.js');
+    const blob = new Blob([new Uint8Array([1, 2, 3, 4])], { type: 'image/jpeg' }); // không phải ảnh
+    await setWordImage(window.kidEnglish.db, { lessonId: 'profile:family', word: 'family:mummy', blob, mimeType: 'image/jpeg', width: 10, height: 10 });
+  });
+  await page.getByRole('button', { name: 'Nói chuyện với Bông' }).click();
+  await page.evaluate(() => {
+    window.__broken = 0;
+    window.__emoji = 0;
+    new MutationObserver(() => {
+      window.__broken = Math.max(window.__broken, [...document.querySelectorAll('img.bubble-pic')].filter((i) => i.complete && !i.naturalWidth).length);
+      window.__emoji = Math.max(window.__emoji, document.querySelectorAll('span.bubble-pic').length);
+    }).observe(document.body, { childList: true, subtree: true });
+  });
+  await page.getByRole('button', { name: 'My family', exact: true }).click();
+  await expect.poll(() => page.evaluate(() => window.__emoji), { timeout: 15000 }).toBeGreaterThan(0);
+  await expect(page.locator('img.bubble-pic.photo')).toHaveCount(0);
 });

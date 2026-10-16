@@ -1,6 +1,7 @@
 # SPEC — "Nói chuyện với Bông" (hội thoại hỏi – đáp ngắn)
 
-> Phiên bản spec: **draft2** · Ngày: 2026-10-14 · Dựa trên app 0.8.4
+> Phiên bản spec: **draft4** · Ngày: 2026-10-16 · Dựa trên app 0.16.1
+> - **draft4 — trả lời review draft2 (mục 15):** định nghĩa lại "nỗ lực nói" cho khớp code (có mic mà mất mạng vẫn đo âm lượng); bảng trường bắt buộc theo `type`; vòng đời ▶ / 🏠 / ra nền kể cả cuộc gọi; luật cập nhật bài có sẵn; ca biên của cuộc gọi; kiểm thử ảnh gia đình. **Sửa 3 lỗi thật trong 0.16.1** (15.3).
 > - draft1: hướng **nâng cấp nút "Học cùng Bông"** (không thêm nút thứ 9).
 > - **draft2 — sửa theo review (PO + QA):** tách rõ "nỗ lực nói" với nhận dạng; trạng thái hội thoại (một luồng tiếng tại một thời điểm); schema đầy đủ cho từng kiểu lượt (có `type` rõ ràng, mọi câu đọc đều có tiếng Việt); luật sao theo **từng lượt / ngày**; xử lý hồ sơ thiếu; 3 trạng thái bong bóng của bé (gợi ý / đang nghe / đã thử nói); thời gian nghe; rút gọn nội dung 5 bài; chia T-a thành 4 mốc nghiệm thu; ghi rõ phần nào cần mạng.
 > - Quyết định (theo đề xuất, khớp review): **T-a trước** (4 mốc); 📞 gọi điện ở T-b **bật mặc định**; lời chào mỗi ngày ở T-b **tắt mặc định**; giữ **5 bài hội thoại + thẻ "Ôn từ đã học"**; **có tiếng nói là ghi nhận nỗ lực** (không cần nhận dạng đúng); **tối đa 2⭐ cho mỗi lượt**, mỗi lượt cộng tối đa 1 lần/ngày.
@@ -63,7 +64,8 @@ intro → bong_speaking → child_turn (listening) → feedback → next_turn �
 **Lượt bé (dùng chung):** sau khi Bông đọc xong chờ ~1 giây → mở mic, nghe tối đa ~6 giây (các mốc là **cấu hình**, chỉnh sau khi thử với bé):
 - **Có tiếng nói** (có hoặc không nhận ra từ khóa) → ghi nhận **nỗ lực nói**; nhận ra từ khóa → *"Great job!"*, không rõ → *"Good try!"* + Bông đọc mẫu.
 - **Im lặng** → Bông đọc mẫu theo từng cụm → nghe thêm **một lần** → vẫn im lặng thì chuyển tiếp nhẹ nhàng (không ghi nhận, không chê).
-- **Không có mic / bị từ chối / nhận dạng lỗi / mất mạng** → chế độ chỉ nghe (*"Your turn!"*, chờ, đọc mẫu) — không ghi nhận nỗ lực (không tự kết luận bé đã nói).
+- **Không có mic / bị từ chối quyền mic** → chế độ chỉ nghe (*"Your turn!"*, chờ ~3 giây, đọc mẫu) — **không** ghi nhận nỗ lực.
+- **Có mic nhưng nhận dạng lỗi / mất mạng** → vẫn đo **âm lượng** (offline, mục 9): có tiếng → ghi nhận nỗ lực nói (*"Good try!"*); không có tiếng → như im lặng. *(draft2 ghi "mất mạng → không ghi nhận", mâu thuẫn với mục 9 và code — draft4 sửa, xem 15.1.)*
 
 ## 6. Bong bóng chat — phân biệt câu mẫu với lời bé
 ```
@@ -229,3 +231,67 @@ Trẻ rất thích giả vờ nghe điện thoại: mỗi bài Nói chuyện v�
 - **Bật mặc định**, tắt ở Góc bố mẹ → Cài đặt → *Nói chuyện với Bông* → ô "📞 Bông gọi điện khi bắt đầu bài" (cài đặt `talkPhone`). Tắt thì bài chạy như trước.
 - Học tiếp / Học lại đều bắt đầu bằng cuộc gọi. Rời bài giữa lúc chuông reo: màn gọi được gỡ.
 - Kiểm tra: chuông + Ring, ring! → chạm nghe máy → thanh gọi có đồng hồ (UI, tốc độ thật); chơi hết bài thấy cả cuộc gọi đến, nút đỏ, Call ended, rồi quà (UI); tắt trong Cài đặt thì không có chuông / khung (UI); đồng hồ mm:ss (unit).
+
+## 15. draft4 — trả lời review draft2 (app 0.16.1)
+
+### 15.1 "Nỗ lực nói" nghĩa là gì
+| Tình huống | Kết quả (`decideResult` trong `listen.js`) | Sao |
+|---|---|---|
+| Không có mic / bị từ chối | `LISTEN_ONLY`: chờ, Bông đọc mẫu | không |
+| Có mic, nhận ra từ khóa | `MATCH`: *Great job!* | +1⭐ |
+| Có mic, có tiếng liên tục ≥ 150 ms trên ngưỡng, hoặc nhận dạng nghe được gì đó, **kể cả khi mất mạng** | `VOICE`: *Good try!* + đọc mẫu | +1⭐ |
+| Có mic, im lặng | `SILENT`: đọc mẫu, nghe thêm 1 lần | không |
+- "Nỗ lực nói" **chỉ có nghĩa là bé đã lên tiếng**, không có nghĩa là nói đúng. App không hiện câu như thể đã nhận dạng lời bé (mục 6) và không báo sai.
+- **Chặn báo nhầm** (tiếng TV, tiếng Bông dội lại): mic chỉ đo sau khi Bông nói xong + 300 ms; ngưỡng = 3 × tiếng ồn nền đo liên tục trên máy (có mức tối thiểu); cần tiếng liên tục ≥ 150 ms. Dù có báo nhầm, mỗi lượt chỉ +1⭐ **một lần / ngày**, **tối đa 2⭐ / lượt**, nên báo nhầm không làm phình sao. Chấp nhận đánh đổi: với bé 3 tuổi, thưởng nhầm một lần tốt hơn bỏ sót lần bé thật sự cố nói.
+
+### 15.2 Trường bắt buộc theo `type` (khớp `validateTalkLesson`)
+| `type` | Bắt buộc | Tùy chọn |
+|---|---|---|
+| mọi lượt | `id` (không trùng), `type`, `ask` | `askVi`, `needs`, `onlyIf` (chỉ trỏ lượt **phía trước**), `mood`, `effect`, `keywords` |
+| `greeting`, `free` | `answer` | `answerVi`, `reply…`, `answerNoProfile…`, `replyNoProfile…` |
+| `askBack` | `reply` | `intro`, `replyVi` |
+| `action` | `reply`, `emoji` | `replyVi`, `effect`, `draw` |
+| `choice` | `pool` (kho có sẵn) **hoặc** `choices` ≥ 2, mỗi cái có `id`, `emoji`, `answer` | `count`, `remember`, `reply` theo lựa chọn |
+| `yesNo` | `yes.answer`, `no.answer` | bản `…Vi`, `keywords` |
+Sai thì từ chối cả bài, liệt kê lỗi theo "Lượt n" (unit test).
+
+### 15.3 Vòng đời ▶ / 🏠 / ra nền (kể cả cuộc gọi)
+| Lúc | ▶ | 🏠 | App ra nền rồi quay lại (chạm ▶ ở màn quay lại) |
+|---|---|---|---|
+| Chuông reo | nghe máy luôn | gỡ màn gọi, tắt chuông | màn gọi bị gỡ; bài mở lại, **chuông reo lại**, nghe máy xong học tiếp đúng lượt |
+| Đang gọi (các lượt) | bỏ lượt đang chạy (hủy tiếng, đóng mic) | dừng, giữ chỗ học dở | dừng tiếng / mic, **đồng hồ gọi dừng**; quay lại **học tiếp lượt đang dở** (không về lượt 1) |
+| Câu kết / nút đỏ | tắt máy luôn | thoát; sao các lượt đã ghi, bài **chưa** tính là học xong | lượt cuối đã xong nên không còn chỗ học dở: bài chạy lại từ đầu (sao không cộng thêm trong ngày) |
+- Chỗ học dở lưu **sau mỗi lượt xong** (`resume` = lượt kế tiếp). Lượt bị ngắt giữa chừng thì chạy lại từ đầu lượt đó.
+- **Lỗi thật đã sửa trong 0.16.1** (mỗi lỗi có test):
+  1. Bài hội thoại bỏ qua cờ "học tiếp" khi quay lại từ nền, nên học lại từ lượt 1 và **xóa chỗ học dở**. Test UI đỏ trên code cũ, xanh trên code mới.
+  2. Đồng hồ cuộc gọi vẫn chạy ngầm sau khi rời bài; giờ dừng khi bài bị hủy.
+  3. Ảnh trong bong bóng (kể cả ảnh gia đình) hỏng thì hiện ô ảnh vỡ; giờ hiện emoji.
+
+### 15.4 Cập nhật bài có sẵn (khớp `upgradeTalkLessons`)
+- Bố mẹ **không sửa được lượt** của bài có sẵn (chỉ đổi tên bài và ảnh), nên app được thay toàn bộ `turns` / `outro` khi số phiên bản cũ hơn **hoặc** nội dung khác.
+- Giữ nguyên: mã bài, tên bố mẹ đã đổi, `timesCompleted`, ảnh (`pic:<mã lượt>`), tiến độ (`talk:<bài>:<lượt>`), vì **mã lượt không đổi** khi sửa câu chữ. Lượt bị bỏ khỏi bản mới: ảnh / sao cũ nằm yên, không hiện, không lỗi.
+- Đặt `resume = null` (thứ tự lượt có thể đổi, tránh học tiếp sai chỗ).
+- Sao lưu / khôi phục: tiến độ gộp theo `mergeProgress` (sao cao hơn, ngày mới hơn); ảnh mới hơn thắng theo lessonId + word.
+
+### 15.5 Ca biên của cuộc gọi
+- Không ai nghe 20 giây thì tự nghe; không ai tắt 8 giây thì tự tắt. Không bao giờ kẹt.
+- Một luồng tiếng: chuông và "Ring, ring!" dừng ngay khi nghe máy; tiếng tắt máy phát sau khi Bông nói xong.
+- Máy tắt tiếng / iOS chặn Web Audio: không nghe chuông nhưng màn gọi và nút 📞 vẫn chạy.
+- Tắt `talkPhone`: không chuông, không khung; luồng lượt y hệt.
+
+### 15.6 Ảnh gia đình: riêng tư và kiểm thử
+- Lưu ở kho `images` với lessonId `profile:family` (không thuộc bài nào): **không có** trong gói chia sẻ bài / Drive, **có** trong bản sao lưu đầy đủ. Không bao giờ được dùng lại làm ảnh từ vựng (lọc `profile:`).
+- Ảnh hỏng / không đọc được thì hiện emoji của người đó.
+- Test: gói chia sẻ bài không có ảnh `profile:family`, sao lưu đầy đủ có (unit); ảnh hỏng hiện emoji (UI); quay lại từ nền học tiếp đúng lượt (UI).
+
+### 15.7 Bảng quyết định theo review
+| Mục review | Quyết định |
+|---|---|
+| Nỗ lực nói không nhất quán | Sửa spec theo code (15.1): mất mạng vẫn đo âm lượng |
+| Báo nhầm có tiếng | Giữ; giới hạn bằng luật sao (15.1) |
+| Schema theo `type` | Bảng 15.2 |
+| Tạm dừng / học tiếp | Sửa lỗi 0.16.1 + bảng 15.3 |
+| Cập nhật bài có sẵn | 15.4 (đúng từ 0.10.2) |
+| Âm thanh / ca biên cuộc gọi | 15.5 |
+| Ảnh gia đình | 15.6 + test |
+| Checklist QA 16 mục | Phần lớn đã có test tự động; những mục cần máy thật (iOS tắt tiếng, tiếng TV nền, mất mạng thật) thử tay |

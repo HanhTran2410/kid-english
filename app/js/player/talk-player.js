@@ -14,9 +14,10 @@ import { chatView, runTalkTurn, talkOutro } from './talk-stages.js';
 import { ringIn, startCall, hangUp } from './talk-phone.js';
 
 /**
- * @param {{ lessonId: string, start?: 'begin'|'resume' }} params
+ * @param {{ lessonId: string, start?: 'begin'|'resume', continueDirectly?: boolean }} params
+ *   continueDirectly: quay lại sau khi app ra nền → học tiếp đúng chỗ (không học lại từ đầu)
  */
-export function talkLessonScreen(app, { lessonId, start = 'begin' }) {
+export function talkLessonScreen(app, { lessonId, start = 'begin', continueDirectly = false }) {
   const layout = activityLayout(app, 'talk-lesson');
   const signal = app.startActivity();
   const urls = [];
@@ -71,7 +72,7 @@ export function talkLessonScreen(app, { lessonId, start = 'begin' }) {
     }
 
     const steps = turns.map((t, index) => ({ stage: 'turn', index, id: t.id }));
-    const resume = start === 'resume';
+    const resume = start === 'resume' || continueDirectly;
     let i = resume ? startIndexFor(steps, lesson.resume) : 0;
     if (!resume && lesson.resume) {
       lesson.resume = null;
