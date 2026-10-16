@@ -16,6 +16,7 @@ import { talkLessonScreen } from './player/talk-player.js';
 import { stickerSceneScreen, scenePickerScreen } from './screens/sticker-scene.js';
 import { gamesScreen } from './screens/games.js';
 import { dressUpChooser, dressUpScreen } from './screens/dress-up.js';
+import { coloringChooser, coloringScreen } from './screens/coloring.js';
 import { parentScreen } from './screens/parent/index.js';
 
 async function registerServiceWorker(app) {
@@ -105,6 +106,9 @@ async function boot() {
   // Mặc đồ (SPEC-dressup.md): chọn bé trai / bé gái → mặc đồ.
   app.register('dress-up', dressUpChooser);
   app.register('dress-up-play', dressUpScreen);
+  // Tô màu (SPEC-coloring.md): chọn hình → chọn màu, chạm phần hình để tô.
+  app.register('coloring', coloringChooser);
+  app.register('coloring-play', coloringScreen);
   app.register('sleep', sleepScreen);
   app.register('parent', parentScreen);
 
