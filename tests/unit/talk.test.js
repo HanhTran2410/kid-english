@@ -155,3 +155,11 @@ test('prompt ảnh bài My family: ghi rõ mẹ là người (không phải xác
   assert.doesNotMatch(prompt, /One mummy|Cell \d+ — Mummy:/i);
   assert.doesNotMatch(prompt, /Kiss-mummy/);
 });
+
+test('📞 đồng hồ cuộc gọi: mm:ss, không âm', async () => {
+  const { callTime } = await import('../../app/js/player/talk-phone.js');
+  assert.equal(callTime(0), '00:00');
+  assert.equal(callTime(9_999), '00:09');
+  assert.equal(callTime(83_500), '01:23');
+  assert.equal(callTime(-5), '00:00');
+});

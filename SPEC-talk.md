@@ -5,7 +5,7 @@
 > - **draft2 — sửa theo review (PO + QA):** tách rõ "nỗ lực nói" với nhận dạng; trạng thái hội thoại (một luồng tiếng tại một thời điểm); schema đầy đủ cho từng kiểu lượt (có `type` rõ ràng, mọi câu đọc đều có tiếng Việt); luật sao theo **từng lượt / ngày**; xử lý hồ sơ thiếu; 3 trạng thái bong bóng của bé (gợi ý / đang nghe / đã thử nói); thời gian nghe; rút gọn nội dung 5 bài; chia T-a thành 4 mốc nghiệm thu; ghi rõ phần nào cần mạng.
 > - Quyết định (theo đề xuất, khớp review): **T-a trước** (4 mốc); 📞 gọi điện ở T-b **bật mặc định**; lời chào mỗi ngày ở T-b **tắt mặc định**; giữ **5 bài hội thoại + thẻ "Ôn từ đã học"**; **có tiếng nói là ghi nhận nỗ lực** (không cần nhận dạng đúng); **tối đa 2⭐ cho mỗi lượt**, mỗi lượt cộng tối đa 1 lần/ngày.
 > - **draft3 (mục 13 — T-c):** bài dài 6–8 lượt có mạch chuyện, Bông đáp theo câu trả lời, lượt chạm làm động tác, thay ảnh + ảnh gia đình thật. **Đã làm cả 3 mốc T-c1–T-c3 trong app 0.10.0.**
-> - Trạng thái: **đã làm T-a trong app 0.9.0** (T-b để sau). Ghi chú khi code: bong bóng "đang nghe" giữ câu gợi ý (`🎤 câu gợi ý`); thẻ bài hội thoại hiện tên tiếng Việt; khôi phục bản sao lưu giữ hồ sơ đang có trên máy (cài đặt không bị ghi đè).
+> - Trạng thái: **đã làm T-a trong app 0.9.0**; **T-b1 📞 Bông gọi điện làm trong app 0.15.0** (mục 14); T-b2, T-b3 để sau. Ghi chú khi code: bong bóng "đang nghe" giữ câu gợi ý (`🎤 câu gợi ý`); thẻ bài hội thoại hiện tên tiếng Việt; khôi phục bản sao lưu giữ hồ sơ đang có trên máy (cài đặt không bị ghi đè).
 
 ## 1. Mục tiêu
 - Bé 3 tuổi tập **hội thoại hỏi – đáp ngắn**, **luân phiên lượt nói**: Bông hỏi → bé trả lời → (đổi vai) bé hỏi với gợi ý → Bông trả lời.
@@ -218,3 +218,14 @@ Bài có sẵn đã được thêm ở 0.9.0 nên "thêm một lần" không đ�
 - 0.10.2: 0.10.1 sửa mô tả hình nhưng không tăng `builtinVersion` nên bài trong máy giữ bản cũ (prompt vẫn "One mummy"). Giờ bài có sẵn được cập nhật khi **số phiên bản cũ hơn HOẶC nội dung lượt / câu kết khác** bản của app.
 - 0.10.3: Gemini viết tên ô ("Mother (Mummy)"…) lên ảnh → tên ô rút gọn không ngoặc ("Mother", "Grandmother"…); mọi prompt ảnh lưới thêm câu "tên ô chỉ để tham chiếu, NEVER write them in the image" ngay trước danh sách ô và luật "no text … not even the cell names".
 - Bông về nét mặt vui sau mỗi lượt; máy bật "giảm chuyển động" thì tắt nảy / lắc / hiệu ứng bay.
+
+
+## 14. T-b1 — 📞 Bông gọi điện (app 0.15.0)
+Trẻ rất thích giả vờ nghe điện thoại: mỗi bài Nói chuyện với Bông mở đầu bằng một cuộc gọi. **Không đổi luồng các lượt** (mục 5, 13).
+
+1. **Chuông reo**: màn hình cuộc gọi đến (nền tím như điện thoại) — mặt Bông trong vòng tròn có sóng lan ra, tên nhân vật (theo Cài đặt), *is calling… · đang gọi cho con!*, tiếng chuông (Web Audio, hai nốt xen kẽ, lặp mỗi ~1,6 giây), Bông nói *"Ring, ring!"*, nút **📞 xanh** to rung rung + *Chạm 📞 để nghe máy*.
+2. **Nghe máy**: bé chạm 📞 (hoặc ▶, hoặc không ai nghe sau **~20 giây** thì tự nghe — không bao giờ kẹt) → khung hội thoại thành **màn hình điện thoại đứng** (viền tím đậm, bo tròn), thanh trên **🟢 📞 Bông · 00:42** có đồng hồ chạy. Các lượt hội thoại như cũ.
+3. **Tắt máy**: sau câu kết + hộp quà, Bông nói *"Bye-bye! Hang up the phone!"*, hiện **nút đỏ 📞** (xoay ngang, nhấp nháy) + *Chạm nút đỏ để tắt máy*. Bé chạm (hoặc ▶, hoặc ~8 giây) → tiếng tắt máy (3 tiếng tút đi xuống), thanh gọi thành **📵 Call ended · Đã tắt máy · 01:23** → màn nhận sticker.
+- **Bật mặc định**, tắt ở Góc bố mẹ → Cài đặt → *Nói chuyện với Bông* → ô "📞 Bông gọi điện khi bắt đầu bài" (cài đặt `talkPhone`). Tắt thì bài chạy như trước.
+- Học tiếp / Học lại đều bắt đầu bằng cuộc gọi. Rời bài giữa lúc chuông reo: màn gọi được gỡ.
+- Kiểm tra: chuông + Ring, ring! → chạm nghe máy → thanh gọi có đồng hồ (UI, tốc độ thật); chơi hết bài thấy cả cuộc gọi đến, nút đỏ, Call ended, rồi quà (UI); tắt trong Cài đặt thì không có chuông / khung (UI); đồng hồ mm:ss (unit).

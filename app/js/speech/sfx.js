@@ -74,13 +74,21 @@ const SOUNDS = {
   },
   boing: (c) => tone(c, { freq: 320, endFreq: 180, duration: 0.25, type: 'triangle', gain: 0.15 }),
   whoosh: (c) => noise(c, { duration: 0.35, gain: 0.25, filter: 900 }),
+  // Chuông điện thoại: hai nốt xen kẽ thật nhanh (reng reng), hai hồi.
+  ring: (c) => {
+    for (let k = 0; k < 2; k++) {
+      for (let i = 0; i < 6; i++) tone(c, { freq: i % 2 ? 1175 : 880, start: k * 0.5 + i * 0.05, duration: 0.05, gain: 0.12 });
+    }
+  },
+  // Tắt máy: ba tiếng "tút" đi xuống.
+  hangup: (c) => [620, 520, 420].forEach((f, i) => tone(c, { freq: f, start: i * 0.16, duration: 0.12, type: 'square', gain: 0.06 })),
   cheer: (c) => {
     [523, 659, 784, 1046].forEach((f, i) => tone(c, { freq: f, start: i * 0.12, duration: 0.35, type: 'triangle', gain: 0.18 }));
     for (let i = 0; i < 10; i++) noise(c, { start: 0.1 + i * 0.13 + Math.random() * 0.04, duration: 0.06, gain: 0.35 });
   },
 };
 
-/** Phát hiệu ứng: 'tap' | 'pop' | 'ding' | 'boing' | 'whoosh' | 'cheer'. Không có âm thanh thì bỏ qua. */
+/** Phát hiệu ứng: 'tap' | 'pop' | 'ding' | 'boing' | 'whoosh' | 'cheer' | 'ring' | 'hangup'. Không có âm thanh thì bỏ qua. */
 export function play(name) {
   const c = audioContext();
   if (!c || c.state !== 'running') return;

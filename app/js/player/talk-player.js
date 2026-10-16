@@ -11,6 +11,7 @@ import { startIndexFor, resumeAfter } from './plan.js';
 import { runSkippable, endSkippable } from './stage-kit.js';
 import { runCompletion } from './completion-stage.js';
 import { chatView, runTalkTurn, talkOutro } from './talk-stages.js';
+import { ringIn, startCall, hangUp } from './talk-phone.js';
 
 /**
  * @param {{ lessonId: string, start?: 'begin'|'resume' }} params
@@ -61,6 +62,14 @@ export function talkLessonScreen(app, { lessonId, start = 'begin' }) {
     };
     const picks = {}; // lượt → lựa chọn của bé (cho lượt có `onlyIf`)
 
+    // 📞 Bông gọi điện (bật mặc định): chuông reo → bé nghe máy → hội thoại trong khung điện thoại.
+    let call = null;
+    if (app.settings.talkPhone !== false) {
+      layout.stage.dataset.stage = 'talk-ring';
+      await ringIn(ctx);
+      call = startCall(ctx);
+    }
+
     const steps = turns.map((t, index) => ({ stage: 'turn', index, id: t.id }));
     const resume = start === 'resume';
     let i = resume ? startIndexFor(steps, lesson.resume) : 0;
@@ -83,6 +92,10 @@ export function talkLessonScreen(app, { lessonId, start = 'begin' }) {
     }
 
     await runSkippable(ctx, signal, () => talkOutro(ctx, fillText(lesson.outro ?? '', profile), fillText(lesson.outroVi ?? '', profile)));
+    if (call) {
+      layout.stage.dataset.stage = 'talk-hangup';
+      await hangUp(ctx, call);
+    }
     setProgress(1);
     lesson.timesCompleted = (lesson.timesCompleted ?? 0) + 1;
     lesson.resume = null;
@@ -100,6 +113,7 @@ export function talkLessonScreen(app, { lessonId, start = 'begin' }) {
   });
 
   return () => {
+    document.querySelector('.call-incoming')?.remove();
     layout.bunny.destroy();
     urls.forEach((u) => URL.revokeObjectURL(u));
   };

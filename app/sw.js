@@ -2,7 +2,7 @@
 // Mỗi lần sửa code: tăng VERSION (trùng APP_VERSION trong js/app.js) để máy tải bản mới.
 // Thêm/bớt file trong app/ thì cập nhật ASSETS (test tests/unit/sw.test.js sẽ báo nếu thiếu).
 
-const VERSION = '0.14.2';
+const VERSION = '0.15.0';
 const CACHE = `kid-english-${VERSION}`;
 
 const ASSETS = [
@@ -73,6 +73,7 @@ const ASSETS = [
   'js/talk.js',
   'js/player/talk-player.js',
   'js/player/talk-stages.js',
+  'js/player/talk-phone.js',
   'js/screens/parent/profile.js',
   'js/phonics.js',
   'js/player/phonics-player.js',

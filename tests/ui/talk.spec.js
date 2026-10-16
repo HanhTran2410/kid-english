@@ -94,6 +94,7 @@ test('chạm 🔊 trong bài hội thoại: phụ đề dùng bản tiếng Vi�
   await setProfile(page, { name: 'Na', age: 3 });
   await page.getByRole('button', { name: 'Nói chuyện với Bông' }).click({ force: true });
   await page.getByRole('button', { name: 'About me', exact: true }).click({ force: true });
+  await page.getByRole('button', { name: 'Nghe máy' }).click({ force: true }); // 📞 Bông gọi điện: nghe máy
   const replay = page.getByRole('button', { name: 'Nghe lại câu hỏi' });
   await expect(replay).toBeVisible();
   await replay.click({ force: true });
@@ -298,4 +299,56 @@ test('bài có sẵn trong máy còn mô tả hình cũ (cùng số phiên bản
   const prompt = await page.evaluate(() => navigator.clipboard.readText());
   expect(prompt).toContain('Cell 1 — Mother: a smiling young mother');
   expect(prompt).not.toMatch(/One mummy|— Mummy:/);
+});
+
+test('📞 Bông gọi điện: chuông reo (Ring, ring!) → chạm nghe máy → hội thoại trong khung điện thoại có đồng hồ', async ({ page }) => {
+  await fakeSpeech(page);
+  await page.goto('/?nosw'); // tốc độ thật: chuông reo tới khi bé nghe máy (tự nghe sau ~20 giây)
+  await page.getByRole('button', { name: 'Bắt đầu' }).click({ force: true });
+  await page.getByRole('button', { name: 'Nói chuyện với Bông' }).click({ force: true });
+  await page.getByRole('button', { name: 'Hello & Goodbye' }).click({ force: true });
+  const answer = page.getByRole('button', { name: 'Nghe máy' });
+  await expect(answer).toBeVisible();
+  await expect(page.getByText('is calling…')).toBeVisible();
+  await expect.poll(() => spoken(page)).toContain('Ring, ring!');
+  await answer.click({ force: true });
+  await expect(page.locator('.call-incoming')).toHaveCount(0);
+  await expect(page.locator('.chat-wrap.on-call .call-bar')).toBeVisible();
+  await expect(page.locator('.call-clock')).toHaveText(/^\d\d:\d\d$/);
+  await expect(page.locator('.bubble.bong').first()).toBeVisible();
+});
+
+test('📞 chơi hết bài trong cuộc gọi: cuối bài Bông bảo tắt máy (nút đỏ) → "Call ended" → quà', async ({ page }) => {
+  await fakeSpeech(page);
+  await startApp(page);
+  await page.evaluate(() => {
+    // Ghi lại những gì hiện ra (ở chế độ test, chuông / nút đỏ tự qua rất nhanh).
+    window.__seen = new Set();
+    new MutationObserver(() => {
+      for (const sel of ['.call-incoming', '.call-hangup', '.call-bar.ended']) if (document.querySelector(sel)) window.__seen.add(sel);
+    }).observe(document.body, { childList: true, subtree: true, attributes: true });
+  });
+  await page.getByRole('button', { name: 'Nói chuyện với Bông' }).click();
+  await page.getByRole('button', { name: 'Hello & Goodbye' }).click();
+  await playThrough(page);
+  await expect(page.locator('.prize-sticker')).toBeVisible();
+  expect(await spoken(page)).toContain('Bye-bye! Hang up the phone!');
+  expect(await page.evaluate(() => [...window.__seen].sort())).toEqual(['.call-bar.ended', '.call-hangup', '.call-incoming']);
+});
+
+test('📞 tắt trong Cài đặt: vào bài là hội thoại ngay, không có chuông / khung điện thoại', async ({ page }) => {
+  await fakeSpeech(page);
+  await startApp(page);
+  await openParent(page);
+  await page.getByRole('button', { name: /Cài đặt/ }).click();
+  const box = page.getByRole('checkbox', { name: /gọi điện khi bắt đầu bài/ });
+  await expect(box).toBeChecked();
+  await box.uncheck();
+  await expect.poll(() => page.evaluate(() => window.kidEnglish.settings.talkPhone)).toBe(false);
+  await page.evaluate(() => window.kidEnglish.go('learn'));
+  await page.getByRole('button', { name: 'Hello & Goodbye' }).click();
+  await expect(page.locator('.bubble.bong').first()).toBeVisible();
+  await expect(page.locator('.call-incoming')).toHaveCount(0);
+  await expect(page.locator('.call-bar')).toHaveCount(0);
+  expect(await spoken(page)).not.toContain('Ring, ring!');
 });
