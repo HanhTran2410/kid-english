@@ -8,6 +8,10 @@ const CHEEK = '#ff9ab5';
 const INK = '#4a3360';
 
 function eyes(mood) {
+  if (mood === 'full' || mood === 'chew') {
+    // Mắt cười híp ^^ (no bụng / đang nhai ngon lành).
+    return `<path d="M70 114 q10 -10 20 0 M110 114 q10 -10 20 0" fill="none" stroke="${INK}" stroke-width="5" stroke-linecap="round"/>`;
+  }
   if (mood === 'sleep') {
     return `<path d="M70 112 q10 9 20 0 M110 112 q10 9 20 0" fill="none" stroke="${INK}" stroke-width="5" stroke-linecap="round"/>`;
   }
@@ -21,6 +25,7 @@ function eyes(mood) {
 }
 
 function brows(mood) {
+  if (mood === 'yuck') return `<path d="M66 90 q12 4 22 -2 M112 88 q10 6 22 2" fill="none" stroke="${INK}" stroke-width="4" stroke-linecap="round"/>`;
   if (mood === 'sad') return `<path d="M66 92 q12 -8 22 -2 M112 90 q10 -6 22 2" fill="none" stroke="${INK}" stroke-width="4" stroke-linecap="round"/>`;
   if (mood === 'surprise') return `<path d="M68 88 q12 -10 24 0 M108 88 q12 -10 24 0" fill="none" stroke="${INK}" stroke-width="4" stroke-linecap="round"/>`;
   return '';
@@ -30,6 +35,13 @@ function mouth(mood) {
   if (mood === 'sad') return `<path d="M88 142 q12 -12 24 0" fill="none" stroke="${INK}" stroke-width="5" stroke-linecap="round"/>`;
   if (mood === 'surprise') return `<ellipse cx="100" cy="140" rx="9" ry="11" fill="${INK}"/><ellipse cx="100" cy="145" rx="5" ry="4" fill="#ff7a9c"/>`;
   if (mood === 'sleep') return `<path d="M93 136 q7 5 14 0" fill="none" stroke="${INK}" stroke-width="4" stroke-linecap="round"/>`;
+  // Há miệng to chờ đồ ăn.
+  if (mood === 'eat') return `<ellipse cx="100" cy="142" rx="17" ry="15" fill="${INK}"/><ellipse cx="100" cy="150" rx="10" ry="6" fill="#ff7a9c"/>`;
+  // Nhai: miệng ngậm lượn sóng, má phồng.
+  if (mood === 'chew') return `<path d="M86 138 q5 5 10 0 q5 -5 10 0 q5 5 10 0" fill="none" stroke="${INK}" stroke-width="4" stroke-linecap="round"/>`;
+  // Eo ơi: miệng méo, thè lưỡi.
+  if (mood === 'yuck') return `<path d="M84 140 q8 -6 16 0 q8 6 16 0" fill="none" stroke="${INK}" stroke-width="5" stroke-linecap="round"/><path d="M101 141 q5 12 12 2 z" fill="#ff7a9c"/>`;
+  if (mood === 'full') return `<path d="M84 134 q16 16 32 0" fill="none" stroke="${INK}" stroke-width="5" stroke-linecap="round"/>`;
   // Cười tươi: miệng mở, có lưỡi hồng.
   return `
     <path d="M86 132 q14 20 28 0 z" fill="${INK}"/>
@@ -37,7 +49,7 @@ function mouth(mood) {
 }
 
 /**
- * @param {{ mood?: 'happy'|'sleep'|'sad'|'surprise', title?: string }} [options]
+ * @param {{ mood?: 'happy'|'sleep'|'sad'|'surprise'|'eat'|'chew'|'yuck'|'full', title?: string }} [options]
  * @returns {string} mã SVG
  */
 export function bongSvg({ mood = 'happy', title = '' } = {}) {

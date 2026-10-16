@@ -96,9 +96,17 @@ const SOUNDS = {
     [523, 659, 784, 1046].forEach((f, i) => tone(c, { freq: f, start: i * 0.12, duration: 0.35, type: 'triangle', gain: 0.18 }));
     for (let i = 0; i < 10; i++) noise(c, { start: 0.1 + i * 0.13 + Math.random() * 0.04, duration: 0.06, gain: 0.35 });
   },
+  // Cho Bông ăn (SPEC-feed): đớp, nhai, ợ, bụng kêu — nhỏ hơn lời nói.
+  chomp: (c) => {
+    noise(c, { duration: 0.07, gain: 0.3, filter: 700 });
+    tone(c, { freq: 260, endFreq: 140, duration: 0.1, type: 'triangle', gain: 0.12 });
+  },
+  munch: (c) => [0, 0.28, 0.56].forEach((t) => noise(c, { start: t, duration: 0.09, gain: 0.22, filter: 1100 })),
+  burp: (c) => tone(c, { freq: 120, endFreq: 70, duration: 0.45, type: 'sawtooth', gain: 0.1 }),
+  rumble: (c) => [0, 0.22].forEach((t) => tone(c, { freq: 90, endFreq: 60, start: t, duration: 0.2, type: 'triangle', gain: 0.14 })),
 };
 
-/** Phát hiệu ứng: 'tap' | 'pop' | 'ding' | 'boing' | 'whoosh' | 'cheer' | 'ring' | 'hangup' | 'drumroll' | 'tada' | 'sparkle'. Không có âm thanh thì bỏ qua. */
+/** Phát hiệu ứng: 'tap' | 'pop' | 'ding' | 'boing' | 'whoosh' | 'cheer' | 'ring' | 'hangup' | 'drumroll' | 'tada' | 'sparkle' | 'chomp' | 'munch' | 'burp' | 'rumble'. Không có âm thanh thì bỏ qua. */
 export function play(name) {
   const c = audioContext();
   if (!c || c.state !== 'running') return;

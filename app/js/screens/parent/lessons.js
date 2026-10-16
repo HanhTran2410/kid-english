@@ -27,6 +27,7 @@ import { driveUploadButton, driveImportButton, linkImportButton } from './drive.
 import { appDrive } from '../../drive.js';
 import { isSceneImage } from '../../sticker-scenes.js';
 import { acceptDressPayload } from './dress.js';
+import { acceptFeedPayload } from './feed.js';
 import { DRESS_IMAGES } from '../../dress-up.js';
 import { cleanSound, soundOf, tapLine, MAX_SOUND_CHARS } from '../../word-play.js';
 
@@ -52,7 +53,9 @@ export function lessonsView(app) {
       const sceneImages = payload.images.filter(isSceneImage).length;
       // File đồ Mặc đồ (SPEC-dressup mục 12) cũng nhập ở đây được.
       const hasDress = payload.images.some((img) => img.lessonId === DRESS_IMAGES) || payload.settings.some((s) => s.key === 'dressUpCustom');
-      if (!payload.lessons.length && !sceneImages && !hasDress) throw new BackupError('File này không có bài học nào.');
+      // File ảnh Cho Bông ăn (SPEC-feed mục 7.4) cũng nhập ở đây được.
+      const hasFeed = payload.images.some((img) => String(img.lessonId ?? '').startsWith('feed:')) || payload.settings.some((s) => s.key === 'feedCustom');
+      if (!payload.lessons.length && !sceneImages && !hasDress && !hasFeed) throw new BackupError('File này không có bài học nào.');
       const existing = await listLessons(app.db);
       const before = new Set(existing.map((l) => l.id));
       // Bài mới trùng tên với bài đang có thì đặt tên "… 2", "… 3".
@@ -68,11 +71,13 @@ export function lessonsView(app) {
         { ...payload, recordings: [], progress: [], stickers: [], settings: [] }, 'merge', { updateLessons: true });
       await ensureLessonNumbers(app.db);
       const dress = hasDress ? await acceptDressPayload(app, payload) : { images: 0, items: 0 };
+      const feed = hasFeed ? await acceptFeedPayload(app, payload) : { images: 0, foods: 0 };
       const parts = [];
       if (added) parts.push(`nhập ${added} bài mới`);
       if (updated) parts.push(`cập nhật ${updated} bài đã có`);
       if (sceneImages) parts.push(`nhận ${sceneImages} ảnh Dán tranh`);
       if (dress.images || dress.items) parts.push(`nhận ${dress.images} ảnh đồ Mặc đồ${dress.items ? `, ${dress.items} món mới` : ''}`);
+      if (feed.images || feed.foods) parts.push(`nhận ${feed.images} ảnh Cho Bông ăn${feed.foods ? `, ${feed.foods} món mới` : ''}`);
       const summary = parts.length ? `Đã ${parts.join(', ')}` : 'Không có gì thay đổi';
       toast(`${summary}.`, 3500);
       // Ghi lại đã nhập file nào, để biết file nào nhập rồi / chưa nhập.

@@ -7,6 +7,7 @@ import { LIMIT_OPTIONS } from '../../session.js';
 import { isStandalone, characterName } from '../child.js';
 import { parentLayout, goParent, section, field, notice } from './common.js';
 import { driveSettingsSection } from './drive.js';
+import { cleanFeedState } from '../../feed.js';
 
 export function settingsView(app) {
   const body = parentLayout(app, { title: 'Cài đặt & chẩn đoán', back: () => goParent(app) });
@@ -73,10 +74,26 @@ export function settingsView(app) {
       check('wordReveal', 'Giới thiệu từ kiểu "ló dần": hình bị che, bé chạm mở dần, đoán "What\'s this?" rồi mới hiện')),
     section('Nói chuyện với ' + characterName(app),
       check('talkPhone', `📞 ${characterName(app)} gọi điện khi bắt đầu bài (chuông reo → bé chạm nghe máy → cuối bài chạm nút đỏ tắt máy)`)),
+    feedSection(app, save, check),
     section('Thời gian',
       field('Giới hạn mỗi buổi', limit, `Giới hạn mềm: hết giờ vẫn cho học hết bài. Khi ${characterName(app)} ngủ, bố mẹ nhấn giữ 🌙 3 giây để cho thêm 15 phút.`)),
     driveSettingsSection(app),
     diagnostics(app));
+}
+
+/** Cho Bông ăn (SPEC-feed mục 4): khóa mức, bất ngờ vui. */
+function feedSection(app, save, check) {
+  const state = cleanFeedState(app.settings.feed);
+  const level = h('select', {
+    onchange: (e) => {
+      const lock = e.target.value === 'auto' ? null : Number(e.target.value);
+      save('feed', { ...cleanFeedState(app.settings.feed), lock, ...(lock ? { level: lock, rounds: 0 } : {}) });
+    },
+  }, ...[['auto', `Tự lên mức (đang ở mức ${state.level})`], ['1', 'Mức 1 — 3 món dễ'], ['2', 'Mức 2 — 5 món, có đồ uống'], ['3', 'Mức 3 — đếm (two cookies)']]
+    .map(([value, text]) => h('option', { value, text, selected: value === String(state.lock ?? 'auto') })));
+  return section(`Cho ${characterName(app)} ăn`,
+    field('Mức chơi', level, 'Tự lên mức sau 2 lần no bụng ở mỗi mức.'),
+    check('feedSilly', '🧦 Bất ngờ vui: thỉnh thoảng có đồ không ăn được trong khay (mức 2) — "Yuck! A sock!"'));
 }
 
 function diagnostics(app) {

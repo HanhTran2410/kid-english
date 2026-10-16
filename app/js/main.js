@@ -17,6 +17,7 @@ import { stickerSceneScreen, scenePickerScreen } from './screens/sticker-scene.j
 import { gamesScreen } from './screens/games.js';
 import { dressUpChooser, dressUpScreen } from './screens/dress-up.js';
 import { coloringChooser, coloringScreen } from './screens/coloring.js';
+import { feedScreen } from './screens/feed.js';
 import { parentScreen } from './screens/parent/index.js';
 
 async function registerServiceWorker(app) {
@@ -109,6 +110,8 @@ async function boot() {
   // Tô màu (SPEC-coloring.md): chọn hình → chọn màu, chạm phần hình để tô.
   app.register('coloring', coloringChooser);
   app.register('coloring-play', coloringScreen);
+  // Cho Bông ăn (SPEC-feed.md): kéo / chạm đúng món vào miệng Bông.
+  app.register('feed', feedScreen);
   app.register('sleep', sleepScreen);
   app.register('parent', parentScreen);
 

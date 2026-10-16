@@ -2001,3 +2001,73 @@ details > summary { cursor: pointer; font-weight: 800; padding: 6px 0; }
   .cl-part, .cl-part .cl-ink, .cl-swatch { transition: none; }
   .cl-part.cl-pop, .cl-part.cl-wanted, .cl-paper.cl-celebrate, .cl-swatch.wanted { animation: none; }
 }
+
+/* ---------- Cho Bông ăn (SPEC-feed.md) ---------- */
+.home-btn.game-feed { background: var(--mint); }
+.child-screen.fd-play { display: grid; grid-template-columns: minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr) auto; gap: 10px; height: 100dvh; min-height: 0; }
+.fd-stage {
+  display: grid; place-items: center; min-height: 0; border-radius: 28px;
+  background: radial-gradient(ellipse at 50% 55%, #fff 0 30%, transparent 62%) center / cover no-repeat;
+}
+.fd-bong-wrap { position: relative; display: grid; justify-items: center; align-content: center; gap: 10px; height: 100%; min-height: 0; }
+.fd-bong {
+  width: min(52vmin, 340px, 100%); aspect-ratio: 1; padding: 0; border: 0; background: none;
+  touch-action: none; -webkit-user-select: none; user-select: none; transform-origin: 50% 90%;
+}
+.fd-art, .fd-art svg, .fd-bong-img { width: 100%; height: 100%; display: block; }
+.fd-bong-img { object-fit: contain; object-position: 50% 100%; pointer-events: none; }
+.fd-bong.shake { animation: fd-shake 0.5s ease-in-out; }
+.fd-bong.giggle { animation: fd-giggle 0.5s ease-in-out; }
+.fd-bong[data-pose="chew"] { animation: fd-chew 0.3s ease-in-out 3; }
+@keyframes fd-shake { 20%, 60% { transform: rotate(-8deg); } 40%, 80% { transform: rotate(8deg); } }
+@keyframes fd-giggle { 50% { transform: scale(1.06) rotate(-3deg); } }
+@keyframes fd-chew { 50% { transform: scaleY(0.95) scaleX(1.03); } }
+.fd-zzz { position: absolute; top: 4%; right: 8%; font-size: 40px; font-weight: 900; color: var(--lilac); animation: float 2s ease-in-out infinite; }
+.fd-belly { display: flex; gap: 8px; padding: 6px 12px; border-radius: 999px; background: var(--card); box-shadow: var(--shadow); }
+.fd-dot { width: 24px; height: 24px; border-radius: 50%; background: #fff; border: 3px solid var(--line); transition: background 200ms, transform 200ms; }
+.fd-dot.on { background: var(--mint); border-color: var(--green); transform: scale(1.1); }
+.fd-tray {
+  display: flex; flex-wrap: wrap; justify-content: center; gap: 12px;
+  padding: 10px 12px max(12px, env(safe-area-inset-bottom)); border-radius: 26px 26px 0 0;
+  background: var(--card); box-shadow: var(--shadow); -webkit-user-select: none; user-select: none;
+}
+.fd-food {
+  position: relative; display: grid; place-items: center; width: 96px; height: 96px; border-radius: 24px;
+  background: #fff7ec; box-shadow: var(--shadow); touch-action: none; -webkit-touch-callout: none; transition: opacity 150ms;
+}
+.fd-face { width: 76%; height: 76%; object-fit: contain; pointer-events: none; }
+.fd-face.emoji, .fd-wish-face.emoji { width: auto; height: auto; font-family: var(--emoji); font-size: 58px; line-height: 1; }
+.fd-food.lifted { opacity: 0.45; }
+.fd-food.hint { outline: 5px solid var(--yellow); animation: hint-hop 1s ease-in-out infinite; }
+.fd-food.nudge { animation: hint-hop 0.5s ease-in-out 3; }
+.fd-tray.locked .fd-food { opacity: 0.55; }
+.fd-fly {
+  position: fixed; z-index: 60; width: 90px; height: 90px; margin: -45px 0 0 -45px;
+  display: grid; place-items: center; pointer-events: none; filter: drop-shadow(0 4px 4px rgba(61, 44, 94, 0.3));
+}
+.fd-fly .fd-face { width: 100%; height: 100%; }
+.fd-wish { width: auto; min-width: 72px; padding: 0 10px; display: flex; gap: 2px; align-items: center; justify-content: center; }
+.fd-wish-face { width: 46px; height: 46px; object-fit: contain; }
+.fd-wish .fd-wish-face.emoji { font-size: 40px; }
+.fd-count { margin-left: 6px; font-family: var(--font); font-size: 20px; font-weight: 900; color: var(--ink); }
+.fd-play .sp-caption { top: auto; bottom: 140px; max-width: min(92vw, 520px); }
+@media (max-width: 600px) {
+  .fd-play .sp-title { display: none; }
+  .fd-food { width: 72px; height: 72px; border-radius: 18px; }
+  .fd-face.emoji { font-size: 44px; }
+  .fd-wish-face { width: 32px; height: 32px; }
+  .fd-wish .fd-wish-face.emoji { font-size: 28px; }
+  .fd-bong { width: min(70vw, 40vh); }
+  .fd-play .sp-caption { bottom: 200px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .fd-bong.shake, .fd-bong.giggle, .fd-bong[data-pose="chew"], .fd-food.hint, .fd-food.nudge, .fd-zzz { animation: none; }
+}
+/* Góc bố mẹ: ảnh Cho Bông ăn */
+.fd-admin-face { display: grid; place-items: center; width: 64px; height: 64px; border-radius: 10px; object-fit: contain; font-family: var(--emoji); font-size: 40px; }
+.fd-admin-face .fd-face { width: 100%; height: 100%; }
+.fd-admin-face .fd-face.emoji { font-size: 40px; }
+.fd-admin-pick { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; }
+.fd-admin-pick:empty { display: none; }
+.fd-admin-cand { display: grid; justify-items: center; gap: 2px; width: 76px; padding: 4px; border-radius: 10px; background: #fff; border: 1px solid var(--line); font-size: 11px; }
+.fd-admin-cand img { width: 60px; height: 60px; object-fit: cover; border-radius: 8px; }
