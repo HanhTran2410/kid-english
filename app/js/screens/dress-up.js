@@ -7,7 +7,7 @@ import { play } from '../speech/sfx.js';
 import { homeButton } from '../player/layout.js';
 import { createBunny } from '../player/teacher.js';
 import {
-  KIDS, ITEM_BY_ID, WEARS_PER_REQUEST, DRESS_IMAGES, wear, cleanOutfit, viewFor, itemIcon, setCustomItems, wardrobeFor,
+  KIDS, ITEM_BY_ID, WEARS_PER_REQUEST, DRESS_IMAGES, wear, cleanOutfit, viewFor, itemIcon, setCustomItems, wardrobeFor, sameWord,
   wearSentence, takeOffSentence, requestSentence, wearVi, takeOffVi, requestVi, pickRequest, dollSvg,
 } from '../dress-up.js';
 
@@ -232,7 +232,7 @@ export function dressUpScreen(app, params = {}) {
   function updateTray() {
     [...tray.children].forEach((btn, i) => {
       btn.classList.toggle('on', outfit.includes(btn.dataset.item));
-      btn.classList.toggle('wanted', Boolean(request) && btn.dataset.item === request.id);
+      btn.classList.toggle('wanted', sameWord(request, ITEM_BY_ID.get(btn.dataset.item))); // mọi kiểu cùng tên
       btn.classList.toggle('hint', i === 0 && !outfit.length);
     });
     requestCard.hidden = !request;
@@ -259,7 +259,7 @@ export function dressUpScreen(app, params = {}) {
     const show = viewFor(item, view);
     if (show !== view) turn(show, () => art.querySelector(`[data-item="${id}"]`)?.classList.add('pop-in'));
     else renderDoll(id);
-    if (request && request.id === id) {
+    if (sameWord(request, item)) { // kiểu nào cùng tên (váy công chúa / váy hoa…) cũng đúng
       lastRequest = request;
       request = null;
       wears = 0;

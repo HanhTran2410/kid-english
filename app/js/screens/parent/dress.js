@@ -5,7 +5,7 @@ import { h, toast, copyText, confirmDialog } from '../../ui.js';
 import { setWordImage, removeWordImage } from '../../db.js';
 import { resizeImage, cutOutSticker } from '../../image.js';
 import {
-  ITEMS, SLOTS, DRESS_IMAGES, KIDS, imageKey, itemIcon, itemBox, setCustomItems,
+  ITEMS, SLOTS, DRESS_IMAGES, KIDS, imageKey, nameKey, isPlural, itemIcon, itemBox, setCustomItems,
 } from '../../dress-up.js';
 import { loadDressImages } from '../dress-up.js';
 import { parentLayout, goParent, section, notice, field } from './common.js';
@@ -45,10 +45,11 @@ export function dressAdminView(app) {
 
   loadDressImages(app).then((loaded) => {
     images = loaded;
+    const add = addSection(app, reload);
     body.append(
-      notice('info', 'Đồ có sẵn là hình vẽ, bé chơi được ngay. Muốn đẹp hơn: thay ảnh từng món (Copy prompt → AI vẽ → Chọn ảnh) hoặc vẽ nhiều món một lần bằng ảnh lưới. App tự bỏ nền trắng và đặt món đồ vừa chỗ trên người bạn nhỏ. Có thể thêm đồ mới cho bé trai, bé gái hoặc cả hai.'),
-      addSection(app, reload),
-      ...groups().map(([title, items]) => itemsSection(app, title, items, images.map, reload)),
+      notice('info', 'Đồ có sẵn là hình vẽ, bé chơi được ngay. Muốn đẹp hơn: thay ảnh từng món (Copy prompt → AI vẽ → Chọn ảnh) hoặc vẽ nhiều món một lần bằng ảnh lưới. App tự bỏ nền trắng và đặt món đồ vừa chỗ trên người bạn nhỏ. Có thể thêm đồ mới cho bé trai, bé gái hoặc cả hai, và thêm nhiều kiểu cho cùng một món (bấm "＋ Kiểu khác" ở món đó).'),
+      add.el,
+      ...groups().map(([title, items]) => itemsSection(app, title, items, images.map, reload, add.prefill)),
       ...gridSections(app, urls, reload),
     );
   });
@@ -68,7 +69,7 @@ function groups() {
   ];
 }
 
-function itemsSection(app, title, items, map, reload) {
+function itemsSection(app, title, items, map, reload, prefill) {
   return section(`${title} (${items.length} món)`, h('div.sp-admin-items', {}, ...items.map((item) => {
     const key = imageKey(item);
     const has = map.has(key);
@@ -79,8 +80,8 @@ function itemsSection(app, title, items, map, reload) {
       if (!file) return;
       try {
         const small = await resizeImage(file);
-        await setWordImage(app.db, { lessonId: DRESS_IMAGES, word: item.name, ...await cutOutSticker(small.blob) });
-        toast(`Đã lưu ảnh ${item.name}.`);
+        await setWordImage(app.db, { lessonId: DRESS_IMAGES, word: imageKey(item), ...await cutOutSticker(small.blob) });
+        toast(`Đã lưu ảnh ${item.vi}.`);
         reload();
       } catch (err) {
         toast(imageErrorMessage(err), 4000);
@@ -100,17 +101,23 @@ function itemsSection(app, title, items, map, reload) {
         type: 'button',
         text: 'Dùng hình vẽ',
         onclick: async () => {
-          await removeWordImage(app.db, DRESS_IMAGES, item.name);
+          await removeWordImage(app.db, DRESS_IMAGES, imageKey(item));
           reload();
         },
       }) : null,
+      h('button.btn.small', {
+        type: 'button',
+        text: '＋ Kiểu khác',
+        title: 'Thêm một kiểu khác của món này (cùng tên tiếng Anh, ảnh khác)',
+        onclick: () => prefill(item),
+      }),
       item.custom ? h('button.btn.small.danger', {
         type: 'button',
         text: 'Xóa món',
         onclick: async () => {
-          if (!await confirmDialog(`Xóa món "${item.name}" khỏi tủ đồ?`, { danger: true, okText: 'Xóa' })) return;
+          if (!await confirmDialog(`Xóa "${item.vi}" (${item.name}) khỏi tủ đồ?`, { danger: true, okText: 'Xóa' })) return;
           await app.setSetting('dressUpCustom', (app.settings.dressUpCustom ?? []).filter((c) => c.id !== item.id));
-          await removeWordImage(app.db, DRESS_IMAGES, item.name);
+          await removeWordImage(app.db, DRESS_IMAGES, imageKey(item));
           setCustomItems(app.settings.dressUpCustom);
           toast(`Đã xóa ${item.name}.`);
           reload();
@@ -123,8 +130,9 @@ function itemsSection(app, title, items, map, reload) {
 /** Ảnh lưới: chia mọi món thành nhóm 9 món (3 × 3). */
 function gridSections(app, urls, reload) {
   const out = [];
-  for (let i = 0; i < ITEMS.length; i += GRID_GROUP) {
-    const items = ITEMS.slice(i, i + GRID_GROUP);
+  const builtin = ITEMS.filter((it) => !it.custom);
+  for (let i = 0; i < builtin.length; i += GRID_GROUP) {
+    const items = builtin.slice(i, i + GRID_GROUP);
     out.push(gridSection(app, { id: DRESS_IMAGES, words: items.map((it) => ({ en: it.name })) }, urls,
       `Ảnh lưới ${out.length + 1} — ${items.map((it) => it.name).join(', ')}`,
       { promptNote: `\n${CLOTHING_PROMPT_NOTE}`, process: (tile) => cutOutSticker(tile.blob), onSaved: reload, previewClass: 'checker' }));
@@ -153,7 +161,6 @@ function addSection(app, reload) {
   const problem = (d) => {
     if (!d.name) return 'Nhập tên tiếng Anh của món đồ.';
     if (!/^[a-z][a-z '-]*$/i.test(d.name)) return 'Tên tiếng Anh chỉ gồm chữ cái (a–z), dấu cách, dấu gạch.';
-    if (ITEMS.some((it) => imageKey(it) === imageKey(d))) return `Đã có món "${d.name}" trong tủ đồ.`;
     return '';
   };
 
@@ -170,18 +177,33 @@ function addSection(app, reload) {
     try {
       const small = await resizeImage(file);
       const pic = await cutOutSticker(small.blob);
-      await setWordImage(app.db, { lessonId: DRESS_IMAGES, word: d.name, ...pic });
       const item = { id: `c-${Date.now().toString(36)}`, ...d };
+      await setWordImage(app.db, { lessonId: DRESS_IMAGES, word: item.id, ...pic });
       await app.setSetting('dressUpCustom', [...(app.settings.dressUpCustom ?? []), item]);
       setCustomItems(app.settings.dressUpCustom);
-      toast(`Đã thêm ${d.name} cho ${d.kids.map((k) => KID_VI[k]).join(' và ')}.`, 3500);
+      const same = ITEMS.filter((it) => nameKey(it.name) === nameKey(d.name)).length; // đã gồm món vừa thêm
+      toast(`Đã thêm ${d.vi || d.name} cho ${d.kids.map((k) => KID_VI[k]).join(' và ')}${same > 1 ? ` — giờ có ${same} kiểu "${d.name}"` : ''}.`, 3500);
       reload();
     } catch (e) {
       toast(imageErrorMessage(e), 4000);
     }
   });
 
-  return section('＋ Thêm đồ mới',
+  /** Điền sẵn form để thêm một kiểu khác của món có sẵn / đã thêm. */
+  const prefill = (item) => {
+    name.value = item.name;
+    vi.value = '';
+    vi.placeholder = `ví dụ: ${item.vi} hoa, ${item.vi} dài…`;
+    slot.value = item.slot;
+    kids.value = item.kids.length === KIDS.length ? 'both' : item.kids[0];
+    plural.checked = isPlural(item);
+    el.scrollIntoView({ block: 'start', behavior: 'smooth' });
+    vi.focus();
+    toast(`Thêm kiểu khác của "${item.name}": đặt tên tiếng Việt riêng rồi chọn ảnh.`, 3500);
+  };
+
+  const el = section('＋ Thêm đồ mới',
+    notice('info', 'Muốn nhiều kiểu cho cùng một món (váy công chúa, váy hoa…): giữ cùng tên tiếng Anh (dress), đặt tên tiếng Việt khác — bé vẫn nghe "I\'m wearing a dress!". Bấm "＋ Kiểu khác" ở món đó để điền sẵn.'),
     field('Tên tiếng Anh (bé sẽ nghe "I\'m wearing a …!")', name),
     field('Tên tiếng Việt (phụ đề)', vi),
     field('Mặc ở đâu', slot, 'App đặt ảnh vào đúng chỗ này trên người bạn nhỏ. Mặc món mới thì món cũ cùng chỗ tự cởi ra.'),
@@ -210,5 +232,6 @@ function addSection(app, reload) {
         },
       })),
     input);
+  return { el, prefill };
 }
 

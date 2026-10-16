@@ -194,10 +194,17 @@ test('Góc bố mẹ → Đồ Mặc đồ: thêm đồ mới cho bé trai (có 
   expect(custom[0]).toMatchObject({ name: 'raincoat', vi: 'áo mưa', slot: 'outer', kids: ['boy'] });
   const id = custom[0].id;
 
-  // Tên trùng thì báo, không thêm.
-  await page.getByLabel(/Tên tiếng Anh/).fill('T-shirt');
+  // Thêm một kiểu váy khác cho bé gái: "＋ Kiểu khác" ở món váy điền sẵn tên / chỗ / dành cho.
+  await page.locator('.sp-admin-item[data-item="dress"]').getByRole('button', { name: '＋ Kiểu khác' }).click();
+  await expect(page.getByLabel(/Tên tiếng Anh/)).toHaveValue('dress');
+  await expect(page.getByLabel('Mặc ở đâu')).toHaveValue('dress');
+  await expect(page.getByLabel('Dành cho')).toHaveValue('girl');
+  await page.getByLabel(/Tên tiếng Việt/).fill('váy hoa');
+  const chooserV = page.waitForEvent('filechooser');
   await page.getByRole('button', { name: 'Chọn ảnh & thêm vào tủ đồ' }).click();
-  await expect(page.getByText('Đã có món "T-shirt" trong tủ đồ.')).toBeVisible();
+  await (await chooserV).setFiles(await testImage(page));
+  await expect(page.getByText(/2 kiểu "dress"/)).toBeVisible();
+  await expect(page.locator('.sp-admin-item', { hasText: 'váy hoa' })).toBeVisible();
 
   // Thay ảnh áo phông.
   const tshirt = page.locator('.sp-admin-item[data-item="t-shirt"]');
@@ -218,4 +225,10 @@ test('Góc bố mẹ → Đồ Mặc đồ: thêm đồ mới cho bé trai (có 
   await page.getByRole('button', { name: 'Đổi bé' }).click();
   await page.getByRole('button', { name: 'Bé gái' }).click();
   await expect(cloth(page, id)).toHaveCount(0);
+  // Bé gái có 2 kiểu váy; mặc kiểu váy hoa thì bé nghe "I'm wearing a dress!".
+  await expect(page.getByRole('button', { name: 'Dress', exact: true })).toHaveCount(2);
+  const variant = (await page.evaluate(() => window.kidEnglish.settings.dressUpCustom)).find((c) => c.vi === 'váy hoa').id;
+  await cloth(page, variant).scrollIntoViewIfNeeded();
+  await cloth(page, variant).click();
+  await expect.poll(() => lastSpoken(page)).toBe("I'm wearing a dress!");
 });

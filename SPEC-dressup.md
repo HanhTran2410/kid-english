@@ -105,3 +105,10 @@ Chạy thử 0.13.0: quần áo là emoji kéo giãn nên to / nhỏ không vừ
   - **Thêm đồ mới**: tên tiếng Anh (chỉ chữ cái, không trùng món có sẵn), tên tiếng Việt, **mặc ở đâu** (11 chỗ), **dành cho** bé gái / bé trai / cả hai, tên số nhiều (không "a"), ảnh (bắt buộc). Lưu ở cài đặt `dressUpCustom`; ảnh ở kho ảnh mã `dress:items` (theo tên). Món thêm hiện trong tủ, mặc được, có câu *I'm wearing a …!*. **Xóa món** đã thêm được.
   - Ảnh đồ: kính / cà vạt không hiện khi quay lưng; ba lô: mặt trước vẫn là quai vẽ sẵn, ảnh ở mặt sau; đồ cầm tay đổi tay khi quay lưng.
 - Ảnh đồ Mặc đồ không lẫn vào ảnh bài học (từ "socks" trong bài từ vựng không lấy ảnh tất của Mặc đồ). Đi cùng bản sao lưu toàn bộ (chưa có nút chia sẻ riêng).
+
+### 11.1. Nhiều kiểu cho cùng một món (app 0.14.1)
+- Đồ bố mẹ thêm **được trùng tên tiếng Anh** với món khác = một **kiểu khác** của món đó (váy công chúa, váy hoa… đều là "dress"): tên tiếng Việt riêng, ảnh riêng; bé nghe cùng câu *I'm wearing a dress!*.
+- Ảnh đồ bố mẹ thêm khóa theo **mã món** (không theo tên) nên mỗi kiểu một ảnh; đồ có sẵn vẫn khóa theo tên.
+- Mỗi ô đồ ở Góc bố mẹ có nút **＋ Kiểu khác**: điền sẵn tên tiếng Anh, chỗ mặc, dành cho, số nhiều → bố mẹ đặt tên tiếng Việt, chọn ảnh. Thông báo "giờ có N kiểu …".
+- Bông giao *"Put on your dress!"*: mọi kiểu cùng tên đều có viền vàng trong tủ, **mặc kiểu nào cũng đúng**. Các kiểu cùng chỗ mặc thay nhau như món thường.
+- Ảnh lưới chỉ dùng cho đồ có sẵn (đồ thêm đã có ảnh riêng).

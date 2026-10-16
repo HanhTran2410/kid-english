@@ -239,11 +239,21 @@ const BUILTIN = [
 export const ITEMS = [...BUILTIN];
 export const ITEM_BY_ID = new Map(ITEMS.map((it) => [it.id, it]));
 
-/** Khóa ảnh của một món (theo tên, giống ảnh bài học). */
-export const imageKey = (item) => String(item.name).toLowerCase().replace(/[’‘]/g, "'").replace(/\s+/g, ' ').trim();
+/** Tên đã chuẩn hóa (so sánh "cùng một món", ví dụ nhiều kiểu "dress"). */
+export const nameKey = (name) => String(name ?? '').toLowerCase().replace(/[’‘]/g, "'").replace(/\s+/g, ' ').trim();
 
 /**
- * Đồ bố mẹ thêm (cài đặt `dressUpCustom`): { id, name, vi, slot, kids, plural }. Bỏ món hỏng, tên trùng món khác.
+ * Khóa ảnh của một món: đồ có sẵn theo tên (giống ảnh bài học); đồ bố mẹ thêm theo mã riêng — nhiều kiểu cùng tên
+ * (váy công chúa, váy hoa… đều là "dress") mỗi kiểu một ảnh.
+ */
+export const imageKey = (item) => (item.custom ? String(item.id).toLowerCase() : nameKey(item.name));
+
+/** Cùng một món về tiếng Anh (bé nghe cùng một từ): Bông bảo "Put on your dress!" thì kiểu váy nào cũng đúng. */
+export const sameWord = (a, b) => Boolean(a && b) && nameKey(a.name) === nameKey(b.name);
+
+/**
+ * Đồ bố mẹ thêm (cài đặt `dressUpCustom`): { id, name, vi, slot, kids, plural }. Bỏ món hỏng / trùng mã; trùng tên
+ * với món khác thì là một kiểu khác của món đó (nhiều kiểu váy).
  * Gọi lại mỗi lần mở trò chơi / Góc bố mẹ.
  */
 export function setCustomItems(list) {
@@ -251,7 +261,7 @@ export function setCustomItems(list) {
   for (const c of Array.isArray(list) ? list : []) {
     const name = String(c?.name ?? '').trim();
     const slot = SLOT_BY_ID.get(c?.slot);
-    if (!c?.id || !name || !slot || ITEM_BY_ID.has(c.id) || ITEMS.some((it) => imageKey(it) === imageKey({ name }))) continue;
+    if (!c?.id || !name || !slot || ITEM_BY_ID.has(c.id)) continue; // cùng tên món khác được: là một kiểu khác
     const kids = KIDS.filter((k) => (Array.isArray(c.kids) ? c.kids : KIDS).includes(k));
     const item = {
       id: c.id, name, emoji: slot.emoji, slot: slot.id, vi: String(c.vi ?? '').trim() || name,
@@ -344,7 +354,8 @@ export function cleanOutfit(list, kid = null) {
 export const layerOrder = (outfit) => [...outfit].sort((a, b) => SLOTS.findIndex((s) => s.id === ITEM_BY_ID.get(a).slot)
   - SLOTS.findIndex((s) => s.id === ITEM_BY_ID.get(b).slot));
 
-const isPlural = (item) => Boolean(item.plural) || PLURAL.has(item.name);
+/** Tên số nhiều (jeans, socks…): không có "a". */
+export const isPlural = (item) => Boolean(item.plural) || PLURAL.has(nameKey(item.name));
 const article = (item) => (isPlural(item) ? '' : /^[aeiou]/i.test(item.name) ? 'an ' : 'a ');
 /** Đồ cầm tay (ô): không "wear" / "put on" mà "have" / "take". */
 const isHeld = (item) => item.slot === 'hand';

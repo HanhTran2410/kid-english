@@ -4,7 +4,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   ITEMS, ITEM_BY_ID, SLOTS, SLOT_BY_ID, DOLL_W, DOLL_H, wear, cleanOutfit, layerOrder, itemArt, itemIcon, visibleIn, viewFor,
-  wardrobeFor, setCustomItems, imageKey, itemBox,
+  wardrobeFor, setCustomItems, imageKey, itemBox, sameWord, isPlural,
   wearSentence, takeOffSentence, requestSentence, wearVi, takeOffVi, pickRequest, dollSvg,
 } from '../../app/js/dress-up.js';
 
@@ -122,6 +122,7 @@ test('tủ đồ riêng: bé trai không có váy / nơ, bé gái không có cà
   assert.equal(wearSentence(ITEM_BY_ID.get('swim-shorts')), "I'm wearing swim shorts!");
   assert.equal(wearSentence(ITEM_BY_ID.get('tie')), "I'm wearing a tie!");
   assert.ok(!visibleIn(ITEM_BY_ID.get('tie'), 'back'));
+  assert.ok(!isPlural(ITEM_BY_ID.get('dress')) && isPlural(ITEM_BY_ID.get('socks')));
 });
 
 test('đồ bố mẹ thêm: nạp từ cài đặt, đúng chỗ / đúng bé, bỏ món hỏng hoặc trùng tên; nạp lại thì thay danh sách cũ', () => {
@@ -129,11 +130,18 @@ test('đồ bố mẹ thêm: nạp từ cài đặt, đúng chỗ / đúng bé, 
     setCustomItems([
       { id: 'c-1', name: 'raincoat', vi: 'áo mưa', slot: 'outer', kids: ['boy'] },
       { id: 'c-2', name: 'pajamas', vi: 'đồ ngủ', slot: 'dress', kids: ['girl', 'boy'], plural: true },
-      { id: 'c-3', name: 'T-shirt', slot: 'top' }, // trùng tên món có sẵn
+      { id: 'c-3', name: 'T-shirt', vi: 'áo phông kẻ', slot: 'top' }, // cùng tên món có sẵn: một kiểu khác
       { id: 'c-4', name: 'x', slot: 'nowhere' }, // chỗ mặc không có
       { name: 'no id', slot: 'top' },
     ]);
-    assert.equal(ITEMS.length, 28);
+    assert.equal(ITEMS.length, 29);
+    // Kiểu khác cùng tên: ảnh riêng (khóa theo mã), bé nghe cùng câu, Bông bảo mặc áo phông thì kiểu nào cũng đúng.
+    const striped = ITEM_BY_ID.get('c-3');
+    assert.equal(imageKey(striped), 'c-3');
+    assert.equal(imageKey(ITEM_BY_ID.get('t-shirt')), 't-shirt');
+    assert.equal(wearSentence(striped), "I'm wearing a T-shirt!");
+    assert.ok(sameWord(striped, ITEM_BY_ID.get('t-shirt')) && !sameWord(striped, ITEM_BY_ID.get('shirt')));
+    assert.deepEqual(wear(['t-shirt'], 'c-3').outfit, ['c-3']); // cùng chỗ: thay kiểu cũ
     const raincoat = ITEM_BY_ID.get('c-1');
     assert.ok(raincoat.custom && raincoat.art === null);
     assert.ok(wardrobeFor('boy').includes(raincoat) && !wardrobeFor('girl').includes(raincoat));
@@ -150,6 +158,7 @@ test('đồ bố mẹ thêm: nạp từ cài đặt, đúng chỗ / đúng bé, 
     assert.match(dollSvg('boy', 'front', ['c-1'], images), /data-item="c-1"/);
     setCustomItems([{ id: 'c-9', name: 'tutu', slot: 'bottom', kids: ['girl'] }]);
     assert.equal(ITEMS.length, 27);
+    assert.ok(!ITEM_BY_ID.has('c-3'));
     assert.ok(!ITEM_BY_ID.has('c-1') && ITEM_BY_ID.has('c-9'));
   } finally {
     setCustomItems([]);
