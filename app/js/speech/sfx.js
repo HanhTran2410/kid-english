@@ -80,6 +80,16 @@ const SOUNDS = {
       for (let i = 0; i < 6; i++) tone(c, { freq: i % 2 ? 1175 : 880, start: k * 0.5 + i * 0.05, duration: 0.05, gain: 0.12 });
     }
   },
+  // Ló dần (SPEC-words-play mục 6): trống lăn nhỏ, "ta-da!", lấp lánh.
+  drumroll: (c) => {
+    for (let i = 0; i < 10; i++) noise(c, { start: i * 0.05, duration: 0.04, gain: 0.08 + i * 0.008, filter: 260 });
+  },
+  tada: (c) => {
+    tone(c, { freq: 784, duration: 0.14, type: 'triangle', gain: 0.18 });
+    tone(c, { freq: 1046, start: 0.14, duration: 0.5, type: 'triangle', gain: 0.2 });
+    [1568, 2093, 2637].forEach((f, i) => tone(c, { freq: f, start: 0.2 + i * 0.06, duration: 0.18, gain: 0.06 }));
+  },
+  sparkle: (c) => [1568, 2093, 2637].forEach((f, i) => tone(c, { freq: f, start: i * 0.05, duration: 0.12, gain: 0.06 })),
   // Tắt máy: ba tiếng "tút" đi xuống.
   hangup: (c) => [620, 520, 420].forEach((f, i) => tone(c, { freq: f, start: i * 0.16, duration: 0.12, type: 'square', gain: 0.06 })),
   cheer: (c) => {
@@ -88,7 +98,7 @@ const SOUNDS = {
   },
 };
 
-/** Phát hiệu ứng: 'tap' | 'pop' | 'ding' | 'boing' | 'whoosh' | 'cheer' | 'ring' | 'hangup'. Không có âm thanh thì bỏ qua. */
+/** Phát hiệu ứng: 'tap' | 'pop' | 'ding' | 'boing' | 'whoosh' | 'cheer' | 'ring' | 'hangup' | 'drumroll' | 'tada' | 'sparkle'. Không có âm thanh thì bỏ qua. */
 export function play(name) {
   const c = audioContext();
   if (!c || c.state !== 'running') return;

@@ -28,7 +28,7 @@ const JSON_SHAPE = `{
   "titleVi": "Con vật ở nông trại",
   "emoji": "🐄",
   "words": [
-    { "en": "cow", "vi": "con bò", "emoji": "🐄", "sentence": "The cow says moo!", "imagePrompt": "A cow, ${IMAGE_STYLE}" }
+    { "en": "cow", "vi": "con bò", "emoji": "🐄", "sentence": "The cow says moo!", "sound": "Moo moo!", "imagePrompt": "A cow, ${IMAGE_STYLE}" }
   ],
   "conversation": [
     { "word": "cow", "teacher": "Look! What's this?", "child": "It's a cow!" },
@@ -160,6 +160,9 @@ export function buildLessonPrompt({
   lines.push(
     '- Every word needs "en", "vi" (Vietnamese meaning), and one "emoji". Do not repeat a word.',
     '- Every sentence has at most 6 words.',
+    '- "sound": what the child hears when tapping the word in the story (at most 4 words, ends with "!"): the sound of an animal,',
+    '  vehicle or object that makes a sound ("Moo moo!", "Beep beep!", "Choo choo!", "Tick tock!"); for things that make no sound,',
+    '  a short happy exclamation that fits ("Yummy!" for food, "Bounce, bounce!" for a ball). Never invent animal-like sounds for food or objects.',
     '- "imagePrompt": first a short, concrete description of exactly what to draw for this word, clearly different',
     '  from the other words in this lesson (for example "rain": "several blue raindrops falling, no cloud";',
     '  "wind": "three curved light-blue wind lines, no other objects").',
@@ -189,6 +192,7 @@ export function buildLessonPrompt({
 
   lines.push(
     '- "repeat" (optional) is a very short phrase the child can copy (at most 3 words), like a sound ("Moo moo!") or a name.',
+    '- When it reads naturally, every story sentence mentions at least one word of this lesson (the child taps those words in the story).',
     '- Use simple, friendly, positive language only.',
   );
 

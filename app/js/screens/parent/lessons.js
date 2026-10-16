@@ -28,6 +28,7 @@ import { appDrive } from '../../drive.js';
 import { isSceneImage } from '../../sticker-scenes.js';
 import { acceptDressPayload } from './dress.js';
 import { DRESS_IMAGES } from '../../dress-up.js';
+import { cleanSound, soundOf, tapLine, MAX_SOUND_CHARS } from '../../word-play.js';
 
 export function imageErrorMessage(err) {
   if (err instanceof ImageError) return err.message;
@@ -204,9 +205,36 @@ export function lessonDetailView(app, { lessonId }) {
           toast(imageErrorMessage(err), 4000);
         }
       });
+      // Tiếng khi bé chạm từ / nhân vật trong truyện (SPEC-words-play mục 5): trống = dùng tiếng có sẵn.
+      const soundInput = h('input.sound-input', {
+        type: 'text', value: w.sound ?? '', maxlength: String(MAX_SOUND_CHARS),
+        placeholder: soundOf({ en: w.en }) || `${w.en}!`, 'aria-label': `Tiếng khi chạm: ${w.en}`,
+      });
+      soundInput.addEventListener('change', async () => {
+        const value = soundInput.value.trim();
+        if (value && !cleanSound(value)) {
+          toast('Tiếng khi chạm tối đa 4 từ / 30 ký tự.', 3500);
+          return;
+        }
+        const fresh = await app.db.get('lessons', lesson.id);
+        const target = fresh?.words.find((x) => x.en === w.en);
+        if (!target) return;
+        if (value) target.sound = value;
+        else delete target.sound;
+        fresh.updatedAt = Date.now();
+        await app.db.put('lessons', fresh);
+        if (value) w.sound = value;
+        else delete w.sound;
+        toast(value ? `Đã lưu: chạm "${w.en}" → ${value}` : `Dùng tiếng có sẵn cho "${w.en}".`);
+      });
+      const soundField = h('label.sound-field', {}, h('span', { text: '🔊 Khi chạm:' }), soundInput,
+        h('button.btn.small', {
+          type: 'button', text: 'Nghe', 'aria-label': `Nghe tiếng khi chạm ${w.en}`,
+          onclick: () => app.speaker.speak(tapLine({ ...w, sound: soundInput.value.trim() })).catch(() => {}),
+        }));
       return h('li.word-admin', {},
         thumb,
-        h('span.grow', {}, h('b', { text: w.en }), h('span.muted', { text: ` ${w.vi}` })),
+        h('span.grow', {}, h('b', { text: w.en }), h('span.muted', { text: ` ${w.vi}` }), soundField),
         h('div.row-actions', {},
           h('button.btn.small', { type: 'button', text: img ? 'Đổi ảnh' : 'Chọn ảnh', onclick: () => input.click() }),
           img ? h('button.btn.small', {

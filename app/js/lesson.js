@@ -1,6 +1,7 @@
 // Làm sạch và kiểm tra JSON bài học do AI trả về (SPEC mục 3.1).
 // Lỗi nặng → từ chối bài. Lỗi nhẹ → tự sửa và trả về cảnh báo để hiện ở màn xem trước.
 
+import { cleanSound, MAX_SOUND_WORDS, MAX_SOUND_CHARS } from './word-play.js';
 import { normalizeWord, wordCount } from './text.js';
 import { validatePhraseLesson } from './phrase.js';
 
@@ -143,6 +144,12 @@ export function validateLesson(raw, { reviewWords = [] } = {}) {
     const word = { en, vi, emoji };
     if (str(w.sentence)) word.sentence = str(w.sentence);
     if (str(w.imagePrompt)) word.imagePrompt = str(w.imagePrompt);
+    // Tiếng khi chạm (SPEC-words-play mục 5.1): quá dài thì bỏ (dùng tiếng có sẵn), không cắt giữa chừng.
+    if (w.sound != null && w.sound !== '') {
+      const sound = cleanSound(w.sound);
+      if (sound) word.sound = sound;
+      else warnings.push(`Từ "${en}": tiếng khi chạm (sound) không hợp lệ hoặc dài quá ${MAX_SOUND_WORDS} từ / ${MAX_SOUND_CHARS} ký tự — bỏ, dùng tiếng có sẵn.`);
+    }
     words.push(word);
   });
   if (errors.length) return fail();

@@ -10,7 +10,8 @@ import { buildSteps, startIndexFor, resumeAfter, quizQuestions } from './plan.js
 import { runWordStep } from './vocabulary-stage.js';
 import { runConversationStep } from './conversation-stage.js';
 import { runQuizStep } from './quiz-stage.js';
-import { runStoryStep } from './story-stage.js';
+import { runStoryStep, runStoryEnd } from './story-stage.js';
+import { planFinds } from '../word-play.js';
 import { runCompletion } from './completion-stage.js';
 import { runSkippable, endSkippable } from './stage-kit.js';
 
@@ -56,6 +57,8 @@ export function lessonScreen(app, { lessonId, start = 'begin', continueDirectly 
       // Nghĩa tiếng Việt của từ (phụ đề khi chạm 🔊).
       meaningOf: (w) => findWord(lesson, w)?.vi ?? '',
     };
+    // Lượt Tìm trong truyện: tối đa 2 câu / truyện, ưu tiên từ đích khác nhau (SPEC-words-play mục 4.3).
+    ctx.findPlan = planFinds(lesson.story ?? [], lesson.words);
     const questions = quizQuestions(lesson);
     const pool = lesson.words.map((w) => w.en);
     const emojiOf = (en) => findWord(lesson, en)?.emoji ?? '';
@@ -73,11 +76,17 @@ export function lessonScreen(app, { lessonId, start = 'begin', continueDirectly 
         } else if (step.stage === 'quiz') {
           await runQuizStep(ctx, questions[step.index], pool, emojiOf);
         } else {
-          await runStoryStep(ctx, lesson.story[step.index]);
+          await runStoryStep(ctx, lesson.story[step.index], step.index);
         }
       });
       lesson.resume = resumeAfter(steps, i);
       await saveLesson(lesson);
+    }
+
+    // Trang kết truyện "The end!" (bài có truyện).
+    if (lesson.story?.length) {
+      layout.stage.dataset.stage = 'story-end';
+      await runSkippable(ctx, signal, () => runStoryEnd(ctx));
     }
 
     layout.setProgress(1);

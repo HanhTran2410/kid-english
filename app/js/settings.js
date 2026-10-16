@@ -18,6 +18,7 @@ export const DEFAULT_SETTINGS = {
   numberLessonsSeeded: null,
   phonicsLessonsSeeded: null, // các bài phonics có sẵn đã tự thêm (mã builtin)
   talkLessonsSeeded: null, // các bài hội thoại có sẵn đã tự thêm (mã builtin)
+  wordReveal: true, // bài từ vựng: thẻ từ mở đầu bằng "ló dần" (SPEC-words-play mục 3) — tắt được trong Cài đặt
   talkPhone: true, // 📞 Bông gọi điện khi bắt đầu bài Nói chuyện (SPEC-talk mục 14) — tắt được trong Cài đặt
   childProfile: null, // Hồ sơ của bé (SPEC-talk mục 3): { name, age, color, food, family } — chỉ lưu trên máy
   driveClientId: '', // Google Drive (SPEC-drive.md): Client ID do bố mẹ tạo

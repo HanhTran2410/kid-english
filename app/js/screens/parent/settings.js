@@ -69,6 +69,8 @@ export function settingsView(app) {
       }),
       h('p.field-hint', { text: `Bật thử nếu tiếng ${characterName(app)} bị rè hoặc nhỏ: khi mic mở, iPhone/iPad chuyển loa sang chế độ gọi thoại. Nếu máy hỏi quyền mic liên tục thì tắt lại.` }),
       h('p.field-hint', { text: 'Trên iOS, nhận dạng gửi giọng bé lên máy chủ Apple để xử lý và cần mạng. Tắt đi thì app chỉ đo âm lượng.' })),
+    section('Bài từ vựng',
+      check('wordReveal', 'Giới thiệu từ kiểu "ló dần": hình bị che, bé chạm mở dần, đoán "What\'s this?" rồi mới hiện')),
     section('Nói chuyện với ' + characterName(app),
       check('talkPhone', `📞 ${characterName(app)} gọi điện khi bắt đầu bài (chuông reo → bé chạm nghe máy → cuối bài chạm nút đỏ tắt máy)`)),
     section('Thời gian',
