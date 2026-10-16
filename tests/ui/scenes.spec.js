@@ -392,7 +392,7 @@ test('chia sẻ ảnh Dán tranh: tạo file .zip chỉ gồm ảnh sticker + �
   await openParent(page);
   await page.getByRole('button', { name: /Ảnh Dán tranh/ }).click();
   await expect(page.getByText(/Máy này có 2 ảnh Dán tranh/)).toBeVisible();
-  await page.getByRole('button', { name: '1. Tạo file ảnh' }).click();
+  await page.getByRole('button', { name: '1. Tạo file' }).click();
   await expect(page.getByText(/Đã tạo dan-tranh-anh-.*\.zip \(2 ảnh\)/)).toBeVisible();
   const download = page.waitForEvent('download');
   await page.getByRole('button', { name: '2. Gửi file' }).click();
@@ -412,7 +412,7 @@ test('chia sẻ ảnh Dán tranh: tạo file .zip chỉ gồm ảnh sticker + �
   await clear();
   await page.evaluate(() => window.kidEnglish.go('parent', { view: 'scenes' }));
   const chooser = page.waitForEvent('filechooser');
-  await page.getByRole('button', { name: 'Nhập ảnh từ file' }).click();
+  await page.getByRole('button', { name: 'Nhập từ file' }).click();
   await (await chooser).setFiles(file);
   await expect(page.getByText(/Máy này có 2 ảnh Dán tranh/)).toBeVisible();
   expect(await sceneWords()).toEqual(['scene:bg|farm', 'scene:stickers|cow']);

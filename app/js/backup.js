@@ -56,7 +56,7 @@ export async function estimateBackupSize(db, { includeRecordings = true } = {}) 
  * Tạo file sao lưu.
  * @returns {Promise<{ blob: Blob, filename: string, counts: object }>}
  */
-export async function createBackup(db, { includeRecordings = true, now = Date.now(), appVersion = '', JSZip = globalThis.JSZip, lessonIds = null, filename = null } = {}) {
+export async function createBackup(db, { includeRecordings = true, now = Date.now(), appVersion = '', JSZip = globalThis.JSZip, lessonIds = null, filename = null, settingsKeys = null } = {}) {
   const data = await readAll(db);
   if (lessonIds) {
     // Gói bài để chia sẻ sang máy khác: chỉ bài và ảnh của bài, không có ghi âm, tiến độ, sticker, cài đặt.
@@ -66,7 +66,8 @@ export async function createBackup(db, { includeRecordings = true, now = Date.no
     data.frameSets = data.frameSets.filter((f) => ids.has(f.lessonId));
     data.progress = [];
     data.stickers = [];
-    data.settings = [];
+    // Gói ảnh trò chơi có thể kèm vài cài đặt (ví dụ đồ bố mẹ thêm của Mặc đồ — dressUpCustom).
+    data.settings = settingsKeys ? data.settings.filter((s) => settingsKeys.includes(s.key)) : [];
     includeRecordings = false;
   }
   const recordings = includeRecordings ? data.recordings : [];

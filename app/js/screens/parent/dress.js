@@ -5,11 +5,14 @@ import { h, toast, copyText, confirmDialog } from '../../ui.js';
 import { setWordImage, removeWordImage } from '../../db.js';
 import { resizeImage, cutOutSticker } from '../../image.js';
 import {
-  ITEMS, SLOTS, DRESS_IMAGES, KIDS, imageKey, nameKey, isPlural, itemIcon, itemBox, setCustomItems,
+  ITEMS, SLOTS, DRESS_IMAGES, KIDS, imageKey, nameKey, isPlural, itemIcon, itemBox, setCustomItems, mergeCustomItems,
 } from '../../dress-up.js';
 import { loadDressImages } from '../dress-up.js';
 import { parentLayout, goParent, section, notice, field } from './common.js';
 import { gridSection, imageErrorMessage } from './lessons.js';
+import { mediaShareSection } from './media-share.js';
+import { applyBackup, BackupError } from '../../backup.js';
+import { dayKey } from '../../text.js';
 
 const KID_VI = { boy: 'Bé trai', girl: 'Bé gái' };
 const GRID_GROUP = 9; // ảnh lưới 3 × 3: AI vẽ đúng hơn lưới lớn
@@ -51,12 +54,58 @@ export function dressAdminView(app) {
       add.el,
       ...groups().map(([title, items]) => itemsSection(app, title, items, images.map, reload, add.prefill)),
       ...gridSections(app, urls, reload),
+      shareSection(app, images.map.size, reload),
     );
   });
   return () => {
     images?.revoke();
     urls.forEach((u) => URL.revokeObjectURL(u));
   };
+}
+
+/**
+ * Nhận đồ Mặc đồ từ file của máy khác: ảnh đồ (mới hơn thay ảnh cũ) + đồ bố mẹ thêm (thêm món chưa có).
+ * Dùng chung cho trang này và Quản lý bài → "Nhập bài từ file".
+ * @returns {Promise<{ images: number, items: number }>}
+ */
+export async function acceptDressPayload(app, payload) {
+  const images = payload.images.filter((img) => img.lessonId === DRESS_IMAGES);
+  const incoming = payload.settings?.find((s) => s.key === 'dressUpCustom')?.value ?? [];
+  if (!images.length && !incoming.length) return { images: 0, items: 0 };
+  if (images.length) {
+    await applyBackup(app.db, {
+      ...payload, lessons: [], images, frameSets: [], recordings: [], progress: [], stickers: [], settings: [],
+    }, 'merge');
+  }
+  const before = app.settings.dressUpCustom ?? [];
+  const merged = mergeCustomItems(before, incoming);
+  if (merged.length !== before.length) await app.setSetting('dressUpCustom', merged);
+  setCustomItems(app.settings.dressUpCustom);
+  return { images: images.length, items: merged.length - before.length };
+}
+
+/**
+ * Chia sẻ đồ Mặc đồ sang máy khác (SPEC-dressup mục 12): file .zip gồm ảnh đồ đã thay / đã thêm + danh sách đồ
+ * bố mẹ thêm (tên, chỗ mặc, dành cho ai, các kiểu). Không gồm bộ đồ bé đang mặc.
+ */
+function shareSection(app, count, reload) {
+  const custom = (app.settings.dressUpCustom ?? []).length;
+  return mediaShareSection(app, {
+    what: 'đồ Mặc đồ',
+    intro: count || custom
+      ? `Máy này có ${count} ảnh đồ và ${custom} món đã thêm. Tạo file rồi gửi sang máy kia; trên máy kia: Góc bố mẹ → Đồ Mặc đồ → "Nhập từ file" (hoặc Quản lý bài → "Nhập bài từ file" cũng được). Bộ đồ bé đang mặc không đi theo.`
+      : 'Máy này chưa có ảnh đồ / đồ đã thêm nào để gửi. Máy kia gửi sang thì bấm "Nhập từ file" ở đây.',
+    canMake: count > 0 || custom > 0,
+    backup: { lessonIds: [DRESS_IMAGES], settingsKeys: ['dressUpCustom'], filename: `mac-do-${dayKey()}.zip` },
+    accept: async (payload) => {
+      const got = await acceptDressPayload(app, payload);
+      if (!got.images && !got.items && !payload.images.some((img) => img.lessonId === DRESS_IMAGES)) {
+        throw new BackupError('File này không có đồ Mặc đồ.');
+      }
+      return `Đã nhận ${got.images} ảnh đồ${got.items ? `, thêm ${got.items} món mới` : ''} (ảnh mới hơn thay ảnh cũ).`;
+    },
+    done: reload,
+  });
 }
 
 /** Nhóm đồ theo bé: riêng bé gái, riêng bé trai, dùng chung. */

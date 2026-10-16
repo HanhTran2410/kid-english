@@ -272,6 +272,13 @@ export function setCustomItems(list) {
   }
 }
 
+/** Gộp đồ bố mẹ thêm khi nhập file từ máy khác: giữ đồ đang có, thêm món mới (theo mã). */
+export function mergeCustomItems(mine, incoming) {
+  const list = Array.isArray(mine) ? [...mine] : [];
+  for (const c of Array.isArray(incoming) ? incoming : []) if (c?.id && !list.some((m) => m.id === c.id)) list.push(c);
+  return list;
+}
+
 /** Tủ đồ của một bé: đồ dành cho bé đó + đồ chung. */
 export const wardrobeFor = (kid) => ITEMS.filter((it) => it.kids.includes(kid));
 

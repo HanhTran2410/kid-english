@@ -112,3 +112,9 @@ Chạy thử 0.13.0: quần áo là emoji kéo giãn nên to / nhỏ không vừ
 - Mỗi ô đồ ở Góc bố mẹ có nút **＋ Kiểu khác**: điền sẵn tên tiếng Anh, chỗ mặc, dành cho, số nhiều → bố mẹ đặt tên tiếng Việt, chọn ảnh. Thông báo "giờ có N kiểu …".
 - Bông giao *"Put on your dress!"*: mọi kiểu cùng tên đều có viền vàng trong tủ, **mặc kiểu nào cũng đúng**. Các kiểu cùng chỗ mặc thay nhau như món thường.
 - Ảnh lưới chỉ dùng cho đồ có sẵn (đồ thêm đã có ảnh riêng).
+
+## 12. Chia sẻ đồ sang máy khác (app 0.14.2)
+- Góc bố mẹ → Đồ Mặc đồ → mục **Chia sẻ sang máy khác** (cùng cách với Dán tranh, dùng chung một khối): **1. Tạo file** → `mac-do-YYYY-MM-DD.zip` gồm **ảnh đồ** (đã thay / đã thêm, kho `dress:items`) + **danh sách đồ bố mẹ thêm** (cài đặt `dressUpCustom`: tên, chỗ mặc, dành cho ai, các kiểu); **không** gồm bộ đồ bé đang mặc → **2. Gửi file** / **3. Tải lên Google Drive**.
+- Máy kia: Đồ Mặc đồ → **Nhập từ file** / Google Drive / link, hoặc Quản lý bài → **Nhập bài từ file** (báo "nhận N ảnh đồ Mặc đồ, M món mới").
+- Gộp: ảnh mới hơn thay ảnh cũ (cùng món); đồ đã thêm: giữ đồ đang có, **thêm món chưa có (theo mã)** — nhập lại file cũ không tạo món trùng.
+- Gói chia sẻ (createBackup với lessonIds) giờ có thể kèm vài cài đặt (`settingsKeys`), chỉ dùng cho `dressUpCustom`.

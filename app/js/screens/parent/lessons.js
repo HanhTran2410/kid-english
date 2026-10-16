@@ -26,6 +26,8 @@ import { saveFile } from './backup.js';
 import { driveUploadButton, driveImportButton, linkImportButton } from './drive.js';
 import { appDrive } from '../../drive.js';
 import { isSceneImage } from '../../sticker-scenes.js';
+import { acceptDressPayload } from './dress.js';
+import { DRESS_IMAGES } from '../../dress-up.js';
 
 export function imageErrorMessage(err) {
   if (err instanceof ImageError) return err.message;
@@ -47,7 +49,9 @@ export function lessonsView(app) {
       const payload = await readBackup(file);
       // File ảnh Dán tranh (SPEC-scenes mục 10.5) nhập ở đây cũng được.
       const sceneImages = payload.images.filter(isSceneImage).length;
-      if (!payload.lessons.length && !sceneImages) throw new BackupError('File này không có bài học nào.');
+      // File đồ Mặc đồ (SPEC-dressup mục 12) cũng nhập ở đây được.
+      const hasDress = payload.images.some((img) => img.lessonId === DRESS_IMAGES) || payload.settings.some((s) => s.key === 'dressUpCustom');
+      if (!payload.lessons.length && !sceneImages && !hasDress) throw new BackupError('File này không có bài học nào.');
       const existing = await listLessons(app.db);
       const before = new Set(existing.map((l) => l.id));
       // Bài mới trùng tên với bài đang có thì đặt tên "… 2", "… 3".
@@ -62,10 +66,12 @@ export function lessonsView(app) {
       const { added, updated } = await applyBackup(app.db,
         { ...payload, recordings: [], progress: [], stickers: [], settings: [] }, 'merge', { updateLessons: true });
       await ensureLessonNumbers(app.db);
+      const dress = hasDress ? await acceptDressPayload(app, payload) : { images: 0, items: 0 };
       const parts = [];
       if (added) parts.push(`nhập ${added} bài mới`);
       if (updated) parts.push(`cập nhật ${updated} bài đã có`);
       if (sceneImages) parts.push(`nhận ${sceneImages} ảnh Dán tranh`);
+      if (dress.images || dress.items) parts.push(`nhận ${dress.images} ảnh đồ Mặc đồ${dress.items ? `, ${dress.items} món mới` : ''}`);
       const summary = parts.length ? `Đã ${parts.join(', ')}` : 'Không có gì thay đổi';
       toast(`${summary}.`, 3500);
       // Ghi lại đã nhập file nào, để biết file nào nhập rồi / chưa nhập.

@@ -232,3 +232,69 @@ test('Góc bố mẹ → Đồ Mặc đồ: thêm đồ mới cho bé trai (có 
   await cloth(page, variant).click();
   await expect.poll(() => lastSpoken(page)).toBe("I'm wearing a dress!");
 });
+
+test('chia sẻ đồ Mặc đồ: tạo file (ảnh đồ + đồ đã thêm) → máy khác nhập từ file ở Đồ Mặc đồ hoặc Quản lý bài → có đủ món và ảnh', async ({ page }) => {
+  await fakeSpeech(page);
+  await startApp(page);
+  // Máy gửi: một món đã thêm (váy hoa, có ảnh) + ảnh thay cho áo phông.
+  await page.evaluate(async () => {
+    const { setWordImage } = await import('/js/db.js');
+    const c = document.createElement('canvas');
+    c.width = 20;
+    c.height = 20;
+    c.getContext('2d').fillRect(5, 5, 10, 10);
+    const blob = await new Promise((r) => c.toBlob(r, 'image/png'));
+    const db = window.kidEnglish.db;
+    await setWordImage(db, { lessonId: 'dress:items', word: 'c-flower', blob, mimeType: 'image/png', width: 20, height: 20 });
+    await setWordImage(db, { lessonId: 'dress:items', word: 't-shirt', blob, mimeType: 'image/png', width: 20, height: 20 });
+    await window.kidEnglish.setSetting('dressUpCustom', [{ id: 'c-flower', name: 'dress', vi: 'váy hoa', slot: 'dress', kids: ['girl'], plural: false }]);
+  });
+  const { openParent } = await import('./helpers.js');
+  await openParent(page);
+  await page.getByRole('button', { name: /Đồ Mặc đồ/ }).click();
+  await expect(page.getByText(/Máy này có 2 ảnh đồ và 1 món đã thêm/)).toBeVisible();
+  await page.getByRole('button', { name: '1. Tạo file' }).click();
+  await expect(page.getByText(/Đã tạo mac-do-.*\.zip \(2 ảnh\)/)).toBeVisible();
+  const download = page.waitForEvent('download');
+  await page.getByRole('button', { name: '2. Gửi file' }).click();
+  const file = await (await download).path();
+
+  // "Máy khác": xóa đồ đã thêm + ảnh đồ, rồi nhập lại.
+  const clear = () => page.evaluate(async () => {
+    const db = window.kidEnglish.db;
+    for (const img of await db.getAllByIndex('images', 'lessonId', 'dress:items')) await db.delete('images', img.id);
+    await window.kidEnglish.setSetting('dressUpCustom', []);
+  });
+  const state = () => page.evaluate(async () => ({
+    images: (await window.kidEnglish.db.getAllByIndex('images', 'lessonId', 'dress:items')).map((i) => i.word).sort(),
+    custom: (window.kidEnglish.settings.dressUpCustom ?? []).map((c) => c.vi),
+  }));
+  await clear();
+  await page.evaluate(() => window.kidEnglish.go('parent', { view: 'dress' }));
+  const chooser = page.waitForEvent('filechooser');
+  await page.getByRole('button', { name: 'Nhập từ file' }).click();
+  await (await chooser).setFiles(file);
+  await expect(page.getByText(/Đã nhận 2 ảnh đồ, thêm 1 món mới/)).toBeVisible();
+  await expect.poll(state).toEqual({ images: ['c-flower', 't-shirt'], custom: ['váy hoa'] });
+  await expect(page.locator('.sp-admin-item', { hasText: 'váy hoa' })).toBeVisible();
+
+  // Nhập lại lần nữa: không thêm trùng món.
+  const chooser2 = page.waitForEvent('filechooser');
+  await page.getByRole('button', { name: 'Nhập từ file' }).click();
+  await (await chooser2).setFiles(file);
+  await expect.poll(state).toEqual({ images: ['c-flower', 't-shirt'], custom: ['váy hoa'] });
+
+  // Nhập ở Quản lý bài cũng được.
+  await clear();
+  await page.evaluate(() => window.kidEnglish.go('parent', { view: 'lessons' }));
+  const chooser3 = page.waitForEvent('filechooser');
+  await page.getByRole('button', { name: 'Nhập bài từ file' }).click();
+  await (await chooser3).setFiles(file);
+  await expect(page.getByText(/nhận 2 ảnh đồ Mặc đồ, 1 món mới/).first()).toBeVisible();
+  await expect.poll(state).toEqual({ images: ['c-flower', 't-shirt'], custom: ['váy hoa'] });
+
+  // Trò chơi: bé gái có váy hoa.
+  await page.evaluate(() => window.kidEnglish.go('home'));
+  await openDressUp(page, 'Bé gái');
+  await expect(cloth(page, 'c-flower')).toHaveCount(1);
+});
