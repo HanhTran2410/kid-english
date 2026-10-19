@@ -18,6 +18,7 @@ import { gamesScreen } from './screens/games.js';
 import { dressUpChooser, dressUpScreen } from './screens/dress-up.js';
 import { coloringChooser, coloringScreen } from './screens/coloring.js';
 import { feedScreen } from './screens/feed.js';
+import { hideSeekScreen } from './screens/hide-seek.js';
 import { parentScreen } from './screens/parent/index.js';
 
 async function registerServiceWorker(app) {
@@ -112,6 +113,8 @@ async function boot() {
   app.register('coloring-play', coloringScreen);
   // Cho Bông ăn (SPEC-feed.md): kéo / chạm đúng món vào miệng Bông.
   app.register('feed', feedScreen);
+  // Bông trốn tìm (SPEC-hide.md): bé tìm Bông theo giới từ; đổi vai thì Bông đi tìm bé.
+  app.register('hide-seek', hideSeekScreen);
   app.register('sleep', sleepScreen);
   app.register('parent', parentScreen);
 

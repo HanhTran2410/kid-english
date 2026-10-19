@@ -20,6 +20,7 @@ export const DEFAULT_SETTINGS = {
   talkLessonsSeeded: null, // các bài hội thoại có sẵn đã tự thêm (mã builtin)
   wordReveal: true, // bài từ vựng: thẻ từ mở đầu bằng "ló dần" (SPEC-words-play mục 3) — tắt được trong Cài đặt
   talkPhone: true, // 📞 Bông gọi điện khi bắt đầu bài Nói chuyện (SPEC-talk mục 14) — tắt được trong Cài đặt
+  hideSeekSwap: true, // Bông trốn tìm: lượt đổi vai (bé đi trốn, SPEC-hide mục 4) — tắt được trong Cài đặt
   feedSilly: true, // Cho Bông ăn: "bất ngờ vui" — đồ không ăn được trong khay ở mức 2 (SPEC-feed mục 4)
   childProfile: null, // Hồ sơ của bé (SPEC-talk mục 3): { name, age, color, food, family } — chỉ lưu trên máy
   driveClientId: '', // Google Drive (SPEC-drive.md): Client ID do bố mẹ tạo

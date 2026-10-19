@@ -8,6 +8,7 @@ import { isStandalone, characterName } from '../child.js';
 import { parentLayout, goParent, section, field, notice } from './common.js';
 import { driveSettingsSection } from './drive.js';
 import { cleanFeedState } from '../../feed.js';
+import { cleanHideState } from '../../hide-seek.js';
 
 export function settingsView(app) {
   const body = parentLayout(app, { title: 'Cài đặt & chẩn đoán', back: () => goParent(app) });
@@ -75,6 +76,7 @@ export function settingsView(app) {
     section('Nói chuyện với ' + characterName(app),
       check('talkPhone', `📞 ${characterName(app)} gọi điện khi bắt đầu bài (chuông reo → bé chạm nghe máy → cuối bài chạm nút đỏ tắt máy)`)),
     feedSection(app, save, check),
+    hideSection(app, save, check),
     section('Thời gian',
       field('Giới hạn mỗi buổi', limit, `Giới hạn mềm: hết giờ vẫn cho học hết bài. Khi ${characterName(app)} ngủ, bố mẹ nhấn giữ 🌙 3 giây để cho thêm 15 phút.`)),
     driveSettingsSection(app),
@@ -94,6 +96,21 @@ function feedSection(app, save, check) {
   return section(`Cho ${characterName(app)} ăn`,
     field('Mức chơi', level, 'Tự lên mức sau 2 lần no bụng ở mỗi mức.'),
     check('feedSilly', '🧦 Bất ngờ vui: thỉnh thoảng có đồ không ăn được trong khay (mức 2) — "Yuck! A sock!"'));
+}
+
+/** Bông trốn tìm (SPEC-hide mục 3, 8): mức gợi ý, đếm đến mấy, lượt đổi vai. */
+function hideSection(app, save, check) {
+  const state = cleanHideState(app.settings.hideSeek);
+  const level = h('select', { onchange: (e) => save('hideSeek', { ...cleanHideState(app.settings.hideSeek), level: e.target.value }) },
+    h('option', { value: 'easy', text: 'Dễ — tai Bông luôn thò ra một chút', selected: state.level === 'easy' }),
+    h('option', { value: 'normal', text: 'Thường — tai thò ra sau 2 lần nhầm hoặc 10 giây', selected: state.level === 'normal' }));
+  const count = h('select', { onchange: (e) => save('hideSeek', { ...cleanHideState(app.settings.hideSeek), count: Number(e.target.value) }) },
+    h('option', { value: '5', text: 'Đếm đến 5', selected: state.count === 5 }),
+    h('option', { value: '10', text: 'Đếm đến 10', selected: state.count === 10 }));
+  return section(`${characterName(app)} trốn tìm`,
+    field('Gợi ý', level),
+    field('Đếm', count, `Bé chạm ${characterName(app)} để bỏ qua phần đếm.`),
+    check('hideSeekSwap', '🙋 Đổi vai: bé đi trốn, Bông đi tìm ("Is Na under the bed?")'));
 }
 
 function diagnostics(app) {

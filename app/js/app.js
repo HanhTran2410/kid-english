@@ -9,7 +9,7 @@ import { resumeSession, addTime, extend, isTimeUp } from './session.js';
 import { h } from './ui.js';
 import { bongElement } from './bong.js';
 
-export const APP_VERSION = '0.18.0';
+export const APP_VERSION = '0.19.0';
 
 const SESSION_SAVE_EVERY_MS = 15000;
 
@@ -58,6 +58,8 @@ export class App {
     this.cleanup = null;
     this.root.replaceChildren();
     this.root.className = '';
+    // Màn trước có thể gắn data-* lên root (trạng thái trò chơi…): xóa để màn mới không mang trạng thái cũ.
+    for (const key of Object.keys(this.root.dataset)) delete this.root.dataset[key];
     this.current = { name, params };
     const render = this.screens.get(name);
     if (!render) throw new Error(`Không có màn hình ${name}`);

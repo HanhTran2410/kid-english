@@ -103,6 +103,9 @@ export function profileView(app) {
       field('Tuổi', age, 'Bông hỏi "How old are you?" → bé trả lời "I\'m three!". Chưa chọn tuổi thì Bông bỏ câu hỏi tuổi.'),
       field('Màu thích (không bắt buộc)', color),
       field('Món thích (không bắt buộc)', food)),
+    section('Ảnh của bé',
+      h('p.field-hint', { text: 'Dùng trong trò Bông trốn tìm (lượt bé đi trốn). Ảnh chỉ nằm trên máy, có trong file sao lưu, không bao giờ đi kèm khi chia sẻ bài / ảnh trò chơi.' }),
+      familyPhoto(app, { id: 'me', en: 'bé', emoji: '🧒' }, urls)),
     section('Gia đình', h('p.field-hint', { text: 'Bài "My family" chỉ hỏi về những người được chọn (Bông hiện hình và hỏi "Who is this?"). Không chọn ai thì dùng Mummy và Daddy. Thêm ảnh thật của mẹ, bố, ông bà… để bé nhận ra người thân (ảnh chỉ nằm trên máy, không đi kèm khi chia sẻ bài).' }), ...family),
     section(null, h('div.actions', {}, save), h('p.field-hint', { text: 'Hồ sơ chỉ lưu trên máy này (có trong file sao lưu), không gửi đi đâu.' })),
   );
