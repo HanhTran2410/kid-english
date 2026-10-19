@@ -122,7 +122,8 @@ export function missingScreen(app, params = {}) {
   const scene = h('div.ms-scene');
   const sayBox = h('div.ms-say');
   const tray = h('div.ms-tray', { 'aria-label': 'Các đồ vật' });
-  const nextBtn = h('button.btn.primary.ms-next', { type: 'button', hidden: true, onclick: () => goNext() }, '➡️ Next');
+  // Next luôn hiện: đang chơi thì bỏ qua tranh bé không thích; xong tranh thì nút nhún mời bấm.
+  const nextBtn = h('button.btn.primary.ms-next', { type: 'button', onclick: () => goNext() }, '➡️ Next');
   const stage = h('div.ms-stage', {}, scene);
   app.root.append(
     h('header.child-top.sp-top', {}, homeButton(app), back, againBtn, h('span.sp-title', { text: "🔍 What's missing?" }), count, bongBtn),
@@ -177,6 +178,14 @@ export function missingScreen(app, params = {}) {
           bounce(el);
           talk([WHAT_HERE_LINE]);
           armHint();
+        });
+      } else {
+        // Chạm đồ đang có trong tranh (cả đồ vừa đặt): đồ nhún, Bông đọc tên. Không ghi tiến độ, không tính gợi ý.
+        el.addEventListener('click', () => {
+          play('tap');
+          bounce(el);
+          talk([nameLine(item)]);
+          if (!pic.done) armHint();
         });
       }
       return el;
@@ -247,7 +256,11 @@ export function missingScreen(app, params = {}) {
     clearTimeout(hintTimer);
     hints = 0;
     busy = false;
-    nextBtn.hidden = true;
+    nextBtn.disabled = false;
+    nextBtn.classList.remove('ready');
+    if (ghost) ghost.remove(); // bấm Next lúc đang kéo: bỏ hình kéo dở
+    ghost = null;
+    press = null;
     const picture = PICTURE_BY_ID.get(order[index]);
     const sc = sceneOf(picture.scene);
     let holes;
@@ -343,14 +356,14 @@ export function missingScreen(app, params = {}) {
     for (const x of pic.holes) bounce(holeEl(x.key) ?? scene.querySelector(`.ms-item[data-item="${x.key}"]`));
     await talk([yesLine(found.at(-1)), allBackLine(found)]);
     if (t !== token || signal.aborted) return;
-    nextBtn.hidden = false;
-    nextBtn.disabled = false;
+    nextBtn.classList.add('ready');
   }
 
   async function goNext() {
-    if (nextBtn.disabled) return;
+    if (nextBtn.disabled || !pic) return;
     nextBtn.disabled = true; // bấm liên tục: chỉ một lần
     play('tap');
+    // Bỏ qua tranh chưa xong: không đọc lại tên, không ghi tiến độ cho đồ chưa đặt.
     if (index + 1 < order.length) {
       index += 1;
       startPicture();

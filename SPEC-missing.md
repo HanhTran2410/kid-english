@@ -1,6 +1,6 @@
 # SPEC — 🔍 Tìm đồ còn thiếu (What's missing?)
 
-> Phiên bản spec: **draft2** · Ngày: 2026-10-19 · App **0.22.0** · **Đã làm.**
+> Phiên bản spec: **draft2** · Ngày: 2026-10-19 · App **0.22.0** (0.22.1: Next luôn hiện, chạm đồ trong tranh nghe tên) · **Đã làm.**
 > draft2 = draft1 + 3 câu hỏi đã chốt + review (mã ô riêng, vùng nhận chồng nhau, xem tranh đầy đủ ở cả 3 mức, bóng dự phòng, gợi ý không đếm lúc bận).
 > Một trò trong **Góc trò chơi** (🎲 Play). Dùng **cả cảnh Dán tranh** (SPEC-scenes) **lẫn 4 cảnh riêng** (mâm cơm, giờ tắm, góc học bài, dã ngoại).
 
@@ -18,11 +18,13 @@
  │   🍎  🍌   ⬜(bóng thìa)   🥛  ⬜(bóng cốc)  │  ← bóng trắng đúng hình đồ thiếu
  └─────────────────────────────────────────┘
    phụ đề (hàng riêng, cao cố định 96 px)
-  [🥄] [🧦] [🥛]                              ← khay: đồ thiếu + đồ lạ (mức 2–3), xáo thứ tự
-                ➡️ Next (khi đủ đồ)
+  [🥄] [🧦] [🥛]   ➡️ Next                    ← khay: đồ thiếu + đồ lạ (mức 2–3), xáo thứ tự; Next luôn hiện
 ```
 - Phụ đề tiếng Việt cho **mọi câu**, **nằm hàng riêng** (không đè lên tranh / khay).
 - **🔁** làm lại tranh này (chọn lại đồ thiếu); **🐰 chạm Bông**: nghe lại *"What's missing?"* + bóng đầu tiên còn trống sáng lên một chút (không tính là gợi ý).
+- **➡️ Next luôn hiện** (0.22.1): bé không thích tranh thì bấm Next để sang tranh khác ngay, kể cả lúc đang xem tranh đầy đủ.
+  - Bỏ qua: không khen, không đọc lại tên, không ghi tiến độ cho đồ chưa đặt; tranh bỏ qua vẫn tính là 1 trong 5 tranh của lượt.
+  - Đang chơi: nút nhỏ, hơi mờ. Xong tranh: nút to, nhún 3 lần mời bấm (giảm chuyển động: không nhún).
 - Điện thoại dọc: tranh trên, khay dưới; đồ trong khay 72 px (máy tính bảng 84 px).
 
 ## 3. Cách chơi
@@ -35,8 +37,9 @@
 | Kéo **đồ lạ** (không thuộc tranh) vào tranh | Nảy về khay: *"That's a sock! It doesn't belong here!"* (*Đó là chiếc tất! Không ở đây đâu!*). Danh từ luôn số nhiều: *"Those are socks! They don't belong here!"* |
 | Thả ra ngoài mọi bóng | Về khay, **không nói gì**, không tính sai |
 | **Chạm** một đồ trong khay | Đồ nhún, Bông nói tên kèm mạo từ (*"A spoon!"*, *"An egg!"*, *"Milk!"*); không tự đặt |
+| **Chạm một đồ đang có trong tranh** (đồ không thiếu, hoặc đồ vừa đặt) — 0.22.1 | Đồ nhún, Bông đọc tên (*"A cup!"*, *"Milk!"*). Không ghi tiến độ, không tính gợi ý; chạm được cả khi tranh đã xong |
 | **Chạm một bóng** | Bóng nhún: *"What goes here?"* (*Cái gì ở đây nhỉ?*). Không tính sai, không tính gợi ý |
-| Đủ hết | Tranh hoàn chỉnh, các đồ vừa tìm nhún, Bông đọc lại tên trần: *"Spoon! Cup! Everything is back! Great job!"* (*Đủ cả rồi! Giỏi quá!*). Thao tác khóa đến khi bấm **➡️ Next** |
+| Đủ hết | Tranh hoàn chỉnh, các đồ vừa tìm nhún, Bông đọc lại tên trần: *"Spoon! Cup! Everything is back! Great job!"* (*Đủ cả rồi! Giỏi quá!*). Kéo-thả khóa; **➡️ Next** to lên và nhún |
 
 **Gợi ý** (tối đa **2 lần / tranh**):
 - **Sai 2 lần** với cùng một đồ: bóng đúng của đồ đó **lấp lánh**, đồ đó trong khay nhún.
@@ -186,6 +189,8 @@ Mỗi tranh là `{ id, scene, en, vi, items: [{ item, x, y, size }] }` trên khu
   - vào bóng khác → *"Hmm, not there!"*; lần 2 thì bóng đúng sáng;
   - đồ lạ → *"… belong here!"*; thả ra ngoài thì im lặng;
   - chạm khay → tên; chạm bóng → *"What goes here?"*.
+- Chạm đồ đang có trong tranh → đồ nhún, Bông đọc tên; không ghi tiến độ.
+- Next luôn hiện: bấm lúc đang chơi / đang xem tranh → tranh khác, không khen, không ghi tiến độ; xong tranh thì Next nhún.
 - Gợi ý 10 giây.
 - 5 tranh → sticker, `rounds` = 1, có tiến độ từ.
 - Mức 3: xem tranh đầy đủ trước (chưa có bóng, khay trống), rồi 3 bóng mờ + 2 đồ lạ.

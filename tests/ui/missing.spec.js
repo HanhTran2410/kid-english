@@ -84,6 +84,41 @@ test('mức 2: kéo đồ vào bóng của đồ khác → "not there", lần 2 
   await waitState(page, 'done');
 });
 
+test('Next luôn hiện: đang chơi bấm Next thì bỏ qua tranh (không khen, không ghi tiến độ); xong tranh thì Next nhún', async ({ page }) => {
+  await openMissing(page);
+  const next = page.getByRole('button', { name: '➡️ Next' });
+  await expect(next).toBeVisible();
+  await expect(next).not.toHaveClass(/ready/);
+  const first = await page.locator('.ms-scene').getAttribute('data-picture');
+  await next.click();
+  await expect(page.locator('.ms-count')).toHaveText('2/5');
+  await expect(page.locator('.ms-scene')).not.toHaveAttribute('data-picture', first);
+  expect((await spoken(page)).some((t) => /Everything is back/.test(t))).toBe(false);
+  expect(await page.evaluate(async () => (await window.kidEnglish.db.getAll('progress')).length)).toBe(0);
+  // Bỏ qua ngay lúc đang xem tranh đầy đủ cũng được.
+  await next.click();
+  await expect(page.locator('.ms-count')).toHaveText('3/5');
+  await waitState(page, 'playing');
+  await expect(page.locator('.ms-item.ms-ghost').first()).toBeVisible();
+  await solve(page);
+  await expect(next).toHaveClass(/ready/);
+});
+
+test('chạm đồ đang có trong tranh (không thiếu) → đồ nhún, Bông đọc tên; không ghi tiến độ', async ({ page }) => {
+  await openMissing(page);
+  await expect.poll(() => spoken(page)).toContain("What's missing?");
+  const still = page.locator('.ms-item:not(.ms-ghost)').first();
+  const id = await still.getAttribute('data-item');
+  await still.click();
+  await expect(still).toHaveClass(/bounce/);
+  const name = await page.evaluate(async ({ id, pic }) => {
+    const m = await import('/js/missing.js');
+    return m.itemOf(m.sceneOf(m.PICTURE_BY_ID.get(pic).scene), id).name;
+  }, { id, pic: await page.locator('.ms-scene').getAttribute('data-picture') });
+  await expect.poll(async () => (await spoken(page)).at(-1).toLowerCase()).toContain(name.toLowerCase());
+  expect(await page.evaluate(async () => (await window.kidEnglish.db.getAll('progress')).length)).toBe(0);
+});
+
 test('gợi ý: 10 giây không làm gì thì bóng còn trống lấp lánh', async ({ page }) => {
   await openMissing(page);
   const [key] = await holes(page);
