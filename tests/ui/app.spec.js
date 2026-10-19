@@ -622,3 +622,36 @@ test('màn hình chính hiện phiên bản app nhỏ ở góc (khớp với Gó
   await openParent(page);
   await expect(page.getByText(`Phiên bản ${version}`)).toBeVisible();
 });
+
+test('ảnh lưới bài học: chỉ gồm từ CHƯA có ảnh (prompt bỏ từ đã có ảnh); đủ ảnh thì lưới "vẽ lại" thu gọn', async ({ page }) => {
+  await startApp(page);
+  const { id, words } = await page.evaluate(async () => {
+    const l = (await window.kidEnglish.db.getAll('lessons')).find((x) => x.title === 'Animals');
+    return { id: l.id, words: l.words.map((w) => w.en) };
+  });
+  const save = (list) => page.evaluate(async ({ list, id }) => {
+    const { setWordImage } = await import('/js/db.js');
+    const blob = await new Promise((r) => { const c = document.createElement('canvas'); c.width = 40; c.height = 40; c.getContext('2d').fillRect(5, 5, 30, 30); c.toBlob(r, 'image/png'); });
+    for (const word of list) await setWordImage(window.kidEnglish.db, { lessonId: id, word, blob, mimeType: 'image/png', width: 40, height: 40 });
+  }, { list, id });
+  await save(words.slice(0, -2));
+  await openParent(page);
+  await page.getByRole('button', { name: 'Quản lý bài' }).click();
+  await page.getByRole('button', { name: /Animals/ }).click();
+  await expect(page.getByRole('heading', { name: /^Ảnh lưới — 2 từ chưa có ảnh/ })).toBeVisible();
+  await page.evaluate(() => {
+    window.__copied = '';
+    navigator.clipboard.writeText = async (t) => { window.__copied = t; };
+  });
+  await page.getByRole('button', { name: 'Copy prompt ảnh lưới' }).click();
+  await expect.poll(() => page.evaluate(() => window.__copied)).not.toBe('');
+  const copied = (await page.evaluate(() => window.__copied)).toLowerCase();
+  for (const w of words.slice(-2)) expect(copied).toContain(w.toLowerCase());
+  expect(copied).not.toContain(`${words[0].toLowerCase()}:`);
+
+  await save(words.slice(-2));
+  await page.getByRole('button', { name: /Quay lại|←/ }).first().click();
+  await page.getByRole('button', { name: /Animals/ }).click();
+  await expect(page.getByText(new RegExp(`đã đủ ảnh cho cả ${words.length} từ`))).toBeVisible();
+  await expect(page.getByRole('heading', { name: /từ chưa có ảnh/ })).toHaveCount(0);
+});

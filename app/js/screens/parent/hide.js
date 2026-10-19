@@ -13,7 +13,7 @@ import {
 } from '../../hide-seek.js';
 import { loadHideImages } from '../hide-seek.js';
 import { parentLayout, goParent, section, notice } from './common.js';
-import { gridSection, imageErrorMessage } from './lessons.js';
+import { pendingGridSections, imageErrorMessage } from './lessons.js';
 import { mediaShareSection } from './media-share.js';
 import { downloadFile } from './backup.js';
 import { layoutImage } from './scenes.js';
@@ -201,13 +201,14 @@ export function hideAdminView(app) {
         }) : null,
         input);
     }));
-    const grid = gridSection(app, {
-      id: HIDE_BONG_IMAGES,
+    const grid = pendingGridSections(app, {
+      id: HIDE_BONG_IMAGES, what: 'tư thế Bông', urls, has: (w) => images.bong.has(w.en),
       words: POSES.map((p) => ({ en: p, label: `Bông — ${p}`, imagePrompt: `Bông ${POSE_LABEL[p].draw}` })),
-    }, urls, 'Ảnh lưới 4 tư thế Bông', { promptNote: `\n${BONG_PROMPT_NOTE}`, process: (tile) => cutOutSticker(tile.blob), onSaved: reload, previewClass: 'checker' });
+      promptNote: `\n${BONG_PROMPT_NOTE}`, process: (tile) => cutOutSticker(tile.blob), onSaved: reload, previewClass: 'checker',
+    });
     return section('🐰 Ảnh Bông (không bắt buộc)',
       notice('info', 'Thiếu tư thế nào thì app dùng Bông vẽ sẵn cho tư thế đó. Ảnh "peek" chỉ cần đôi tai thò lên.'),
-      items, grid);
+      items, ...grid);
   }
 
   function surpriseSection(found) {
@@ -294,15 +295,13 @@ export function hideAdminView(app) {
       }));
   }
 
+  /** Ảnh lưới chỉ cho bất ngờ CHƯA có ảnh (sau khi dùng lại ảnh có sẵn). */
   function surpriseGrids() {
-    const out = [];
-    for (let i = 0; i < SURPRISES.length; i += GRID_GROUP) {
-      const group = SURPRISES.slice(i, i + GRID_GROUP);
-      out.push(gridSection(app, { id: HIDE_ITEM_IMAGES, words: group.map((x) => ({ en: x.id, label: x.en })) }, urls,
-        `Ảnh lưới bất ngờ ${out.length + 1} — ${group.map((x) => x.en).join(', ')}`,
-        { promptNote: `\n${SURPRISE_PROMPT_NOTE}`, process: (tile) => cutOutSticker(tile.blob), onSaved: reload, previewClass: 'checker' }));
-    }
-    return out;
+    return pendingGridSections(app, {
+      id: HIDE_ITEM_IMAGES, what: 'bất ngờ', group: GRID_GROUP, urls, has: (w) => images.items.has(w.en),
+      words: SURPRISES.map((x) => ({ en: x.id, label: x.en })),
+      promptNote: `\n${SURPRISE_PROMPT_NOTE}`, process: (tile) => cutOutSticker(tile.blob), onSaved: reload, previewClass: 'checker',
+    });
   }
 
   function shareSection() {

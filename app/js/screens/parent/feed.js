@@ -13,7 +13,7 @@ import {
 } from '../../feed.js';
 import { loadFeedImages, foodFace } from '../feed.js';
 import { parentLayout, goParent, section, notice, field } from './common.js';
-import { gridSection, imageErrorMessage } from './lessons.js';
+import { pendingGridSections, imageErrorMessage } from './lessons.js';
 import { mediaShareSection } from './media-share.js';
 
 const GRID_GROUP = 9; // ảnh lưới 3 × 3
@@ -104,7 +104,7 @@ export function feedAdminView(app) {
       ...['food', 'drink', 'silly'].map((kind) => itemsSection(KIND_VI[kind], foods.filter((f) => f.kind === kind && !f.custom), candidates, reload)),
       foods.some((f) => f.custom) ? itemsSection('Món đã thêm', foods.filter((f) => f.custom), candidates, reload) : '',
       addSection(app, reload),
-      ...gridSections(app, urls, reload),
+      ...gridSections(app, urls, images, reload),
       bongSection(urls, reload),
       backgroundSection(app, reload),
       shareSection(app, reload),
@@ -212,13 +212,14 @@ export function feedAdminView(app) {
         }) : null,
         input);
     }));
-    const grid = gridSection(app, {
-      id: FEED_BONG_IMAGES,
+    const grid = pendingGridSections(app, {
+      id: FEED_BONG_IMAGES, what: 'tư thế Bông', urls: list, has: (w) => images.bong.has(w.en),
       words: POSES.map((p) => ({ en: p, label: `Bông — ${p}`, imagePrompt: `Bông ${POSE_LABEL[p].draw}` })),
-    }, list, 'Ảnh lưới 5 tư thế Bông', { promptNote: `\n${BONG_PROMPT_NOTE}`, process: (tile) => cutOutSticker(tile.blob), onSaved: done, previewClass: 'checker' });
+      promptNote: `\n${BONG_PROMPT_NOTE}`, process: (tile) => cutOutSticker(tile.blob), onSaved: done, previewClass: 'checker',
+    });
     return section('🐰 Ảnh Bông (không bắt buộc)',
       notice('info', 'Thiếu tư thế nào thì app dùng Bông vẽ sẵn cho tư thế đó. Mọi tư thế hiện trong cùng một khung, nên nên vẽ Bông cùng cỡ, đứng giữa ô.'),
-      items, grid);
+      items, ...grid);
   }
 
   return () => {
@@ -252,18 +253,13 @@ function reuseSection(app, foods, candidates, reload) {
     }));
 }
 
-/** Ảnh lưới cho các món có sẵn: nhóm 9 món (3 × 3). Ô gán theo MÃ món, xem trước từng ô trước khi lưu. */
-function gridSections(app, urls, reload) {
-  const out = [];
-  for (let i = 0; i < BUILTIN_FOODS.length; i += GRID_GROUP) {
-    const group = BUILTIN_FOODS.slice(i, i + GRID_GROUP);
-    out.push(gridSection(app, {
-      id: FEED_FOOD_IMAGES,
-      words: group.map((f) => ({ en: f.id, label: f.en, imagePrompt: f.draw })),
-    }, urls, `Ảnh lưới ${out.length + 1} — ${group.map((f) => f.en).join(', ')}`,
-    { promptNote: `\n${FOOD_PROMPT_NOTE}`, process: (tile) => cutOutSticker(tile.blob), onSaved: reload, previewClass: 'checker' }));
-  }
-  return out;
+/** Ảnh lưới cho các món có sẵn CHƯA có ảnh: nhóm 9 món (3 × 3). Ô gán theo MÃ món, xem trước từng ô trước khi lưu. */
+function gridSections(app, urls, images, reload) {
+  return pendingGridSections(app, {
+    id: FEED_FOOD_IMAGES, what: 'món', group: GRID_GROUP, urls, has: (w) => images.food.has(w.en),
+    words: BUILTIN_FOODS.map((f) => ({ en: f.id, label: f.en, imagePrompt: f.draw })),
+    promptNote: `\n${FOOD_PROMPT_NOTE}`, process: (tile) => cutOutSticker(tile.blob), onSaved: reload, previewClass: 'checker',
+  });
 }
 
 function backgroundSection(app, reload) {

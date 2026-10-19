@@ -9,7 +9,7 @@ import {
 } from '../../dress-up.js';
 import { loadDressImages } from '../dress-up.js';
 import { parentLayout, goParent, section, notice, field } from './common.js';
-import { gridSection, imageErrorMessage } from './lessons.js';
+import { pendingGridSections, imageErrorMessage } from './lessons.js';
 import { mediaShareSection } from './media-share.js';
 import { applyBackup, BackupError } from '../../backup.js';
 import { dayKey } from '../../text.js';
@@ -53,7 +53,7 @@ export function dressAdminView(app) {
       notice('info', 'Đồ có sẵn là hình vẽ, bé chơi được ngay. Muốn đẹp hơn: thay ảnh từng món (Copy prompt → AI vẽ → Chọn ảnh) hoặc vẽ nhiều món một lần bằng ảnh lưới. App tự bỏ nền trắng và đặt món đồ vừa chỗ trên người bạn nhỏ. Có thể thêm đồ mới cho bé trai, bé gái hoặc cả hai, và thêm nhiều kiểu cho cùng một món (bấm "＋ Kiểu khác" ở món đó).'),
       add.el,
       ...groups().map(([title, items]) => itemsSection(app, title, items, images.map, reload, add.prefill)),
-      ...gridSections(app, urls, reload),
+      ...gridSections(app, urls, images.map, reload),
       shareSection(app, images.map.size, reload),
     );
   });
@@ -176,17 +176,15 @@ function itemsSection(app, title, items, map, reload, prefill) {
   })));
 }
 
-/** Ảnh lưới: chia mọi món thành nhóm 9 món (3 × 3). */
-function gridSections(app, urls, reload) {
-  const out = [];
+/** Ảnh lưới chỉ cho món có sẵn CHƯA có ảnh: nhóm 9 món (3 × 3). */
+function gridSections(app, urls, map, reload) {
   const builtin = ITEMS.filter((it) => !it.custom);
-  for (let i = 0; i < builtin.length; i += GRID_GROUP) {
-    const items = builtin.slice(i, i + GRID_GROUP);
-    out.push(gridSection(app, { id: DRESS_IMAGES, words: items.map((it) => ({ en: it.name })) }, urls,
-      `Ảnh lưới ${out.length + 1} — ${items.map((it) => it.name).join(', ')}`,
-      { promptNote: `\n${CLOTHING_PROMPT_NOTE}`, process: (tile) => cutOutSticker(tile.blob), onSaved: reload, previewClass: 'checker' }));
-  }
-  return out;
+  const named = new Map(builtin.map((it) => [it.name, it]));
+  return pendingGridSections(app, {
+    id: DRESS_IMAGES, what: 'món', group: GRID_GROUP, urls, has: (w) => map.has(imageKey(named.get(w.en))),
+    words: [...named.keys()].map((name) => ({ en: name })),
+    promptNote: `\n${CLOTHING_PROMPT_NOTE}`, process: (tile) => cutOutSticker(tile.blob), onSaved: reload, previewClass: 'checker',
+  });
 }
 
 /** Thêm đồ mới: tên Anh / Việt, chỗ mặc, dành cho ai, số nhiều, ảnh. */

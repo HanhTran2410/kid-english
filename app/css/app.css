@@ -2305,3 +2305,7 @@ details > summary { cursor: pointer; font-weight: 800; padding: 6px 0; }
   .ms-item.ms-ghost > *, .ms-item.ms-ghost:not(.faint) > *, .ms-item.bounce, .ms-piece.bounce, .ms-next.ready { animation: none; }
   .ms-item.glow { outline: 4px solid #f59f00; border-radius: 12px; }
 }
+
+/* Ảnh lưới khi đã đủ ảnh: thu gọn "vẽ lại" (parent/lessons.js pendingGridSections). */
+.grid-redo { margin: 12px 0; padding: 10px 14px; border-radius: 16px; background: var(--card); box-shadow: var(--shadow); }
+.grid-redo > summary { cursor: pointer; font-weight: 700; color: var(--ink-soft); }

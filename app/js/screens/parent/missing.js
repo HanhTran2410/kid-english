@@ -9,7 +9,8 @@ import { applyBackup, BackupError } from '../../backup.js';
 import { W, H, OWN_SCENES, PICTURES, MISSING_BG_IMAGES, MISSING_ITEM_IMAGES, ownScenePrompt } from '../../missing.js';
 import { loadMissingImages, itemFace } from '../missing.js';
 import { parentLayout, goParent, section, notice } from './common.js';
-import { imageErrorMessage } from './lessons.js';
+import { imageErrorMessage, pendingGridSections } from './lessons.js';
+import { STICKER_PROMPT_NOTE } from '../../sticker-scenes.js';
 import { mediaShareSection } from './media-share.js';
 import { downloadFile } from './backup.js';
 import { layoutImage } from './scenes.js';
@@ -57,6 +58,11 @@ export function missingAdminView(app) {
       notice('info', 'Trò chơi dùng cảnh Dán tranh (thay ảnh ở Góc bố mẹ → Ảnh Dán tranh) và 4 cảnh riêng dưới đây. Mỗi cảnh riêng chạy ngay bằng tranh vẽ sẵn + emoji; muốn đẹp hơn thì thay ảnh nền và ảnh từng đồ vật. Ảnh nền phải chừa trống đúng các khung đặt đồ.'),
       reuseAllSection(cands),
       ...OWN_SCENES.map((sc) => sceneSection(sc, cands)),
+      ...pendingGridSections(app, {
+        id: MISSING_ITEM_IMAGES, what: 'đồ vật', urls, has: (w) => images.own.item.has(normalizeWord(w.en)),
+        words: [...new Map(OWN_SCENES.flatMap((sc) => sc.items).map((it) => [it.id, { en: it.id, label: it.name }])).values()],
+        promptNote: `\n${STICKER_PROMPT_NOTE}`, process: (tile) => cutOutSticker(tile.blob), onSaved: reload, previewClass: 'checker',
+      }),
       shareSection(),
     );
   });

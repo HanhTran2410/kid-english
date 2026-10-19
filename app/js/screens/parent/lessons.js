@@ -149,6 +149,13 @@ export function lessonsView(app) {
   });
 }
 
+/** Ảnh lưới của bài học: cả bài một lưới, nhưng chỉ gồm từ CHƯA có ảnh (đủ ảnh thì "vẽ lại" thu gọn). */
+function lessonGrid(app, lesson, urls, imageOf, { prefix = 'Ảnh lưới', what = 'từ' } = {}) {
+  return pendingGridSections(app, {
+    id: lesson.id, words: lesson.words, has: (w) => Boolean(imageOf(w.en)), what, prefix, urls, group: Math.max(1, lesson.words.length),
+  });
+}
+
 export function lessonDetailView(app, { lessonId }) {
   const body = parentLayout(app, { title: 'Bài học', back: () => goParent(app, 'lessons') });
   const urls = [];
@@ -169,7 +176,7 @@ export function lessonDetailView(app, { lessonId }) {
       const pics = talkPictures(lesson);
       const picLesson = { id: lesson.id, words: pics.map((x) => ({ en: x.key, label: x.name, emoji: x.emoji, imagePrompt: x.draw })) };
       body.append(rename, await talkDetailSection(app, lesson),
-        gridSection(app, picLesson, urls, 'Ảnh lưới — 1 ảnh cho các hình của bài'),
+        ...lessonGrid(app, picLesson, urls, imageOf, { what: 'hình' }),
         talkPicturesSection(app, lesson, pics, imageOf, urls),
         shareSection(app, lesson), section(null, deleteButton(app, lesson)));
       return;
@@ -178,7 +185,7 @@ export function lessonDetailView(app, { lessonId }) {
       body.append(rename, await phonicsDetailSection(app, lesson));
       // Ảnh cho từ của từng chữ: mỗi chữ một ảnh lưới (dùng lại phần ảnh lưới của bài từ vựng).
       for (const l of lesson.letters) {
-        body.append(gridSection(app, { id: lesson.id, words: l.words }, urls, `Ảnh chữ ${l.letter.toUpperCase()}${l.letter}`));
+        body.append(...lessonGrid(app, { id: lesson.id, words: l.words }, urls, imageOf, { prefix: `Ảnh chữ ${l.letter.toUpperCase()}${l.letter}` }));
       }
       body.append(shareSection(app, lesson), section(null, deleteButton(app, lesson)));
       return;
@@ -192,7 +199,7 @@ export function lessonDetailView(app, { lessonId }) {
       }
       body.append(rename, await numberDetailSection(app, lesson, thumbs));
       // Ảnh đồ vật (SPEC-numbers mục 14.2): dùng lại phần ảnh lưới của bài từ vựng, mỗi ô là MỘT đồ vật.
-      if (!['game', 'shapes'].includes(lesson.mode)) body.append(gridSection(app, numberImageLesson(lesson), urls, 'Ảnh đồ vật — 1 ảnh lưới cho cả bài'));
+      if (!['game', 'shapes'].includes(lesson.mode)) body.append(...lessonGrid(app, numberImageLesson(lesson), urls, imageOf, { prefix: 'Ảnh đồ vật', what: 'đồ vật' }));
       body.append(shareSection(app, lesson), section(null, deleteButton(app, lesson)));
       return;
     }
@@ -279,7 +286,7 @@ export function lessonDetailView(app, { lessonId }) {
 
     body.append(
       rename,
-      gridSection(app, lesson, urls),
+      ...lessonGrid(app, lesson, urls, imageOf),
       section('Ảnh cho từng từ',
         notice('info', 'Hoặc tạo từng hình (bấm "Copy prompt ảnh"), lưu vào Ảnh của máy, rồi bấm "Chọn ảnh". Không có ảnh thì bé thấy emoji.'),
         h('ul.word-admin-list', {}, ...rows)),
@@ -404,6 +411,34 @@ export function gridSection(app, lesson, urls, title = null, { promptNote = '', 
       h('button.btn.primary', { type: 'button', text: 'Chọn ảnh lưới', onclick: () => input.click() })),
     input,
     previewBox);
+}
+
+/**
+ * Ảnh lưới chỉ cho các món CHƯA có ảnh (như sticker Dán tranh): sau khi dùng lại ảnh có sẵn, prompt chỉ còn món thiếu →
+ * lưới nhỏ hơn, AI vẽ nhanh và đúng hơn. Chia nhóm `group` món / lưới.
+ * Đủ ảnh rồi thì các lưới "vẽ lại tất cả" nằm trong một mục thu gọn.
+ * @param {{ id: string, words: Array<{ en: string, label?: string, imagePrompt?: string }>, has: (w: object) => boolean,
+ *   what: string, group?: number, prefix?: string, urls: string[] }} o  `what`: tên loại món ("món", "từ", "bất ngờ"…);
+ *   `group`: số món mỗi lưới (bài học: cả bài một lưới); `prefix`: đầu tiêu đề ("Ảnh lưới", "Ảnh chữ Aa"…)
+ */
+export function pendingGridSections(app, { id, words, has, what, group = 9, prefix = 'Ảnh lưới', urls, ...opts }) {
+  const chunks = (list) => {
+    const out = [];
+    for (let i = 0; i < list.length; i += group) out.push(list.slice(i, i + group));
+    return out;
+  };
+  const names = (list) => list.map((w) => w.label ?? w.en).join(', ');
+  const numbered = (parts, i) => (parts.length > 1 ? ` ${i + 1}` : '');
+  const pending = words.filter((w) => !has(w));
+  if (pending.length) {
+    const parts = chunks(pending);
+    return parts.map((part, i) => gridSection(app, { id, words: part }, urls,
+      `${prefix}${numbered(parts, i)} — ${part.length} ${what} chưa có ảnh: ${names(part)}`, opts));
+  }
+  const parts = chunks(words);
+  return [h('details.grid-redo', {},
+    h('summary', { text: `✅ ${prefix}: đã đủ ảnh cho cả ${words.length} ${what}. Muốn vẽ lại bằng ảnh lưới?` }),
+    ...parts.map((part, i) => gridSection(app, { id, words: part }, urls, `${prefix}${numbered(parts, i)} — vẽ lại: ${names(part)}`, opts)))];
 }
 
 /** Chia sẻ bài (kèm ảnh) sang máy khác. 2 bước vì iOS chỉ cho mở bảng Chia sẻ ngay sau một lần chạm. */
