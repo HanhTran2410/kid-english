@@ -10,6 +10,7 @@ import { driveSettingsSection } from './drive.js';
 import { cleanFeedState } from '../../feed.js';
 import { cleanHideState } from '../../hide-seek.js';
 import { cleanPuzzleState, piecesForNext } from '../../puzzle.js';
+import { cleanShapeState } from '../../shapes.js';
 
 export function settingsView(app) {
   const body = parentLayout(app, { title: 'Cài đặt & chẩn đoán', back: () => goParent(app) });
@@ -79,6 +80,7 @@ export function settingsView(app) {
     feedSection(app, save, check),
     hideSection(app, save, check),
     puzzleSection(app, save, check),
+    shapeSection(app, save),
     section('Thời gian',
       field('Giới hạn mỗi buổi', limit, `Giới hạn mềm: hết giờ vẫn cho học hết bài. Khi ${characterName(app)} ngủ, bố mẹ nhấn giữ 🌙 3 giây để cho thêm 15 phút.`)),
     driveSettingsSection(app),
@@ -96,7 +98,7 @@ function feedSection(app, save, check) {
   }, ...[['auto', `Tự lên mức (đang ở mức ${state.level})`], ['1', 'Mức 1 — 3 món dễ'], ['2', 'Mức 2 — 5 món, có đồ uống'], ['3', 'Mức 3 — đếm (two cookies)']]
     .map(([value, text]) => h('option', { value, text, selected: value === String(state.lock ?? 'auto') })));
   return section(`Cho ${characterName(app)} ăn`,
-    field('Mức chơi', level, 'Tự lên mức sau 2 lần no bụng ở mỗi mức.'),
+    field('Mức chơi Cho Bông ăn', level, 'Tự lên mức sau 2 lần no bụng ở mỗi mức.'),
     check('feedSilly', '🧦 Bất ngờ vui: thỉnh thoảng có đồ không ăn được trong khay (mức 2) — "Yuck! A sock!"'));
 }
 
@@ -125,6 +127,19 @@ function puzzleSection(app, save, check) {
   return section('Ghép hình',
     field('Ghép cả bức tranh — số mảnh', level, 'Tự lên: 2 tranh 2 mảnh → 4 tranh 4 mảnh → 5 tranh 6 mảnh → 9 mảnh. Khóa mức thì vẫn đếm số tranh đã ghép.'),
     check('puzzleFamily', '👨‍👩‍👧 Có ảnh gia đình (Hồ sơ của bé) trong danh sách ghép tranh'));
+}
+
+/** Đếm hình (SPEC-shapes mục 4.3): khóa mức. */
+function shapeSection(app, save) {
+  const state = cleanShapeState(app.settings.shapeCount);
+  const level = h('select', {
+    onchange: (e) => {
+      const lock = e.target.value === 'auto' ? null : Number(e.target.value);
+      save('shapeCount', { ...cleanShapeState(app.settings.shapeCount), lock, ...(lock ? { level: lock } : {}) });
+    },
+  }, ...[['auto', `Tự lên mức (đang ở mức ${state.level})`], ['1', 'Mức 1 — tròn, vuông, tam giác; đếm đến 5'], ['2', 'Mức 2 — thêm chữ nhật, sao, tim; đến 10 + chọn số']]
+    .map(([value, text]) => h('option', { value, text, selected: value === String(state.lock ?? 'auto') })));
+  return section('Đếm hình', field('Mức chơi Đếm hình', level, 'Tự lên mức 2 sau 3 lượt chơi xong ở mức 1.'));
 }
 
 function diagnostics(app) {

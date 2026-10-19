@@ -31,6 +31,8 @@ export function collectItems(lessons, records = new Map()) {
     if (kind === PHONICS_KIND) {
       for (const l of lesson.letters ?? []) add('letter', letterKey(l.letter), l.letter.toUpperCase(), l.words[0]?.emoji ?? '', lesson.id, l);
     } else if (kind === NUMBER_KIND) {
+      // Bài Đếm hình: số chỉ dùng ghi tiến độ (đồ vật là "shape"), không đưa vào Ôn tập / Học cùng Bông.
+      if (lesson.mode === 'shapes') continue;
       for (const x of lesson.numbers ?? []) add('number', numberKey(x.n), String(x.n), x.emoji, lesson.id, x);
     } else if (kind === PHRASE_KIND) {
       for (const p of lesson.phrases ?? []) add('phrase', phraseKey(p.en), p.en, p.emoji, lesson.id, p);

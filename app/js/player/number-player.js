@@ -12,13 +12,19 @@ import { startIndexFor, resumeAfter } from './plan.js';
 import { runSkippable, endSkippable } from './stage-kit.js';
 import { runCompletion } from './completion-stage.js';
 import { runCount, runTap, runGroup, runGameRound } from './number-stages.js';
+import { runShapeQuestion } from './shape-stages.js';
+import { buildShapeQuestions, cleanShapeState, afterShapeRound } from '../shapes.js';
 
 const RUNNERS = { count: runCount, tap: runTap, group: runGroup };
+const SNAPSHOT_MS = 10 * 60_000;
+
+// Đếm hình: lượt đang chơi dở. App ra nền thì màn được dựng lại (continueDirectly) — chơi tiếp đúng câu đang làm.
+let shapeSnapshot = null;
 
 /**
  * @param {{ lessonId: string, start?: 'begin'|'resume' }} params
  */
-export function numberLessonScreen(app, { lessonId, start = 'begin' }) {
+export function numberLessonScreen(app, { lessonId, start = 'begin', continueDirectly = false }) {
   const layout = activityLayout(app, 'number-lesson');
   const urls = [];
   const signal = app.startActivity();
@@ -37,7 +43,8 @@ export function numberLessonScreen(app, { lessonId, start = 'begin' }) {
       app.go('numbers');
       return;
     }
-    const game = lesson.mode === 'game';
+    const shapes = lesson.mode === 'shapes';
+    const game = lesson.mode === 'game' || shapes;
     const teacher = new Teacher(app, { signal, bunny: layout.bunny, stage: layout.stage, replayBtn: layout.replayBtn });
     const ctx = {
       app, teacher, lesson, signal,
@@ -76,15 +83,27 @@ export function numberLessonScreen(app, { lessonId, start = 'begin' }) {
       const records = numberRecords(await app.db.getAll('progress'));
       const mastery = new Map(records.map((r) => [Number(r.word.split(':')[1]), r.mastery]));
       ctx.allowHigh = [...mastery].some(([n, m]) => n > 5 && m > 0);
-      rounds = buildGameRounds([...byN.keys()], mastery, { rounds: lesson.rounds });
-      steps = rounds.map((_, index) => ({ stage: 'game', index }));
+      if (shapes) {
+        // Đếm hình (SPEC-shapes): mức theo cài đặt; câu khởi động "Find a …!" ở mức 1 với loại hình bé chưa gặp.
+        const st = cleanShapeState(app.settings.shapeCount);
+        ctx.shapeLevel = st.level;
+        ctx.shapeSeen = new Set(st.seen);
+        const snap = shapeSnapshot;
+        const fresh = continueDirectly && snap?.lessonId === lesson.id && Date.now() - snap.savedAt < SNAPSHOT_MS;
+        rounds = fresh ? snap.rounds : buildShapeQuestions(st.level, mastery, { rounds: lesson.rounds ?? 5 });
+        ctx.shapeStart = fresh ? snap.index : 0;
+        if (fresh) ctx.shapeSeen = new Set([...ctx.shapeSeen, ...snap.seen]);
+      } else {
+        rounds = buildGameRounds([...byN.keys()], mastery, { rounds: lesson.rounds });
+      }
+      steps = rounds.map((_, index) => ({ stage: shapes ? 'shapes' : 'game', index }));
     } else {
       steps = buildCountSteps(lesson);
     }
 
     // Trò chơi luôn chơi lượt mới; bài đếm có Học tiếp.
     const resume = !game && start === 'resume';
-    let i = resume ? startIndexFor(steps, lesson.resume) : 0;
+    let i = resume ? startIndexFor(steps, lesson.resume) : (ctx.shapeStart ?? 0);
     if (!resume && lesson.resume) {
       lesson.resume = null;
       await saveLesson(lesson);
@@ -95,6 +114,14 @@ export function numberLessonScreen(app, { lessonId, start = 'begin' }) {
       const step = steps[i];
       layout.stage.dataset.stage = `number-${step.stage}`;
       await runSkippable(ctx, signal, () => {
+        if (shapes) {
+          const q = rounds[step.index];
+          shapeSnapshot = { lessonId: lesson.id, rounds, index: step.index, seen: [...ctx.shapeSeen], savedAt: Date.now() };
+          const prev = rounds[step.index - 1];
+          const warmup = ctx.shapeLevel === 1 && !ctx.shapeSeen.has(q.kind);
+          ctx.shapeSeen.add(q.kind);
+          return runShapeQuestion(ctx, q, { level: ctx.shapeLevel, look: prev?.picture !== q.picture, warmup });
+        }
         if (game) {
           const round = rounds[step.index];
           return runGameRound(ctx, round, byN.get(round.n) ?? lesson.numbers[0]);
@@ -108,6 +135,12 @@ export function numberLessonScreen(app, { lessonId, start = 'begin' }) {
     }
 
     layout.setProgress(1);
+    if (shapes) {
+      shapeSnapshot = null;
+      // Đếm số lượt để tự lên mức (áp dụng từ lượt sau); nhớ loại hình bé đã gặp (không cần khởi động lại).
+      const st = afterShapeRound(cleanShapeState(app.settings.shapeCount));
+      await app.setSetting('shapeCount', { ...st, seen: [...ctx.shapeSeen] }).catch(() => {});
+    }
     lesson.timesCompleted = (lesson.timesCompleted ?? 0) + 1;
     lesson.resume = null;
     await saveLesson(lesson);

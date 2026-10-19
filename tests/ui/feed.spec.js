@@ -183,7 +183,7 @@ test('Cài đặt: khóa mức 3 → vào game là mức đếm; tắt bất ng�
   await startApp(page);
   await openParent(page);
   await page.getByRole('button', { name: /Cài đặt/ }).click();
-  await page.getByRole('combobox', { name: 'Mức chơi' }).selectOption('3');
+  await page.getByRole('combobox', { name: /^Mức chơi Cho Bông ăn/ }).selectOption('3');
   await expect.poll(() => page.evaluate(() => window.kidEnglish.settings.feed?.lock)).toBe(3);
   const box = page.getByRole('checkbox', { name: /Bất ngờ vui/ });
   await expect(box).toBeChecked();

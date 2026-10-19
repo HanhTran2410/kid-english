@@ -239,7 +239,7 @@ export async function runTap(ctx, entry) {
 }
 
 /** Hiệu ứng chọn sai: lắc nhẹ. */
-function shake(el) {
+export function shake(el) {
   play('boing');
   el.classList.remove('shake');
   void el.offsetWidth;
@@ -247,7 +247,7 @@ function shake(el) {
 }
 
 /** Ghi kết quả chọn (không bao giờ trừ sao): +1 chỉ khi đúng ngay lần đầu, một lần mỗi số mỗi lượt. */
-async function recordPick(ctx, entry, firstTry) {
+export async function recordPick(ctx, entry, firstTry) {
   const key = numberKey(entry.n);
   const award = firstTry && !ctx.pickedThisRun.has(key) && (ctx.canAward?.(key) ?? true);
   if (firstTry) ctx.pickedThisRun.add(key);
@@ -296,7 +296,7 @@ export async function runGroup(ctx, entry) {
  * Chờ bé chạm một thẻ (nhận cả khi Bông đang nói). Hết giờ thì trả về null.
  * @returns {Promise<HTMLElement|null>}
  */
-function waitChoice(ctx, buttons, ms = TAP_WAIT_MS) {
+export function waitChoice(ctx, buttons, ms = TAP_WAIT_MS) {
   const { signal } = ctx;
   return new Promise((resolve, reject) => {
     const cleanup = () => {

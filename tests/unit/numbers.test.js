@@ -125,7 +125,7 @@ test('tiến độ số (number:n) không lẫn vào từ vựng và câu', () =
 test('bài 11–20: đồ vật, số ít / số nhiều, mã bài cố định để tự thêm cho máy cũ', async () => {
   const { TEEN_ITEMS } = await import('../../app/js/numbers.js');
   const lessons = builtInNumberLessons();
-  assert.deepEqual(lessons.map((l) => l.builtin), ['count-1-10', 'game-1-10', 'count-11-20', 'game-11-20']);
+  assert.deepEqual(lessons.map((l) => l.builtin), ['count-1-10', 'game-1-10', 'count-11-20', 'game-11-20', 'shapes-1']);
   const teen = lessons[2];
   assert.deepEqual(teen.numbers.map((x) => x.n), [11, 12, 13, 14, 15, 16, 17, 18, 19, 20]);
   assert.equal(validateNumberLesson(teen).ok, true);

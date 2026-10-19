@@ -187,7 +187,7 @@ export function lessonDetailView(app, { lessonId }) {
       }
       body.append(rename, await numberDetailSection(app, lesson, thumbs));
       // Ảnh đồ vật (SPEC-numbers mục 14.2): dùng lại phần ảnh lưới của bài từ vựng, mỗi ô là MỘT đồ vật.
-      if (lesson.mode !== 'game') body.append(gridSection(app, numberImageLesson(lesson), urls, 'Ảnh đồ vật — 1 ảnh lưới cho cả bài'));
+      if (!['game', 'shapes'].includes(lesson.mode)) body.append(gridSection(app, numberImageLesson(lesson), urls, 'Ảnh đồ vật — 1 ảnh lưới cho cả bài'));
       body.append(shareSection(app, lesson), section(null, deleteButton(app, lesson)));
       return;
     }
@@ -444,7 +444,7 @@ function shareSection(app, lesson) {
 function kindLabel(lesson) {
   if (isTalkLesson(lesson)) return '🗨️ Hội thoại';
   if (isPhonicsLesson(lesson)) return '🔤 Chữ cái';
-  if (isNumberLesson(lesson)) return lesson.mode === 'game' ? '🔢 Số đếm (trò chơi)' : '🔢 Số đếm';
+  if (isNumberLesson(lesson)) return lesson.mode === 'shapes' ? '🔢 Số đếm (Đếm hình)' : lesson.mode === 'game' ? '🔢 Số đếm (trò chơi)' : '🔢 Số đếm';
   return isPhraseLesson(lesson) ? '💬 Câu nói' : '📚 Từ vựng';
 }
 

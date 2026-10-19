@@ -26,6 +26,10 @@ export const NUMBER_ITEMS = [
 ];
 
 /** Đồ vật cho 11–20 (SPEC-numbers mục 14). */
+/** Bài Đếm hình: mỗi số một hình học (hàng emoji trên thẻ bài là 🔺⚪🟥⭐). */
+const SHAPE_ITEMS = ['🔺', '⚪', '🟥', '⭐', '❤️', '🔺', '⚪', '🟥', '⭐', '❤️']
+  .map((emoji, i) => ({ n: i + 1, item: 'shape', items: 'shapes', emoji }));
+
 export const TEEN_ITEMS = [
   { n: 11, item: 'bee', items: 'bees', emoji: '🐝' },
   { n: 12, item: 'egg', items: 'eggs', emoji: '🥚' },
@@ -50,6 +54,8 @@ export function builtInNumberLessons() {
     { version: 2, kind: NUMBER_KIND, mode: 'game', builtin: 'game-1-10', title: 'Number game', titleVi: 'Chọn số', topic: 'Numbers', emoji: '🎯', numbers: copy(NUMBER_ITEMS), rounds: GAME_ROUNDS },
     { version: 2, kind: NUMBER_KIND, mode: 'count', builtin: 'count-11-20', title: 'Count 11–20', titleVi: 'Đếm từ 11 đến 20', topic: 'Numbers', emoji: '🐝', numbers: copy(TEEN_ITEMS) },
     { version: 2, kind: NUMBER_KIND, mode: 'game', builtin: 'game-11-20', title: 'Number game 11–20', titleVi: 'Chọn số 11–20', topic: 'Numbers', emoji: '🎯', numbers: copy(TEEN_ITEMS), rounds: GAME_ROUNDS },
+    // Đếm hình (SPEC-shapes): số 1–10 dùng cho tiến độ; hàng emoji trên thẻ là các hình học.
+    { version: 2, kind: NUMBER_KIND, mode: 'shapes', builtin: 'shapes-1', title: 'Count the shapes', titleVi: 'Đếm hình', topic: 'Numbers', emoji: '🔺', numbers: SHAPE_ITEMS.map((x) => ({ ...x })), rounds: 5 },
   ];
 }
 
@@ -91,9 +97,9 @@ export function validateNumberLesson(raw) {
   numbers.sort((a, b) => a.n - b.n);
   if (!numbers.length) errors.push('Bài số không có số nào.');
   if (errors.length) return { ok: false, lesson: null, errors };
-  const mode = raw.mode === 'game' ? 'game' : 'count';
+  const mode = ['game', 'shapes'].includes(raw.mode) ? raw.mode : 'count';
   const lesson = { ...raw, kind: NUMBER_KIND, mode, title, numbers };
-  if (mode === 'game') lesson.rounds = Math.min(20, Math.max(1, Number(raw.rounds) || GAME_ROUNDS));
+  if (mode !== 'count') lesson.rounds = Math.min(20, Math.max(1, Number(raw.rounds) || GAME_ROUNDS));
   return { ok: true, lesson, errors };
 }
 
