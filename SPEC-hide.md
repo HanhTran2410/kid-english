@@ -155,9 +155,12 @@ Từ dưới lên:
 - **Thiếu tư thế nào thì dùng Bông SVG cho tư thế đó**, không để khung trống.
 
 ### 7.4 Ảnh bất ngờ (`lessonId = 'hide:items'`)
-- **Dùng lại ảnh bài học** có cùng từ (ảnh "cat", "duck"…).
-  - **Sao chép một lần** khi bố mẹ bấm (bỏ nền). Mỗi bất ngờ chỉ giữ **một** bản; dùng lại lần nữa thì **thay** bản cũ, không tạo thêm.
-  - Ảnh bài học gốc **không bị đổi**. Xóa ảnh bất ngờ thì về emoji.
+- **Dùng lại ảnh có sẵn** cùng tên (0.20.1, giống Cho Bông ăn):
+  - nguồn: **sticker Dán tranh** (`scene:stickers`, đã bỏ nền, sao chép nguyên) **trước**, rồi **ảnh bài học** (mới nhất trước, bỏ nền trắng khi sao chép). 10/15 bất ngờ trùng tên sticker có sẵn;
+  - nút chung **"Dùng lại ảnh đã có (n món)"** cho các bất ngờ chưa có ảnh (lấy ảnh đứng đầu danh sách);
+  - từng món có **"Ảnh có sẵn (n)…"** liệt kê mọi ảnh kèm nguồn (*Dán tranh* / tên bài) để chọn;
+  - **sao chép**: mỗi bất ngờ chỉ giữ **một** bản; dùng lại lần nữa thì **thay** bản cũ. Ảnh gốc **không bị đổi**. Xóa ảnh bất ngờ thì về emoji;
+  - không lấy ảnh của trò chơi khác / hồ sơ làm "ảnh bài học" (`scene: dress: feed: hide: puzzle: profile:`).
 - Đổi ảnh từng bất ngờ; ảnh lưới + cắt cho các bất ngờ chưa có ảnh.
 
 ### 7.5 Ảnh bé (lượt đổi vai)

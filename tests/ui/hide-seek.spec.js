@@ -322,27 +322,58 @@ test('ảnh phòng: "Chưa khớp" không lưu, "Khớp" thì lưu và hiện tr
   await waitState(page, 'found');
 });
 
-test('ảnh bất ngờ: dùng lại ảnh bài học hai lần vẫn chỉ một bản, ảnh gốc không đổi; ảnh hide: không lẫn vào ảnh từ vựng', async ({ page }) => {
+test('ảnh bất ngờ: "Dùng lại ảnh đã có" lấy cả sticker Dán tranh + ảnh bài học; chọn ảnh khác ở từng món; mỗi món chỉ một bản, ảnh gốc không đổi', async ({ page }) => {
   await fakeSpeech(page);
   await startApp(page);
   const lessonId = await page.evaluate(async () => (await window.kidEnglish.db.getAll('lessons'))[0].id);
   await putImage(page, lessonId, 'cat', await pngBytes(page, '#ff8787'));
+  await putImage(page, 'scene:stickers', 'cat', await pngBytes(page, '#ffa94d'));
+  await putImage(page, 'scene:stickers', 'duck', await pngBytes(page, '#ffd43b'));
   await openParent(page);
   await page.getByRole('button', { name: /Ảnh Trốn tìm/ }).click();
-  const reuse = () => page.locator('.sp-admin-item[data-surprise="cat"]').getByRole('button', { name: 'Dùng ảnh bài học' });
-  await reuse().click();
+
+  // Dùng lại hàng loạt: 2 món chưa có ảnh (cat, duck); cat lấy sticker trước (đã bỏ nền), duck chỉ có sticker.
+  await page.getByRole('button', { name: 'Dùng lại ảnh đã có (2 món)' }).click();
   await expect(page.locator('.sp-admin-item[data-surprise="cat"] img')).toBeVisible();
-  await reuse().click();
-  await expect(page.locator('.sp-admin-item[data-surprise="cat"] img')).toBeVisible();
+  await expect(page.locator('.sp-admin-item[data-surprise="duck"] img')).toBeVisible();
+  const sameAs = (word, source) => page.evaluate(async ({ w, l }) => {
+    const db = await import('/js/db.js');
+    const app = window.kidEnglish;
+    const a = await db.getWordImage(app.db, 'hide:items', w);
+    const b = await db.getWordImage(app.db, l, w);
+    return a.data.byteLength === b.data.byteLength;
+  }, { w: word, l: source });
+  expect(await sameAs('duck', 'scene:stickers')).toBe(true); // sticker sao chép nguyên (không bỏ nền lần nữa)
+  expect(await sameAs('cat', 'scene:stickers')).toBe(true);
+  await expect(page.getByRole('button', { name: /^Dùng lại ảnh đã có/ })).toHaveCount(0); // hết món cần dùng lại
+
+  // Chọn ảnh khác cho cat: danh sách có sticker Dán tranh + ảnh bài học; chọn ảnh bài học.
+  const cat = page.locator('.sp-admin-item[data-surprise="cat"]');
+  await cat.getByRole('button', { name: 'Ảnh có sẵn (2)…' }).click();
+  await expect(cat.locator('.fd-admin-cand')).toHaveCount(2);
+  await expect(cat.locator('.fd-admin-cand').first()).toHaveAttribute('data-source', 'sticker');
+  await cat.locator('.fd-admin-cand[data-source="lesson"]').click();
+  await expect.poll(() => sameAs('cat', 'scene:stickers')).toBe(false);
+
   const r = await page.evaluate(async (l) => {
     const db = await import('/js/db.js');
     const app = window.kidEnglish;
     const copies = (await app.db.getAllByIndex('images', 'lessonId', 'hide:items')).filter((i) => i.word === 'cat').length;
-    const original = Boolean(await db.getWordImage(app.db, l, 'cat'));
+    const original = Boolean(await db.getWordImage(app.db, l, 'cat')) && Boolean(await db.getWordImage(app.db, 'scene:stickers', 'cat'));
     await db.removeWordImage(app.db, l, 'cat');
     return { copies, original, vocab: await db.latestImageForWord(app.db, 'cat') };
   }, lessonId);
   expect(r).toEqual({ copies: 1, original: true, vocab: null });
+
+  // Ảnh bất ngờ hiện trong trò chơi khi chạm nhầm.
+  await page.evaluate(() => window.kidEnglish.setSetting('hideSeek', { room: 'bedroom' }));
+  await page.evaluate(() => window.kidEnglish.go('hide-seek'));
+  await waitState(page, 'searching');
+  for (let i = 0; i < 3; i++) {
+    await tapSpot(page, (await wrongSpot(page, i)).id);
+    if (await page.locator('.hs-surprise[data-surprise="cat"] img').count()) break;
+  }
+  await expect(page.locator('.hs-surprise[data-surprise="cat"] img')).toHaveCount(1);
 });
 
 test('HS-10: bé chơi đổi vai bằng ảnh của bé (Hồ sơ) → gói chia sẻ Trốn tìm và gói bài không có ảnh profile:', async ({ page }) => {

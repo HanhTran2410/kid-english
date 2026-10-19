@@ -5,7 +5,8 @@
 import { h, toast, copyText } from '../../ui.js';
 import { setWordImage, removeWordImage, mediaBlob } from '../../db.js';
 import { resizeImage, resizeCover, cutOutSticker } from '../../image.js';
-import { dayKey } from '../../text.js';
+import { dayKey, normalizeWord } from '../../text.js';
+import { STICKER_IMAGES } from '../../sticker-scenes.js';
 import { applyBackup, BackupError } from '../../backup.js';
 import {
   W, H, ROOMS, HIDE_BG_IMAGES, HIDE_BONG_IMAGES, HIDE_ITEM_IMAGES, POSES, POSE_LABEL, roomSvg, roomPrompt,
@@ -28,6 +29,31 @@ const SURPRISE_PROMPT_NOTE = [
 ].join('\n');
 /** Mọi bất ngờ của 5 phòng (không trùng mã). */
 const SURPRISES = [...new Map(ROOMS.flatMap((r) => r.surprises).map((x) => [x.id, x])).values()];
+
+/**
+ * Ảnh có sẵn cùng tên với một bất ngờ: **sticker Dán tranh** trước (đã bỏ nền sẵn), rồi ảnh các bài học (mới nhất trước).
+ * @returns {Promise<Array<{ img: object, source: 'sticker'|'lesson', title: string }>>}
+ */
+export async function reusableFor(db, x) {
+  const stickers = (await db.getAllByIndex('images', 'word', normalizeWord(x.en)).catch(() => []))
+    .filter((img) => img.lessonId === STICKER_IMAGES)
+    .map((img) => ({ img, source: 'sticker', title: 'Dán tranh' }));
+  const lessons = (await lessonImagesFor(db, { en: x.en, grammar: 'count', plural: `${x.en}s` }))
+    .map(({ img, title }) => ({ img, source: 'lesson', title }));
+  return [...stickers, ...lessons];
+}
+
+/**
+ * Dùng lại một ảnh cho bất ngờ: SAO CHÉP sang trò chơi (sticker giữ nguyên vì đã bỏ nền; ảnh bài học thì bỏ nền trắng).
+ * Mỗi bất ngờ chỉ giữ một bản — dùng lại lần nữa thì thay bản cũ. Ảnh gốc không bị đổi.
+ */
+async function useImage(app, x, cand) {
+  const pic = cand.source === 'sticker'
+    ? { blob: mediaBlob(cand.img), mimeType: cand.img.mimeType, width: cand.img.width, height: cand.img.height }
+    : await cutOutSticker(mediaBlob(cand.img));
+  await setWordImage(app.db, { lessonId: HIDE_ITEM_IMAGES, word: x.id, ...pic });
+}
+const sourceName = (c) => (c.source === 'sticker' ? 'sticker Dán tranh' : `bài ${c.title || 'học'}`);
 
 /** Nhận ảnh Trốn tìm từ file của máy khác (ảnh mới hơn thắng). Dùng chung cho trang này và Quản lý bài. */
 export async function acceptHidePayload(app, payload) {
@@ -64,11 +90,12 @@ export function hideAdminView(app) {
   loadHideImages(app).then(async (loaded) => {
     images = loaded;
     const found = new Map();
-    for (const x of SURPRISES) found.set(x.id, await lessonImagesFor(app.db, { en: x.en, grammar: 'count', plural: `${x.en}s` }));
+    for (const x of SURPRISES) found.set(x.id, await reusableFor(app.db, x));
     body.append(
       notice('info', 'Trò chơi chạy ngay bằng tranh vẽ sẵn. Muốn đẹp hơn: thay ảnh từng phòng (theo ảnh bố cục mẫu để đồ vật nằm đúng chỗ bé chạm), ảnh Bông, ảnh các bất ngờ. Ảnh của bé (lượt đổi vai) thêm ở Hồ sơ của bé.'),
       ...ROOMS.map((room) => roomSection(room)),
       bongSection(),
+      reuseAllSection(found),
       surpriseSection(found),
       ...surpriseGrids(),
       shareSection(),
@@ -199,26 +226,37 @@ export function hideAdminView(app) {
           toast(imageErrorMessage(err), 4000);
         }
       });
-      const fromLesson = found.get(x.id) ?? [];
+      const cands = found.get(x.id) ?? [];
+      const pickBox = h('div.fd-admin-pick');
+      // Chọn một trong các ảnh có sẵn (sticker Dán tranh / ảnh bài học), kèm nguồn.
+      const showPicks = () => {
+        if (pickBox.childElementCount) {
+          pickBox.replaceChildren();
+          return;
+        }
+        pickBox.replaceChildren(...cands.map((c) => {
+          const url = URL.createObjectURL(mediaBlob(c.img));
+          urls.push(url);
+          return h('button.fd-admin-cand', {
+            type: 'button', title: sourceName(c), 'aria-label': `Dùng ảnh ${sourceName(c)}`, dataset: { source: c.source },
+            onclick: async () => {
+              try {
+                await useImage(app, x, c);
+                toast(`Đã dùng ảnh ${x.en} của ${sourceName(c)}.`);
+                reload();
+              } catch (err) {
+                toast(imageErrorMessage(err), 4000);
+              }
+            },
+          }, h('img', { src: url, alt: '' }), h('span.muted', { text: c.source === 'sticker' ? 'Dán tranh' : c.title }));
+        }));
+      };
       return h('div.sp-admin-item', { dataset: { surprise: x.id } },
         has ? h('img.fd-admin-face.checker', { src: images.items.get(x.id), alt: '' }) : h('span.fd-admin-face', { text: x.emoji }),
         h('span', { text: x.en }),
         h('span.muted', { text: x.vi }),
         h('button.btn.small', { type: 'button', text: has ? 'Thay ảnh' : 'Chọn ảnh', onclick: () => input.click() }),
-        // Dùng lại ảnh bài học: sao chép (bỏ nền) — mỗi bất ngờ chỉ giữ một bản, dùng lại lần nữa thì thay bản cũ.
-        fromLesson.length ? h('button.btn.small', {
-          type: 'button', text: 'Dùng ảnh bài học',
-          title: fromLesson[0].title ? `Ảnh của bài ${fromLesson[0].title}` : '',
-          onclick: async () => {
-            try {
-              await setWordImage(app.db, { lessonId: HIDE_ITEM_IMAGES, word: x.id, ...await cutOutSticker(mediaBlob(fromLesson[0].img)) });
-              toast(`Đã dùng ảnh ${x.en}${fromLesson[0].title ? ` của bài ${fromLesson[0].title}` : ''}.`);
-              reload();
-            } catch (err) {
-              toast(imageErrorMessage(err), 4000);
-            }
-          },
-        }) : null,
+        cands.length ? h('button.btn.small', { type: 'button', text: `Ảnh có sẵn (${cands.length})…`, onclick: showPicks }) : null,
         has ? h('button.btn.small.danger', {
           type: 'button', text: 'Dùng emoji',
           onclick: async () => {
@@ -226,8 +264,34 @@ export function hideAdminView(app) {
             reload();
           },
         }) : null,
+        pickBox,
         input);
     })));
+  }
+
+  /** Dùng lại ảnh có sẵn cho MỌI bất ngờ chưa có ảnh (sticker Dán tranh trước, rồi ảnh bài học mới nhất). */
+  function reuseAllSection(found) {
+    const todo = SURPRISES.filter((x) => !images.items.has(x.id) && (found.get(x.id) ?? []).length);
+    if (!todo.length) return '';
+    return section('♻️ Dùng lại ảnh đã có',
+      h('p', { text: `Có ${todo.length} bất ngờ chưa có ảnh nhưng trùng tên với sticker Dán tranh hoặc ảnh bài học (${todo.map((x) => x.en).join(', ')}). App sao chép ảnh sang trò chơi (ảnh bài học thì bỏ nền trắng); sửa / xóa ảnh gốc không ảnh hưởng trò chơi. Muốn chọn ảnh khác cho món nào thì bấm "Ảnh có sẵn…" ở món đó.` }),
+      h('button.btn.primary', {
+        type: 'button',
+        text: `Dùng lại ảnh đã có (${todo.length} món)`,
+        onclick: async () => {
+          let saved = 0;
+          for (const x of todo) {
+            try {
+              await useImage(app, x, found.get(x.id)[0]);
+              saved++;
+            } catch {
+              // ảnh hỏng: bỏ qua, bất ngờ đó vẫn dùng emoji
+            }
+          }
+          toast(`Đã dùng lại ${saved} ảnh.`);
+          reload();
+        },
+      }));
   }
 
   function surpriseGrids() {

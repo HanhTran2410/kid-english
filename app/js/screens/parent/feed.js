@@ -17,7 +17,7 @@ import { gridSection, imageErrorMessage } from './lessons.js';
 import { mediaShareSection } from './media-share.js';
 
 const GRID_GROUP = 9; // ảnh lưới 3 × 3
-const GAME_IMAGE = /^(scene|profile|dress|feed):/;
+const GAME_IMAGE = /^(scene|profile|dress|feed|hide|puzzle):/; // ảnh trò chơi / hồ sơ: không phải ảnh bài học
 const KIND_VI = { food: 'Đồ ăn', drink: 'Đồ uống', silly: 'Đồ không ăn được (bất ngờ vui)' };
 
 /** Phần thêm vào prompt ảnh lưới món: nền trắng để app tự cắt nền. */
