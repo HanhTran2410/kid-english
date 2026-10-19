@@ -20,6 +20,7 @@ import { coloringChooser, coloringScreen } from './screens/coloring.js';
 import { feedScreen } from './screens/feed.js';
 import { hideSeekScreen } from './screens/hide-seek.js';
 import { puzzleHome, puzzleList, puzzleScreen } from './screens/puzzle.js';
+import { missingScreen } from './screens/missing.js';
 import { parentScreen } from './screens/parent/index.js';
 
 async function registerServiceWorker(app) {
@@ -120,6 +121,8 @@ async function boot() {
   app.register('puzzle', puzzleHome);
   app.register('puzzle-list', puzzleList);
   app.register('puzzle-play', puzzleScreen);
+  // Tìm đồ còn thiếu (SPEC-missing.md): kéo đồ vào bóng trắng của đồ bị mất.
+  app.register('missing', missingScreen);
   app.register('sleep', sleepScreen);
   app.register('parent', parentScreen);
 

@@ -2,7 +2,7 @@
 // Mỗi lần sửa code: tăng VERSION (trùng APP_VERSION trong js/app.js) để máy tải bản mới.
 // Thêm/bớt file trong app/ thì cập nhật ASSETS (test tests/unit/sw.test.js sẽ báo nếu thiếu).
 
-const VERSION = '0.21.1';
+const VERSION = '0.22.0';
 const CACHE = `kid-english-${VERSION}`;
 
 const ASSETS = [
@@ -67,11 +67,14 @@ const ASSETS = [
   'js/screens/puzzle.js',
   'js/shapes.js',
   'js/player/shape-stages.js',
+  'js/missing.js',
+  'js/screens/missing.js',
   'js/screens/parent/scenes.js',
   'js/screens/parent/dress.js',
   'js/screens/parent/feed.js',
   'js/screens/parent/hide.js',
   'js/screens/parent/puzzle.js',
+  'js/screens/parent/missing.js',
   'js/screens/parent/media-share.js',
   'js/screens/parent/backup.js',
   'js/screens/parent/common.js',
