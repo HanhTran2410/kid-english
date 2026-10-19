@@ -9,6 +9,7 @@ import { parentLayout, goParent, section, field, notice } from './common.js';
 import { driveSettingsSection } from './drive.js';
 import { cleanFeedState } from '../../feed.js';
 import { cleanHideState } from '../../hide-seek.js';
+import { cleanPuzzleState, piecesForNext } from '../../puzzle.js';
 
 export function settingsView(app) {
   const body = parentLayout(app, { title: 'Cài đặt & chẩn đoán', back: () => goParent(app) });
@@ -77,6 +78,7 @@ export function settingsView(app) {
       check('talkPhone', `📞 ${characterName(app)} gọi điện khi bắt đầu bài (chuông reo → bé chạm nghe máy → cuối bài chạm nút đỏ tắt máy)`)),
     feedSection(app, save, check),
     hideSection(app, save, check),
+    puzzleSection(app, save, check),
     section('Thời gian',
       field('Giới hạn mỗi buổi', limit, `Giới hạn mềm: hết giờ vẫn cho học hết bài. Khi ${characterName(app)} ngủ, bố mẹ nhấn giữ 🌙 3 giây để cho thêm 15 phút.`)),
     driveSettingsSection(app),
@@ -111,6 +113,18 @@ function hideSection(app, save, check) {
     field('Gợi ý', level),
     field('Đếm', count, `Bé chạm ${characterName(app)} để bỏ qua phần đếm.`),
     check('hideSeekSwap', '🙋 Đổi vai: bé đi trốn, Bông đi tìm ("Is Na under the bed?")'));
+}
+
+/** Ghép hình (SPEC-puzzle mục 5.3, 5.1): khóa mức ghép tranh, nhóm ảnh gia đình. */
+function puzzleSection(app, save, check) {
+  const state = cleanPuzzleState(app.settings.puzzle);
+  const level = h('select', {
+    onchange: (e) => save('puzzle', { ...cleanPuzzleState(app.settings.puzzle), lock: e.target.value === 'auto' ? null : Number(e.target.value) }),
+  }, ...[['auto', `Tự lên mức (tranh kế tiếp: ${piecesForNext({ ...state, lock: null })} mảnh)`], ['1', 'Mức 1 — 2 rồi 4 mảnh'], ['2', 'Mức 2 — 6 mảnh'], ['3', 'Mức 3 — 9 mảnh']]
+    .map(([value, text]) => h('option', { value, text, selected: value === String(state.lock ?? 'auto') })));
+  return section('Ghép hình',
+    field('Ghép cả bức tranh — số mảnh', level, 'Tự lên: 2 tranh 2 mảnh → 4 tranh 4 mảnh → 5 tranh 6 mảnh → 9 mảnh. Khóa mức thì vẫn đếm số tranh đã ghép.'),
+    check('puzzleFamily', '👨‍👩‍👧 Có ảnh gia đình (Hồ sơ của bé) trong danh sách ghép tranh'));
 }
 
 function diagnostics(app) {

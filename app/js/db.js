@@ -234,7 +234,7 @@ export async function getWordImage(db, lessonId, word) {
  */
 export async function latestImageForWord(db, word) {
   const images = await db.getAllByIndex('images', 'word', normalizeWord(word));
-  return images.filter((img) => !/^(scene|profile|dress|feed|hide):/.test(String(img.lessonId ?? '')))
+  return images.filter((img) => !/^(scene|profile|dress|feed|hide|puzzle):/.test(String(img.lessonId ?? '')))
     .sort((a, b) => b.createdAt - a.createdAt)[0] ?? null;
 }
 

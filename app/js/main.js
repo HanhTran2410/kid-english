@@ -19,6 +19,7 @@ import { dressUpChooser, dressUpScreen } from './screens/dress-up.js';
 import { coloringChooser, coloringScreen } from './screens/coloring.js';
 import { feedScreen } from './screens/feed.js';
 import { hideSeekScreen } from './screens/hide-seek.js';
+import { puzzleHome, puzzleList, puzzleScreen } from './screens/puzzle.js';
 import { parentScreen } from './screens/parent/index.js';
 
 async function registerServiceWorker(app) {
@@ -115,6 +116,10 @@ async function boot() {
   app.register('feed', feedScreen);
   // Bông trốn tìm (SPEC-hide.md): bé tìm Bông theo giới từ; đổi vai thì Bông đi tìm bé.
   app.register('hide-seek', hideSeekScreen);
+  // Ghép hình cùng Bông (SPEC-puzzle.md): ghép bộ phận / ghép cả bức tranh.
+  app.register('puzzle', puzzleHome);
+  app.register('puzzle-list', puzzleList);
+  app.register('puzzle-play', puzzleScreen);
   app.register('sleep', sleepScreen);
   app.register('parent', parentScreen);
 

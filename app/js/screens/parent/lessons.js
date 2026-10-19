@@ -29,6 +29,7 @@ import { isSceneImage } from '../../sticker-scenes.js';
 import { acceptDressPayload } from './dress.js';
 import { acceptFeedPayload } from './feed.js';
 import { acceptHidePayload } from './hide.js';
+import { acceptPuzzlePayload } from './puzzle.js';
 import { DRESS_IMAGES } from '../../dress-up.js';
 import { cleanSound, soundOf, tapLine, MAX_SOUND_CHARS } from '../../word-play.js';
 
@@ -58,7 +59,9 @@ export function lessonsView(app) {
       const hasFeed = payload.images.some((img) => String(img.lessonId ?? '').startsWith('feed:')) || payload.settings.some((s) => s.key === 'feedCustom');
       // File ảnh Trốn tìm (SPEC-hide mục 7.6) cũng nhập ở đây được.
       const hasHide = payload.images.some((img) => String(img.lessonId ?? '').startsWith('hide:'));
-      if (!payload.lessons.length && !sceneImages && !hasDress && !hasFeed && !hasHide) throw new BackupError('File này không có bài học nào.');
+      // File ảnh Ghép hình (SPEC-puzzle mục 6) cũng nhập ở đây được.
+      const hasPuzzle = payload.images.some((img) => img.lessonId === 'puzzle:photos') || payload.settings.some((s) => s.key === 'puzzlePhotos');
+      if (!payload.lessons.length && !sceneImages && !hasDress && !hasFeed && !hasHide && !hasPuzzle) throw new BackupError('File này không có bài học nào.');
       const existing = await listLessons(app.db);
       const before = new Set(existing.map((l) => l.id));
       // Bài mới trùng tên với bài đang có thì đặt tên "… 2", "… 3".
@@ -76,12 +79,14 @@ export function lessonsView(app) {
       const dress = hasDress ? await acceptDressPayload(app, payload) : { images: 0, items: 0 };
       const feed = hasFeed ? await acceptFeedPayload(app, payload) : { images: 0, foods: 0 };
       const hide = hasHide ? await acceptHidePayload(app, payload) : { images: 0 };
+      const puzzle = hasPuzzle ? await acceptPuzzlePayload(app, payload) : { images: 0, photos: 0 };
       const parts = [];
       if (added) parts.push(`nhập ${added} bài mới`);
       if (updated) parts.push(`cập nhật ${updated} bài đã có`);
       if (sceneImages) parts.push(`nhận ${sceneImages} ảnh Dán tranh`);
       if (dress.images || dress.items) parts.push(`nhận ${dress.images} ảnh đồ Mặc đồ${dress.items ? `, ${dress.items} món mới` : ''}`);
       if (hide.images) parts.push(`nhận ${hide.images} ảnh Trốn tìm`);
+      if (puzzle.images || puzzle.photos) parts.push(`nhận ${puzzle.images} ảnh Ghép hình`);
       if (feed.images || feed.foods) parts.push(`nhận ${feed.images} ảnh Cho Bông ăn${feed.foods ? `, ${feed.foods} món mới` : ''}`);
       const summary = parts.length ? `Đã ${parts.join(', ')}` : 'Không có gì thay đổi';
       toast(`${summary}.`, 3500);
