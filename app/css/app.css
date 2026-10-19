@@ -1638,7 +1638,7 @@ img.talk-action-emoji { width: 76%; height: 76%; object-fit: cover; border-radiu
 .sp-card-vi { font-size: 16px; font-weight: 700; color: var(--ink-soft); }
 
 /* Màn dán */
-.child-screen.sp-play { display: grid; grid-template-columns: minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr) auto; gap: 10px; height: 100dvh; min-height: 0; }
+.child-screen.sp-play { display: grid; grid-template-columns: minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr) auto; gap: 10px; height: 100vh; height: 100dvh; min-height: 0; }
 .sp-top { gap: 10px; }
 .sp-back, .sp-request {
   display: grid; place-items: center; flex: none;
@@ -1751,7 +1751,7 @@ details > summary { cursor: pointer; font-weight: 800; padding: 6px 0; }
 .du-kid-doll { height: min(46vh, 340px); aspect-ratio: 1 / 2; }
 .du-kid-doll svg, .du-body svg { width: 100%; height: 100%; display: block; }
 
-.child-screen.du-play { display: grid; grid-template-columns: minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr) auto; gap: 10px; height: 100dvh; min-height: 0; }
+.child-screen.du-play { display: grid; grid-template-columns: minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr) auto; gap: 10px; height: 100vh; height: 100dvh; min-height: 0; }
 .du-stage {
   display: grid; place-items: center; min-height: 0;
   background: radial-gradient(ellipse at 50% 60%, #fff 0 30%, transparent 60%);
@@ -1963,10 +1963,10 @@ details > summary { cursor: pointer; font-weight: 800; padding: 6px 0; }
 .cl-card-vi { font-size: 14px; font-weight: 700; color: var(--ink-soft); }
 
 /* Màn tô */
-.child-screen.cl-play { display: grid; grid-template-columns: minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr) auto; gap: 10px; height: 100dvh; min-height: 0; }
+.child-screen.cl-play { display: grid; grid-template-columns: minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr) auto auto; gap: 8px; height: 100vh; height: 100dvh; min-height: 0; }
 .cl-stage { display: grid; place-items: center; min-height: 0; container-type: size; }
 .cl-paper {
-  width: min(100cqw, 100cqh); aspect-ratio: 1; padding: 2%;
+  width: min(94vw, calc(100vh - 380px)); width: min(100cqw, 100cqh); aspect-ratio: 1; padding: 2%;
   background: #fff; border-radius: 28px; box-shadow: var(--shadow);
   touch-action: manipulation; user-select: none; -webkit-user-select: none;
 }
@@ -1990,12 +1990,14 @@ details > summary { cursor: pointer; font-weight: 800; padding: 6px 0; }
 .cl-swatch.on { transform: translateY(-8px) scale(1.12); outline: 4px solid var(--ink); outline-offset: 2px; }
 .cl-swatch.wanted { box-shadow: 0 0 0 7px var(--yellow); animation: cl-wanted 0.9s ease-in-out infinite; }
 @keyframes cl-wanted { 50% { transform: translateY(-10px) scale(1.15); box-shadow: 0 0 0 8px rgba(255, 209, 102, 0.8); } }
-.cl-play .sp-caption { top: auto; bottom: max(96px, calc(env(safe-area-inset-bottom) + 96px)); max-width: min(92vw, 520px); }
+.cl-say { display: grid; place-items: center; height: 96px; overflow: hidden; }
+.cl-say .caption { position: static; transform: none; max-width: min(94vw, 640px); animation: none; }
+.cl-say .caption-en { font-size: clamp(17px, 2.8vmin, 26px); }
+.cl-say .caption-vi { font-size: clamp(14px, 2.2vmin, 19px); }
 @media (max-width: 600px) {
   .cl-play .sp-title { display: none; }
   .cl-swatch { width: 50px; height: 50px; border-width: 4px; }
   .cl-palette { gap: 8px; }
-  .cl-play .sp-caption { bottom: 140px; }
 }
 @media (prefers-reduced-motion: reduce) {
   .cl-part, .cl-part .cl-ink, .cl-swatch { transition: none; }
@@ -2004,7 +2006,7 @@ details > summary { cursor: pointer; font-weight: 800; padding: 6px 0; }
 
 /* ---------- Cho Bông ăn (SPEC-feed.md) ---------- */
 .home-btn.game-feed { background: var(--mint); }
-.child-screen.fd-play { display: grid; grid-template-columns: minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr) auto; gap: 10px; height: 100dvh; min-height: 0; }
+.child-screen.fd-play { display: grid; grid-template-columns: minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr) auto; gap: 10px; height: 100vh; height: 100dvh; min-height: 0; }
 .fd-stage {
   display: grid; place-items: center; min-height: 0; border-radius: 28px;
   background: radial-gradient(ellipse at 50% 55%, #fff 0 30%, transparent 62%) center / cover no-repeat;
@@ -2074,10 +2076,10 @@ details > summary { cursor: pointer; font-weight: 800; padding: 6px 0; }
 
 /* ---------- Bông trốn tìm (SPEC-hide.md) ---------- */
 .home-btn.game-hide { background: var(--coral); }
-.child-screen.hs-play { display: grid; grid-template-columns: minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr) auto auto; gap: 8px; height: 100dvh; min-height: 0; }
+.child-screen.hs-play { display: grid; grid-template-columns: minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr) auto auto; gap: 8px; height: 100vh; height: 100dvh; min-height: 0; }
 .hs-stage { display: grid; place-items: center; min-height: 0; container-type: size; }
 .hs-scene {
-  position: relative; width: min(100cqw, calc(100cqh * 4 / 3)); aspect-ratio: 4 / 3; border-radius: 28px; overflow: hidden;
+  position: relative; width: min(94vw, calc((100vh - 330px) * 4 / 3)); width: min(100cqw, calc(100cqh * 4 / 3)); aspect-ratio: 4 / 3; border-radius: 28px; overflow: hidden;
   box-shadow: var(--shadow); touch-action: manipulation; user-select: none; -webkit-user-select: none; cursor: pointer;
 }
 .hs-bg, .hs-bg svg, .hs-bg-img { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
@@ -2170,9 +2172,9 @@ details > summary { cursor: pointer; font-weight: 800; padding: 6px 0; }
 .pz-done { position: absolute; top: 4px; right: 6px; font-family: var(--emoji); font-size: 26px; }
 .pz-card-text { font-size: 17px; font-weight: 800; color: var(--ink); }
 /* Màn ghép */
-.child-screen.pz-play { display: grid; grid-template-columns: minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr) auto auto; gap: 8px; height: 100dvh; min-height: 0; }
+.child-screen.pz-play { display: grid; grid-template-columns: minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr) auto auto; gap: 8px; height: 100vh; height: 100dvh; min-height: 0; }
 .pz-stage { display: grid; place-items: center; min-height: 0; container-type: size; }
-.pz-frame { width: min(100cqw, 100cqh); aspect-ratio: 1; padding: 2%; border-radius: 28px; background: #fff; box-shadow: var(--shadow); }
+.pz-frame { width: min(94vw, calc(100vh - 340px)); width: min(100cqw, 100cqh); aspect-ratio: 1; padding: 2%; border-radius: 28px; background: #fff; box-shadow: var(--shadow); }
 .pz-board { position: relative; width: 100%; height: 100%; touch-action: none; user-select: none; -webkit-user-select: none; }
 .pz-board svg { width: 100%; height: 100%; display: block; overflow: visible; }
 .pz-board .pz-ghost.near, .pz-board .pz-ghost.glow { fill: #fff3bf; stroke: #f59f00; }

@@ -125,10 +125,13 @@ export function coloringScreen(app, params = {}) {
   });
   const paper = h('div.cl-paper', { dataset: { pic: pic.id } });
   const palette = h('div.cl-palette', { role: 'radiogroup', 'aria-label': 'Hộp màu' });
+  // Phụ đề nằm hàng riêng (cao cố định) giữa tranh và hộp màu: không đè lên màu / tranh, không làm tranh co giãn.
+  const sayBox = h('div.cl-say');
   app.root.append(
     h('header.child-top.sp-top', {}, homeButton(app), back, resetBtn,
       h('span.sp-title', { text: `🖍️ ${pic.en.charAt(0).toUpperCase()}${pic.en.slice(1)}` }), requestCard, bongBtn),
     h('div.cl-stage', {}, paper),
+    sayBox,
     palette,
   );
 
@@ -141,7 +144,7 @@ export function coloringScreen(app, params = {}) {
     captionEl?.remove();
     captionEl = h('div.caption.sp-caption', { 'aria-live': 'polite' },
       h('span.caption-en', { text: en }), vi ? h('span.caption-vi', { text: vi }) : null);
-    app.root.append(captionEl);
+    sayBox.append(captionEl);
   }
   async function talk(lines) {
     const gen = ++talkGen;
