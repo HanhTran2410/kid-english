@@ -226,6 +226,12 @@ test('Góc bố mẹ → Ảnh Tìm đồ còn thiếu: 4 cảnh riêng; dùng l
   await page.getByRole('button', { name: /^Dùng lại ảnh đã có \(\d+ món\)$/ }).click();
   await expect(page.locator('.ms-admin-scene[data-scene="meal"]')).toBeVisible();
   await expect.poll(() => page.evaluate(async () => Boolean(await (await import('/js/db.js')).getWordImage(window.kidEnglish.db, 'missing:items', 'spoon')))).toBe(true);
+  // Ảnh đồ vật nằm gọn trong ô 64 px (trước đây ảnh hiện to bằng kích thước gốc, tràn ra cả trang).
+  const thumb = page.locator('.ms-admin-scene[data-scene="meal"]').locator('xpath=ancestor::section[1]').locator('.fd-admin-face img').first();
+  await expect(thumb).toBeVisible();
+  const box = await thumb.boundingBox();
+  expect(box.width).toBeLessThanOrEqual(64);
+  expect(box.height).toBeLessThanOrEqual(64);
 
   const bg = await page.evaluate(async () => {
     const c = document.createElement('canvas');

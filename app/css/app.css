@@ -2069,6 +2069,8 @@ details > summary { cursor: pointer; font-weight: 800; padding: 6px 0; }
 .fd-admin-face { display: grid; place-items: center; width: 64px; height: 64px; border-radius: 10px; object-fit: contain; font-family: var(--emoji); font-size: 40px; }
 .fd-admin-face .fd-face { width: 100%; height: 100%; }
 .fd-admin-face .fd-face.emoji { font-size: 40px; }
+.fd-admin-face .ms-img { width: 100%; height: 100%; object-fit: contain; display: block; }
+.fd-admin-face .ms-emoji { font-family: var(--emoji); font-size: 40px; line-height: 1; }
 .fd-admin-pick { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; }
 .fd-admin-pick:empty { display: none; }
 .fd-admin-cand { display: grid; justify-items: center; gap: 2px; width: 76px; padding: 4px; border-radius: 10px; background: #fff; border: 1px solid var(--line); font-size: 11px; }
