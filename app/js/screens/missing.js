@@ -192,6 +192,7 @@ export function missingScreen(app, params = {}) {
     });
     scene.replaceChildren(sceneBackground(pic.scene, images), h('div.ms-layer', {}, ...items));
     scene.dataset.picture = pic.picture.id;
+    scene.dataset.ghost = pic.picture.ghost ?? 'light';
   }
   function renderTray() {
     tray.replaceChildren(...pic.tray.filter((t) => !t.placed).map((t) => {

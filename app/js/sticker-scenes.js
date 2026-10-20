@@ -132,6 +132,59 @@ const JUNGLE_SVG = `
 <ellipse cx="324" cy="186" rx="26" ry="10" fill="#c3c5c8"/>
 <g fill="#ff6b9a"><circle cx="230" cy="190" r="6"/><circle cx="380" cy="140" r="5"/></g>`;
 
+
+const STREET_SVG = `
+<rect width="400" height="190" fill="#bfe9ff"/>
+<g fill="#fff"><ellipse cx="190" cy="34" rx="26" ry="10"/><ellipse cx="208" cy="27" rx="15" ry="10"/><ellipse cx="340" cy="44" rx="22" ry="8"/></g>
+<rect x="18" y="56" width="116" height="10" fill="#e5897a"/>
+<rect x="24" y="64" width="104" height="126" fill="#ffb4a2"/>
+<g fill="#fff6d6"><rect x="38" y="80" width="20" height="22" rx="2"/><rect x="66" y="80" width="20" height="22" rx="2"/><rect x="94" y="80" width="20" height="22" rx="2"/>
+<rect x="38" y="116" width="20" height="22" rx="2"/><rect x="66" y="116" width="20" height="22" rx="2"/><rect x="94" y="116" width="20" height="22" rx="2"/></g>
+<rect x="62" y="152" width="28" height="38" fill="#b0614f"/>
+<rect x="252" y="96" width="124" height="94" fill="#ffd8a8"/>
+<path d="M248 98 H380 V114 H248 Z" fill="#ff8787"/><path d="M270 98 V114 M292 98 V114 M314 98 V114 M336 98 V114 M358 98 V114" stroke="#fff" stroke-width="6"/>
+<rect x="270" y="124" width="84" height="52" fill="#e3f5ff" stroke="#fff" stroke-width="4"/>
+<rect x="194" y="100" width="8" height="90" fill="#555"/>
+<rect x="184" y="56" width="28" height="52" rx="6" fill="#333"/>
+<circle cx="198" cy="68" r="6" fill="#ff6b6b"/><circle cx="198" cy="82" r="6" fill="#ffd166"/><circle cx="198" cy="96" r="6" fill="#63d2a8"/>
+<rect x="134" y="156" width="52" height="8" rx="3" fill="#9b6a43"/><rect x="134" y="170" width="52" height="7" rx="3" fill="#9b6a43"/>
+<path d="M140 177 V190 M180 177 V190" stroke="#6b4a2f" stroke-width="5"/>
+<rect y="186" width="400" height="32" fill="#e0d6cc"/>
+<path d="M0 218 H400" stroke="#b9ab9c" stroke-width="4"/>
+<rect y="218" width="400" height="82" fill="#5f6670"/>
+<path d="M10 258 H50 M90 258 H130 M170 258 H210 M250 258 H290 M330 258 H370" stroke="#fff" stroke-width="5" stroke-linecap="round"/>`;
+
+const PARTY_SVG = `
+<rect width="400" height="210" fill="#ffe4ec"/>
+<path d="M0 22 Q100 52 200 22 T400 22" fill="none" stroke="#c77d93" stroke-width="2"/>
+<g><path d="M20 28 L32 52 L44 32 Z" fill="#ff6b6b"/><path d="M70 38 L80 62 L94 40 Z" fill="#ffd166"/><path d="M122 40 L132 64 L146 40 Z" fill="#63d2a8"/>
+<path d="M174 30 L186 54 L198 30 Z" fill="#4d96ff"/><path d="M226 30 L238 54 L250 32 Z" fill="#c77dff"/><path d="M278 40 L290 64 L302 40 Z" fill="#ff6b6b"/>
+<path d="M330 38 L342 62 L354 36 Z" fill="#ffd166"/><path d="M372 28 L384 50 L396 24 Z" fill="#63d2a8"/></g>
+<g fill="#ffd1dc"><circle cx="60" cy="110" r="5"/><circle cx="210" cy="100" r="5"/><circle cx="350" cy="120" r="5"/><circle cx="140" cy="90" r="4"/></g>
+<rect y="210" width="400" height="90" fill="#e8c39e"/>
+<path d="M0 240 H400 M0 272 H400" stroke="#d6ad84" stroke-width="2"/>
+<rect x="116" y="150" width="182" height="12" rx="4" fill="#c98b55"/>
+<path d="M112 150 H302 L294 170 H120 Z" fill="#fffaf0" stroke="#e9a8bd" stroke-width="2"/><path d="M128 170 Q138 178 148 170 Q158 178 168 170 Q178 178 188 170 Q198 178 208 170 Q218 178 228 170 Q238 178 248 170 Q258 178 268 170 Q278 178 288 170" fill="none" stroke="#e9a8bd" stroke-width="2"/>
+<rect x="132" y="162" width="10" height="72" fill="#a8703f"/><rect x="272" y="162" width="10" height="72" fill="#a8703f"/>
+<rect x="34" y="128" width="10" height="56" rx="3" fill="#7ec8e3"/>
+<rect x="34" y="178" width="58" height="10" rx="3" fill="#7ec8e3"/>
+<path d="M40 188 V228 M86 188 V228" stroke="#5aa9c4" stroke-width="6"/>
+<rect x="316" y="212" width="56" height="44" fill="#c77dff"/>
+<rect x="340" y="212" width="8" height="44" fill="#ffd166"/>
+<path d="M312 212 L330 194 L388 200 L376 214 Z" fill="#b56ef0"/>`;
+
+const SNOW_SVG = `
+<defs><linearGradient id="snow-sky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#a9cdee"/><stop offset="1" stop-color="#e6f2fb"/></linearGradient></defs>
+<rect width="400" height="300" fill="url(#snow-sky)"/>
+<g fill="#fff"><circle cx="160" cy="30" r="3"/><circle cx="220" cy="64" r="3"/><circle cx="300" cy="24" r="3"/><circle cx="360" cy="70" r="3"/><circle cx="190" cy="110" r="3"/><circle cx="250" cy="90" r="2.5"/><circle cx="380" cy="30" r="2.5"/><circle cx="170" cy="150" r="2.5"/></g>
+<path d="M210 172 Q300 96 400 112 V180 H210 Z" fill="#f4f9ff"/>
+<path d="M0 172 Q120 160 240 174 T400 170 V300 H0 Z" fill="#ffffff"/>
+<rect x="72" y="150" width="16" height="44" fill="#8a5a3b"/>
+<path d="M80 40 L30 110 L130 110 Z" fill="#2f9e6a"/><path d="M80 70 L20 150 L140 150 Z" fill="#2f9e6a"/>
+<path d="M80 40 L56 74 Q80 66 104 74 Z" fill="#fff"/><path d="M48 112 Q80 102 112 112 L104 100 L56 100 Z" fill="#fff" opacity="0.9"/>
+<ellipse cx="262" cy="250" rx="92" ry="26" fill="#cfeaff"/><ellipse cx="240" cy="244" rx="40" ry="6" fill="#eaf6ff"/>
+<g fill="#dbe9f5"><circle cx="40" cy="230" r="5"/><circle cx="150" cy="270" r="5"/><circle cx="380" cy="214" r="5"/></g>`;
+
 /**
  * Các tranh. zones: các chỗ theo thứ tự ưu tiên (vùng nhỏ trước, 1–2 vùng nền sau cùng);
  * rect: [x, y, rộng, cao] theo khung 400 × 300; draw: vật cần vẽ ở chỗ đó (prompt ảnh tranh).
@@ -165,7 +218,7 @@ export const SCENES = [
       { id: 'sand', en: 'on the sand', vi: 'trên cát', rect: [0, 202, 400, 98], draw: 'flat open yellow sand' },
     ],
     items: [['fish', '🐠'], ['crab', '🦀'], ['shell', '🐚'], ['octopus', '🐙'], ['dolphin', '🐬'], ['whale', '🐳'], ['shark', '🦈'], ['turtle', '🐢'],
-      ['seal', '🦭'], ['shrimp', '🦐'], ['lobster', '🦞'], ['boat', '⛵'], ['ball', '🏐'], ['ice cream', '🍦'], ['sunglasses', '🕶️'], ['palm tree', '🌴']],
+      ['seal', '🦭'], ['shrimp', '🦐'], ['lobster', '🦞'], ['boat', '⛵'], ['ball', '⚽'], ['ice cream', '🍦'], ['sunglasses', '🕶️'], ['palm tree', '🌴']],
   },
   {
     id: 'bedroom', en: 'Bedroom', vi: 'Phòng ngủ', emoji: '🛏️', intro: "Let's play in the bedroom!", svg: BEDROOM_SVG,
@@ -237,6 +290,49 @@ export const SCENES = [
     items: [['monkey', '🐒'], ['lion', '🦁'], ['tiger', '🐅'], ['elephant', '🐘'], ['giraffe', '🦒'], ['zebra', '🦓'], ['snake', '🐍'], ['parrot', '🦜'],
       ['crocodile', '🐊'], ['hippo', '🦛'], ['gorilla', '🦍'], ['sloth', '🦥'], ['frog', '🐸'], ['butterfly', '🦋'], ['banana', '🍌'], ['flamingo', '🦩']],
   },
+  {
+    id: 'street', en: 'Street', vi: 'Đường phố', emoji: '🚦', intro: "Let's play in the street!", svg: STREET_SVG,
+    setting: 'a quiet city street',
+    zones: [
+      { id: 'roof', en: 'on the roof', vi: 'trên mái nhà', rect: [16, 40, 120, 26], draw: 'the flat top of a tall pink building' },
+      { id: 'window', en: 'in the window', vi: 'trong cửa kính', rect: [266, 120, 92, 60], draw: 'a big empty shop window' },
+      { id: 'bench', en: 'on the bench', vi: 'trên ghế', rect: [128, 146, 64, 40], draw: 'a simple wooden bench on the sidewalk' },
+      { id: 'building', en: 'on the building', vi: 'trên tòa nhà', rect: [24, 66, 104, 120], draw: 'the front of a tall pink building with small windows and a door' },
+      { id: 'sidewalk', en: 'on the sidewalk', vi: 'trên vỉa hè', rect: [0, 186, 400, 32], draw: 'a light gray sidewalk' },
+      { id: 'road', en: 'on the road', vi: 'trên đường', rect: [0, 218, 400, 82], draw: 'a dark gray road with white dashed lines' },
+      { id: 'sky', en: 'in the sky', vi: 'trên trời', rect: [0, 0, 400, 186], draw: 'open light-blue sky with two small clouds' },
+    ],
+    items: [['car', '🚗'], ['bus', '🚌'], ['taxi', '🚕'], ['police car', '🚓'], ['fire truck', '🚒'], ['ambulance', '🚑'], ['truck', '🚚'], ['bicycle', '🚲'],
+      ['motorbike', '🛵'], ['helicopter', '🚁'], ['plane', '✈️'], ['traffic light', '🚦'], ['dog', '🐕'], ['cat', '🐈'], ['bird', '🐦'], ['balloon', '🎈']],
+  },
+  {
+    id: 'party', en: 'Birthday party', vi: 'Sinh nhật', emoji: '🎂', intro: "Let's have a birthday party!", svg: PARTY_SVG,
+    setting: 'a birthday party room',
+    zones: [
+      { id: 'table', en: 'on the table', vi: 'trên bàn', rect: [112, 122, 190, 36], draw: 'the empty top of a party table with a white tablecloth' },
+      { id: 'under-table', en: 'under the table', vi: 'dưới gầm bàn', rect: [124, 166, 166, 68], draw: 'the empty floor under the party table' },
+      { id: 'chair', en: 'on the chair', vi: 'trên ghế', rect: [28, 148, 70, 40], draw: 'a simple empty blue chair' },
+      { id: 'box', en: 'in the box', vi: 'trong hộp quà', rect: [308, 194, 74, 64], draw: 'a big open purple gift box with its lid tipped back' },
+      { id: 'wall', en: 'on the wall', vi: 'trên tường', rect: [0, 0, 400, 210], draw: 'a light pink wall with a string of colorful triangle flags along the top' },
+      { id: 'floor', en: 'on the floor', vi: 'trên sàn', rect: [0, 210, 400, 90], draw: 'a plain wooden floor' },
+    ],
+    items: [['birthday cake', '🎂'], ['cupcake', '🧁'], ['balloon', '🎈'], ['gift', '🎁'], ['party popper', '🎉'], ['candy', '🍬'], ['lollipop', '🍭'], ['ice cream', '🍦'],
+      ['pizza', '🍕'], ['juice', '🧃'], ['cookie', '🍪'], ['donut', '🍩'], ['teddy bear', '🧸'], ['candle', '🕯️'], ['cat', '🐈'], ['dog', '🐕']],
+  },
+  {
+    id: 'snow', en: 'Snow', vi: 'Mùa đông tuyết', emoji: '⛄', intro: "Let's play in the snow!", svg: SNOW_SVG,
+    setting: 'a snowy winter day',
+    zones: [
+      { id: 'tree', en: 'in the tree', vi: 'trên cây thông', rect: [16, 40, 128, 112], draw: 'a big green pine tree with a little snow on it' },
+      { id: 'under-tree', en: 'under the tree', vi: 'dưới gốc cây', rect: [0, 152, 150, 56], draw: 'the brown trunk and the snow right under the pine tree' },
+      { id: 'ice', en: 'on the ice', vi: 'trên mặt băng', rect: [168, 222, 188, 56], draw: 'a small frozen pond of light-blue ice' },
+      { id: 'hill', en: 'on the hill', vi: 'trên đồi tuyết', rect: [220, 104, 180, 66], draw: 'a soft white snowy hill' },
+      { id: 'sky', en: 'in the sky', vi: 'trên trời', rect: [0, 0, 400, 172], draw: 'a pale winter sky with a few falling snowflakes' },
+      { id: 'snow', en: 'on the snow', vi: 'trên tuyết', rect: [0, 172, 400, 128], draw: 'flat open white snow' },
+    ],
+    items: [['snowman', '☃️'], ['penguin', '🐧'], ['polar bear', '🐻‍❄️'], ['seal', '🦭'], ['fox', '🦊'], ['owl', '🦉'], ['deer', '🦌'], ['rabbit', '🐇'],
+      ['squirrel', '🐿️'], ['sled', '🛷'], ['snowflake', '❄️'], ['scarf', '🧣'], ['ice skate', '⛸️'], ['pine tree', '🌲'], ['gift', '🎁'], ['star', '⭐']],
+  },
 ].map((scene) => ({ ...scene, items: scene.items.map(([name, emoji]) => ({ id: itemId(name), name, emoji })) }));
 
 function itemId(name) {
@@ -276,6 +372,22 @@ export function placedSentence(item, zone) {
 
 /** "Put the duck in the water!" */
 export const requestSentence = (item, zone) => `Put the ${item.name} ${zone.en}!`;
+
+/** Bông hỏi ngược (SPEC-scenes mục 11): "Where is the lion?" / "Where are the grapes?" */
+export const findSentence = (item) => `Where ${PLURAL.has(item.name) ? 'are' : 'is'} the ${item.name}?`;
+/** Hỏi ngược khi tranh có ít nhất chừng này LOẠI sticker (ít hơn thì quá dễ). */
+export const FIND_MIN_KINDS = 3;
+
+/**
+ * Sticker để Bông hỏi "Where is …?": một loại sticker đang có trong tranh, khác loại vừa hỏi.
+ * Tranh có ít hơn FIND_MIN_KINDS loại thì không hỏi (null).
+ */
+export function pickFind(placed, lastId = null, rng = Math.random) {
+  const kinds = [...new Set(placed.map((p) => p.s))].filter((id) => ITEM_BY_ID.has(id));
+  if (kinds.length < FIND_MIN_KINDS) return null;
+  const pool = kinds.filter((id) => id !== lastId);
+  return ITEM_BY_ID.get(pool[Math.floor(rng() * pool.length)]);
+}
 
 const clamp = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
 
@@ -400,6 +512,40 @@ const PROMPT_HINTS = {
       water: { notes: ['A calm river crossing the whole width with a few ripple marks; no rocks, logs or animals in it.'] },
       sky: { notes: ['Light and calm; no birds.'] },
       grass: { notes: ['Mostly open, with only a few small, low bushes far in the back.'] },
+    },
+  },
+  street: {
+    avoid: ['cars', 'people', 'shop signs', 'trees', 'lamp posts', 'extra buildings', 'bikes', 'birds'],
+    zones: {
+      roof: { joins: 'building', notes: ['A plain flat roof edge; nothing standing on it.'] },
+      window: { notes: ['One big plain shop window, empty inside, under a striped awning; no sign and no text.'] },
+      bench: { notes: ['Front view, one simple empty bench next to a traffic light.'] },
+      building: { notes: ['Front view, simple rows of small windows and one door; no signs, no balconies.'] },
+      sidewalk: { notes: ['Plain and empty.'] },
+      road: { notes: ['Completely empty: no cars, no zebra crossing.'] },
+      sky: { notes: ['At most two small clouds; no birds, planes or balloons.'] },
+    },
+  },
+  party: {
+    avoid: ['food', 'cakes', 'balloons', 'presents other than the one box', 'people', 'pets', 'toys', 'banners with text'],
+    zones: {
+      table: { notes: ['The table top is completely empty (no cake, no plates).'] },
+      'under-table': { joins: 'table', notes: ['Keep the floor under the table empty.'] },
+      chair: { notes: ['One simple chair, side view, nothing on the seat.'] },
+      box: { notes: ['Open at the top and empty inside; no ribbon tag and no text.'] },
+      wall: { notes: ['Plain light wall; only the string of triangle flags along the top.'] },
+      floor: { notes: ['Plain and empty.'] },
+    },
+  },
+  snow: {
+    avoid: ['animals', 'people', 'snowmen', 'sleds', 'houses', 'extra trees', 'rocks', 'fences', 'mountains with peaks'],
+    zones: {
+      tree: { joins: 'under-tree', notes: ['One simple pine tree; no decorations, no animals in it.'] },
+      'under-tree': { notes: ['Keep the snow under the tree open and empty.'] },
+      ice: { notes: ['A simple oval of light-blue ice, clearly separate from the snow; nobody on it.'] },
+      hill: { notes: ['One gentle rounded hill, empty.'] },
+      sky: { notes: ['Calm and pale, a few small falling snowflakes; no sun, no birds.'] },
+      snow: { notes: ['Broad, flat, open white snow.'] },
     },
   },
 };

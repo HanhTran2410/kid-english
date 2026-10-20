@@ -6,6 +6,7 @@ import assert from 'node:assert/strict';
 import {
   SCENES, SCENE_BY_ID, ITEM_BY_ID, SCENE_W, SCENE_H, MAX_PER_SCENE,
   zoneAt, zoneBox, placedSentence, requestSentence, cleanPlacements, pickRequest, sceneBackgroundPrompt, isSceneImage,
+  findSentence, pickFind, FIND_MIN_KINDS,
 } from '../../app/js/sticker-scenes.js';
 import { whiteBackgroundAlpha, coverCrop, gridShape } from '../../app/js/image.js';
 
@@ -19,8 +20,8 @@ const pointIn = (scene, zone) => {
   throw new Error(`${scene.id}/${zone.id} không có điểm nào`);
 };
 
-test('7 tranh; mã chỗ không trùng; vùng nằm trong tranh; câu có giới từ in / on / under', () => {
-  assert.deepEqual(SCENES.map((s) => s.id), ['farm', 'beach', 'bedroom', 'park', 'kitchen', 'space', 'jungle']);
+test('10 tranh; mã chỗ không trùng; vùng nằm trong tranh; câu có giới từ in / on / under', () => {
+  assert.deepEqual(SCENES.map((s) => s.id), ['farm', 'beach', 'bedroom', 'park', 'kitchen', 'space', 'jungle', 'street', 'party', 'snow']);
   for (const scene of SCENES) {
     const ids = scene.zones.map((z) => z.id);
     assert.equal(new Set(ids).size, ids.length, scene.id);
@@ -231,4 +232,30 @@ test('cắt ảnh tranh 4:3: cắt giữa, bỏ bớt hai bên hoặc trên dư�
   const wide = coverCrop(1920, 1080, 4 / 3);
   assert.equal(wide.sw, 1440);
   assert.equal(wide.sx, 240);
+});
+
+test('Bông hỏi ngược "Where is …?": chỉ hỏi sticker đang có trong tranh, khác lần vừa hỏi; tranh ít hơn 3 loại thì không hỏi', () => {
+  assert.equal(findSentence(ITEM_BY_ID.get('lion')), 'Where is the lion?');
+  assert.equal(findSentence(ITEM_BY_ID.get('grapes')), 'Where are the grapes?');
+  assert.equal(FIND_MIN_KINDS, 3);
+  const two = [{ s: 'cow', x: 10, y: 10 }, { s: 'cow', x: 20, y: 20 }, { s: 'pig', x: 30, y: 30 }];
+  assert.equal(pickFind(two), null);
+  const three = [...two, { s: 'duck', x: 40, y: 40 }, { s: 'nope', x: 1, y: 1 }];
+  for (let i = 0; i < 30; i++) {
+    const it = pickFind(three, 'cow');
+    assert.ok(['pig', 'duck'].includes(it.id), it.id);
+  }
+});
+
+test('3 tranh mới: Đường phố (xe cộ), Sinh nhật, Mùa đông tuyết — sticker mới, tên trùng dùng chung emoji với tranh cũ', () => {
+  const names = (id) => SCENE_BY_ID.get(id).items.map((i) => i.name);
+  assert.ok(['bus', 'fire truck', 'ambulance', 'traffic light'].every((n) => names('street').includes(n)));
+  assert.ok(['birthday cake', 'gift', 'balloon'].every((n) => names('party').includes(n)));
+  assert.ok(['snowman', 'penguin', 'polar bear'].every((n) => names('snow').includes(n)));
+  // Cùng mã thì cùng emoji (một ảnh dùng chung): balloon, cat, dog, car, rabbit, gift…
+  const byId = new Map();
+  for (const it of SCENES.flatMap((s) => s.items)) {
+    if (byId.has(it.id)) assert.equal(byId.get(it.id), it.emoji, it.id);
+    byId.set(it.id, it.emoji);
+  }
 });

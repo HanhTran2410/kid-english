@@ -37,7 +37,7 @@ async function openScene(page, name) {
   await expect(page.locator('.tray-sticker').first()).toBeVisible();
 }
 
-test('góc trò chơi: thẻ Dán tranh, Mặc đồ, Chọn từ (không có Chọn số); Dán tranh có 7 tranh, mỗi tranh đủ bộ sticker theo chủ đề', async ({ page }) => {
+test('góc trò chơi: thẻ Dán tranh, Mặc đồ, Chọn từ (không có Chọn số); Dán tranh có 10 tranh, mỗi tranh đủ bộ sticker theo chủ đề', async ({ page }) => {
   await fakeSpeech(page);
   await startApp(page);
   await page.getByRole('button', { name: 'Trò chơi' }).click();
@@ -47,7 +47,7 @@ test('góc trò chơi: thẻ Dán tranh, Mặc đồ, Chọn từ (không có Ch
   await expect(page.getByRole('button', { name: /Chọn số/ })).toHaveCount(0);
   await expect(page.getByRole('button', { name: 'Mặc đồ' })).toBeVisible();
   await page.getByRole('button', { name: 'Dán tranh' }).click();
-  await expect(page.locator('.sp-card')).toHaveCount(7);
+  await expect(page.locator('.sp-card')).toHaveCount(10);
   // Không cần sticker trong album: tranh nào cũng có đủ bộ sticker theo chủ đề.
   await page.getByRole('button', { name: 'Bãi biển' }).click();
   await expect(page.locator('.tray-sticker')).toHaveCount(16);
@@ -144,6 +144,38 @@ test('dán tranh: thả ngoài tranh và ngoài khay → về chỗ cũ; chạm 
   await expect(page.locator('.sp-request')).toBeVisible();
 });
 
+test('Bông hỏi ngược: sau một việc dán, chạm Bông → "Where is the …?"; chạm nhầm → "That\'s the …!", nhầm 2 lần sticker đúng nhún; chạm đúng → "Yes! The … is …!"', async ({ page }) => {
+  await fakeSpeech(page);
+  await startApp(page);
+  await page.evaluate(() => window.kidEnglish.setSetting('stickerScenes', {
+    last: 'farm', farm: [{ s: 'cow', x: 17, y: 25 }, { s: 'duck', x: 54, y: 85 }, { s: 'pig', x: 50, y: 60 }],
+  }));
+  await openScene(page, 'Nông trại');
+  // Việc đầu tiên luôn là dán vào chỗ.
+  await page.getByRole('button', { name: 'Bông giao việc' }).click();
+  await expect(page.locator('.sp-request')).toHaveAttribute('data-kind', 'put');
+  const sid = await page.locator('.sp-request').getAttribute('data-sticker');
+  const zid = await page.locator('.zone-target').getAttribute('data-zone');
+  await page.locator(`.tray-sticker[data-sticker="${sid}"]`).scrollIntoViewIfNeeded();
+  await drag(page, page.locator(`.tray-sticker[data-sticker="${sid}"]`), await zonePoint(page, 'farm', zid));
+  await expect.poll(() => lastSpoken(page)).toMatch(/^Yay! The /);
+  // Việc tiếp theo: hỏi ngược.
+  await page.getByRole('button', { name: 'Bông giao việc' }).click();
+  await expect(page.locator('.sp-request')).toHaveAttribute('data-kind', 'find');
+  await expect(page.locator('.zone-target')).toHaveCount(0);
+  const want = await page.locator('.sp-request').getAttribute('data-sticker');
+  await expect.poll(() => lastSpoken(page)).toBe(`Where is the ${want.replace(/-/g, ' ')}?`);
+  const wrong = page.locator(`.placed:not([data-sticker="${want}"])`).first();
+  const wrongName = (await wrong.getAttribute('data-sticker')).replace(/-/g, ' ');
+  await wrong.click();
+  await expect.poll(() => lastSpoken(page)).toBe(`That's the ${wrongName}! Where is the ${want.replace(/-/g, ' ')}?`);
+  await wrong.click();
+  await expect(page.locator(`.placed[data-sticker="${want}"]`).first()).toHaveClass(/bounce/);
+  await page.locator(`.placed[data-sticker="${want}"]`).first().click();
+  await expect.poll(() => lastSpoken(page)).toMatch(new RegExp(`^Yes! The ${want.replace(/-/g, ' ')} (is|are) (in|on|under) the `));
+  await expect(page.locator('.sp-request')).toBeHidden();
+});
+
 /** Ảnh thử: nền trắng, một hình tròn đỏ viền đen ở giữa (PNG). */
 async function testImage(page, width, height) {
   const b64 = await page.evaluate(([w, hgt]) => {
@@ -170,7 +202,7 @@ test('Góc bố mẹ: thay ảnh một sticker (tự bỏ nền trắng) và ả
   await startApp(page);
   await openParent(page);
   await page.getByRole('button', { name: /Ảnh Dán tranh/ }).click();
-  await expect(page.locator('.menu-item')).toHaveCount(7);
+  await expect(page.locator('.menu-item')).toHaveCount(10);
   await page.getByRole('button', { name: /Nông trại/ }).click();
 
   // Copy prompt ảnh tranh có bố cục theo %.
@@ -267,7 +299,7 @@ test('Góc bố mẹ: dùng lại ảnh có sẵn ở bài học làm sticker (t
   });
   await openParent(page);
   await page.getByRole('button', { name: /Ảnh Dán tranh/ }).click();
-  // Trang danh sách: dùng lại cho cả 7 tranh (cow ở Nông trại; apple ở Nông trại + Nhà bếp → 1 ảnh).
+  // Trang danh sách: dùng lại cho cả 10 tranh (cow ở Nông trại; apple ở Nông trại + Nhà bếp → 1 ảnh).
   await expect(page.getByRole('button', { name: 'Dùng lại 2 ảnh' })).toBeVisible();
   await page.getByRole('button', { name: 'Dùng lại 2 ảnh' }).click();
   await expect(page.getByText(/Không có ảnh nào trong bài học trùng tên sticker/)).toBeVisible();

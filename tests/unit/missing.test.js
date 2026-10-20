@@ -7,8 +7,8 @@ import {
   cleanMissingState, afterMissingRound, near, dropRadius, withArticle, yesLine, nameLine, notBelongLine, allBackLine, ownScenePrompt,
 } from '../../app/js/missing.js';
 
-test('13 tranh (9 cảnh Dán tranh + 4 cảnh riêng); đồ vật có thật trong cảnh, trong khung, không chồng nhau, đủ to', () => {
-  assert.equal(PICTURES.length, 13);
+test('16 tranh (12 tranh cảnh Dán tranh + 4 cảnh riêng); đồ vật có thật trong cảnh, trong khung, không chồng nhau, đủ to', () => {
+  assert.equal(PICTURES.length, 16);
   assert.equal(OWN_SCENES.length, 4);
   assert.deepEqual(PICTURES.filter((p) => sceneOf(p.scene).own).map((p) => p.scene).sort(), ['bath', 'meal', 'picnic', 'study']);
   for (const p of PICTURES) {

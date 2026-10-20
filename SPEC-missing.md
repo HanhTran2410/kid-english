@@ -214,3 +214,7 @@ Mỗi tranh là `{ id, scene, en, vi, items: [{ item, x, y, size }] }` trên khu
 **Không làm theo review (ghi lại lý do):**
 - *Đổi tên `rounds` thành `completedSessionsAtLevel`*: giữ `rounds` cho cùng dạng với `feedGame`, `shapeGame`; nghĩa đã ghi ở mục 5.5.
 - *Thêm trường `instanceId` riêng*: mã ô `item` đã duy nhất trong tranh và tách khỏi tên tiếng Anh (`name`), nên đúng vai trò đó.
+
+## 11. Thêm tranh (app 0.24.0)
+- **3 tranh mới** theo 3 cảnh Dán tranh mới: đường phố, tiệc sinh nhật, ngày tuyết rơi. Tổng 16 tranh.
+- **Tranh tuyết** nền gần như trắng nên bóng trắng khó thấy: tranh có `ghost: 'dark'` thì bóng màu **xám đậm** (opacity 0.45; mức 3 là 0.3), viền trắng, gợi ý vẫn lấp lánh vàng.

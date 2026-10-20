@@ -9,7 +9,7 @@ import { homeButton } from '../player/layout.js';
 import { createBunny } from '../player/teacher.js';
 import {
   SCENES, SCENE_BY_ID, ITEM_BY_ID, MAX_PER_SCENE, DROPS_PER_REQUEST, STICKER_IMAGES, BACKGROUND_IMAGES,
-  zoneAt, zoneBox, placedSentence, requestSentence, cleanPlacements, pickRequest,
+  zoneAt, zoneBox, placedSentence, requestSentence, cleanPlacements, pickRequest, findSentence, pickFind,
 } from '../sticker-scenes.js';
 
 const DRAG_START_PX = 8; // dịch ngón tay quá chừng này thì là kéo, không phải chạm
@@ -110,6 +110,11 @@ export function stickerSceneScreen(app, params = {}) {
   let selected = null; // sticker đang chọn trong khay (chạm sticker → chạm chỗ trong tranh)
   let request = null; // việc Bông giao: { sticker, zone }
   let lastRequest = null;
+  // Bông hỏi ngược "Where is the lion?" (xen kẽ với việc dán): sticker cần tìm, lần chạm nhầm.
+  let find = null;
+  let lastFindId = null;
+  let findMisses = 0;
+  let lastKind = null; // 'put' | 'find'
   let freeDrops = 0;
   let press = null;
   let ghost = null;
@@ -133,7 +138,7 @@ export function stickerSceneScreen(app, params = {}) {
       if (request) {
         showWanted();
         talk([requestLine(request)]);
-      }
+      } else if (find) talk([findLine(find)]);
     },
   });
   const backBtn = h('button.sp-back', {
@@ -209,6 +214,7 @@ export function stickerSceneScreen(app, params = {}) {
   }
   const requestLine = (r) => [requestSentence(r.sticker, r.zone), `Đặt ${r.sticker.emoji} ${r.zone.vi}`];
   const placedLine = (sticker, zone) => [placedSentence(sticker, zone), `${sticker.emoji} ${zone.vi}`];
+  const findLine = (sticker) => [findSentence(sticker), `${sticker.emoji} ở đâu nhỉ?`];
 
   // ---------- Vẽ ----------
   function save() {
@@ -236,8 +242,16 @@ export function stickerSceneScreen(app, params = {}) {
 
   function renderTarget() {
     sceneEl.querySelector('.zone-target')?.remove();
-    requestCard.hidden = !request;
+    requestCard.hidden = !request && !find;
+    requestCard.classList.toggle('find', Boolean(find));
     for (const b of tray.children) b.classList.toggle('wanted', Boolean(request) && b.dataset.sticker === request.sticker.id);
+    if (find) {
+      requestCard.replaceChildren(itemFace(find, images), h('span.sp-ask', { text: '?' }));
+      requestCard.dataset.sticker = find.id;
+      requestCard.dataset.kind = 'find';
+      return;
+    }
+    requestCard.dataset.kind = 'put';
     if (!request) return;
     requestCard.replaceChildren(itemFace(request.sticker, images));
     requestCard.dataset.sticker = request.sticker.id;
@@ -310,10 +324,11 @@ export function stickerSceneScreen(app, params = {}) {
     const lines = [placedLine(sticker, zone)];
     freeDrops += 1;
     let asked = false;
-    if (!request && freeDrops >= DROPS_PER_REQUEST) {
-      request = pickRequest(scene, placed, lastRequest);
-      asked = Boolean(request);
-      if (request) lines.push(requestLine(request));
+    if (!request && !find && freeDrops >= DROPS_PER_REQUEST) {
+      const task = newTask();
+      asked = task === 'put';
+      if (task === 'put') lines.push(requestLine(request));
+      else if (task === 'find') lines.push(findLine(find));
     }
     renderPlaced();
     updateTray();
@@ -329,10 +344,62 @@ export function stickerSceneScreen(app, params = {}) {
     btn.scrollIntoView({ block: 'nearest', inline: 'center', behavior: reduce ? 'auto' : 'smooth' });
   }
 
+  /**
+   * Việc mới: xen kẽ "dán vào chỗ" và "tìm sticker" (khi tranh có đủ loại sticker để hỏi).
+   * @returns {'put' | 'find' | null}
+   */
+  function newTask() {
+    freeDrops = 0;
+    findMisses = 0;
+    if (lastKind === 'put') {
+      find = pickFind(placed, lastFindId);
+      if (find) {
+        lastKind = 'find';
+        renderTarget();
+        return 'find';
+      }
+    }
+    request = pickRequest(scene, placed, lastRequest);
+    if (request) lastKind = 'put';
+    renderTarget();
+    return request ? 'put' : null;
+  }
+
+  /** Bé chạm một sticker trong tranh khi Bông đang hỏi "Where is …?". */
+  function answerFind(p) {
+    const sticker = ITEM_BY_ID.get(p.sid);
+    const { x, y } = placed[p.index];
+    if (p.sid === find.id) {
+      lastFindId = find.id;
+      find = null;
+      findMisses = 0;
+      freeDrops = 0;
+      renderTarget();
+      play('cheer');
+      bunny.set('clap');
+      setTimeout(() => bunny.set('idle'), 1600);
+      talk([[`Yes! ${placedSentence(sticker, zoneAt(scene, x, y))}`, `Đúng rồi! ${sticker.emoji} ${zoneAt(scene, x, y).vi}`]]);
+      return;
+    }
+    findMisses += 1;
+    play('boing');
+    // Nhầm 2 lần: sticker đúng nhún để gợi ý.
+    if (findMisses >= 2) {
+      for (const el of layer.querySelectorAll(`.placed[data-sticker="${find.id}"]`)) {
+        el.classList.remove('bounce');
+        void el.offsetWidth;
+        el.classList.add('bounce');
+      }
+    }
+    talk([[`That's the ${sticker.name}! ${findSentence(find)}`, `Đó là ${sticker.emoji}! ${find.emoji} ở đâu nhỉ?`]]);
+  }
+
   function clearAll() {
     placed = [];
+    find = null;
     request = null;
     lastRequest = null;
+    lastKind = null;
     freeDrops = 0;
     selected = null;
     play('whoosh');
@@ -344,6 +411,8 @@ export function stickerSceneScreen(app, params = {}) {
 
   function remove(index) {
     placed.splice(index, 1);
+    // Bỏ hết sticker đang được hỏi khỏi tranh: thôi hỏi.
+    if (find && !placed.some((p) => p.s === find.id)) find = null;
     play('whoosh');
     save();
     renderPlaced();
@@ -352,13 +421,14 @@ export function stickerSceneScreen(app, params = {}) {
 
   function giveRequest() {
     // Đang có việc: chỉ nhắc lại, không giao việc mới.
-    if (!request) {
-      request = pickRequest(scene, placed, lastRequest);
-      freeDrops = 0;
-      renderTarget();
+    if (find) {
+      talk([findLine(find)]);
+      return;
     }
+    if (!request) newTask();
+    if (find) talk([findLine(find)]);
     // Không còn việc nào làm được (tranh đầy…): Bông khen, bé chơi tự do.
-    if (!request) talk([['Great job!', 'Giỏi quá!']]);
+    else if (!request) talk([['Great job!', 'Giỏi quá!']]);
     else {
       showWanted();
       talk([requestLine(request)]);
@@ -456,6 +526,8 @@ export function stickerSceneScreen(app, params = {}) {
       selected = selected === p.sid ? null : p.sid;
       updateTray();
       talk([[`${capital(sticker.name)}!`, sticker.emoji]]);
+    } else if (p.kind === 'placed' && find) {
+      answerFind(p);
     } else if (p.kind === 'placed') {
       const sticker = ITEM_BY_ID.get(p.sid);
       const { x, y } = placed[p.index];

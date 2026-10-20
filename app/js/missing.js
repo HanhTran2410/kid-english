@@ -48,7 +48,8 @@ export const OWN_SCENE_BY_ID = new Map(OWN_SCENES.map((s) => [s.id, s]));
 export const sceneOf = (id) => OWN_SCENE_BY_ID.get(id) ?? SCENE_BY_ID.get(id) ?? null;
 
 // ---------- Tranh: cảnh + bố cục đồ vật [mã đồ, x tâm, y tâm, cỡ] ----------
-const pic = (id, scene, en, vi, items) => ({ id, scene, en, vi, items: items.map(([item, x, y, size]) => ({ item, x, y, size })) });
+/** `ghost: 'dark'`: tranh nền gần như trắng (tuyết) — bóng đồ thiếu màu xám đậm thay vì trắng để bé nhìn thấy. */
+const pic = (id, scene, en, vi, items, extra = {}) => ({ id, scene, en, vi, items: items.map(([item, x, y, size]) => ({ item, x, y, size })), ...extra });
 
 export const PICTURES = [
   pic('kitchen-meal', 'kitchen', 'breakfast table', 'bàn ăn sáng', [
@@ -73,6 +74,16 @@ export const PICTURES = [
   pic('farm', 'farm', 'farm', 'nông trại', [
     ['apple', 60, 80, 40], ['cow', 70, 198, 56], ['tractor', 172, 192, 54], ['pig', 315, 178, 48],
     ['duck', 226, 256, 44], ['chicken', 340, 252, 44]]),
+  // Cảnh Dán tranh thêm ở 0.24.0.
+  pic('street', 'street', 'busy street', 'đường phố', [
+    ['car', 80, 256, 50], ['bus', 222, 252, 58], ['bicycle', 346, 200, 38], ['dog', 40, 200, 38],
+    ['cat', 312, 150, 44], ['balloon', 160, 138, 38], ['helicopter', 262, 42, 46], ['bird', 352, 70, 36]]),
+  pic('party', 'party', 'birthday party', 'tiệc sinh nhật', [
+    ['birthday-cake', 206, 126, 52], ['cupcake', 148, 134, 40], ['juice', 264, 134, 38], ['teddy-bear', 62, 158, 44],
+    ['balloon', 80, 92, 44], ['party-popper', 330, 104, 40], ['gift', 344, 228, 40], ['cat', 208, 204, 46]]),
+  pic('snow', 'snow', 'snowy day', 'ngày tuyết rơi', [
+    ['snowman', 82, 234, 56], ['penguin', 242, 246, 44], ['polar-bear', 322, 140, 52], ['owl', 80, 116, 40],
+    ['fox', 362, 238, 44], ['sled', 170, 272, 44], ['star', 200, 40, 36], ['rabbit', 160, 206, 40]], { ghost: 'dark' }),
   pic('jungle', 'jungle', 'jungle', 'rừng xanh', [
     ['monkey', 70, 52, 50], ['parrot', 140, 64, 40], ['elephant', 232, 190, 60], ['snake', 336, 150, 44],
     ['frog', 196, 262, 40], ['crocodile', 322, 262, 50]]),

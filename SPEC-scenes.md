@@ -208,3 +208,28 @@ Góc bố mẹ → **🎨 Ảnh Dán tranh** → danh sách 7 tranh (ghi đang d
 - Trang **Ảnh Dán tranh** có mục **Chia sẻ ảnh sang máy khác**, dùng lại đúng cách chia sẻ bài: **1. Tạo file ảnh** → file `dan-tranh-anh-YYYY-MM-DD.zip` chỉ gồm **ảnh sticker + ảnh tranh** (không có bài học, tiến độ, ghi âm, và không có tranh bé đã dán — mỗi máy giữ tranh riêng) → **2. Gửi file** (Files/iCloud, AirDrop, Zalo…) hoặc **3. Tải lên Google Drive** (có link nhập nếu đã cài API key).
 - Máy kia: **Nhập ảnh từ file** / từ Google Drive / từ link ở trang Ảnh Dán tranh; hoặc Quản lý bài → **Nhập bài từ file** (nhận cả file ảnh Dán tranh, báo "nhận N ảnh Dán tranh").
 - Gộp như ảnh bài học: mỗi sticker / mỗi tranh chỉ giữ **một ảnh — ảnh mới hơn thắng**; nhập lại file cũ không làm mất ảnh mới hơn đang có.
+
+## 11. Thêm tranh + Bông hỏi ngược (app 0.24.0)
+**3 tranh mới (7 → 10).** Mỗi tranh 16 sticker, các chỗ có giới từ, gợi ý prompt ảnh nền cho bố mẹ.
+
+| Tranh | Chỗ | Sticker |
+|---|---|---|
+| 🚦 Đường phố | on the roof, in the window, on the bench, on the building, on the sidewalk, on the road, in the sky | car, bus, taxi, police car, fire truck, ambulance, truck, bicycle, motorbike, helicopter, plane, traffic light, dog, cat, bird, balloon |
+| 🎂 Sinh nhật | on the table, under the table, on the chair, in the box, on the wall, on the floor | birthday cake, cupcake, balloon, gift, party popper, candy, lollipop, ice cream, pizza, juice, cookie, donut, teddy bear, candle, cat, dog |
+| ⛄ Mùa đông tuyết | in the tree, under the tree, on the ice, on the hill, in the sky, on the snow | snowman, penguin, polar bear, seal, fox, owl, deer, rabbit, squirrel, sled, snowflake, scarf, ice skate, pine tree, gift, star |
+
+- Không làm "Dưới biển" và "Khu vườn" như đề xuất ban đầu: Bãi biển đã có gần hết con vật biển, Công viên đã có côn trùng (ong, bọ rùa, bướm, ốc sên). Thay bằng Mùa đông tuyết vì có từ vựng thật sự mới.
+- Sticker trùng tên dùng **chung mã và chung emoji** với tranh cũ, nên một ảnh dùng cho mọi tranh (unit test kiểm tra).
+  - Sửa lỗi cũ: *ball* ở Bãi biển là 🏐 nhưng ở Phòng ngủ / Công viên là ⚽ (cùng mã), nên bé kéo 🏐 dán vào tranh lại hiện ⚽. Nay đều là ⚽.
+
+**Bông hỏi ngược "Where is the lion?"** (mục 7 "Sau này").
+- Việc Bông giao **xen kẽ**: dán vào chỗ (*"Put the cow in the barn!"*) → tìm sticker (*"Where is the cow?"*) → dán → tìm…
+  - Việc đầu tiên luôn là dán.
+  - Chỉ hỏi tìm khi tranh có **≥ 3 loại sticker**; ít hơn thì giao việc dán.
+  - Không hỏi lại loại sticker vừa hỏi.
+- Thẻ việc trên thanh trên cùng hiện sticker cần tìm kèm dấu **?**; không khoanh vùng trong tranh. Chạm thẻ thì nghe lại câu hỏi.
+- Bé **chạm** sticker trong tranh:
+  - **Đúng loại** → hoan hô: *"Yes! The cow is in the barn!"*.
+  - **Nhầm** → *"That's the pig! Where is the cow?"*. Nhầm từ lần 2 thì sticker đúng nhún.
+- Bé gỡ hết sticker đang được hỏi khỏi tranh → thôi hỏi.
+- Câu số nhiều: *"Where are the grapes?"*.
