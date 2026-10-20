@@ -57,3 +57,21 @@ test('mức: lên sau 3 lượt (tối đa 3), khóa thì giữ, dữ liệu h�
   assert.equal(afterSoundsRound(afterSoundsRound(afterSoundsRound(cleanSoundsState({ lock: 1 })))).level, 1);
   assert.deepEqual(cleanSoundsState({ level: 9, rounds: 'x' }), { level: 1, rounds: 0, lock: null });
 });
+
+test('review: tối đa 3 / 5 câu là con ít gặp nhất (không dồn hết vào con lạ); khóa mức thì không đếm lượt, mở khóa đếm lại từ 0', async () => {
+  const { LEAST_SEEN_PER_ROUND } = await import('../../app/js/animal-sounds.js');
+  assert.equal(LEAST_SEEN_PER_ROUND, 3);
+  // Mức 3: 5 con mới (frog…snake) bé chưa gặp, 10 con còn lại đã gặp nhiều.
+  const fresh = new Set(['frog', 'monkey', 'owl', 'bee', 'snake']);
+  const seen = new Map(ANIMALS.map((a) => [a.name, fresh.has(a.id) ? 0 : 9]));
+  // Luôn có 3 con ít gặp nhất; 2 câu còn lại ngẫu nhiên (có thể trúng con lạ) — nhưng không phải lượt nào cũng toàn con lạ.
+  const counts = Array.from({ length: 200 }, () => roundQuestions(3, { seen }).filter((q) => fresh.has(q.answer)).length);
+  assert.ok(counts.every((n) => n >= 3), 'thiếu con ít gặp');
+  assert.ok(counts.filter((n) => n === 5).length < 40, 'lượt toàn con lạ quá nhiều');
+  // Khóa mức 2: chơi bao nhiêu lượt cũng giữ mức 2, không tích lượt; mở khóa thì đếm từ 0.
+  let s = cleanSoundsState({ level: 1, rounds: 2, lock: 2 });
+  for (let i = 0; i < 5; i++) s = afterSoundsRound(s);
+  assert.deepEqual(s, { level: 2, rounds: 0, lock: 2 });
+  s = afterSoundsRound({ ...s, lock: null });
+  assert.deepEqual(s, { level: 2, rounds: 1, lock: null });
+});

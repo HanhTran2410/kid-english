@@ -74,3 +74,40 @@ test('con vật dùng ảnh sticker Dán tranh bố mẹ đã thay', async ({ pa
   await page.getByRole('button', { name: 'Ai kêu thế?' }).click();
   await expect(page.locator('.as-card img')).toHaveCount(2);
 });
+
+test('review TC14: giọng đọc lỗi thì bé vẫn chơi được (phụ đề vẫn hiện, chọn đúng vẫn sang câu sau)', async ({ page }) => {
+  await fakeSpeech(page);
+  await startApp(page);
+  await page.evaluate(() => { window.kidEnglish.speaker.speak = () => Promise.reject(new Error('không có giọng')); });
+  await page.getByRole('button', { name: 'Trò chơi' }).click();
+  await page.getByRole('button', { name: 'Ai kêu thế?' }).click();
+  await expect(page.locator('.as-play')).toHaveAttribute('data-state', 'answer', { timeout: 15000 });
+  await expect(page.locator('.as-say .caption-en')).toHaveText(/^Who says /);
+  const who = await page.locator('.as-say .caption-en').textContent();
+  const right = await page.evaluate(async (line) => (await import('/js/animal-sounds.js')).ANIMALS.find((a) => line === `Who says ${a.says}?`).id, who);
+  await page.locator(`.as-card[data-animal="${right}"]`).click();
+  await expect(page.locator('.as-count')).toHaveText('2/5', { timeout: 15000 });
+});
+
+test('review TC08 + TC10: ra nền sau 1 lần nhầm → quay lại cùng câu, giữ số lần nhầm (nhầm thêm 1 lần là con đúng sáng); chạm nhầm liên tục chỉ tính một lần', async ({ page }) => {
+  await openSounds(page);
+  const right = await answer(page);
+  const wrongCard = page.locator(`.as-card:not([data-animal="${right}"])`);
+  // Chạm đúp thật nhanh: chỉ tính một lần nhầm → chưa sáng.
+  await wrongCard.dblclick();
+  await expect.poll(async () => (await spoken(page)).some((t) => t.startsWith("That's the "))).toBe(true);
+  await expect(page.locator('.as-card.glow')).toHaveCount(0);
+  const setVisible = (s) => page.evaluate((v) => {
+    Object.defineProperty(document, 'visibilityState', { value: v, configurable: true });
+    document.dispatchEvent(new Event('visibilitychange'));
+  }, s);
+  await setVisible('hidden');
+  await setVisible('visible');
+  await page.locator('.resume-overlay .start-btn').click();
+  await expect(page.locator('.as-play')).toHaveAttribute('data-state', 'answer', { timeout: 15000 });
+  await expect(page.locator('.as-count')).toHaveText('1/5');
+  await expect(page.locator(`.as-card[data-animal="${right}"]`)).toHaveCount(1);
+  await page.waitForTimeout(450);
+  await page.locator(`.as-card:not([data-animal="${right}"])`).click();
+  await expect(page.locator(`.as-card[data-animal="${right}"].glow`)).toHaveCount(1);
+});

@@ -85,11 +85,15 @@ export const MAX_TARGETS_ON_SCREEN = 2;
  * Bong bóng mới: là thứ cần bắt nếu trên màn chưa có (luôn bắt được); đã có MAX_TARGETS_ON_SCREEN quả thì là thứ khác;
  * còn lại theo tỉ lệ TARGET_SHARE. Bong bóng khác lấy từ các loại của lượt, khác thứ cần bắt.
  */
-export function nextBubble(kinds, target, onScreen, rng = Math.random) {
+export function nextBubble(kinds, target, onScreen, rng = Math.random, max = Infinity) {
+  if (onScreen.length >= max) return null; // đầy: bỏ lượt thả này, không xóa quả cũ
   const want = kinds.find((k) => k.key === target);
   const others = kinds.filter((k) => k.key !== target);
   const shown = onScreen.filter((k) => k === target).length;
   if (!shown || !others.length) return want;
+  // Luôn chừa một chỗ cho quả cần bắt: màn còn đúng 1 chỗ trống mà đã có quả cần bắt thì không thả quả khác
+  // (quả cần bắt bay mất / bị bắt thì lần thả sau chắc chắn có chỗ cho quả thay thế).
+  if (onScreen.length >= max - 1) return null;
   if (shown < MAX_TARGETS_ON_SCREEN && rng() < TARGET_SHARE) return want;
   return others[Math.floor(rng() * others.length)];
 }
@@ -125,8 +129,12 @@ export function cleanBubblesState(saved) {
   return { level: lock ?? ([1, 2, 3].includes(s.level) ? s.level : 1), rounds: Number.isInteger(s.rounds) && s.rounds >= 0 ? s.rounds : 0, lock };
 }
 
-/** Chơi xong một lượt: đủ 3 lượt thì lên mức (tối đa 3), trừ khi bố mẹ khóa. */
+/**
+ * Chơi xong một lượt (bắt đúng đủ 8 lần; mọi kiểu bong bóng đếm chung): đủ 3 lượt thì lên một mức (tối đa 3), `rounds` về 0.
+ * Bố mẹ khóa mức: giữ mức, không đếm lượt. Áp dụng từ lượt sau.
+ */
 export function afterBubblesRound(state) {
+  if (state.lock) return { ...state, level: state.lock, rounds: 0 };
   const rounds = state.rounds + 1;
   if (!state.lock && state.level < 3 && rounds >= ROUNDS_TO_LEVEL_UP) return { ...state, level: state.level + 1, rounds: 0 };
   return { ...state, rounds };

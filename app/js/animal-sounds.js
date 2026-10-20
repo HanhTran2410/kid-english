@@ -57,18 +57,27 @@ export const whoLine = (a) => [`Who says ${a.says}?`, `Con gì kêu "${a.says}" 
 export const yesLine = (a) => [`Yes! The ${a.name} says ${a.says}!`, `Đúng rồi! ${capital(a.vi)} kêu "${a.says}"!`];
 export const yourTurnLine = (a) => [`Can you say ${a.says}?`, `Con kêu "${a.says}" thử xem!`];
 export const wrongLine = (a) => [`That's the ${a.name}! The ${a.name} says ${a.says}!`, `Đó là ${a.vi}! ${capital(a.vi)} kêu "${a.says}"!`];
+/** Nhầm từ lần 3 trong cùng câu: câu ngắn, không đọc lại cả tràng. */
+export const shortWrongLine = (a) => [`That's the ${a.name}!`, `Đó là ${a.vi}!`];
 export const nameLine = (a) => [`The ${a.name}!`, capital(a.vi)];
 
 // ---------- Câu hỏi ----------
+/** Trong 5 câu, tối đa chừng này câu là con bé ít gặp nhất; còn lại chọn ngẫu nhiên (không dồn hết vào con lạ). */
+export const LEAST_SEEN_PER_ROUND = 3;
+
 /**
- * Câu hỏi của một lượt: `n` con vật khác nhau trong nhóm của mức (ưu tiên con bé ít gặp: `seen` tên → số lần),
- * mỗi câu kèm các lựa chọn (con đúng + con khác, xáo thứ tự).
+ * Câu hỏi của một lượt: `n` con đúng khác nhau trong nhóm của mức (gồm cả con của mức thấp hơn).
+ * - Tối đa LEAST_SEEN_PER_ROUND con bé ít gặp nhất (`seen`: tên → số lần, bằng nhau thì ngẫu nhiên), còn lại ngẫu nhiên.
+ * - Thứ tự câu xáo trộn. Mỗi câu: con đúng + (số lựa chọn − 1) con khác, không trùng nhau, xáo vị trí thẻ.
  * @returns {Array<{ answer: string, choices: string[] }>}
  */
 export function roundQuestions(level, { seen = new Map(), rng = Math.random, n = QUESTIONS_PER_ROUND } = {}) {
   const { choices, pool } = LEVELS[level] ?? LEVELS[1];
   const group = ANIMALS.slice(0, pool);
-  const answers = shuffle(group, rng).sort((a, b) => (seen.get(a.name) ?? 0) - (seen.get(b.name) ?? 0)).slice(0, n);
+  const bySeen = shuffle(group, rng).sort((a, b) => (seen.get(a.name) ?? 0) - (seen.get(b.name) ?? 0));
+  const least = bySeen.slice(0, Math.min(LEAST_SEEN_PER_ROUND, n));
+  const rest = shuffle(bySeen.slice(least.length), rng).slice(0, n - least.length);
+  const answers = shuffle([...least, ...rest], rng);
   return answers.map((a) => ({
     answer: a.id,
     choices: shuffle([a, ...shuffle(group.filter((x) => x.id !== a.id), rng).slice(0, choices - 1)], rng).map((x) => x.id),
@@ -82,8 +91,12 @@ export function cleanSoundsState(saved) {
   return { level: lock ?? ([1, 2, 3].includes(s.level) ? s.level : 1), rounds: Number.isInteger(s.rounds) && s.rounds >= 0 ? s.rounds : 0, lock };
 }
 
-/** Chơi xong một lượt: đủ 3 lượt thì lên mức (tối đa 3), trừ khi bố mẹ khóa. Áp dụng từ lượt sau. */
+/**
+ * Chơi xong một lượt (đủ 5 câu, bất kể nhầm bao nhiêu lần): đủ 3 lượt ở mức hiện tại thì lên một mức (tối đa 3), `rounds` về 0.
+ * Bố mẹ khóa mức: giữ mức, không đếm lượt (mở khóa thì đếm lại từ 0). Áp dụng từ lượt sau.
+ */
 export function afterSoundsRound(state) {
+  if (state.lock) return { ...state, level: state.lock, rounds: 0 };
   const rounds = state.rounds + 1;
   if (!state.lock && state.level < 3 && rounds >= ROUNDS_TO_LEVEL_UP) return { ...state, level: state.level + 1, rounds: 0 };
   return { ...state, rounds };

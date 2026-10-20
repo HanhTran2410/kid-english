@@ -74,3 +74,51 @@ test('gợi ý: 10 giây không bắt được thì bong bóng cần bắt lấp
   await openBubbles(page, 'Màu sắc');
   await expect(page.locator('.bb-field.hint')).toHaveCount(1, { timeout: 5000 });
 });
+
+test('review BG-05: chạm nhiều lần vào cùng một quả đúng chỉ tính một lần bắt', async ({ page }) => {
+  await openBubbles(page, 'Màu sắc');
+  const key = await want(page);
+  const b = bubble(page, key);
+  await expect(b).toBeVisible({ timeout: 5000 });
+  const id = await b.getAttribute('data-id');
+  const same = page.locator(`.bb-bubble[data-id="${id}"]`);
+  await same.dispatchEvent('pointerdown');
+  await same.dispatchEvent('pointerdown').catch(() => {});
+  await same.dispatchEvent('pointerdown').catch(() => {});
+  await expect(page.locator('.bb-dot.on')).toHaveCount(1);
+  await page.waitForTimeout(300);
+  await expect(page.locator('.bb-dot.on')).toHaveCount(1);
+});
+
+test('review BG-11: giọng đọc lỗi vẫn chơi được (thẻ cần bắt + phụ đề), bắt đúng vẫn tính', async ({ page }) => {
+  await fakeSpeech(page);
+  await startApp(page);
+  await page.evaluate(() => { window.kidEnglish.speaker.speak = () => Promise.reject(new Error('không có giọng')); });
+  await page.getByRole('button', { name: 'Trò chơi' }).click();
+  await page.getByRole('button', { name: 'Bắt bong bóng' }).click();
+  await page.getByRole('button', { name: 'Màu sắc', exact: true }).click();
+  await expect(page.locator('.bb-want')).toBeVisible({ timeout: 15000 });
+  const key = await want(page);
+  await expect(bubble(page, key)).toBeVisible({ timeout: 5000 });
+  await bubble(page, key).dispatchEvent('pointerdown');
+  await expect(page.locator('.bb-dot.on')).toHaveCount(1);
+});
+
+test('review BG-10: app ra nền rồi quay lại → chơi tiếp đúng ván (giữ số đã bắt, cùng thứ cần bắt)', async ({ page }) => {
+  await openBubbles(page, 'Màu sắc');
+  const key = await want(page);
+  await expect(bubble(page, key)).toBeVisible({ timeout: 5000 });
+  await bubble(page, key).dispatchEvent('pointerdown');
+  await expect(page.locator('.bb-dot.on')).toHaveCount(1);
+  const next = await want(page);
+  const setVisible = (s) => page.evaluate((v) => {
+    Object.defineProperty(document, 'visibilityState', { value: v, configurable: true });
+    document.dispatchEvent(new Event('visibilitychange'));
+  }, s);
+  await setVisible('hidden');
+  await setVisible('visible');
+  await page.locator('.resume-overlay .start-btn').click();
+  await expect(page.locator('.bb-play')).toHaveAttribute('data-state', 'playing', { timeout: 15000 });
+  await expect(page.locator('.bb-dot.on')).toHaveCount(1);
+  expect(await want(page)).toBe(next);
+});

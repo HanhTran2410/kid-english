@@ -29,6 +29,10 @@ const SLOTS = [[15, 22], [50, 22], [85, 22], [15, 55], [50, 55], [85, 55], [32, 
 // Bay lên: 5 làn ngang (% chiều rộng).
 const LANES = [12, 31, 50, 69, 88];
 
+const SNAPSHOT_MS = 10 * 60_000;
+// Ván đang chơi: app ra nền thì màn được dựng lại (continueDirectly) — chơi tiếp đúng ván (cùng kiểu, cùng mức).
+let snapshot = null;
+
 const reduceMotion = () => window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
 const MODE_LABEL = {
   colors: { emoji: '🎨', en: 'Colors', vi: 'Màu sắc' },
@@ -83,6 +87,7 @@ export function bubblesScreen(app, params = {}) {
   let finished = false;
   let uid = 0;
   let recentLanes = [];
+  let talking = false;
 
   // ---------- Giao diện ----------
   const bunny = createBunny(app);
@@ -105,16 +110,22 @@ export function bubblesScreen(app, params = {}) {
     sayBox.replaceChildren(h('div.caption.sp-caption', { 'aria-live': 'polite' },
       h('span.caption-en', { text: en }), vi ? h('span.caption-vi', { text: vi }) : null));
   }
+  /** Một hàng nói duy nhất: câu mới thay câu cũ. Giọng đọc lỗi thì vẫn đi tiếp (phụ đề + thẻ cần bắt vẫn hiện). */
   async function talk(lines) {
     const gen = ++talkGen;
-    for (const [en, vi] of lines) {
-      if (gen !== talkGen || signal.aborted) return;
-      caption(en, vi);
-      try {
-        await app.speaker.speak(en, { signal });
-      } catch {
-        return;
+    talking = true;
+    try {
+      for (const [en, vi] of lines) {
+        if (gen !== talkGen || signal.aborted) return;
+        caption(en, vi);
+        try {
+          await app.speaker.speak(en, { signal });
+        } catch {
+          if (signal.aborted) return;
+        }
       }
+    } finally {
+      if (gen === talkGen) talking = false;
     }
     if (gen === talkGen) captionTimer = setTimeout(() => sayBox.replaceChildren(), CAPTION_MS);
   }
@@ -143,8 +154,8 @@ export function bubblesScreen(app, params = {}) {
   function spawn() {
     if (finished || !plan || signal.aborted) return;
     const live = onScreen();
-    if (live.length >= level.maxOnScreen) return;
-    const it = nextBubble(plan.kinds, target()?.key, live.map((b) => b.dataset.key));
+    // Đầy thì bỏ lượt thả này; luôn chừa một chỗ cho quả cần bắt (quả cần bắt bay mất thì lần thả sau thay ngay).
+    const it = nextBubble(plan.kinds, target()?.key, live.map((b) => b.dataset.key), Math.random, level.maxOnScreen);
     if (!it) return;
     const life = Math.max(scaled(level.riseS * 1000), MIN_LIFE_MS);
     const el = h('button.bb-bubble', {
@@ -194,6 +205,7 @@ export function bubblesScreen(app, params = {}) {
     if (want && it.key === want.key) {
       step += 1;
       wrongs = 0;
+      snapshot = { savedAt: Date.now(), mode, level: state.level, plan, step };
       markPracticed(app, progressKeyOf(mode, it), it.emoji ?? (mode === 'numbers' ? '🔢' : '🎨'));
       if (step >= plan.targets.length) {
         finish(it);
@@ -213,7 +225,11 @@ export function bubblesScreen(app, params = {}) {
   function armHint() {
     clearTimeout(hintTimer);
     hintTimer = setTimeout(() => {
-      if (finished || app.idlePaused) return;
+      if (finished || app.idlePaused || signal.aborted) return; // ra nền: activity bị dừng, không đếm gợi ý
+      if (talking) {
+        armHint(); // Bông đang nói: đếm lại từ đầu
+        return;
+      }
       field.classList.add('hint');
       setTimeout(() => field.classList.remove('hint'), 3000);
       say();
@@ -223,6 +239,7 @@ export function bubblesScreen(app, params = {}) {
 
   async function finish(it) {
     finished = true;
+    snapshot = null;
     clearInterval(spawnTimer);
     clearTimeout(hintTimer);
     renderWant();
@@ -254,15 +271,23 @@ export function bubblesScreen(app, params = {}) {
       app.go('bubbles');
       return;
     }
-    const seen = new Map();
-    for (const rec of await app.db.getAll('progress').catch(() => [])) seen.set(rec.word, rec.practiceCount ?? 0);
-    if (signal.aborted) return;
-    plan = roundPlan(items, state.level, { seen, progressKey: (it) => progressKeyOf(mode, it) });
+    const s = snapshot;
+    if (params.continueDirectly && s && s.mode === mode && s.level === state.level && Date.now() - s.savedAt < SNAPSHOT_MS) {
+      // Chơi tiếp ván dở: cùng các loại, cùng thứ tự cần bắt, giữ số đã bắt.
+      plan = s.plan;
+      step = s.step;
+    } else {
+      const seen = new Map();
+      for (const rec of await app.db.getAll('progress').catch(() => [])) seen.set(rec.word, rec.practiceCount ?? 0);
+      if (signal.aborted) return;
+      plan = roundPlan(items, state.level, { seen, progressKey: (it) => progressKeyOf(mode, it) });
+      snapshot = { savedAt: Date.now(), mode, level: state.level, plan, step: 0 };
+    }
     app.root.dataset.state = 'playing';
     renderWant();
     spawn();
     spawnTimer = setInterval(spawn, scaled(SPAWN_MS));
-    await talk([INTRO_LINE, popLine(mode, target())]);
+    await talk([...(step ? [] : [INTRO_LINE]), popLine(mode, target())]);
     armHint();
   })();
 

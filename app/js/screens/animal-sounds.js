@@ -13,13 +13,14 @@ import { loadSceneImages, itemFace } from './sticker-scene.js';
 import { ITEM_BY_ID } from '../sticker-scenes.js';
 import {
   ANIMAL_BY_ID, roundQuestions, cleanSoundsState, afterSoundsRound,
-  INTRO_LINE, soundLine, whoLine, yesLine, yourTurnLine, wrongLine,
+  INTRO_LINE, soundLine, whoLine, yesLine, yourTurnLine, wrongLine, shortWrongLine,
 } from '../animal-sounds.js';
 
 const HINT_MS = 10_000;
 const MAX_HINTS = 2;
 const CAPTION_MS = 3500;
 const TURN_MS = 1800; // sau "Can you say moo?": chờ bé kêu theo
+const WRONG_LOCK_MS = 400; // vừa chạm nhầm: bỏ qua chạm NHẦM tiếp trong chừng này (chạm liên tục không tính nhiều lần)
 const IDLE_PAUSE_MS = 120_000;
 const SNAPSHOT_MS = 10 * 60_000;
 
@@ -38,6 +39,8 @@ export function animalSoundsScreen(app, params = {}) {
   let hints = 0;
   let solved = false;
   let hintTimer = null;
+  let talking = false;
+  let lockedUntil = 0;
 
   // ---------- Giao diện ----------
   const bunny = createBunny(app);
@@ -63,16 +66,25 @@ export function animalSoundsScreen(app, params = {}) {
     sayBox.replaceChildren(h('div.caption.sp-caption', { 'aria-live': 'polite' },
       h('span.caption-en', { text: en }), vi ? h('span.caption-vi', { text: vi }) : null));
   }
+  /**
+   * Một hàng nói duy nhất: câu mới thay câu cũ (giọng đọc cắt câu đang đọc). Trả về false nếu bị câu khác thay / rời màn.
+   * Giọng đọc lỗi (máy không đọc được) thì vẫn đi tiếp — phụ đề vẫn hiện, bé không bị kẹt.
+   */
   async function talk(lines) {
     const gen = ++talkGen;
-    for (const [en, vi] of lines) {
-      if (gen !== talkGen || signal.aborted) return false;
-      caption(en, vi);
-      try {
-        await app.speaker.speak(en, { signal });
-      } catch {
-        return false;
+    talking = true;
+    try {
+      for (const [en, vi] of lines) {
+        if (gen !== talkGen || signal.aborted) return false;
+        caption(en, vi);
+        try {
+          await app.speaker.speak(en, { signal });
+        } catch {
+          if (signal.aborted) return false;
+        }
       }
+    } finally {
+      if (gen === talkGen) talking = false;
     }
     if (gen === talkGen) captionTimer = setTimeout(() => sayBox.replaceChildren(), CAPTION_MS);
     return gen === talkGen;
@@ -106,14 +118,15 @@ export function animalSoundsScreen(app, params = {}) {
     }));
   }
 
-  function snap() {
-    snapshot = { savedAt: Date.now(), level: state.level, questions, index };
+  /** Giữ để chơi tiếp sau khi app ra nền: câu đang hỏi + số lần nhầm / gợi ý. Đã trả lời đúng thì giữ câu SAU. */
+  function snap(at = index) {
+    snapshot = { savedAt: Date.now(), level: state.level, questions, index: at, wrongs: at === index ? wrongs : 0, hints: at === index ? hints : 0 };
   }
 
-  async function ask(intro = false) {
+  async function ask(intro = false, resume = null) {
     const t = ++token;
-    wrongs = 0;
-    hints = 0;
+    wrongs = resume?.wrongs ?? 0;
+    hints = resume?.hints ?? 0;
     solved = false;
     clearTimeout(hintTimer);
     render();
@@ -139,8 +152,14 @@ export function animalSoundsScreen(app, params = {}) {
     if (hints >= MAX_HINTS || solved) return;
     const t = token;
     hintTimer = setTimeout(() => {
-      if (t !== token || solved || app.idlePaused) return;
+      if (t !== token || solved || app.idlePaused || signal.aborted) return; // ra nền: activity bị dừng, không đếm gợi ý
+      // Bông đang nói (câu hỏi, nghe lại, câu nhầm): đếm lại từ đầu — gợi ý chỉ tính khi bé thật sự đang chờ.
+      if (talking) {
+        armHint();
+        return;
+      }
       hints += 1;
+      snap();
       glow(current().id);
       talk([soundLine(current())]);
       armHint();
@@ -161,6 +180,7 @@ export function animalSoundsScreen(app, params = {}) {
       bunny.set('clap');
       setTimeout(() => bunny.set('idle'), 1600);
       markPracticed(app, a.name, a.emoji);
+      snap(index + 1); // ra nền lúc đang khen: quay lại là câu sau, không hỏi lại / ghi tiến độ hai lần
       app.root.dataset.state = 'right';
       const done = await talk([yesLine(a), yourTurnLine(a)]);
       if (!done || t !== token) return;
@@ -169,7 +189,10 @@ export function animalSoundsScreen(app, params = {}) {
       next();
       return;
     }
+    // Chạm nhầm liên tục (chạm đúp, chạm loạn): chỉ tính một lần trong WRONG_LOCK_MS. Chạm đúng thì luôn nhận.
+    if (Date.now() < lockedUntil) return;
     wrongs += 1;
+    lockedUntil = Date.now() + WRONG_LOCK_MS;
     play('boing');
     el?.classList.remove('shake');
     void el?.offsetWidth;
@@ -179,18 +202,26 @@ export function animalSoundsScreen(app, params = {}) {
       hints += 1;
       glow(a.id);
     }
-    await talk([wrongLine(ANIMAL_BY_ID.get(id)), soundLine(a), whoLine(a)]);
+    snap();
+    // Nhầm 1–2 lần: nói tên + tiếng kêu con vừa chạm, giả lại tiếng kêu, hỏi lại. Từ lần 3: câu ngắn (không đọc cả tràng).
+    const tapped = ANIMAL_BY_ID.get(id);
+    await talk(wrongs <= 2 ? [wrongLine(tapped), soundLine(a), whoLine(a)] : [shortWrongLine(tapped), whoLine(a)]);
     if (t === token) armHint();
   }
 
-  async function next() {
+  function next() {
     if (index + 1 < questions.length) {
       index += 1;
       ask();
       return;
     }
-    // Hết 5 câu: Hoan hô + sticker, đếm lượt để lên mức (áp dụng lượt sau).
+    finishRound();
+  }
+
+  /** Hết 5 câu: Hoan hô + sticker (một lần), đếm lượt để lên mức (áp dụng lượt sau). */
+  async function finishRound() {
     token += 1;
+    solved = true;
     snapshot = null;
     clearTimeout(hintTimer);
     app.setSetting('soundsGame', afterSoundsRound(state)).catch(() => {});
@@ -217,8 +248,14 @@ export function animalSoundsScreen(app, params = {}) {
     const s = snapshot;
     if (params.continueDirectly && s && Date.now() - s.savedAt < SNAPSHOT_MS && s.level === state.level) {
       questions = s.questions;
+      // Ra nền ngay sau khi trả lời đúng câu cuối: quay lại là hoan hô luôn.
+      if (s.index >= questions.length) {
+        index = questions.length - 1;
+        finishRound();
+        return;
+      }
       index = s.index;
-      ask();
+      ask(false, s);
       return;
     }
     const seen = new Map();

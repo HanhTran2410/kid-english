@@ -60,3 +60,18 @@ test('mức: lên sau 3 lượt, khóa thì giữ', () => {
   assert.equal(s.level, 2);
   assert.equal(afterBubblesRound(afterBubblesRound(afterBubblesRound(cleanBubblesState({ lock: 1 })))).level, 1);
 });
+
+test('review: đầy thì không thả; luôn chừa một chỗ cho quả cần bắt; quả cần bắt bay mất thì lần thả sau là quả thay thế; khóa mức không đếm lượt', () => {
+  const { kinds } = roundPlan(itemsFor('colors', 1), 1);
+  const t = kinds[0].key;
+  const o = kinds[1].key;
+  // Đầy (5 / 5): bỏ lượt thả.
+  assert.equal(nextBubble(kinds, t, [t, o, o, o, o], Math.random, 5), null);
+  // Còn 1 chỗ, đã có quả cần bắt: không thả quả khác (chừa chỗ).
+  for (let i = 0; i < 20; i++) assert.equal(nextBubble(kinds, t, [t, o, o, o], Math.random, 5), null);
+  // Quả cần bắt vừa bay mất (còn 4 quả khác, 1 chỗ trống): quả mới chắc chắn là quả cần bắt.
+  for (let i = 0; i < 20; i++) assert.equal(nextBubble(kinds, t, [o, o, o, o], Math.random, 5).key, t);
+  let s = cleanBubblesState({ level: 1, rounds: 2, lock: 1 });
+  for (let i = 0; i < 4; i++) s = afterBubblesRound(s);
+  assert.deepEqual(s, { level: 1, rounds: 0, lock: 1 });
+});
