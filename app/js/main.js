@@ -21,6 +21,8 @@ import { feedScreen } from './screens/feed.js';
 import { hideSeekScreen } from './screens/hide-seek.js';
 import { puzzleHome, puzzleList, puzzleScreen } from './screens/puzzle.js';
 import { missingScreen } from './screens/missing.js';
+import { animalSoundsScreen } from './screens/animal-sounds.js';
+import { bubblesHome, bubblesScreen } from './screens/bubbles.js';
 import { parentScreen } from './screens/parent/index.js';
 
 async function registerServiceWorker(app) {
@@ -123,6 +125,10 @@ async function boot() {
   app.register('puzzle-play', puzzleScreen);
   // Tìm đồ còn thiếu (SPEC-missing.md): kéo đồ vào bóng trắng của đồ bị mất.
   app.register('missing', missingScreen);
+  // Ai kêu thế? (SPEC-sounds.md) và Bắt bong bóng (SPEC-bubbles.md).
+  app.register('animal-sounds', animalSoundsScreen);
+  app.register('bubbles', bubblesHome);
+  app.register('bubbles-play', bubblesScreen);
   app.register('sleep', sleepScreen);
   app.register('parent', parentScreen);
 

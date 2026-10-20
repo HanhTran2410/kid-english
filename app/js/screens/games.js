@@ -1,4 +1,4 @@
-// Góc trò chơi (nút 🎲 Play, SPEC-scenes mục 11): mỗi trò một thẻ to — Dán tranh, Mặc đồ, Tô màu, Cho Bông ăn, Trốn tìm, Ghép hình, Tìm đồ còn thiếu, Chọn từ (trò tổng hợp).
+// Góc trò chơi (nút 🎲 Play, SPEC-scenes mục 11): mỗi trò một thẻ to — Dán tranh, Mặc đồ, Tô màu, Cho Bông ăn, Trốn tìm, Ghép hình, Tìm đồ còn thiếu, Ai kêu thế?, Bắt bong bóng, Chọn từ (trò tổng hợp).
 // Trò Chọn số đã có ở mục Số đếm nên không nhắc lại ở đây.
 
 import { h } from '../ui.js';
@@ -27,6 +27,8 @@ export function gamesScreen(app) {
     card('🙈', 'Hide and seek', 'Bông trốn tìm', '.game-hide', () => app.go('hide-seek')),
     card('🧩', 'Puzzle', 'Ghép hình', '.game-puzzle', () => app.go('puzzle')),
     card('🔍', "What's missing?", 'Tìm đồ còn thiếu', '.game-missing', () => app.go('missing')),
+    card('🐮', 'Who says moo?', 'Ai kêu thế?', '.game-sounds', () => app.go('animal-sounds')),
+    card('🫧', 'Pop the bubbles', 'Bắt bong bóng', '.game-bubbles', () => app.go('bubbles')),
     card('🎲', 'Pick it', 'Chọn từ', '.game-mix', () => app.go('play-mix')),
   );
   app.speaker.speak("Let's play a game!").catch(() => {});

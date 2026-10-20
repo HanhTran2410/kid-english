@@ -2317,3 +2317,57 @@ details > summary { cursor: pointer; font-weight: 800; padding: 6px 0; }
 /* Ảnh lưới khi đã đủ ảnh: thu gọn "vẽ lại" (parent/lessons.js pendingGridSections). */
 .grid-redo { margin: 12px 0; padding: 10px 14px; border-radius: 16px; background: var(--card); box-shadow: var(--shadow); }
 .grid-redo > summary { cursor: pointer; font-weight: 700; color: var(--ink-soft); }
+
+/* ---------- Ai kêu thế? (SPEC-sounds.md) ---------- */
+.home-btn.game-sounds { background: var(--yellow-soft, #fff3c4); }
+.child-screen.as-play { display: grid; grid-template-columns: minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr) auto; gap: 8px; height: 100vh; height: 100dvh; min-height: 0; }
+.as-stage { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: clamp(14px, 3vh, 30px); min-height: 0; padding: 0 12px; }
+.as-listen { display: inline-flex; align-items: center; gap: 10px; padding: 12px 26px; border-radius: 999px; background: var(--card); box-shadow: var(--shadow); font-size: 24px; font-weight: 800; color: var(--ink); }
+.as-listen-icon { font-family: var(--emoji); font-size: 34px; }
+.as-cards { display: grid; grid-template-columns: repeat(var(--as-cols, 2), minmax(0, 1fr)); gap: clamp(12px, 2.5vw, 24px); width: min(100%, 860px); }
+.as-cards[data-choices="3"] { --as-cols: 3; }
+.as-cards[data-choices="4"] { --as-cols: 4; }
+.as-card { aspect-ratio: 1; display: grid; place-items: center; border-radius: 28px; background: var(--card); box-shadow: var(--shadow); max-height: 42vh; justify-self: center; width: 100%; max-width: 220px; }
+.as-face { display: grid; place-items: center; width: 80%; height: 80%; font-family: var(--emoji); font-size: clamp(56px, 14vmin, 120px); line-height: 1; }
+.as-face .sp-img { width: 100%; height: 100%; object-fit: contain; }
+.as-card.right { outline: 6px solid #63d2a8; }
+.as-card.glow { outline: 6px solid #ffd43b; animation: hint-hop 0.8s ease-in-out 2; }
+.as-card.bounce { animation: hint-hop 0.5s ease-in-out; }
+.as-card.shake { animation: as-shake 0.4s; }
+@keyframes as-shake { 25% { transform: translateX(-8px); } 75% { transform: translateX(8px); } }
+@media (max-width: 600px) {
+  .as-play .sp-title { display: none; }
+  .as-cards[data-choices="4"] { --as-cols: 2; }
+}
+
+/* ---------- Bắt bong bóng (SPEC-bubbles.md) ---------- */
+.home-btn.game-bubbles { background: #dff3ff; }
+.bb-modes { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 18px; width: min(100%, 860px); margin: auto; padding: 16px; }
+.bb-mode[disabled] { opacity: 0.45; }
+.child-screen.bb-play { display: grid; grid-template-columns: minmax(0, 1fr); grid-template-rows: auto auto minmax(0, 1fr) auto; gap: 6px; height: 100vh; height: 100dvh; min-height: 0; }
+.bb-dots { display: flex; justify-content: center; gap: 8px; }
+.bb-dot { width: 16px; height: 16px; border-radius: 50%; background: #fff; border: 3px solid #b9d9f2; }
+.bb-dot.on { background: #4d96ff; border-color: #4d96ff; }
+.bb-field { position: relative; overflow: hidden; min-height: 0; margin: 0 12px; border-radius: 28px; background: linear-gradient(#e3f5ff, #fff6fb); box-shadow: inset 0 0 0 3px #fff; touch-action: none; }
+.bb-bubble {
+  --bb-color: #bfe3ff; --bb-size: clamp(76px, 16vmin, 120px);
+  position: absolute; left: clamp(calc(var(--bb-size) / 2 + 4px), var(--bb-x, 50%), calc(100% - var(--bb-size) / 2 - 4px));
+  width: var(--bb-size); height: var(--bb-size); padding: 0; border-radius: 50%; transform: translate(-50%, -50%);
+  display: grid; place-items: center; border: 3px solid rgba(255, 255, 255, 0.9);
+  background: radial-gradient(circle at 32% 28%, rgba(255, 255, 255, 0.95) 0 10%, rgba(255, 255, 255, 0) 11%), var(--bb-color);
+  box-shadow: inset -8px -10px 18px rgba(0, 0, 0, 0.12), 0 6px 14px rgba(61, 44, 94, 0.18); opacity: 0.94; touch-action: none;
+}
+.bb-field[data-motion="rise"] .bb-bubble { top: 115%; animation: bb-rise var(--bb-life, 9s) linear forwards, bb-sway 2.4s ease-in-out infinite alternate; }
+.bb-field[data-motion="still"] .bb-bubble { animation: bb-in 0.3s ease-out; }
+@keyframes bb-rise { from { top: 115%; } to { top: -20%; } }
+@keyframes bb-sway { from { translate: calc(var(--bb-sway, 1) * -12px) 0; } to { translate: calc(var(--bb-sway, 1) * 12px) 0; } }
+@keyframes bb-in { from { opacity: 0; } }
+.bb-field .bb-bubble.popped { animation: bb-pop 0.26s ease-out forwards; pointer-events: none; }
+@keyframes bb-pop { to { transform: translate(-50%, -50%) scale(1.6); opacity: 0; } }
+.bb-num { font-size: calc(var(--bb-size) * 0.5); font-weight: 900; color: #3d2c5e; line-height: 1; }
+.bb-emoji { font-family: var(--emoji); font-size: calc(var(--bb-size) * 0.5); line-height: 1; }
+.bb-field.hint .bb-bubble.want { box-shadow: 0 0 0 6px #ffd43b, 0 0 22px 8px rgba(255, 212, 59, 0.8); }
+.bb-want .bb-swatch { display: block; width: 70%; height: 70%; border-radius: 50%; background: var(--bb-color); border: 3px solid #fff; }
+.bb-want .bb-num { font-size: 34px; }
+.bb-want .bb-emoji { font-size: 38px; }
+@media (max-width: 600px) { .bb-play .sp-title { display: none; } }
