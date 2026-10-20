@@ -9,12 +9,12 @@ import {
 const color = (id) => COLOR_BY_ID.get(id);
 const partOf = (picId, partId) => PICTURE_BY_ID.get(picId).parts.find((p) => p.id === partId);
 
-test('10 màu có tên tiếng Anh / Việt; 4 nhóm: 5 con vật, 6 đồ vật, số 1–10, chữ A–Z', () => {
+test('10 màu có tên tiếng Anh / Việt; 4 nhóm: 15 con vật, 11 đồ vật, số 1–10, chữ A–Z', () => {
   assert.equal(COLORS.length, 10);
   assert.ok(COLORS.every((c) => c.en && c.vi && /^#[0-9a-f]{6}$/.test(c.hex)));
   assert.deepEqual(GROUPS.map((g) => g.id), ['animals', 'things', 'numbers', 'letters']);
-  assert.equal(picturesIn('animals').length, 5);
-  assert.equal(picturesIn('things').length, 6);
+  assert.equal(picturesIn('animals').length, 15);
+  assert.equal(picturesIn('things').length, 11);
   assert.equal(picturesIn('numbers').length, 10);
   assert.equal(picturesIn('letters').length, 26);
 });

@@ -49,6 +49,16 @@ const sunRays = () => {
   return d;
 };
 
+/** Bờm sư tử: vòng tròn nhỏ quanh mặt. */
+const mane = () => {
+  let d = '';
+  for (let k = 0; k < 12; k++) {
+    const a = (k * Math.PI) / 6;
+    d += `<circle cx="${(100 + 54 * Math.cos(a)).toFixed(1)}" cy="${(100 + 54 * Math.sin(a)).toFixed(1)}" r="22"/>`;
+  }
+  return d;
+};
+
 const petals = () => [0, 60, 120, 180, 240, 300].map((deg) => {
   const a = (deg * Math.PI) / 180;
   return `<circle cx="${(100 + 30 * Math.cos(a)).toFixed(1)}" cy="${(70 + 30 * Math.sin(a)).toFixed(1)}" r="22"/>`;
@@ -120,6 +130,121 @@ const DRAWN = [
     details: `<path d="M100 66 L100 180"/>${eye(90, 50, 4.5)}${eye(110, 50, 4.5)}<path d="M92 38 Q86 24 80 20"/><path d="M108 38 Q114 24 120 20"/>`,
   },
   {
+    id: 'dog', group: 'animals', emoji: '🐶', en: 'dog', vi: 'con chó',
+    parts: [
+      part('tail', 'tail', 'cái đuôi', ['brown', 'orange', 'black'], '<path d="M136 162 Q180 156 174 112 Q172 102 162 106 Q166 142 132 148 Z"/>'),
+      part('body', 'body', 'cái thân', ['brown', 'orange', 'yellow', 'black'], '<ellipse cx="100" cy="152" rx="44" ry="40"/>'),
+      part('head', 'head', 'cái đầu', ['brown', 'orange', 'yellow'], '<circle cx="100" cy="76" r="38"/>'),
+      many('ears', 'ears', 'cái tai', ['brown', 'black', 'orange'],
+        '<ellipse cx="62" cy="80" rx="14" ry="30" transform="rotate(18 62 80)"/><ellipse cx="138" cy="80" rx="14" ry="30" transform="rotate(-18 138 80)"/>'),
+      part('nose', 'nose', 'cái mũi', ['black', 'brown'], '<ellipse cx="100" cy="90" rx="10" ry="7"/>'),
+    ],
+    details: `${eye(86, 70, 5)}${eye(114, 70, 5)}<path d="M100 97 L100 104"/><path d="M90 106 Q100 114 110 106"/><path d="M84 176 L84 190"/><path d="M116 176 L116 190"/>`,
+  },
+  {
+    id: 'cow', group: 'animals', emoji: '🐮', en: 'cow', vi: 'con bò',
+    parts: [
+      many('horns', 'horns', 'cái sừng', ['yellow', 'brown', 'orange'], '<path d="M72 50 Q56 32 64 14 Q74 32 86 42 Z"/><path d="M128 50 Q144 32 136 14 Q126 32 114 42 Z"/>'),
+      many('ears', 'ears', 'cái tai', ['pink', 'brown', 'black'],
+        '<ellipse cx="48" cy="72" rx="24" ry="11" transform="rotate(-15 48 72)"/><ellipse cx="152" cy="72" rx="24" ry="11" transform="rotate(15 152 72)"/>'),
+      part('head', 'head', 'cái đầu', ['brown', 'black', 'yellow'], '<rect x="60" y="38" width="80" height="116" rx="36"/>'),
+      many('spots', 'spots', 'đốm', ['black', 'brown'], '<circle cx="80" cy="60" r="11"/><circle cx="124" cy="70" r="9"/>'),
+      part('nose', 'nose', 'cái mũi', ['pink', 'red'], '<ellipse cx="100" cy="138" rx="44" ry="28"/>'),
+    ],
+    details: `${eye(84, 96, 6)}${eye(116, 96, 6)}<ellipse cx="86" cy="136" rx="5" ry="7" fill="${INK}"/><ellipse cx="114" cy="136" rx="5" ry="7" fill="${INK}"/><path d="M88 152 Q100 158 112 152"/>`,
+  },
+  {
+    id: 'pig', group: 'animals', emoji: '🐷', en: 'pig', vi: 'con lợn',
+    parts: [
+      many('ears', 'ears', 'cái tai', ['pink', 'red'], '<path d="M56 66 L58 22 L92 44 Z"/><path d="M144 66 L142 22 L108 44 Z"/>'),
+      part('head', 'head', 'cái đầu', ['pink'], '<circle cx="100" cy="106" r="62"/>'),
+      part('nose', 'nose', 'cái mũi', ['pink', 'red'], '<ellipse cx="100" cy="124" rx="28" ry="20"/>'),
+    ],
+    details: `${eye(78, 88, 6)}${eye(122, 88, 6)}<ellipse cx="91" cy="124" rx="5" ry="8" fill="${INK}"/><ellipse cx="109" cy="124" rx="5" ry="8" fill="${INK}"/><path d="M84 152 Q100 162 116 152"/>`,
+  },
+  {
+    id: 'duck', group: 'animals', emoji: '🦆', en: 'duck', vi: 'con vịt',
+    parts: [
+      part('tail', 'tail', 'cái đuôi', ['yellow', 'brown', 'green'], '<path d="M40 124 L14 98 L46 108 Z"/>'),
+      many('feet', 'feet', 'bàn chân', ['orange', 'yellow'], '<path d="M76 168 L62 190 L92 190 Z"/><path d="M110 168 L98 190 L128 190 Z"/>'),
+      part('body', 'body', 'cái thân', ['yellow', 'brown', 'green'], '<ellipse cx="92" cy="134" rx="62" ry="40"/>'),
+      part('wing', 'wing', 'cái cánh', ['yellow', 'orange', 'brown', 'green'], '<path d="M60 128 Q96 100 128 130 Q94 156 60 128 Z"/>'),
+      part('head', 'head', 'cái đầu', ['yellow', 'green', 'brown'], '<circle cx="138" cy="76" r="30"/>'),
+      part('beak', 'beak', 'cái mỏ', ['orange', 'yellow'], '<path d="M160 70 Q194 70 194 84 Q178 96 158 90 Z"/>'),
+    ],
+    details: `${eye(146, 70, 5)}<path d="M162 82 L190 80"/>`,
+  },
+  {
+    id: 'rabbit', group: 'animals', emoji: '🐰', en: 'rabbit', vi: 'con thỏ',
+    parts: [
+      many('ears', 'ears', 'cái tai', ['pink', 'brown', 'yellow'],
+        '<ellipse cx="80" cy="46" rx="14" ry="36" transform="rotate(-8 80 46)"/><ellipse cx="120" cy="46" rx="14" ry="36" transform="rotate(8 120 46)"/>'),
+      part('body', 'body', 'cái thân', ['brown', 'pink', 'yellow', 'orange'], '<ellipse cx="100" cy="156" rx="42" ry="36"/>'),
+      many('feet', 'feet', 'bàn chân', ['pink', 'brown'], '<ellipse cx="76" cy="188" rx="18" ry="8"/><ellipse cx="124" cy="188" rx="18" ry="8"/>'),
+      part('head', 'head', 'cái đầu', ['brown', 'pink', 'yellow', 'orange'], '<circle cx="100" cy="100" r="38"/>'),
+    ],
+    details: `${eye(86, 94, 5)}${eye(114, 94, 5)}<path d="M96 108 L104 108 L100 113 Z" fill="${INK}"/><path d="M100 113 Q94 120 89 117"/><path d="M100 113 Q106 120 111 117"/><path d="M80 112 L60 110"/><path d="M120 112 L140 110"/>`,
+  },
+  {
+    id: 'elephant', group: 'animals', emoji: '🐘', en: 'elephant', vi: 'con voi',
+    parts: [
+      many('ears', 'ears', 'cái tai', ['pink', 'blue', 'purple', 'brown'], '<ellipse cx="50" cy="88" rx="40" ry="46"/><ellipse cx="150" cy="88" rx="40" ry="46"/>'),
+      part('head', 'head', 'cái đầu', ['blue', 'purple', 'brown', 'black'], '<ellipse cx="100" cy="84" rx="42" ry="48"/>'),
+      part('trunk', 'trunk', 'cái vòi', ['blue', 'purple', 'brown', 'black'],
+        '<path d="M86 116 Q84 152 94 172 Q100 186 116 180 Q122 174 114 168 Q104 158 112 116 Z"/>'),
+    ],
+    details: `${eye(82, 80, 6)}${eye(118, 80, 6)}<path d="M96 140 L104 140"/><path d="M96 156 L106 156"/>`,
+  },
+  {
+    id: 'lion', group: 'animals', emoji: '🦁', en: 'lion', vi: 'con sư tử',
+    parts: [
+      part('mane', 'mane', 'cái bờm', ['orange', 'brown', 'yellow', 'red'], mane()),
+      many('ears', 'ears', 'cái tai', ['yellow', 'orange', 'brown'], '<circle cx="70" cy="62" r="14"/><circle cx="130" cy="62" r="14"/>'),
+      part('face', 'face', 'khuôn mặt', ['yellow', 'orange'], '<circle cx="100" cy="102" r="44"/>'),
+      part('nose', 'nose', 'cái mũi', ['brown', 'pink', 'black'], '<ellipse cx="100" cy="116" rx="14" ry="10"/>'),
+    ],
+    details: `${eye(84, 92, 6)}${eye(116, 92, 6)}<path d="M100 126 Q92 136 84 132"/><path d="M100 126 Q108 136 116 132"/><path d="M78 118 L56 114"/><path d="M78 124 L56 128"/><path d="M122 118 L144 114"/><path d="M122 124 L144 128"/>`,
+  },
+  {
+    id: 'giraffe', group: 'animals', emoji: '🦒', en: 'giraffe', vi: 'con hươu cao cổ',
+    parts: [
+      part('tail', 'tail', 'cái đuôi', ['brown', 'black'], '<path d="M60 124 Q46 140 44 160"/>', { line: true }),
+      many('legs', 'legs', 'cái chân', ['yellow', 'orange', 'brown'],
+        '<rect x="68" y="138" width="11" height="52" rx="4"/><rect x="86" y="140" width="11" height="50" rx="4"/><rect x="118" y="140" width="11" height="50" rx="4"/><rect x="136" y="138" width="11" height="52" rx="4"/>'),
+      part('body', 'body', 'cái thân', ['yellow', 'orange'], '<ellipse cx="104" cy="130" rx="48" ry="26"/>'),
+      part('neck', 'neck', 'cái cổ', ['yellow', 'orange'], '<path d="M122 122 L136 44 L158 48 L150 126 Z"/>'),
+      many('horns', 'horns', 'cái sừng', ['brown', 'orange'], '<path d="M150 28 L148 12"/><path d="M162 28 L166 12"/>', { line: true }),
+      part('head', 'head', 'cái đầu', ['yellow', 'orange'], '<ellipse cx="160" cy="38" rx="26" ry="15" transform="rotate(12 160 38)"/>'),
+      many('spots', 'spots', 'đốm', ['brown', 'orange'],
+        '<circle cx="84" cy="124" r="7"/><circle cx="106" cy="138" r="8"/><circle cx="124" cy="120" r="6"/><circle cx="72" cy="138" r="5"/><circle cx="142" cy="96" r="5"/><circle cx="146" cy="70" r="5"/><circle cx="140" cy="116" r="5"/>'),
+    ],
+    details: `${eye(166, 34, 4)}<path d="M180 44 Q176 48 172 46"/>`,
+  },
+  {
+    id: 'turtle', group: 'animals', emoji: '🐢', en: 'turtle', vi: 'con rùa',
+    parts: [
+      part('tail', 'tail', 'cái đuôi', ['green', 'yellow'], '<path d="M44 132 L16 146 L44 146 Z"/>'),
+      many('legs', 'legs', 'cái chân', ['green', 'yellow'],
+        '<ellipse cx="62" cy="148" rx="14" ry="13"/><ellipse cx="90" cy="154" rx="14" ry="13"/><ellipse cx="122" cy="154" rx="14" ry="13"/><ellipse cx="150" cy="148" rx="14" ry="13"/>'),
+      part('head', 'head', 'cái đầu', ['green', 'yellow'], '<circle cx="170" cy="118" r="22"/>'),
+      part('shell', 'shell', 'cái mai', ['green', 'brown', 'orange', 'blue'], '<path d="M36 142 Q40 58 102 56 Q162 58 166 142 Z"/>'),
+      many('spots', 'spots', 'hoa văn', ['brown', 'yellow', 'orange', 'green'],
+        '<circle cx="78" cy="110" r="13"/><circle cx="118" cy="92" r="15"/><circle cx="128" cy="126" r="10"/><circle cx="96" cy="132" r="8"/>'),
+    ],
+    details: `${eye(178, 112, 5)}<path d="M178 126 Q184 128 188 124"/><path d="M8 168 L192 168"/>`,
+  },
+  {
+    id: 'frog', group: 'animals', emoji: '🐸', en: 'frog', vi: 'con ếch',
+    parts: [
+      many('legs', 'legs', 'cái chân', ['green', 'yellow'],
+        '<ellipse cx="50" cy="168" rx="30" ry="15" transform="rotate(-10 50 168)"/><ellipse cx="150" cy="168" rx="30" ry="15" transform="rotate(10 150 168)"/>'),
+      many('eyes', 'eyes', 'đôi mắt', ['green', 'yellow'], '<circle cx="70" cy="60" r="24"/><circle cx="130" cy="60" r="24"/>'),
+      part('body', 'body', 'cái thân', ['green', 'yellow', 'blue'], '<ellipse cx="100" cy="122" rx="64" ry="54"/>'),
+      part('belly', 'belly', 'cái bụng', ['yellow', 'green', 'pink'], '<ellipse cx="100" cy="142" rx="36" ry="28"/>'),
+    ],
+    details: `${eye(70, 56, 10)}${eye(130, 56, 10)}<path d="M72 96 Q100 114 128 96"/><circle cx="92" cy="84" r="1.5" fill="${INK}"/><circle cx="108" cy="84" r="1.5" fill="${INK}"/>`,
+  },
+  {
     id: 'flower', group: 'things', emoji: '🌸', en: 'flower', vi: 'bông hoa',
     parts: [
       part('stem', 'stem', 'cuống hoa', ['green'], '<rect x="95" y="96" width="10" height="96" rx="4"/>'),
@@ -179,6 +304,62 @@ const DRAWN = [
         '<path d="M58 100 Q52 56 100 48 Q148 56 142 100 Q128 112 116 102 Q100 114 84 102 Q72 112 58 100 Z"/>'),
     ],
     details: '<path d="M100 25 Q104 14 112 10"/><path d="M80 116 L106 160"/><path d="M120 116 L94 160"/>',
+  },
+  {
+    id: 'bus', group: 'things', emoji: '🚌', en: 'bus', vi: 'xe buýt',
+    parts: [
+      part('bus', 'bus', 'thân xe', ['yellow', 'red', 'blue', 'green', 'orange'], '<rect x="14" y="50" width="172" height="98" rx="14"/>'),
+      many('windows', 'windows', 'cửa sổ', ['blue', 'yellow'], '<rect x="26" y="64" width="30" height="30" rx="4"/><rect x="64" y="64" width="30" height="30" rx="4"/><rect x="102" y="64" width="30" height="30" rx="4"/>'),
+      part('door', 'door', 'cửa xe', ['blue', 'red', 'brown', 'black'], '<rect x="144" y="64" width="30" height="70" rx="4"/>'),
+      many('wheels', 'wheels', 'bánh xe', ['black'], '<circle cx="52" cy="150" r="20"/><circle cx="148" cy="150" r="20"/>'),
+    ],
+    details: '<circle cx="52" cy="150" r="7"/><circle cx="148" cy="150" r="7"/><path d="M14 112 L140 112"/><path d="M159 64 L159 134"/><path d="M8 172 L192 172"/>',
+  },
+  {
+    id: 'train', group: 'things', emoji: '🚂', en: 'train', vi: 'tàu hỏa',
+    parts: [
+      part('chimney', 'chimney', 'ống khói', ['red', 'black', 'brown'], '<rect x="40" y="46" width="24" height="40" rx="3"/>'),
+      part('train', 'train', 'thân tàu', ['red', 'blue', 'green', 'yellow', 'orange'], '<path d="M20 140 L20 90 Q20 82 28 82 L110 82 L110 52 L172 52 L172 140 Z"/>'),
+      part('roof', 'roof', 'mái tàu', ['red', 'blue', 'black', 'brown'], '<rect x="100" y="32" width="82" height="22" rx="4"/>'),
+      part('window', 'window', 'cửa sổ', ['blue', 'yellow'], '<rect x="124" y="64" width="34" height="30" rx="4"/>'),
+      many('wheels', 'wheels', 'bánh xe', ['black', 'red'], '<circle cx="48" cy="148" r="17"/><circle cx="88" cy="148" r="17"/><circle cx="144" cy="144" r="24"/>'),
+    ],
+    details: '<circle cx="48" cy="148" r="5"/><circle cx="88" cy="148" r="5"/><circle cx="144" cy="144" r="7"/><circle cx="58" cy="28" r="8"/><circle cx="76" cy="16" r="10"/><path d="M8 172 L192 172"/>',
+  },
+  {
+    id: 'plane', group: 'things', emoji: '✈️', en: 'plane', vi: 'máy bay',
+    parts: [
+      part('tail', 'tail', 'cái đuôi', ['red', 'blue', 'orange', 'yellow'], '<path d="M28 92 L16 44 L46 44 L64 92 Z"/>'),
+      part('plane', 'plane', 'thân máy bay', ['blue', 'red', 'yellow', 'green'], '<path d="M22 92 Q22 80 38 80 L154 80 Q190 84 190 104 Q186 122 158 124 L38 124 Q22 122 22 108 Z"/>'),
+      part('wing', 'wing', 'cánh máy bay', ['blue', 'red', 'yellow', 'green', 'orange'], '<path d="M78 106 L122 106 L98 164 L66 164 Z"/>'),
+      many('windows', 'windows', 'cửa sổ', ['blue', 'yellow'], '<circle cx="60" cy="96" r="7"/><circle cx="84" cy="96" r="7"/><circle cx="108" cy="96" r="7"/><circle cx="132" cy="96" r="7"/>'),
+    ],
+    details: '<path d="M158 92 Q172 90 180 98"/>',
+  },
+  {
+    id: 'boat', group: 'things', emoji: '⛵', en: 'boat', vi: 'con thuyền',
+    parts: [
+      part('mast', 'mast', 'cột buồm', ['brown', 'black'], '<path d="M100 18 L100 138"/>', { line: true }),
+      part('flag', 'flag', 'lá cờ', ['red', 'yellow', 'blue', 'green'], '<path d="M100 18 L126 26 L100 34 Z"/>'),
+      many('sails', 'sails', 'cánh buồm', ['red', 'yellow', 'blue', 'orange', 'purple', 'pink'],
+        '<path d="M106 38 L106 128 L168 128 Z"/><path d="M94 50 L94 128 L48 128 Z"/>'),
+      part('boat', 'boat', 'thân thuyền', ['brown', 'red', 'blue', 'orange'], '<path d="M28 136 L172 136 L150 172 L50 172 Z"/>'),
+    ],
+    details: '<path d="M8 186 Q24 178 40 186 Q56 194 72 186 Q88 178 104 186 Q120 194 136 186 Q152 178 168 186 Q184 194 196 186"/>',
+  },
+  {
+    id: 'cake', group: 'things', emoji: '🎂', en: 'cake', vi: 'bánh sinh nhật',
+    parts: [
+      part('plate', 'plate', 'cái đĩa', ['blue', 'yellow', 'pink', 'green'], '<ellipse cx="100" cy="176" rx="84" ry="14"/>'),
+      part('cake', 'cake', 'cái bánh', ['brown', 'pink', 'yellow', 'orange'], '<rect x="42" y="100" width="116" height="74" rx="8"/>'),
+      part('cream', 'cream', 'lớp kem', ['pink', 'yellow', 'purple', 'blue', 'brown'],
+        '<path d="M42 116 L42 100 Q42 90 52 90 L148 90 Q158 90 158 100 L158 116 Q148 132 137 116 Q126 132 115 116 Q104 132 93 116 Q82 132 71 116 Q60 132 50 116 Q46 122 42 116 Z"/>'),
+      many('candles', 'candles', 'cây nến', ['red', 'blue', 'green', 'yellow', 'purple'],
+        '<rect x="68" y="54" width="12" height="36" rx="3"/><rect x="94" y="54" width="12" height="36" rx="3"/><rect x="120" y="54" width="12" height="36" rx="3"/>'),
+      many('flames', 'flames', 'ngọn lửa', ['yellow', 'orange'],
+        '<path d="M74 52 Q66 42 74 30 Q82 42 74 52 Z"/><path d="M100 52 Q92 42 100 30 Q108 42 100 52 Z"/><path d="M126 52 Q118 42 126 30 Q134 42 126 52 Z"/>'),
+    ],
+    details: '<path d="M60 146 L140 146"/>',
   },
 ];
 

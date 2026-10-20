@@ -224,7 +224,7 @@ test('P2: máy chưa có ảnh vẫn có nhóm "Con vật và đồ vật"; tran
   await page.getByRole('button', { name: 'Trò chơi' }).click();
   await page.getByRole('button', { name: 'Ghép hình' }).click();
   await page.getByRole('button', { name: 'Ghép cả bức tranh' }).click();
-  await expect(page.locator('.pz-group[data-group="svg"] .pz-card')).toHaveCount(10);
+  await expect(page.locator('.pz-group[data-group="svg"] .pz-card')).toHaveCount(25);
   await expect(page.locator('.pz-group[data-group="words"]')).toHaveCount(0);
   await page.locator('.pz-card[data-card="grid:svg:butterfly"]').click();
   await waitState(page, 'playing');

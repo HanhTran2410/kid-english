@@ -8,8 +8,8 @@ import {
   makeLine, whereLine, yesPartLine, doneLine, familyDoneLine, cleanPuzzlePhotos,
 } from '../../app/js/puzzle.js';
 
-test('10 hình ghép bộ phận: mảnh / vẽ sẵn là bộ phận có thật, phủ đủ các phần; mỗi mảnh ≥ 20/200; bỏ mặt trời', () => {
-  assert.equal(PART_PUZZLES.length, 10);
+test('25 hình ghép bộ phận: mảnh / vẽ sẵn là bộ phận có thật, phủ đủ các phần; mỗi mảnh ≥ 20/200; bỏ mặt trời', () => {
+  assert.equal(PART_PUZZLES.length, 25);
   assert.ok(!PART_PUZZLES.some((p) => p.picture === 'sun'));
   for (const def of PART_PUZZLES) {
     const pic = PICTURE_BY_ID.get(def.picture);

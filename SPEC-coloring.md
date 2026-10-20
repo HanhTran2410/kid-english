@@ -179,3 +179,14 @@
 - **Phần nét** (râu bướm, chân chim và bọ rùa, tia nắng): vùng chạm là nét dày 13 (viền đen) để dễ trúng; màu tô là nét bên trong.
 - **Chữ, số:** viền vẽ trước, phần tô vẽ đè lên để che các nét chồng bên trong phông chữ. Chạm vào thân chữ là tô.
 - Phần nhỏ nhất (đèn xe, quả anh đào) ≥ 18/200 khung hình (khoảng 50 px trên iPad).
+
+## 9. Thêm tranh (app 0.23.0, SPEC-content mục 1)
+- **Con vật: 5 → 15.** Thêm dog, cow, pig, duck, rabbit, elephant, lion, giraffe, turtle, frog.
+- **Đồ vật: 6 → 11.** Thêm bus, train, plane, boat, cake.
+- Cùng kiểu vẽ:
+  - khung 200 × 200, 3–7 phần mỗi tranh, mỗi phần có tên Anh / Việt và màu hợp lý để Bông giao việc (không giao màu trắng);
+  - phần mảnh (đuôi hươu, sừng hươu, cột buồm) là **nét**.
+- Mọi tranh mới đều vào **Ghép bộ phận** và nhóm **Con vật và đồ vật** của Ghép cả bức tranh (SPEC-puzzle): 10 → 25 hình.
+  - Khung bao từng mảnh đo bằng `getBBox`.
+  - Mảnh < 20 / 200 hoặc là nét thì vẽ sẵn: mũi chó, đốm bò, chân vịt, chân thỏ, cửa sổ máy bay, cờ, ngọn nến.
+  - Thân xe buýt / tàu / máy bay / thuyền gọi là *body* (như ô tô).

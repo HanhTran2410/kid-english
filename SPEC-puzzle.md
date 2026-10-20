@@ -276,3 +276,7 @@ Không tính sao học. Ghép xong một ảnh từ vựng thì ghi "đã gặp"
 - **Điểm thả = vị trí ngón tay** (mảnh kéo luôn nằm giữa ngón tay). Không đo khung của mảnh đang kéo: máy bật "giảm chuyển động" có transition rất ngắn cho mọi phần tử, đo ngay lúc thả vẫn ra vị trí cũ, nên bé thả đúng mà bị tính trượt (lỗi tìm ra khi viết test, đã sửa; mảnh kéo cũng tắt transition).
 - **Gợi ý sáng** (chỗ đúng sau 2 lần sai, khi chạm mảnh) luôn sáng đủ thời gian thật, vì không chặn lượt chơi.
 - **Mảnh lưới trong khay** giữ đúng tỉ lệ ô, cạnh ngắn 72 px.
+
+## Thêm hình (app 0.23.0)
+- Ghép bộ phận: **25 hình** (thêm 15 tranh Tô màu mới, SPEC-coloring mục 9).
+- Nhóm *Con vật và đồ vật* của Ghép cả bức tranh cũng có 25 hình.

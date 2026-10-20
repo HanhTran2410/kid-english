@@ -32,7 +32,7 @@ test('tô bướm: giao việc → khác màu thì "Now try …" + gợi ý màu
   await fakeSpeech(page);
   await startApp(page);
   await openColoring(page);
-  await expect(page.locator('.cl-card')).toHaveCount(5);
+  await expect(page.locator('.cl-card')).toHaveCount(15);
   await openPicture(page, 'Con vật', 'Con bướm');
   await expect.poll(() => spoken(page)).toContain("Let's color the butterfly!");
   const task = await want(page);
@@ -190,7 +190,7 @@ test('dữ liệu màu hỏng / mã lạ không làm lỗi: thẻ vẫn hiện, 
     butterfly: { wings: 'gold', tail: 'red', body: 'pink' }, nope: { a: 'red' }, fish: 'hỏng', cat: null,
   }));
   await openColoring(page);
-  await expect(page.locator('.cl-card')).toHaveCount(5);
+  await expect(page.locator('.cl-card')).toHaveCount(15);
   await page.getByRole('button', { name: 'Con bướm', exact: true }).click();
   expect(await colorOf(page, 'wings')).toBe('');
   expect(await colorOf(page, 'body')).toBe('pink');
