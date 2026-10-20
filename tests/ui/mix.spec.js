@@ -80,6 +80,6 @@ test('Học cùng Bông: có lượt câu nói (làm theo + nói) và lượt s�
   const said = await spoken(page);
   expect(said.some((t) => /^Your turn! (Wash your face|Wake up)!$/.test(t))).toBe(true);
   expect(said.some((t) => /^How many (apples|ducks)\?$/.test(t))).toBe(true);
-  // Từ vựng vẫn có (bài mẫu Animals / Colors).
-  expect(said.some((t) => /^(What's this\?|What color)/.test(t))).toBe(true);
+  // Từ vựng vẫn có (bài từ vựng có sẵn): câu hỏi của bài kèm "Say: …", hoặc "What's this?" / "What color…".
+  expect(said.some((t) => /^(What's this\?|What color|Say: )/.test(t))).toBe(true);
 });

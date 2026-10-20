@@ -1,0 +1,41 @@
+{
+  "version": 1,
+  "title": "Food",
+  "titleVi": "Đồ ăn",
+  "emoji": "🍚",
+  "words": [
+    { "en": "rice", "vi": "cơm", "emoji": "🍚", "sentence": "I eat rice.", "imagePrompt": "A small bowl of white rice, cute children's flashcard illustration, simple flat shapes, thick soft outlines, bright pastel colors, plain white background, one object centered, no text" },
+    { "en": "bread", "vi": "bánh mì", "emoji": "🍞", "sentence": "I eat bread.", "imagePrompt": "A soft loaf of bread, cute children's flashcard illustration, simple flat shapes, thick soft outlines, bright pastel colors, plain white background, one object centered, no text" },
+    { "en": "egg", "vi": "quả trứng", "emoji": "🥚", "sentence": "I eat an egg.", "imagePrompt": "One white egg, cute children's flashcard illustration, simple flat shapes, thick soft outlines, bright pastel colors, plain white background, one object centered, no text" },
+    { "en": "banana", "vi": "quả chuối", "emoji": "🍌", "sentence": "I eat a banana.", "imagePrompt": "One yellow banana, cute children's flashcard illustration, simple flat shapes, thick soft outlines, bright pastel colors, plain white background, one object centered, no text" },
+    { "en": "milk", "vi": "sữa", "emoji": "🥛", "sentence": "I drink milk.", "imagePrompt": "A glass of milk, cute children's flashcard illustration, simple flat shapes, thick soft outlines, bright pastel colors, plain white background, one object centered, no text" },
+    { "en": "water", "vi": "nước", "emoji": "💧", "sentence": "I drink water.", "imagePrompt": "A glass of water, cute children's flashcard illustration, simple flat shapes, thick soft outlines, bright pastel colors, plain white background, one object centered, no text" }
+  ],
+  "conversation": [
+    { "word": "rice", "teacher": "What is this?", "child": "It's rice!" },
+    { "word": "rice", "teacher": "Do you like rice?", "child": "Yes! Yummy!" },
+    { "word": "bread", "teacher": "What is this?", "child": "It's bread!" },
+    { "word": "bread", "teacher": "Do you like bread?", "child": "Yes! Yummy!" },
+    { "word": "egg", "teacher": "What is this?", "child": "It's an egg!" },
+    { "word": "egg", "teacher": "Is the egg round?", "child": "Yes! Round!" },
+    { "word": "banana", "teacher": "What is this?", "child": "It's a banana!" },
+    { "word": "banana", "teacher": "Is the banana yellow?", "child": "Yes! Yellow!" },
+    { "word": "milk", "teacher": "What is this?", "child": "It's milk!" },
+    { "word": "milk", "teacher": "Do you drink milk?", "child": "Yes! I drink milk!" },
+    { "word": "water", "teacher": "What is this?", "child": "It's water!" },
+    { "word": "water", "teacher": "Are you thirsty?", "child": "Yes! Water, please!" }
+  ],
+  "questions": [
+    { "ask": "Which one is rice?", "answer": "rice" },
+    { "ask": "Which one is bread?", "answer": "bread" },
+    { "ask": "Which one is the egg?", "answer": "egg" },
+    { "ask": "Which one is the banana?", "answer": "banana" },
+    { "ask": "Which one is milk?", "answer": "milk" },
+    { "ask": "Which one is water?", "answer": "water" }
+  ],
+  "story": [
+    { "text": "I am hungry. I eat rice.", "repeat": "Yummy!" },
+    { "text": "I eat a banana. Yum, yum!", "repeat": "Yum, yum!" },
+    { "text": "I drink milk. All done!", "repeat": "All done!" }
+  ]
+}

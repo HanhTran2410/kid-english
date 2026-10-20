@@ -1,0 +1,41 @@
+{
+  "version": 1,
+  "title": "Weather",
+  "titleVi": "Thời tiết",
+  "emoji": "🌦️",
+  "words": [
+    { "en": "sunny", "vi": "nắng", "emoji": "☀️", "sentence": "It is sunny.", "imagePrompt": "A bright smiling sun, cute children's flashcard illustration, simple flat shapes, thick soft outlines, bright pastel colors, plain white background, one object centered, no text" },
+    { "en": "rainy", "vi": "mưa", "emoji": "🌧️", "sentence": "It is rainy.", "imagePrompt": "A cloud with rain drops, cute children's flashcard illustration, simple flat shapes, thick soft outlines, bright pastel colors, plain white background, one object centered, no text" },
+    { "en": "cloudy", "vi": "nhiều mây", "emoji": "☁️", "sentence": "It is cloudy.", "imagePrompt": "Two fluffy grey clouds, cute children's flashcard illustration, simple flat shapes, thick soft outlines, bright pastel colors, plain white background, one object centered, no text" },
+    { "en": "windy", "vi": "có gió", "emoji": "🌬️", "sentence": "It is windy.", "imagePrompt": "A cloud blowing wind, cute children's flashcard illustration, simple flat shapes, thick soft outlines, bright pastel colors, plain white background, one object centered, no text" },
+    { "en": "hot", "vi": "nóng", "emoji": "🥵", "sentence": "It is hot!", "imagePrompt": "A hot red face with sweat drops, cute children's flashcard illustration, simple flat shapes, thick soft outlines, bright pastel colors, plain white background, one object centered, no text" },
+    { "en": "cold", "vi": "lạnh", "emoji": "🥶", "sentence": "It is cold!", "imagePrompt": "A cold blue shivering face, cute children's flashcard illustration, simple flat shapes, thick soft outlines, bright pastel colors, plain white background, one object centered, no text" }
+  ],
+  "conversation": [
+    { "word": "sunny", "teacher": "Is it sunny?", "child": "Yes! It is sunny!" },
+    { "word": "sunny", "teacher": "Where is the sun?", "child": "In the sky!" },
+    { "word": "rainy", "teacher": "Is it rainy?", "child": "Yes! It is rainy!" },
+    { "word": "rainy", "teacher": "Do we need an umbrella?", "child": "Yes! Umbrella!" },
+    { "word": "cloudy", "teacher": "Is it cloudy?", "child": "Yes! It is cloudy!" },
+    { "word": "cloudy", "teacher": "Are the clouds big?", "child": "Yes! Big clouds!" },
+    { "word": "windy", "teacher": "Is it windy?", "child": "Yes! Whoosh!" },
+    { "word": "windy", "teacher": "Can you blow like the wind?", "child": "Whoosh!" },
+    { "word": "hot", "teacher": "Is it hot?", "child": "Yes! It is hot!" },
+    { "word": "hot", "teacher": "Do you want ice cream?", "child": "Yes, please!" },
+    { "word": "cold", "teacher": "Is it cold?", "child": "Brr! It is cold!" },
+    { "word": "cold", "teacher": "Put on your coat!", "child": "My coat!" }
+  ],
+  "questions": [
+    { "ask": "Which one is sunny?", "answer": "sunny" },
+    { "ask": "Which one is rainy?", "answer": "rainy" },
+    { "ask": "Which one is cloudy?", "answer": "cloudy" },
+    { "ask": "Which one is windy?", "answer": "windy" },
+    { "ask": "Which one is hot?", "answer": "hot" },
+    { "ask": "Which one is cold?", "answer": "cold" }
+  ],
+  "story": [
+    { "text": "Look! It is sunny. Hello, sun!", "repeat": "Hello, sun!" },
+    { "text": "Oh no! It is rainy. Splash!", "repeat": "Splash!" },
+    { "text": "Brr! It is cold. Hug me!", "repeat": "Hug me!" }
+  ]
+}

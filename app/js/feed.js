@@ -46,6 +46,13 @@ export const BUILTIN_FOODS = [
   mass('rice', 'rice', 'cơm', '🍚', 'a bowl of white rice'),
   { id: 'noodles', en: 'noodles', vi: 'mì', kind: 'food', grammar: 'plural', emoji: '🍜', draw: 'a bowl of noodles' },
   mass('fish', 'fish', 'cá', '🐟', 'a cooked fish on a plate'),
+  // Món quen với bé Việt (0.25.0, SPEC-content mục 4).
+  count('mango', 'mango', 'a', 'mangoes', 'quả xoài', '🥭', 'a ripe yellow mango'),
+  count('coconut', 'coconut', 'a', 'coconuts', 'quả dừa', '🥥', 'a brown coconut cut in half'),
+  count('sweet-potato', 'sweet potato', 'a', 'sweet potatoes', 'củ khoai lang', '🍠', 'a roasted sweet potato'),
+  count('rice-ball', 'rice ball', 'a', 'rice balls', 'nắm xôi', '🍙', 'a white sticky rice ball'),
+  count('dumpling', 'dumpling', 'a', 'dumplings', 'chiếc bánh bao', '🥟', 'a soft steamed bun'),
+  mass('soup', 'soup', 'canh', '🍲', 'a bowl of hot soup'),
   { ...mass('milk', 'milk', 'sữa', '🥛', 'a glass of milk'), kind: 'drink' },
   { ...mass('juice', 'juice', 'nước ép', '🧃', 'a glass of orange juice'), kind: 'drink' },
   { ...mass('water', 'water', 'nước', '💧', 'a glass of water'), kind: 'drink' },

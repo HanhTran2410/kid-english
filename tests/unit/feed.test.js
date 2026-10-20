@@ -19,7 +19,7 @@ test('dữ liệu món: mã không trùng; mỗi loại danh từ đủ trườn
     if (f.grammar === 'count') assert.ok(['a', 'an'].includes(f.article) && f.plural, f.id);
     if (f.kind === 'silly') assert.equal(f.grammar, 'count', f.id);
   }
-  assert.equal(BUILTIN_FOODS.filter((f) => f.kind === 'food').length, 18);
+  assert.equal(BUILTIN_FOODS.filter((f) => f.kind === 'food').length, 24); // 18 + 6 món Việt (0.25.0)
   assert.equal(BUILTIN_FOODS.filter((f) => f.kind === 'drink').length, 3);
   assert.equal(BUILTIN_FOODS.filter((f) => f.kind === 'silly').length, 4);
 });

@@ -1,0 +1,41 @@
+{
+  "version": 1,
+  "title": "Feelings",
+  "titleVi": "Cảm xúc",
+  "emoji": "😊",
+  "words": [
+    { "en": "happy", "vi": "vui", "emoji": "😊", "sentence": "I am happy!", "imagePrompt": "A smiling happy face, cute children's flashcard illustration, simple flat shapes, thick soft outlines, bright pastel colors, plain white background, one object centered, no text" },
+    { "en": "sad", "vi": "buồn", "emoji": "😢", "sentence": "I am sad.", "imagePrompt": "A sad face with one small tear, cute children's flashcard illustration, simple flat shapes, thick soft outlines, bright pastel colors, plain white background, one object centered, no text" },
+    { "en": "angry", "vi": "tức giận", "emoji": "😠", "sentence": "I am angry!", "imagePrompt": "A cute grumpy angry face, cute children's flashcard illustration, simple flat shapes, thick soft outlines, bright pastel colors, plain white background, one object centered, no text" },
+    { "en": "sleepy", "vi": "buồn ngủ", "emoji": "😴", "sentence": "I am sleepy.", "imagePrompt": "A sleepy face with closed eyes, cute children's flashcard illustration, simple flat shapes, thick soft outlines, bright pastel colors, plain white background, one object centered, no text" },
+    { "en": "hungry", "vi": "đói", "emoji": "😋", "sentence": "I am hungry!", "imagePrompt": "A hungry face licking its lips, cute children's flashcard illustration, simple flat shapes, thick soft outlines, bright pastel colors, plain white background, one object centered, no text" },
+    { "en": "scared", "vi": "sợ", "emoji": "😨", "sentence": "I am scared!", "imagePrompt": "A cute surprised scared face, cute children's flashcard illustration, simple flat shapes, thick soft outlines, bright pastel colors, plain white background, one object centered, no text" }
+  ],
+  "conversation": [
+    { "word": "happy", "teacher": "Are you happy?", "child": "Yes! I am happy!" },
+    { "word": "happy", "teacher": "Show me a happy face!", "child": "Happy!" },
+    { "word": "sad", "teacher": "Is he sad?", "child": "Yes, he is sad." },
+    { "word": "sad", "teacher": "Show me a sad face!", "child": "Sad!" },
+    { "word": "angry", "teacher": "Is she angry?", "child": "Yes, she is angry!" },
+    { "word": "angry", "teacher": "Show me an angry face!", "child": "Grr!" },
+    { "word": "sleepy", "teacher": "Are you sleepy?", "child": "Yes! Night night!" },
+    { "word": "sleepy", "teacher": "Show me a sleepy face!", "child": "Yawn!" },
+    { "word": "hungry", "teacher": "Are you hungry?", "child": "Yes! I am hungry!" },
+    { "word": "hungry", "teacher": "Show me a hungry face!", "child": "Yum yum!" },
+    { "word": "scared", "teacher": "Is he scared?", "child": "Yes, he is scared!" },
+    { "word": "scared", "teacher": "Show me a scared face!", "child": "Oh no!" }
+  ],
+  "questions": [
+    { "ask": "Which one is happy?", "answer": "happy" },
+    { "ask": "Which one is sad?", "answer": "sad" },
+    { "ask": "Which one is angry?", "answer": "angry" },
+    { "ask": "Which one is sleepy?", "answer": "sleepy" },
+    { "ask": "Which one is hungry?", "answer": "hungry" },
+    { "ask": "Which one is scared?", "answer": "scared" }
+  ],
+  "story": [
+    { "text": "I play with my ball. I am happy!", "repeat": "Happy!" },
+    { "text": "My ball is gone. I am sad.", "repeat": "Sad!" },
+    { "text": "Here it is! I am happy again!", "repeat": "Happy again!" }
+  ]
+}

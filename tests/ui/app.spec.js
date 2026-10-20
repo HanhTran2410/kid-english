@@ -500,8 +500,10 @@ test('bài cùng tên được đặt "Animals 2"; danh sách bài chia tab theo
 
   await page.getByRole('button', { name: 'Từ vựng' }).click();
   const tabs = page.locator('.topic-tab');
-  await expect(tabs).toHaveText(['⭐All', '🐸Animals', '🌈Colors']);
-  await expect(page.locator('.lesson-card')).toHaveCount(3);
+  // 8 bài từ vựng có sẵn (Animals, Colors + 6 bài thêm ở 0.25.0) + bài "Animals 2" vừa dán.
+  await expect(tabs).toHaveCount(9);
+  expect(await tabs.allTextContents()).toEqual(expect.arrayContaining(['⭐All', '🐸Animals', '🌈Colors', '👀Body', '🍚Food', '🌦️Weather']));
+  await expect(page.locator('.lesson-card')).toHaveCount(9);
   await page.locator('.topic-tab', { hasText: 'Colors' }).click();
   await expect(page.locator('.lesson-card')).toHaveCount(1);
   await page.locator('.topic-tab', { hasText: 'Animals' }).click();
@@ -587,7 +589,8 @@ test('tạo bài: loại trừ từ theo chủ đề — hiện danh sách từ 
   await expect(summary).toContainText('chủ đề "Colors"');
   await page.getByLabel('Từ muốn tránh thêm').fill('pink, Purple');
   await page.getByRole('button', { name: 'Weather', exact: true }).click();
-  await expect(summary).toContainText('Loại trừ 2 từ của chủ đề "Weather"');
+  // Bài có sẵn Weather (6 từ) + 2 từ muốn tránh vừa gõ.
+  await expect(summary).toContainText('Loại trừ 8 từ của chủ đề "Weather"');
   await page.getByRole('button', { name: 'Colors', exact: true }).click();
 
   await page.getByRole('button', { name: 'Copy prompt' }).click();
@@ -608,11 +611,12 @@ test('tạo bài: chủ đề đã có nhiều từ thì cảnh báo và gợi �
   await openParent(page);
   await page.getByRole('button', { name: 'Tạo bài học' }).click();
   await page.getByRole('button', { name: 'Body', exact: true }).click();
-  await expect(page.locator('.avoid-info .notice.warn')).toContainText('Chủ đề "Body" đã có 20 từ');
+  // 20 từ của bài thử + 6 từ của bài có sẵn Body.
+  await expect(page.locator('.avoid-info .notice.warn')).toContainText('Chủ đề "Body" đã có 26 từ');
   await expect(page.locator('.avoid-info .notice.warn')).toContainText('"Body: actions"');
   await page.getByLabel('Hoặc tự gõ').fill('Body: actions');
   await expect(page.locator('.avoid-info .notice.warn')).toHaveCount(0);
-  await expect(page.locator('.avoid-topic summary')).toContainText('Loại trừ 20 từ của chủ đề "Body: actions"');
+  await expect(page.locator('.avoid-topic summary')).toContainText('Loại trừ 26 từ của chủ đề "Body: actions"');
 });
 
 test('màn hình chính hiện phiên bản app nhỏ ở góc (khớp với Góc bố mẹ)', async ({ page }) => {

@@ -1,0 +1,41 @@
+{
+  "version": 1,
+  "title": "Family",
+  "titleVi": "Gia đình",
+  "emoji": "👨‍👩‍👧",
+  "words": [
+    { "en": "mummy", "vi": "mẹ", "emoji": "👩", "sentence": "I love you, Mummy!", "imagePrompt": "A smiling young mother, cute children's flashcard illustration, simple flat shapes, thick soft outlines, bright pastel colors, plain white background, one object centered, no text" },
+    { "en": "daddy", "vi": "bố", "emoji": "👨", "sentence": "I love you, Daddy!", "imagePrompt": "A smiling young father, cute children's flashcard illustration, simple flat shapes, thick soft outlines, bright pastel colors, plain white background, one object centered, no text" },
+    { "en": "baby", "vi": "em bé", "emoji": "👶", "sentence": "The baby is sleeping.", "imagePrompt": "A cute smiling baby, cute children's flashcard illustration, simple flat shapes, thick soft outlines, bright pastel colors, plain white background, one object centered, no text" },
+    { "en": "grandma", "vi": "bà", "emoji": "👵", "sentence": "Hello, Grandma!", "imagePrompt": "A kind smiling grandmother, cute children's flashcard illustration, simple flat shapes, thick soft outlines, bright pastel colors, plain white background, one object centered, no text" },
+    { "en": "grandpa", "vi": "ông", "emoji": "👴", "sentence": "Hello, Grandpa!", "imagePrompt": "A kind smiling grandfather, cute children's flashcard illustration, simple flat shapes, thick soft outlines, bright pastel colors, plain white background, one object centered, no text" },
+    { "en": "sister", "vi": "chị / em gái", "emoji": "👧", "sentence": "My sister plays with me.", "imagePrompt": "A happy little girl, cute children's flashcard illustration, simple flat shapes, thick soft outlines, bright pastel colors, plain white background, one object centered, no text" }
+  ],
+  "conversation": [
+    { "word": "mummy", "teacher": "Who is this?", "child": "It's Mummy!" },
+    { "word": "mummy", "teacher": "Do you love Mummy?", "child": "Yes! I love Mummy!" },
+    { "word": "daddy", "teacher": "Who is this?", "child": "It's Daddy!" },
+    { "word": "daddy", "teacher": "Do you love Daddy?", "child": "Yes! I love Daddy!" },
+    { "word": "baby", "teacher": "Who is this?", "child": "It's a baby!" },
+    { "word": "baby", "teacher": "Is the baby sleeping?", "child": "Shh! Yes!" },
+    { "word": "grandma", "teacher": "Who is this?", "child": "It's Grandma!" },
+    { "word": "grandma", "teacher": "Say hello to Grandma!", "child": "Hello, Grandma!" },
+    { "word": "grandpa", "teacher": "Who is this?", "child": "It's Grandpa!" },
+    { "word": "grandpa", "teacher": "Say hello to Grandpa!", "child": "Hello, Grandpa!" },
+    { "word": "sister", "teacher": "Who is this?", "child": "It's my sister!" },
+    { "word": "sister", "teacher": "Do you play with her?", "child": "Yes, I do!" }
+  ],
+  "questions": [
+    { "ask": "Which one is Mummy?", "answer": "mummy" },
+    { "ask": "Which one is Daddy?", "answer": "daddy" },
+    { "ask": "Which one is the baby?", "answer": "baby" },
+    { "ask": "Which one is Grandma?", "answer": "grandma" },
+    { "ask": "Which one is Grandpa?", "answer": "grandpa" },
+    { "ask": "Which one is the sister?", "answer": "sister" }
+  ],
+  "story": [
+    { "text": "Good morning, Mummy!", "repeat": "Good morning!" },
+    { "text": "Daddy gives me a big hug.", "repeat": "Big hug!" },
+    { "text": "I love my family!", "repeat": "I love you!" }
+  ]
+}

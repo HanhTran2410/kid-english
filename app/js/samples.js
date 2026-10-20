@@ -8,6 +8,8 @@ import { builtInTalkLessons } from './talk.js';
 
 export const SAMPLE_FILES = ['lessons/animals.json', 'lessons/colors.json'];
 export const PHRASE_SAMPLE_FILES = ['lessons/morning.json', 'lessons/actions.json'];
+/** Bài từ vựng có sẵn thêm ở 0.25.0 (SPEC-content mục 3): máy đã dùng bản cũ cũng nhận được. */
+export const MORE_VOCAB_FILES = ['lessons/body.json', 'lessons/family.json', 'lessons/food.json', 'lessons/vehicles.json', 'lessons/feelings.json', 'lessons/weather.json'];
 
 /** Thêm các bài mẫu trong danh sách file. Trả về số bài đã thêm. */
 async function addFrom(app, files) {
@@ -55,7 +57,7 @@ async function addPhonicsLessons(app, only = null) {
 
 /** Nút "Thêm lại bài mẫu": thêm lại bài từ vựng, bài câu, bài số và bài phonics mẫu. */
 export async function addSampleLessons(app) {
-  return (await addFrom(app, SAMPLE_FILES)) + (await addFrom(app, PHRASE_SAMPLE_FILES)) + (await addNumberLessons(app))
+  return (await addFrom(app, SAMPLE_FILES)) + (await addFrom(app, MORE_VOCAB_FILES)) + (await addFrom(app, PHRASE_SAMPLE_FILES)) + (await addNumberLessons(app))
     + (await addPhonicsLessons(app));
 }
 
@@ -63,6 +65,12 @@ export async function addSampleLessons(app) {
 export async function seedSamplesOnce(app) {
   if (!app.settings.samplesSeeded) {
     if (await addFrom(app, SAMPLE_FILES)) await app.setSetting('samplesSeeded', true);
+  }
+  // Bài từ vựng có sẵn thêm sau: mỗi file chỉ tự thêm MỘT lần (bố mẹ xóa rồi thì không tự thêm lại).
+  const vocabAdded = app.settings.vocabSamplesAdded ?? [];
+  const newVocab = MORE_VOCAB_FILES.filter((f) => !vocabAdded.includes(f));
+  if (newVocab.length && await addFrom(app, newVocab)) {
+    await app.setSetting('vocabSamplesAdded', [...vocabAdded, ...newVocab]);
   }
   // Bài câu mẫu: mỗi file chỉ tự thêm MỘT lần (bố mẹ xóa rồi thì không tự thêm lại). Máy đã có bài Morning từ bản cũ
   // (cờ phraseSamplesSeeded) chỉ nhận bài mẫu mới (Actions).

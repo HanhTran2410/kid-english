@@ -1,0 +1,41 @@
+{
+  "version": 1,
+  "title": "Vehicles",
+  "titleVi": "Xe cộ",
+  "emoji": "🚗",
+  "words": [
+    { "en": "car", "vi": "ô tô", "emoji": "🚗", "sentence": "The car goes beep beep!", "imagePrompt": "A small red car, cute children's flashcard illustration, simple flat shapes, thick soft outlines, bright pastel colors, plain white background, one object centered, no text" },
+    { "en": "bus", "vi": "xe buýt", "emoji": "🚌", "sentence": "The bus is big.", "imagePrompt": "A yellow school bus, cute children's flashcard illustration, simple flat shapes, thick soft outlines, bright pastel colors, plain white background, one object centered, no text" },
+    { "en": "train", "vi": "tàu hỏa", "emoji": "🚂", "sentence": "The train goes choo choo!", "imagePrompt": "A little steam train, cute children's flashcard illustration, simple flat shapes, thick soft outlines, bright pastel colors, plain white background, one object centered, no text" },
+    { "en": "plane", "vi": "máy bay", "emoji": "✈️", "sentence": "The plane flies high.", "imagePrompt": "A friendly airplane, cute children's flashcard illustration, simple flat shapes, thick soft outlines, bright pastel colors, plain white background, one object centered, no text" },
+    { "en": "boat", "vi": "con thuyền", "emoji": "⛵", "sentence": "The boat is on the water.", "imagePrompt": "A small sailboat, cute children's flashcard illustration, simple flat shapes, thick soft outlines, bright pastel colors, plain white background, one object centered, no text" },
+    { "en": "bike", "vi": "xe đạp", "emoji": "🚲", "sentence": "I ride my bike.", "imagePrompt": "A small bicycle, cute children's flashcard illustration, simple flat shapes, thick soft outlines, bright pastel colors, plain white background, one object centered, no text" }
+  ],
+  "conversation": [
+    { "word": "car", "teacher": "What is this?", "child": "It's a car!" },
+    { "word": "car", "teacher": "What does the car say?", "child": "Beep beep!" },
+    { "word": "bus", "teacher": "What is this?", "child": "It's a bus!" },
+    { "word": "bus", "teacher": "Is the bus big?", "child": "Yes! Big!" },
+    { "word": "train", "teacher": "What is this?", "child": "It's a train!" },
+    { "word": "train", "teacher": "What does the train say?", "child": "Choo choo!" },
+    { "word": "plane", "teacher": "What is this?", "child": "It's a plane!" },
+    { "word": "plane", "teacher": "Is the plane in the sky?", "child": "Yes! In the sky!" },
+    { "word": "boat", "teacher": "What is this?", "child": "It's a boat!" },
+    { "word": "boat", "teacher": "Is the boat on the water?", "child": "Yes! On the water!" },
+    { "word": "bike", "teacher": "What is this?", "child": "It's a bike!" },
+    { "word": "bike", "teacher": "Can you ride a bike?", "child": "Yes, I can!" }
+  ],
+  "questions": [
+    { "ask": "Which one is the car?", "answer": "car" },
+    { "ask": "Which one is the bus?", "answer": "bus" },
+    { "ask": "Which one is the train?", "answer": "train" },
+    { "ask": "Which one is the plane?", "answer": "plane" },
+    { "ask": "Which one is the boat?", "answer": "boat" },
+    { "ask": "Which one is the bike?", "answer": "bike" }
+  ],
+  "story": [
+    { "text": "The car goes beep beep!", "repeat": "Beep beep!" },
+    { "text": "The train goes choo choo!", "repeat": "Choo choo!" },
+    { "text": "The plane flies up, up, up!", "repeat": "Up, up, up!" }
+  ]
+}

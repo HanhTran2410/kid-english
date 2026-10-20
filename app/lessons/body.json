@@ -1,0 +1,41 @@
+{
+  "version": 1,
+  "title": "Body",
+  "titleVi": "Cơ thể",
+  "emoji": "👀",
+  "words": [
+    { "en": "eyes", "vi": "đôi mắt", "emoji": "👀", "sentence": "I see with my eyes.", "imagePrompt": "Two big friendly cartoon eyes, cute children's flashcard illustration, simple flat shapes, thick soft outlines, bright pastel colors, plain white background, one object centered, no text" },
+    { "en": "nose", "vi": "cái mũi", "emoji": "👃", "sentence": "I smell with my nose.", "imagePrompt": "A cute cartoon nose, cute children's flashcard illustration, simple flat shapes, thick soft outlines, bright pastel colors, plain white background, one object centered, no text" },
+    { "en": "mouth", "vi": "cái miệng", "emoji": "👄", "sentence": "I eat with my mouth.", "imagePrompt": "A smiling cartoon mouth, cute children's flashcard illustration, simple flat shapes, thick soft outlines, bright pastel colors, plain white background, one object centered, no text" },
+    { "en": "ears", "vi": "đôi tai", "emoji": "👂", "sentence": "I hear with my ears.", "imagePrompt": "A cute cartoon ear, cute children's flashcard illustration, simple flat shapes, thick soft outlines, bright pastel colors, plain white background, one object centered, no text" },
+    { "en": "hands", "vi": "đôi tay", "emoji": "👐", "sentence": "I clap my hands.", "imagePrompt": "Two small open cartoon hands, cute children's flashcard illustration, simple flat shapes, thick soft outlines, bright pastel colors, plain white background, one object centered, no text" },
+    { "en": "feet", "vi": "đôi chân", "emoji": "🦶", "sentence": "I jump with my feet.", "imagePrompt": "Two little cartoon feet, cute children's flashcard illustration, simple flat shapes, thick soft outlines, bright pastel colors, plain white background, one object centered, no text" }
+  ],
+  "conversation": [
+    { "word": "eyes", "teacher": "Touch your eyes!", "child": "My eyes!" },
+    { "word": "eyes", "teacher": "Where are your eyes?", "child": "Here are my eyes!" },
+    { "word": "nose", "teacher": "Touch your nose!", "child": "My nose!" },
+    { "word": "nose", "teacher": "Where is your nose?", "child": "Here is my nose!" },
+    { "word": "mouth", "teacher": "Open your mouth!", "child": "My mouth!" },
+    { "word": "mouth", "teacher": "Where is your mouth?", "child": "Here is my mouth!" },
+    { "word": "ears", "teacher": "Touch your ears!", "child": "My ears!" },
+    { "word": "ears", "teacher": "Where are your ears?", "child": "Here are my ears!" },
+    { "word": "hands", "teacher": "Clap your hands!", "child": "Clap clap!" },
+    { "word": "hands", "teacher": "Wave your hands!", "child": "Bye bye!" },
+    { "word": "feet", "teacher": "Stamp your feet!", "child": "Stamp stamp!" },
+    { "word": "feet", "teacher": "Where are your feet?", "child": "Here are my feet!" }
+  ],
+  "questions": [
+    { "ask": "Which one is the nose?", "answer": "nose" },
+    { "ask": "Which one is the mouth?", "answer": "mouth" },
+    { "ask": "Which ones are the eyes?", "answer": "eyes" },
+    { "ask": "Which ones are the ears?", "answer": "ears" },
+    { "ask": "Which ones are the hands?", "answer": "hands" },
+    { "ask": "Which ones are the feet?", "answer": "feet" }
+  ],
+  "story": [
+    { "text": "Touch your nose. Beep!", "repeat": "Beep!" },
+    { "text": "Clap your hands. Clap, clap!", "repeat": "Clap, clap!" },
+    { "text": "Stamp your feet. Stamp, stamp!", "repeat": "Stamp, stamp!" }
+  ]
+}
