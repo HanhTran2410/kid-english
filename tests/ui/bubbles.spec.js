@@ -122,3 +122,21 @@ test('review BG-10: app ra nền rồi quay lại → chơi tiếp đúng ván (
   await expect(page.locator('.bb-dot.on')).toHaveCount(1);
   expect(await want(page)).toBe(next);
 });
+
+test('từ vựng: bong bóng dùng ảnh bố mẹ đã thêm ở bài học (chưa có thì emoji)', async ({ page }) => {
+  await fakeSpeech(page);
+  await startApp(page);
+  await page.evaluate(async () => {
+    const db = await import('/js/db.js');
+    const png = await new Promise((r) => { const c = document.createElement('canvas'); c.width = 60; c.height = 60; c.getContext('2d').fillRect(10, 10, 40, 40); c.toBlob(r, 'image/png'); });
+    for (const l of await window.kidEnglish.db.getAll('lessons')) {
+      if (!Array.isArray(l.words)) continue;
+      for (const w of l.words) await db.setWordImage(window.kidEnglish.db, { lessonId: l.id, word: w.en, blob: png, mimeType: 'image/png', width: 60, height: 60 });
+    }
+  });
+  await page.getByRole('button', { name: 'Trò chơi' }).click();
+  await page.getByRole('button', { name: 'Bắt bong bóng' }).click();
+  await page.getByRole('button', { name: 'Từ vựng', exact: true }).click();
+  await expect(page.locator('.bb-want img.bb-img')).toBeVisible({ timeout: 15000 });
+  await expect(page.locator('.bb-bubble img.bb-img').first()).toBeVisible({ timeout: 5000 });
+});

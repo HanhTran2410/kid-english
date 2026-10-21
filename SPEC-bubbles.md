@@ -24,7 +24,7 @@
    phụ đề (hàng riêng)
 ```
 - **Thẻ cần bắt** (góc trên) và **chạm Bông**: nghe lại câu.
-- Bong bóng **màu**: tô màu cả quả. **Số**: chữ số to. **Từ**: emoji.
+- Bong bóng **màu**: tô màu cả quả. **Số**: chữ số to. **Từ**: **ảnh bố mẹ đã thêm cho từ đó ở bài học** (ảnh mới nhất, tròn trong quả; 0.27.0), chưa có / hỏng thì emoji. Thẻ cần bắt cũng vậy.
 
 ## 3. Cách chơi
 | Lúc | App |
@@ -105,7 +105,8 @@
   - gợi ý 10 giây;
   - **BG-05:** chạm nhiều lần cùng một quả đúng → chỉ 1 lần bắt;
   - **BG-10:** ra nền rồi quay lại → giữ số đã bắt và thứ cần bắt;
-  - **BG-11:** giọng đọc lỗi → vẫn bắt được, chấm đếm sáng.
+  - **BG-11:** giọng đọc lỗi → vẫn bắt được, chấm đếm sáng;
+  - Từ vựng dùng ảnh bài học (0.27.0).
 - **Unit thêm:**
   - **BG-02:** đầy thì không thả;
   - **BG-01:** quả cần bắt bay mất → lần thả sau là quả thay thế; luôn chừa một chỗ;

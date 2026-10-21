@@ -10,6 +10,7 @@ import { runCompletion } from '../player/completion-stage.js';
 import { markPracticed } from '../player/track.js';
 import { scaled } from '../timing.js';
 import { isWordLesson } from '../phrase.js';
+import { latestImageForWord, mediaBlob } from '../db.js';
 import { isTalkLesson } from '../talk.js';
 import { isNumberLesson } from '../numbers.js';
 import { isPhonicsLesson } from '../phonics.js';
@@ -133,9 +134,17 @@ export function bubblesScreen(app, params = {}) {
   const target = () => plan?.kinds.find((k) => k.key === plan.targets[step]);
   const say = () => { if (target()) talk([popLine(mode, target())]); };
 
+  // Từ vựng: ảnh bố mẹ đã thêm cho từ ở bài học (ảnh mới nhất), chưa có / hỏng thì emoji.
+  const wordImages = new Map();
   function face(it) {
     if (mode === 'numbers') return h('span.bb-num', { text: String(it.n) });
-    if (mode === 'words') return h('span.bb-emoji', { text: it.emoji });
+    if (mode === 'words') {
+      const url = wordImages.get(it.key);
+      if (!url) return h('span.bb-emoji', { text: it.emoji });
+      const img = h('img.bb-img', { src: url, alt: '', draggable: 'false' });
+      img.addEventListener('error', () => img.replaceWith(h('span.bb-emoji', { text: it.emoji })), { once: true });
+      return img;
+    }
     return null;
   }
   function renderWant() {
@@ -265,6 +274,10 @@ export function bubblesScreen(app, params = {}) {
 
   (async () => {
     const words = mode === 'words' ? await lessonWords(app) : [];
+    for (const w of words) {
+      const img = await latestImageForWord(app.db, w.en).catch(() => null);
+      if (img) wordImages.set(w.key, URL.createObjectURL(mediaBlob(img)));
+    }
     const items = itemsFor(mode, state.level, words);
     if (signal.aborted) return;
     if (items.length < 2) {
@@ -293,6 +306,7 @@ export function bubblesScreen(app, params = {}) {
 
   return () => {
     finished = true;
+    wordImages.forEach((u) => URL.revokeObjectURL(u));
     talkGen += 1;
     clearInterval(spawnTimer);
     clearTimeout(hintTimer);

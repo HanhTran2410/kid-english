@@ -3,7 +3,8 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { ITEM_BY_ID } from '../../app/js/sticker-scenes.js';
 import {
-  ANIMALS, LEVELS, roundQuestions, soundLine, whoLine, yesLine, wrongLine, cleanSoundsState, afterSoundsRound,
+  ANIMALS, THINGS, ALL_SOUNDS, LEVELS, CHOICES, groupFor, roundQuestions, soundLine, whoLine, yesLine, wrongLine,
+  cleanSoundsState, afterSoundsRound, SOUND_FILES, soundUrl,
 } from '../../app/js/animal-sounds.js';
 
 test('15 con vật: đều là sticker Dán tranh (cùng emoji / ảnh), tiếng kêu không trùng nhau', () => {
@@ -13,16 +14,30 @@ test('15 con vật: đều là sticker Dán tranh (cùng emoji / ảnh), tiếng
     assert.ok(a.vi.startsWith('con '), a.id);
     assert.match(a.sound, /!$/);
   }
-  assert.equal(new Set(ANIMALS.map((a) => a.says)).size, ANIMALS.length);
-  assert.equal(LEVELS[3].pool, ANIMALS.length);
+  assert.equal(LEVELS[3].animals, ANIMALS.length);
 });
 
-test('câu hỏi theo mức: 5 câu, đáp án không lặp, lựa chọn đủ số và khác nhau, đáp án nằm trong lựa chọn và trong nhóm của mức', () => {
-  for (const level of [1, 2, 3]) {
-    const { choices, pool } = LEVELS[level];
-    const group = new Set(ANIMALS.slice(0, pool).map((a) => a.id));
+test('11 đồ vật: sticker Dán tranh nếu có (cùng emoji), bát đĩa / điện thoại dùng emoji riêng; tiếng kêu không trùng trong cả 26 thứ', () => {
+  assert.equal(THINGS.length, 11);
+  for (const t of THINGS) {
+    if (ITEM_BY_ID.has(t.id)) assert.equal(ITEM_BY_ID.get(t.id).emoji, t.emoji, t.id);
+    assert.ok(t.emoji && t.vi && t.says, t.id);
+  }
+  assert.equal(THINGS.find((t) => t.id === 'dishes').emoji, '🍽️');
+  assert.equal(new Set(ALL_SOUNDS.map((a) => a.says)).size, ALL_SOUNDS.length);
+  assert.equal(LEVELS[3].things, THINGS.length);
+});
+
+test('câu hỏi theo kiểu + mức: 5 câu, đáp án không lặp, LUÔN 4 hình khác nhau, đáp án nằm trong lựa chọn và trong nhóm', () => {
+  assert.equal(CHOICES, 4);
+  for (const kind of ['animals', 'things', 'mix']) for (const level of [1, 2, 3]) {
+    const choices = CHOICES;
+    const group = new Set(groupFor(kind, level).map((a) => a.id));
+    if (kind === 'animals') assert.equal(group.size, LEVELS[level].animals);
+    if (kind === 'things') assert.equal(group.size, LEVELS[level].things);
+    if (kind === 'mix') assert.equal(group.size, LEVELS[level].animals + LEVELS[level].things);
     for (let i = 0; i < 30; i++) {
-      const qs = roundQuestions(level);
+      const qs = roundQuestions(level, { kind });
       assert.equal(qs.length, 5);
       assert.equal(new Set(qs.map((q) => q.answer)).size, 5);
       for (const q of qs) {
@@ -42,11 +57,29 @@ test('câu hỏi theo mức: 5 câu, đáp án không lặp, lựa chọn đủ 
 test('câu nói: giả tiếng kêu không lộ tên con vật; hỏi; đúng; nhầm', () => {
   const cow = ANIMALS.find((a) => a.id === 'cow');
   const pig = ANIMALS.find((a) => a.id === 'pig');
-  assert.deepEqual(soundLine(cow), ['Moo! Moo!', '(Bông giả tiếng kêu)']);
+  assert.deepEqual(soundLine(cow), ['Moo! Moo!', '(Tiếng kêu)']);
   assert.ok(!soundLine(cow).join(' ').includes('bò'));
   assert.deepEqual(whoLine(cow), ['Who says moo?', 'Con gì kêu "moo" nhỉ?']);
   assert.deepEqual(yesLine(cow), ['Yes! The cow says moo!', 'Đúng rồi! Con bò kêu "moo"!']);
   assert.deepEqual(wrongLine(pig), ["That's the pig! The pig says oink!", 'Đó là con lợn! Con lợn kêu "oink"!']);
+  // Đồ vật: "What goes …?", "goes" / "go" theo số ít / nhiều.
+  const train = THINGS.find((t) => t.id === 'train');
+  const dishes = THINGS.find((t) => t.id === 'dishes');
+  assert.deepEqual(whoLine(train), ['What goes choo choo?', 'Cái gì kêu "choo choo" nhỉ?']);
+  assert.deepEqual(yesLine(train), ['Yes! The train goes choo choo!', 'Đúng rồi! Tàu hỏa kêu "choo choo"!']);
+  assert.deepEqual(yesLine(dishes)[0], 'Yes! The dishes go clink clink!');
+  assert.deepEqual(wrongLine(dishes)[0], 'Those are the dishes! The dishes go clink clink!');
+});
+
+test('file tiếng thật: chỉ thứ có file mới có đường dẫn sounds/<id>.mp3; file khai báo phải có thật trong app/sounds', async () => {
+  const { existsSync } = await import('node:fs');
+  for (const a of ALL_SOUNDS) {
+    if (SOUND_FILES.has(a.id)) {
+      assert.equal(soundUrl(a.id), `sounds/${a.id}.mp3`);
+      assert.ok(existsSync(new URL(`../../app/sounds/${a.id}.mp3`, import.meta.url)), `thiếu file ${a.id}.mp3`);
+    } else assert.equal(soundUrl(a.id), null);
+  }
+  for (const id of SOUND_FILES) assert.ok(ALL_SOUNDS.some((a) => a.id === id), id);
 });
 
 test('mức: lên sau 3 lượt (tối đa 3), khóa thì giữ, dữ liệu hỏng về mức 1', () => {

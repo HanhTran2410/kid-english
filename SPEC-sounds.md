@@ -1,27 +1,32 @@
 # SPEC — 🐮 Ai kêu thế? (Who says moo?)
 
-> App **0.26.0**, draft2 ở **0.26.1** (theo review QA) · Ngày: 2026-10-20 · **Đã làm.** Một trò trong Góc trò chơi.
+> App **0.26.0**, draft2 ở **0.26.1** (theo review QA), **draft3 ở 0.27.0** · Ngày: 2026-10-21 · **Đã làm.** Một trò trong Góc trò chơi.
+> draft3: **luôn 4 hình**; thêm **11 đồ vật** và trang chọn kiểu **Con vật / Đồ vật / Trộn**; **tiếng thật** (file ghi âm CC0 / public domain có sẵn trong app, bố mẹ thay bằng ghi âm / file); trang **Góc bố mẹ → Ảnh & tiếng Ai kêu thế?** (mục 6).
 > Bông giả tiếng kêu con vật, bé chạm đúng con vật. Trẻ 3 tuổi rất thích tiếng kêu; trò ngắn, không cần mic.
+
+## 0. Chọn kiểu
+- 3 thẻ to: **🐮 Animals / Con vật**, **🚂 Things / Đồ vật**, **🎲 Mix / Trộn cả hai**.
+- Nút 🔊 trên màn chơi quay về trang chọn kiểu.
 
 ## 1. Màn hình
 ```
  🏠  🎲   🐮 Who says moo?          2/5     🐰
                  [🔊 Listen!]
         ┌──────┐   ┌──────┐   ┌──────┐
-        │  🐄  │   │  🐖  │   │  🦆  │        ← 2 / 3 / 4 con theo mức
+        │  🐄  │   │  🐖  │   │  🦆  │   │  🐑  │   ← luôn 4 hình (điện thoại: 2 × 2)
         └──────┘   └──────┘   └──────┘
    phụ đề (hàng riêng, cao cố định)
 ```
 - **🔊 Listen!** và **chạm Bông**: nghe lại tiếng kêu + câu hỏi.
-- Điện thoại dọc: 4 con xếp 2 × 2.
+- **Luôn 4 hình** ở mọi mức (2 hình quá dễ đoán). Điện thoại dọc: xếp 2 × 2.
 
 ## 2. Cách chơi
 | Lúc | App |
 |---|---|
-| Vào trò | *"Listen! Who says that?"* (*Nghe này! Con gì kêu thế nhỉ?*) |
-| Mỗi câu | Bông giả tiếng kêu *"Moo! Moo!"* (phụ đề **không** ghi tên con vật, để không lộ đáp án) → *"Who says moo?"* |
-| Chạm **đúng** | Thẻ viền xanh, nhún, tiếng hoan hô: *"Yes! The cow says moo!"* → *"Can you say moo?"*, chờ ~2 giây cho bé kêu theo → câu sau |
-| Chạm **nhầm** | Thẻ lắc: *"That's the pig! The pig says oink!"* → giả lại tiếng kêu → hỏi lại. Không trừ gì |
+| Vào trò | Con vật: *"Listen! Who says that?"*. Đồ vật / Trộn: *"Listen! What makes that sound?"* |
+| Mỗi câu | **Tiếng thật** (file ghi âm; không có thì Bông đọc *"Moo! Moo!"*). Phụ đề chỉ ghi chữ tiếng kêu (*Moo! Moo!*), **không** ghi tên → *"Who says moo?"* / *"What goes choo choo?"* |
+| Chạm **đúng** | Thẻ viền xanh, nhún, tiếng hoan hô: *"Yes! The cow says moo!"* / *"Yes! The train goes choo choo!"* (*"The dishes go…"*) → *"Can you say moo?"*, chờ ~2 giây cho bé kêu theo → câu sau |
+| Chạm **nhầm** | Thẻ lắc: *"That's the pig! The pig says oink!"* (đồ vật: *"That's the car! The car goes beep beep!"*) → phát lại tiếng → hỏi lại. Không trừ gì |
 
 - **Nhầm từ lần 3** trong cùng câu: câu ngắn *"That's the pig!"* → *"Who says moo?"* (không đọc lại cả tràng).
 - **Chạm nhầm liên tục** (chạm đúp, chạm loạn): trong 0,4 giây chỉ tính một lần nhầm. **Chạm đúng luôn được nhận**, kể cả ngay sau lần nhầm.
@@ -42,7 +47,7 @@
   - ra nền **lúc Bông đang khen** (đã trả lời đúng): quay lại là **câu sau**, không hỏi lại / ghi tiến độ hai lần;
   - đúng câu cuối rồi mới ra nền: quay lại là hoan hô + sticker luôn.
 
-## 3. Con vật
+## 3. Con vật và đồ vật
 - **15 con, đều là sticker Dán tranh.** Cùng mã, cùng emoji, và **ảnh bố mẹ đã thay ở Ảnh Dán tranh dùng luôn**.
 - Tiếng kêu không trùng nhau.
 - Thứ tự quen → lạ:
@@ -51,8 +56,23 @@
 |---|---|---|
 | cow *moo*, dog *woof*, cat *meow*, duck *quack*, pig *oink*, sheep *baa* | chicken *cluck*, horse *neigh*, bird *tweet*, lion *roar* | frog *ribbit*, monkey *ooh ooh*, owl *hoot*, bee *buzz*, snake *hiss* |
 
-- **Nhóm của mức gồm cả con của mức thấp hơn:** mức 1 tổng 6 con, mức 2 tổng 10 con, mức 3 tổng 15 con.
-- Tiếng kêu đọc bằng **giọng đọc của máy** (không cần file âm thanh). *Cần thử tay* với giọng tiếng Anh đang chọn: baa, cluck, neigh, ribbit, ooh ooh, hiss (unit test chỉ kiểm tra chuỗi chữ).
+- **11 đồ vật** (quen → lạ), câu *"What goes …?"*:
+
+| Mức 1 (6) | thêm ở mức 2 (9) | thêm ở mức 3 (11) |
+|---|---|---|
+| car *beep beep*, train *choo choo*, phone *ring ring*, clock *tick tock*, drum *boom boom*, dishes *clink clink* | plane *zoom*, fire truck *nee naw*, bicycle *ding ding* | helicopter *chop chop*, motorbike *vroom* |
+
+- 9 đồ vật là sticker Dán tranh (cùng mã, cùng ảnh). **Bát đĩa 🍽️ và điện thoại ☎️** không có trong Dán tranh: ảnh thay ở trang Ai kêu thế? (mục 6).
+- Tiếng kêu không trùng nhau trong cả 26 thứ (Trộn không có hai thứ cùng tiếng).
+- **Nhóm của mức gồm cả nhóm của mức thấp hơn:** con vật 6 / 10 / 15, đồ vật 6 / 9 / 11. **Trộn** = cả hai nhóm của mức (12 / 19 / 26).
+- **Tiếng** (ưu tiên từ trên xuống):
+  1. tiếng **bố mẹ thêm** (ghi âm / chọn file ở mục 6);
+  2. **file ghi âm thật có sẵn** trong app (`app/sounds/<id>.mp3`, CC0 / public domain, nguồn ghi ở `app/sounds/CREDITS.md`);
+  3. **giọng đọc** của máy đọc chữ tiếng kêu (*"Moo! Moo!"*).
+- Phát qua **WebAudio** (iOS đã mở khóa âm thanh từ lần chạm "Bắt đầu"; thẻ `<audio>` dễ bị iOS chặn).
+  - Phát tối đa **5 giây**.
+  - Câu mới chen vào thì dừng tiếng đang phát.
+  - Lỗi / âm thanh bị khóa thì dùng giọng đọc.
 - Thẻ lấy ảnh **theo mã con vật lúc hiện thẻ**, dùng chung nguồn ảnh với Dán tranh (không sao chép): bố mẹ thay ảnh ở Dán tranh thì lần chơi sau tự dùng ảnh mới. Chưa có ảnh / ảnh hỏng thì emoji.
 
 **Chọn câu hỏi của một lượt (5 câu):**
@@ -67,11 +87,12 @@
 - Chạm nhầm, nghe lại không ghi gì.
 
 ## 4. Mức
-| Mức | Số con để chọn | Nhóm con vật |
-|---|---|---|
-| 1 (mặc định) | 2 | 6 con quen |
-| 2 | 3 | 10 con |
-| 3 | 4 | 15 con |
+| Mức | Số hình | Con vật | Đồ vật | Trộn |
+|---|---|---|---|---|
+| 1 (mặc định) | 4 | 6 con quen | 6 đồ quen | 12 |
+| 2 | 4 | 10 con | 9 đồ | 19 |
+| 3 | 4 | 15 con | 11 đồ | 26 |
+- Mọi kiểu dùng chung một mức và một bộ đếm lượt.
 - **Cài đặt** `soundsGame = { level, rounds, lock }` (giữ tên `rounds` như các trò trước):
 
   | Trường | Ý nghĩa | Mặc định / dữ liệu hỏng |
@@ -86,6 +107,21 @@
 - **Khóa mức** (*Cài đặt → Mức chơi Ai kêu thế?*): giữ đúng mức đã chọn, **không đếm lượt**. Mở khóa thì tiếp tục từ mức đang khóa, đếm lượt lại từ 0.
 - **Đổi mức trong lúc đang chơi:** áp dụng **từ lượt sau** (số thẻ không đổi giữa chừng).
 
+## 6. Góc bố mẹ → Ảnh & tiếng Ai kêu thế? (draft3)
+- **Mỗi thứ một ô (26 ô):** hình, tên, tiếng kêu, **nguồn tiếng đang dùng** (🎙️ Tiếng bố mẹ thêm / 🔊 Tiếng thật có sẵn / 🗣️ Giọng đọc), các nút:
+  - **▶ Nghe:** phát đúng tiếng trò chơi sẽ phát;
+  - **🎙️ Ghi âm** (máy ghi âm được): bấm lần nữa để dừng, tự dừng sau 5 giây; bản ghi < 0,3 giây thì báo ghi lại;
+  - **📁 Chọn file tiếng:** mp3 / m4a / wav.
+    - Tối đa 3 MB; máy phải giải mã được, không thì báo lỗi.
+    - Dài hơn 5 giây thì vẫn lưu, báo "chỉ phát 5 giây đầu".
+  - **↩ Dùng tiếng có sẵn:** bỏ tiếng bố mẹ thêm;
+  - bát đĩa / điện thoại: **Chọn ảnh / Thay ảnh** (app bỏ nền trắng) và **Dùng emoji**.
+- **Thứ có sticker Dán tranh:** không có nút ảnh. Trang ghi rõ "thay ở Ảnh Dán tranh", có nút mở trang đó.
+- **Lưu trữ:** trong kho ảnh, mã `sounds:images` (ảnh) và `sounds:audio` (tiếng), theo mã thứ.
+  - Có trong sao lưu.
+  - Bộ lọc "ảnh trò chơi" có tiền tố `sounds:`, nên không bị gợi ý như ảnh bài học.
+- **Chia sẻ** sang máy khác: khối "1. Tạo file / 2. Gửi file / Nhập từ file". Nhập được cả ở Quản lý bài; tiếng / ảnh mới hơn thắng.
+
 ## 5. Kiểm thử (draft2: thêm ca của review QA)
 - **Unit:**
   - 15 con đều là sticker Dán tranh, tiếng kêu không trùng;
@@ -99,6 +135,15 @@
   - ảnh sticker Dán tranh hiện trong thẻ;
   - **TC14:** giọng đọc lỗi → phụ đề vẫn hiện, chọn đúng vẫn sang câu 2;
   - **TC08 + TC10:** chạm đúp con nhầm chỉ tính 1 lần; ra nền rồi quay lại giữ câu và số lần nhầm (nhầm thêm 1 → con đúng sáng).
+  - **draft3:**
+    - luôn 4 hình; Đồ vật: *"Listen! What makes that sound?"* → *"What goes …?"* → khen *"goes / go"*;
+    - Góc bố mẹ: 26 ô; chọn file tiếng → "Tiếng bố mẹ thêm" → bỏ; bát đĩa thay ảnh;
+    - trò chơi phát tiếng bố mẹ thêm (`data-sound-from="custom"`), không đọc bằng giọng máy.
+- **Unit thêm (draft3):**
+  - 11 đồ vật (sticker nếu có, bát đĩa / điện thoại emoji riêng); tiếng không trùng trong 26 thứ;
+  - nhóm theo kiểu + mức; luôn 4 hình;
+  - câu đồ vật (*goes / go, Those are*);
+  - mỗi file khai báo trong `SOUND_FILES` phải có thật trong `app/sounds/`.
 - **Unit thêm:** tối đa 3 / 5 câu là con ít gặp (không lượt nào thiếu, hiếm khi toàn con lạ); khóa mức không đếm lượt, mở khóa đếm lại từ 0.
 - **Các ca review đã có trong code nhưng chưa có test tự động:**
   - TC01 / TC12: chọn đúng khóa câu, sticker một lần;

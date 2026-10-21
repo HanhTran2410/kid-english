@@ -176,8 +176,8 @@ function levelSelect(app, save, key, clean, options) {
 /** Ai kêu thế? (SPEC-sounds mục 4): khóa mức. */
 function soundsSection(app, save) {
   const sel = levelSelect(app, save, 'soundsGame', cleanSoundsState,
-    [['1', 'Mức 1 — 2 con để chọn, 6 con quen'], ['2', 'Mức 2 — 3 con để chọn, 10 con'], ['3', 'Mức 3 — 4 con để chọn, cả 15 con']]);
-  return section('Ai kêu thế?', field('Mức chơi Ai kêu thế?', sel, 'Tự lên mức sau 3 lượt chơi xong.'));
+    [['1', 'Mức 1 — 6 con vật / 6 đồ vật quen'], ['2', 'Mức 2 — 10 con vật / 9 đồ vật'], ['3', 'Mức 3 — cả 15 con vật / 11 đồ vật']]);
+  return section('Ai kêu thế?', field('Mức chơi Ai kêu thế?', sel, 'Luôn 4 hình để chọn. Tự lên mức sau 3 lượt chơi xong.'));
 }
 
 /** Bắt bong bóng (SPEC-bubbles mục 4): khóa mức. */

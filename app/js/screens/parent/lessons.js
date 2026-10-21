@@ -31,6 +31,7 @@ import { acceptFeedPayload } from './feed.js';
 import { acceptHidePayload } from './hide.js';
 import { acceptPuzzlePayload } from './puzzle.js';
 import { acceptMissingPayload } from './missing.js';
+import { acceptSoundsPayload } from './sounds.js';
 import { DRESS_IMAGES } from '../../dress-up.js';
 import { cleanSound, soundOf, tapLine, MAX_SOUND_CHARS } from '../../word-play.js';
 
@@ -64,7 +65,9 @@ export function lessonsView(app) {
       const hasPuzzle = payload.images.some((img) => img.lessonId === 'puzzle:photos') || payload.settings.some((s) => s.key === 'puzzlePhotos');
       // File ảnh Tìm đồ còn thiếu (SPEC-missing mục 6) cũng nhập ở đây được.
       const hasMissing = payload.images.some((img) => String(img.lessonId ?? '').startsWith('missing:'));
-      if (!payload.lessons.length && !sceneImages && !hasDress && !hasFeed && !hasHide && !hasPuzzle && !hasMissing) throw new BackupError('File này không có bài học nào.');
+      // File ảnh & tiếng Ai kêu thế? (SPEC-sounds mục 6) cũng nhập ở đây được.
+      const hasSounds = payload.images.some((img) => String(img.lessonId ?? '').startsWith('sounds:'));
+      if (!payload.lessons.length && !sceneImages && !hasDress && !hasFeed && !hasHide && !hasPuzzle && !hasMissing && !hasSounds) throw new BackupError('File này không có bài học nào.');
       const existing = await listLessons(app.db);
       const before = new Set(existing.map((l) => l.id));
       // Bài mới trùng tên với bài đang có thì đặt tên "… 2", "… 3".
@@ -84,6 +87,7 @@ export function lessonsView(app) {
       const hide = hasHide ? await acceptHidePayload(app, payload) : { images: 0 };
       const puzzle = hasPuzzle ? await acceptPuzzlePayload(app, payload) : { images: 0, photos: 0 };
       const missing = hasMissing ? await acceptMissingPayload(app, payload) : { images: 0 };
+      const sounds = hasSounds ? await acceptSoundsPayload(app, payload) : { images: 0 };
       const parts = [];
       if (added) parts.push(`nhập ${added} bài mới`);
       if (updated) parts.push(`cập nhật ${updated} bài đã có`);
@@ -92,6 +96,7 @@ export function lessonsView(app) {
       if (hide.images) parts.push(`nhận ${hide.images} ảnh Trốn tìm`);
       if (puzzle.images || puzzle.photos) parts.push(`nhận ${puzzle.images} ảnh Ghép hình`);
       if (missing.images) parts.push(`nhận ${missing.images} ảnh Tìm đồ còn thiếu`);
+      if (sounds.images) parts.push(`nhận ${sounds.images} ảnh / tiếng Ai kêu thế?`);
       if (feed.images || feed.foods) parts.push(`nhận ${feed.images} ảnh Cho Bông ăn${feed.foods ? `, ${feed.foods} món mới` : ''}`);
       const summary = parts.length ? `Đã ${parts.join(', ')}` : 'Không có gì thay đổi';
       toast(`${summary}.`, 3500);

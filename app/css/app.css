@@ -2371,3 +2371,10 @@ details > summary { cursor: pointer; font-weight: 800; padding: 6px 0; }
 .bb-want .bb-num { font-size: 34px; }
 .bb-want .bb-emoji { font-size: 38px; }
 @media (max-width: 600px) { .bb-play .sp-title { display: none; } }
+
+/* Góc bố mẹ → Ảnh & tiếng Ai kêu thế? */
+.as-admin-source { font-size: 13px; font-weight: 700; color: var(--ink-soft); }
+.sp-admin-item[data-source="custom"] .as-admin-source { color: #2f9e6a; }
+/* Bắt bong bóng — Từ vựng: ảnh bài học trong bong bóng (tròn, nằm gọn trong quả). */
+.bb-img { width: 64%; height: 64%; object-fit: contain; border-radius: 50%; pointer-events: none; }
+.bb-want .bb-img { width: 80%; height: 80%; }
