@@ -2327,8 +2327,8 @@ details > summary { cursor: pointer; font-weight: 800; padding: 6px 0; }
 .as-cards { display: grid; grid-template-columns: repeat(var(--as-cols, 2), minmax(0, 1fr)); gap: clamp(12px, 2.5vw, 24px); width: min(100%, 860px); }
 .as-cards[data-choices="3"] { --as-cols: 3; }
 .as-cards[data-choices="4"] { --as-cols: 4; }
-.as-card { aspect-ratio: 1; display: grid; place-items: center; border-radius: 28px; background: var(--card); box-shadow: var(--shadow); max-height: 42vh; justify-self: center; width: 100%; max-width: 220px; }
-.as-face { display: grid; place-items: center; width: 80%; height: 80%; font-family: var(--emoji); font-size: clamp(56px, 14vmin, 120px); line-height: 1; }
+.as-card { aspect-ratio: 1; display: grid; grid-template: minmax(0, 1fr) / minmax(0, 1fr); place-items: center; overflow: hidden; border-radius: 28px; background: var(--card); box-shadow: var(--shadow); max-height: 42vh; justify-self: center; width: 100%; max-width: min(220px, 42vh); }
+.as-face { display: grid; grid-template: minmax(0, 1fr) / minmax(0, 1fr); place-items: center; width: 80%; height: 80%; font-family: var(--emoji); font-size: clamp(56px, 14vmin, 120px); line-height: 1; }
 .as-face .sp-img { width: 100%; height: 100%; object-fit: contain; }
 .as-card.right { outline: 6px solid #63d2a8; }
 .as-card.glow { outline: 6px solid #ffd43b; animation: hint-hop 0.8s ease-in-out 2; }

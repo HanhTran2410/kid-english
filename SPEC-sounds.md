@@ -72,6 +72,7 @@
      - Nguồn: Wikimedia Commons, BigSoundBank, Freesound (CC0), Cục Công viên Quốc gia Mỹ (public domain); giấy phép kiểm tra trên trang của từng file.
      - Mỗi file cắt còn 1,2–3,3 giây đúng đoạn tiếng kêu to nhất (đo âm lượng từng 0,25 giây), vào / ra nhỏ dần, chỉnh cùng độ to, mp3 mono 64 kbps.
      - **Khớp chưa hoàn hảo, cần thử tay:** khỉ là tinh tinh; rắn là tiếng xì (bản dựng cho kịch truyền thanh, vẫn hơi nhỏ); vịt là cả đàn kêu; xe cứu hỏa chỉ có còi. Bố mẹ thay được ở mục 6.
+     - **0.27.2:** thay tiếng mèo (mèo nhà kêu "meo meo" hai tiếng rõ, BigSoundBank) và tiếng ếch (ếch cây kêu "quạc quạc" đều, NPS; thay tiếng ếch heo nghe như ủn ỉn); tiếng xe máy (xe Jawa rồ ga "brừm brừm", Wikimedia).
   3. **giọng đọc** của máy đọc chữ tiếng kêu (*"Moo! Moo!"*).
 - Phát qua **WebAudio** (iOS đã mở khóa âm thanh từ lần chạm "Bắt đầu"; thẻ `<audio>` dễ bị iOS chặn).
   - Phát tối đa **5 giây**.
