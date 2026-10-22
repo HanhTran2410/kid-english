@@ -126,7 +126,7 @@ export async function playSoundFile(item, { assets = null, isCurrent = () => tru
         }
         done();
       };
-      timer = setTimeout(stop, Math.min(buffer.duration * 1000 + 50, SOUND_MAX_MS));
+      timer = setTimeout(stop, Math.min(buffer.duration * 1000 + 50, scaled(SOUND_MAX_MS))); // test chạy nhanh: rút ngắn
       src.onended = done;
       setStop(stop);
       src.start();

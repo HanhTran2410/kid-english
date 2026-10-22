@@ -1,6 +1,6 @@
 # SPEC — 🐮 Ai kêu thế? (Who says moo?)
 
-> App **0.26.0**, draft2 ở **0.26.1** (theo review QA), **draft3 ở 0.27.0** · Ngày: 2026-10-21 · **Đã làm.** Một trò trong Góc trò chơi.
+> App **0.26.0**, draft2 ở **0.26.1** (theo review QA), **draft3 ở 0.27.0** (+ 26 file tiếng thật ở **0.27.1**) · Ngày: 2026-10-21 · **Đã làm.** Một trò trong Góc trò chơi.
 > draft3: **luôn 4 hình**; thêm **11 đồ vật** và trang chọn kiểu **Con vật / Đồ vật / Trộn**; **tiếng thật** (file ghi âm CC0 / public domain có sẵn trong app, bố mẹ thay bằng ghi âm / file); trang **Góc bố mẹ → Ảnh & tiếng Ai kêu thế?** (mục 6).
 > Bông giả tiếng kêu con vật, bé chạm đúng con vật. Trẻ 3 tuổi rất thích tiếng kêu; trò ngắn, không cần mic.
 
@@ -68,6 +68,10 @@
 - **Tiếng** (ưu tiên từ trên xuống):
   1. tiếng **bố mẹ thêm** (ghi âm / chọn file ở mục 6);
   2. **file ghi âm thật có sẵn** trong app (`app/sounds/<id>.mp3`, CC0 / public domain, nguồn ghi ở `app/sounds/CREDITS.md`);
+     - **Có đủ 26 file (0.27.1)**, tổng ~570 KB, lưu sẵn offline.
+     - Nguồn: Wikimedia Commons, BigSoundBank, Freesound (CC0), Cục Công viên Quốc gia Mỹ (public domain); giấy phép kiểm tra trên trang của từng file.
+     - Mỗi file cắt còn 1,2–3,3 giây đúng đoạn tiếng kêu to nhất (đo âm lượng từng 0,25 giây), vào / ra nhỏ dần, chỉnh cùng độ to, mp3 mono 64 kbps.
+     - **Khớp chưa hoàn hảo, cần thử tay:** khỉ là tinh tinh; rắn là tiếng xì (bản dựng cho kịch truyền thanh, vẫn hơi nhỏ); vịt là cả đàn kêu; xe cứu hỏa chỉ có còi. Bố mẹ thay được ở mục 6.
   3. **giọng đọc** của máy đọc chữ tiếng kêu (*"Moo! Moo!"*).
 - Phát qua **WebAudio** (iOS đã mở khóa âm thanh từ lần chạm "Bắt đầu"; thẻ `<audio>` dễ bị iOS chặn).
   - Phát tối đa **5 giây**.

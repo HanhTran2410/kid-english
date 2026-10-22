@@ -2,7 +2,7 @@
 // Mỗi lần sửa code: tăng VERSION (trùng APP_VERSION trong js/app.js) để máy tải bản mới.
 // Thêm/bớt file trong app/ thì cập nhật ASSETS (test tests/unit/sw.test.js sẽ báo nếu thiếu).
 
-const VERSION = '0.27.0';
+const VERSION = '0.27.1';
 const CACHE = `kid-english-${VERSION}`;
 
 const ASSETS = [
@@ -119,6 +119,32 @@ const ASSETS = [
   'js/ui.js',
   'lessons/animals.json',
   'lessons/colors.json',
+  'sounds/cow.mp3',
+  'sounds/dog.mp3',
+  'sounds/cat.mp3',
+  'sounds/duck.mp3',
+  'sounds/pig.mp3',
+  'sounds/sheep.mp3',
+  'sounds/chicken.mp3',
+  'sounds/horse.mp3',
+  'sounds/bird.mp3',
+  'sounds/lion.mp3',
+  'sounds/frog.mp3',
+  'sounds/monkey.mp3',
+  'sounds/owl.mp3',
+  'sounds/bee.mp3',
+  'sounds/snake.mp3',
+  'sounds/car.mp3',
+  'sounds/train.mp3',
+  'sounds/phone.mp3',
+  'sounds/clock.mp3',
+  'sounds/drum.mp3',
+  'sounds/dishes.mp3',
+  'sounds/plane.mp3',
+  'sounds/fire-truck.mp3',
+  'sounds/bicycle.mp3',
+  'sounds/helicopter.mp3',
+  'sounds/motorbike.mp3',
   'lessons/body.json',
   'lessons/family.json',
   'lessons/food.json',

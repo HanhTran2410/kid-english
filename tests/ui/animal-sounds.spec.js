@@ -195,3 +195,12 @@ test('trò chơi: tiếng bố mẹ thêm được phát thay giọng đọc (kh
   // Có tiếng thật thì Bông không đọc "Moo! Moo!" bằng giọng máy.
   if (!locked) expect((await page.evaluate(() => window.__spoken)).some((t) => /^[A-Z][a-z]+!( [A-Z][a-z]+!)?$/.test(t) && !/^(Yes|Listen)/.test(t))).toBe(false);
 });
+
+test('tiếng thật có sẵn: trò phát file ghi âm (sounds/<id>.mp3), không đọc tiếng kêu bằng giọng máy', async ({ page }) => {
+  await openSounds(page, null, 'Đồ vật');
+  const locked = await page.evaluate(async () => (await import('/js/speech/sfx.js')).isAudioLocked());
+  await expect(page.locator('.as-play')).toHaveAttribute('data-sound-from', locked ? 'voice' : 'file');
+  const res = await page.request.get('/sounds/train.mp3');
+  expect(res.status()).toBe(200);
+  expect((await res.body()).length).toBeGreaterThan(5000);
+});

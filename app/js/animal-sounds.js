@@ -29,7 +29,9 @@ export const MAX_SOUND_SECONDS = 5;
 export const MAX_SOUND_MB = 3;
 
 /** File tiếng thật đã có trong app/sounds/<id>.mp3 (nguồn + giấy phép: app/sounds/CREDITS.md). */
-export const SOUND_FILES = new Set([]);
+export const SOUND_FILES = new Set([
+  'cow', 'dog', 'cat', 'duck', 'pig', 'sheep', 'chicken', 'horse', 'bird', 'lion', 'frog', 'monkey', 'owl', 'bee', 'snake', 'car', 'train', 'phone', 'clock', 'drum', 'dishes', 'plane', 'fire-truck', 'bicycle', 'helicopter', 'motorbike',
+]);
 export const soundUrl = (id) => (SOUND_FILES.has(id) ? `sounds/${id}.mp3` : null);
 
 /**
