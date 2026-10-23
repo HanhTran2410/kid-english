@@ -25,6 +25,7 @@ import { hideAdminView } from './hide.js';
 import { puzzleAdminView } from './puzzle.js';
 import { missingAdminView } from './missing.js';
 import { soundsAdminView } from './sounds.js';
+import { doctorAdminView } from './doctor.js';
 
 const VIEWS = {
   menu: menuView,
@@ -47,6 +48,7 @@ const VIEWS = {
   puzzle: puzzleAdminView,
   missing: missingAdminView,
   sounds: soundsAdminView,
+  doctor: doctorAdminView,
 };
 
 export function parentScreen(app, params = {}) {
@@ -85,6 +87,7 @@ function menuView(app) {
       item('🧩', 'Ảnh Ghép hình (ảnh riêng, vị trí cắt ảnh gia đình)', () => goParent(app, 'puzzle')),
       item('🔍', 'Ảnh Tìm đồ còn thiếu (cảnh riêng: mâm cơm, giờ tắm…)', () => goParent(app, 'missing')),
       item('🐮', 'Ảnh & tiếng Ai kêu thế? (ghi âm / chọn file tiếng kêu)', () => goParent(app, 'sounds')),
+      item('🩺', 'Ảnh Bác sĩ nhí (ảnh đồ, ảnh nền phòng khám)', () => goParent(app, 'doctor')),
       item('⚙️', 'Cài đặt & chẩn đoán', () => goParent(app, 'settings'))),
     h('button.exit-to-child', { type: 'button', onclick: () => app.go('home') },
       bongElement('menu-bong'), h('span', { text: 'Về màn hình của bé' })),

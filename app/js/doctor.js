@@ -17,6 +17,18 @@ const PICK_TRIES = 20;
 /** Trong một lượt, tối đa chừng này ca là ca bé ít gặp nhất. */
 export const LEAST_SEEN_PER_ROUND = 2;
 
+// ---------- Ảnh bố mẹ thay (mục 10) ----------
+/** Ảnh đồ (dụng cụ khám + đồ chữa) theo mã đồ; ảnh nền phòng khám (một ảnh, mã BG_KEY). */
+export const DOCTOR_ITEM_IMAGES = 'doctor:items';
+export const DOCTOR_BG_IMAGES = 'doctor:bg';
+export const BG_KEY = 'room';
+export const BACKGROUND_PROMPT = [
+  "A cheerful children's doctor's examination room for a toddler game, seen from the front.",
+  'An empty, soft examination bed in the lower middle of the picture; keep the middle of the picture clear (a toy animal patient will sit on the bed).',
+  'Pastel colours (light blue, pink, cream), simple flat shapes, thick soft outlines, a friendly cartoon style.',
+  'No people, no animals, no needles, no blood, no medicine bottles, no text. Landscape 4:3.',
+].join('\n');
+
 // ---------- Vùng chạm (mục 5) ----------
 /** `word`: tên trong câu ("my hand"); `body`: từ bài Body để ghi "đã gặp" (không có thì không ghi). */
 export const REGIONS = {
@@ -82,21 +94,33 @@ export const PATIENT_BY_ID = new Map(PATIENTS.map((p) => [p.id, p]));
 /**
  * Mọi cụm câu lưu sẵn cho từng đồ, không sinh từ mạo từ:
  * `ask` (câu xin / đưa), `wrong` (câu nhầm "Hmm, …"), `notThis` (câu "không phải", mức 2+), `the` (tên có "the").
+ * `draw`: mô tả để AI vẽ ảnh lưới; `reuse`: tên để tìm ảnh có sẵn (bài học, sticker, trò khác) để dùng lại.
  */
 export const TOOLS = [
-  { id: 'stethoscope', kind: 'check', emoji: '🩺', name: 'stethoscope', vi: 'ống nghe', the: 'the stethoscope', wrong: "that's the stethoscope", notThis: 'not the stethoscope' },
-  { id: 'thermometer', kind: 'check', emoji: '🌡️', name: 'thermometer', vi: 'nhiệt kế', the: 'the thermometer', wrong: "that's the thermometer", notThis: 'not the thermometer' },
-  { id: 'flashlight', kind: 'check', emoji: '🔦', name: 'flashlight', vi: 'đèn pin', the: 'the flashlight', wrong: "that's the flashlight", notThis: 'not the flashlight' },
+  { id: 'stethoscope', kind: 'check', emoji: '🩺', name: 'stethoscope', vi: 'ống nghe', the: 'the stethoscope', wrong: "that's the stethoscope", notThis: 'not the stethoscope',
+    draw: 'a toy stethoscope, blue tubing with a round silver chest piece', reuse: ['stethoscope'] },
+  { id: 'thermometer', kind: 'check', emoji: '🌡️', name: 'thermometer', vi: 'nhiệt kế', the: 'the thermometer', wrong: "that's the thermometer", notThis: 'not the thermometer',
+    draw: 'a simple digital thermometer, white with a small red tip', reuse: ['thermometer'] },
+  { id: 'flashlight', kind: 'check', emoji: '🔦', name: 'flashlight', vi: 'đèn pin', the: 'the flashlight', wrong: "that's the flashlight", notThis: 'not the flashlight',
+    draw: 'a small friendly yellow flashlight (torch) with a light beam', reuse: ['flashlight', 'torch'] },
 ];
 export const TREATS = [
-  { id: 'bandage', kind: 'treat', emoji: '🩹', name: 'bandage', vi: 'miếng băng dán', ask: 'a bandage', wrong: "that's the bandage", notThis: 'not the bandage' },
-  { id: 'medicine', kind: 'treat', emoji: '🥄', name: 'medicine', vi: 'thìa si-rô', ask: 'some medicine', wrong: "that's the medicine", notThis: 'not the medicine' },
-  { id: 'tissue', kind: 'treat', emoji: '🧻', name: 'tissue', vi: 'giấy lau mũi', ask: 'a tissue', wrong: "that's the tissue", notThis: 'not the tissue' },
-  { id: 'toothbrush', kind: 'treat', emoji: '🪥', name: 'toothbrush', vi: 'bàn chải đánh răng', ask: 'a toothbrush', wrong: "that's the toothbrush", notThis: 'not the toothbrush' },
-  { id: 'icepack', kind: 'treat', emoji: '🧊', name: 'ice pack', vi: 'túi chườm lạnh', ask: 'an ice pack', wrong: "that's the ice pack", notThis: 'not the ice pack' },
-  { id: 'drops', kind: 'treat', emoji: '💧', name: 'eye drops', vi: 'thuốc nhỏ mắt', ask: 'some eye drops', wrong: 'those are the eye drops', notThis: 'not the eye drops' },
-  { id: 'water', kind: 'treat', emoji: '🍵', name: 'warm water', vi: 'cốc nước ấm', ask: 'some warm water', wrong: "that's the warm water", notThis: 'not the warm water' },
-  { id: 'blanket', kind: 'treat', emoji: '🛏️', name: 'blanket', vi: 'cái chăn', ask: 'a blanket', wrong: "that's the blanket", notThis: 'not the blanket' },
+  { id: 'bandage', kind: 'treat', emoji: '🩹', name: 'bandage', vi: 'miếng băng dán', ask: 'a bandage', wrong: "that's the bandage", notThis: 'not the bandage',
+    draw: 'one adhesive bandage strip (plaster), beige with dots', reuse: ['bandage', 'plaster'] },
+  { id: 'medicine', kind: 'treat', emoji: '🥄', name: 'medicine', vi: 'thìa si-rô', ask: 'some medicine', wrong: "that's the medicine", notThis: 'not the medicine',
+    draw: 'a spoon with pink syrup, no bottle, no pills', reuse: ['medicine', 'spoon'] },
+  { id: 'tissue', kind: 'treat', emoji: '🧻', name: 'tissue', vi: 'giấy lau mũi', ask: 'a tissue', wrong: "that's the tissue", notThis: 'not the tissue',
+    draw: 'a box of tissues with one tissue sticking out', reuse: ['tissue', 'tissues'] },
+  { id: 'toothbrush', kind: 'treat', emoji: '🪥', name: 'toothbrush', vi: 'bàn chải đánh răng', ask: 'a toothbrush', wrong: "that's the toothbrush", notThis: 'not the toothbrush',
+    draw: 'a small toothbrush for a child with a little toothpaste', reuse: ['toothbrush'] },
+  { id: 'icepack', kind: 'treat', emoji: '🧊', name: 'ice pack', vi: 'túi chườm lạnh', ask: 'an ice pack', wrong: "that's the ice pack", notThis: 'not the ice pack',
+    draw: 'a soft blue ice pack (cold pack)', reuse: ['ice pack'] },
+  { id: 'drops', kind: 'treat', emoji: '💧', name: 'eye drops', vi: 'thuốc nhỏ mắt', ask: 'some eye drops', wrong: 'those are the eye drops', notThis: 'not the eye drops',
+    draw: 'a small eye drop bottle with one drop', reuse: ['eye drops'] },
+  { id: 'water', kind: 'treat', emoji: '🍵', name: 'warm water', vi: 'cốc nước ấm', ask: 'some warm water', wrong: "that's the warm water", notThis: 'not the warm water',
+    draw: 'a cup of warm water with a little steam', reuse: ['warm water', 'water', 'cup'] },
+  { id: 'blanket', kind: 'treat', emoji: '🛏️', name: 'blanket', vi: 'cái chăn', ask: 'a blanket', wrong: "that's the blanket", notThis: 'not the blanket',
+    draw: 'a soft folded blanket', reuse: ['blanket'] },
 ];
 export const ITEM_BY_ID = new Map([...TOOLS, ...TREATS].map((t) => [t.id, t]));
 

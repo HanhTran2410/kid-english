@@ -32,7 +32,12 @@ test('dữ liệu: mỗi ca có ≥ 1 bước ở mọi mức mà ca xuất hi�
   assert.deepEqual(casesFor(1).map((c) => c.id), ['cut-hand', 'cut-foot', 'tummy', 'runny-nose', 'tooth']);
   assert.equal(casesFor(2).length, 9);
   assert.equal(casesFor(3).length, 11);
-  for (const item of [...TOOLS, ...TREATS]) assert.ok(item.wrong && item.notThis && (item.ask || item.the), item.id);
+  for (const item of [...TOOLS, ...TREATS]) {
+    assert.ok(item.wrong && item.notThis && (item.ask || item.the), item.id);
+    // Ảnh lưới + dùng lại ảnh có sẵn (mục 10).
+    assert.ok(item.draw && !/'/.test(item.draw), item.id);
+    assert.ok(item.reuse?.length && item.reuse.every((w) => w === w.toLowerCase().trim()), item.id);
+  }
 });
 
 test('bước theo mức: tummy / tooth mức 1 không có khám, mức 2 có (DOC-01, DOC-02); ear-bug kết thúc bằng khám (DOC-03); sleepy, cough không có chạm (DOC-04)', () => {

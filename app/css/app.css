@@ -2451,3 +2451,11 @@ details > summary { cursor: pointer; font-weight: 800; padding: 6px 0; }
   .dr-tray { transition: none; }
 }
 @keyframes dr-fade { to { opacity: 0; } }
+/* Bác sĩ nhí — ảnh bố mẹ thêm (SPEC-doctor mục 10): ảnh đồ vừa khung vuông; ảnh nền phòng khám thay nền vẽ sẵn. */
+.dr-item-img { width: 76%; height: 76%; object-fit: contain; }
+.dr-fly .dr-item-img { width: 100%; height: 100%; }
+.dr-stage.has-bg { background-size: cover; background-position: center; background-repeat: no-repeat; }
+.dr-stage.has-bg .dr-bed { display: none; }
+.dr-admin-face { font-family: var(--emoji); font-size: 40px; line-height: 1; }
+img.dr-admin-face { width: 100%; height: 100%; object-fit: contain; }
+.dr-admin-bg { display: block; width: min(100%, 420px); aspect-ratio: 4 / 3; object-fit: cover; border-radius: 16px; margin-bottom: 8px; }

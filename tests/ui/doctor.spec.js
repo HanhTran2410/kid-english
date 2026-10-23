@@ -179,3 +179,54 @@ test('giọng đọc lỗi: phụ đề vẫn hiện, chơi hết lượt đư�
   }
   await expect(page.locator('.prize-sticker')).toBeVisible({ timeout: 15000 });
 });
+
+// ---------- Ảnh bố mẹ thêm (SPEC mục 10) ----------
+/** Ảnh vuông màu để thử (canvas → png). */
+const addImage = (page, lessonId, word) => page.evaluate(async ({ lessonId, word }) => {
+  const db = await import('/js/db.js');
+  const png = await new Promise((r) => {
+    const c = document.createElement('canvas');
+    c.width = 80;
+    c.height = 80;
+    const g = c.getContext('2d');
+    g.fillStyle = '#e33';
+    g.fillRect(10, 10, 60, 60);
+    c.toBlob(r, 'image/png');
+  });
+  await db.setWordImage(window.kidEnglish.db, { lessonId, word, blob: png, mimeType: 'image/png', width: 80, height: 80 });
+}, { lessonId, word });
+const doctorImages = (page) => page.evaluate(async () => (await window.kidEnglish.db.getAllByIndex('images', 'lessonId', 'doctor:items')).map((i) => i.word).sort());
+
+test('Góc bố mẹ → Ảnh Bác sĩ nhí: dùng lại ảnh có sẵn (ảnh bài học "toothbrush", ảnh Trốn tìm "spoon" cho si-rô); "Dùng emoji" bỏ ảnh', async ({ page }) => {
+  await fakeSpeech(page);
+  await startApp(page);
+  await addImage(page, 'my-lesson', 'toothbrush');
+  await addImage(page, 'hide:items', 'spoon');
+  const { openParent } = await import('./helpers.js');
+  await openParent(page);
+  await page.getByRole('button', { name: /Ảnh Bác sĩ nhí/ }).click();
+  await expect(page.locator('.sp-admin-item[data-item]')).toHaveCount(11);
+  await expect(page.locator('.sp-admin-item[data-item="medicine"]').getByRole('button', { name: 'Ảnh có sẵn (1)…' })).toBeVisible();
+  await page.getByRole('button', { name: 'Dùng lại ảnh đã có (2 đồ)' }).click();
+  await expect.poll(() => doctorImages(page)).toEqual(['medicine', 'toothbrush']);
+  await expect(page.locator('.sp-admin-item[data-item="toothbrush"] img.dr-admin-face')).toHaveCount(1);
+  // Ảnh gốc không đổi (sao chép, không chuyển).
+  expect(await page.evaluate(async () => (await window.kidEnglish.db.getAllByIndex('images', 'lessonId', 'my-lesson')).length)).toBe(1);
+  await page.locator('.sp-admin-item[data-item="toothbrush"]').getByRole('button', { name: 'Dùng emoji' }).click();
+  await expect.poll(() => doctorImages(page)).toEqual(['medicine']);
+});
+
+test('trò chơi dùng ảnh đồ bố mẹ thêm (khay) và ảnh nền phòng khám', async ({ page }) => {
+  await fakeSpeech(page);
+  await startApp(page);
+  for (const id of ['bandage', 'medicine', 'tissue', 'toothbrush', 'icepack', 'drops', 'water', 'blanket']) await addImage(page, 'doctor:items', id);
+  await addImage(page, 'doctor:bg', 'room');
+  await page.getByRole('button', { name: 'Trò chơi' }).click();
+  await page.getByRole('button', { name: 'Bác sĩ nhí' }).click();
+  await expect(play(page)).toHaveAttribute('data-state', 'touch', { timeout: 15000 });
+  await expect(page.locator('.dr-stage.has-bg')).toHaveCount(1);
+  const c = await currentCase(page);
+  await spot(page, c.target).click();
+  await expect(play(page)).toHaveAttribute('data-state', 'treat', { timeout: 15000 });
+  await expect(page.locator('.dr-item img.dr-item-img')).toHaveCount(2);
+});

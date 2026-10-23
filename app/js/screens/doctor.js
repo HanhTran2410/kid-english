@@ -4,6 +4,7 @@
 // Nhận một thao tác đúng = chuyển bước NGAY (ghi tiến độ, lưu để chơi tiếp); hoạt ảnh + câu nói chỉ để trình diễn.
 
 import { h } from '../ui.js';
+import { mediaBlob } from '../db.js';
 import { play } from '../speech/sfx.js';
 import { homeButton } from '../player/layout.js';
 import { createBunny, Teacher } from '../player/teacher.js';
@@ -14,7 +15,7 @@ import { patientSvg, faceSvg, glowSvg } from '../patients.js';
 import {
   CASE_BY_ID, PATIENT_BY_ID, ITEM_BY_ID, REGIONS, regionAt, regionPoint, stepsFor, trayFor, pickCases,
   cleanDoctorState, afterDoctorRound, afterHealed, stepPrompt, wrongItemLine, doneLine, betterLine,
-  COME_IN_LINE, HELLO_DOCTOR_LINE, GOOD_JOB_LINE, BYE_LINE, yesTouchLine, wrongTouchLine,
+  DOCTOR_ITEM_IMAGES, DOCTOR_BG_IMAGES, BG_KEY, COME_IN_LINE, HELLO_DOCTOR_LINE, GOOD_JOB_LINE, BYE_LINE, yesTouchLine, wrongTouchLine,
 } from '../doctor.js';
 
 const NUDGE_MS = 10_000;
@@ -39,6 +40,32 @@ const ITEM_SOUND = { bandage: 'pop', medicine: 'chomp', tissue: 'honk', toothbru
 
 // Lượt đang chơi: app ra nền thì màn được dựng lại (continueDirectly) — chơi tiếp đúng ca, đúng bước (mục 9).
 let snapshot = null;
+
+/** Ảnh bố mẹ thêm (SPEC mục 10): ảnh từng đồ (theo mã đồ) và ảnh nền phòng khám. */
+export async function loadDoctorImages(app) {
+  const urls = [];
+  const item = new Map();
+  let bg = null;
+  for (const [lessonId, isBg] of [[DOCTOR_ITEM_IMAGES, false], [DOCTOR_BG_IMAGES, true]]) {
+    for (const img of await app.db.getAllByIndex('images', 'lessonId', lessonId).catch(() => [])) {
+      const url = URL.createObjectURL(mediaBlob(img));
+      urls.push(url);
+      if (!isBg) item.set(img.word, url);
+      else if (img.word === BG_KEY) bg = url;
+    }
+  }
+  return { item, bg, revoke: () => urls.forEach((u) => URL.revokeObjectURL(u)) };
+}
+
+/** Hình một đồ: ảnh bố mẹ thêm, chưa có / hỏng thì emoji. */
+export function itemFace(item, images, cls = 'dr-item-face') {
+  const emoji = () => h(`span.${cls}`, { text: item.emoji, 'aria-hidden': 'true' });
+  const url = images?.item.get(item.id);
+  if (!url) return emoji();
+  const img = h(`img.${cls}.dr-item-img`, { src: url, alt: '', draggable: false });
+  img.addEventListener('error', () => img.replaceWith(emoji()), { once: true });
+  return img;
+}
 
 const reduceMotion = () => window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
 const center = (r) => ({ x: r.left + r.width / 2, y: r.top + r.height / 2 });
@@ -67,6 +94,7 @@ export function doctorScreen(app, params = {}) {
   let press = null;
   let dragGhost = null;
   let talking = false;
+  let images = null;
   const flying = new Set();
 
   // ---------- Giao diện ----------
@@ -173,7 +201,7 @@ export function doctorScreen(app, params = {}) {
     trayEl.replaceChildren(...tray.map((id) => {
       const item = ITEM_BY_ID.get(id);
       const btn = h('button.dr-item', { type: 'button', 'aria-label': item.name, dataset: { item: id } },
-        h('span.dr-item-face', { text: item.emoji, 'aria-hidden': 'true' }));
+        itemFace(item, images));
       btn.addEventListener('pointerdown', (e) => beginPress(e, id));
       return btn;
     }));
@@ -396,8 +424,10 @@ export function doctorScreen(app, params = {}) {
     // Băng dán ở lại trên người bạn thú (cả lúc ra về).
     if (id === 'bandage') {
       const spot = regionPoint(region, 0);
-      group('dr-applied')?.insertAdjacentHTML('beforeend',
-        `<text class="dr-applied-item" x="${spot.x}" y="${spot.y}" text-anchor="middle" dominant-baseline="central" font-size="34">🩹</text>`);
+      const url = images?.item.get('bandage');
+      group('dr-applied')?.insertAdjacentHTML('beforeend', url
+        ? `<image class="dr-applied-item" href="${url}" x="${spot.x - 22}" y="${spot.y - 22}" width="44" height="44"/>`
+        : `<text class="dr-applied-item" x="${spot.x}" y="${spot.y}" text-anchor="middle" dominant-baseline="central" font-size="34">🩹</text>`);
     }
     ghost.remove();
     flying.delete(ghost);
@@ -470,7 +500,7 @@ export function doctorScreen(app, params = {}) {
 
   // ---------- Đồ bay ----------
   function makeGhost(id) {
-    const ghost = h('div.dr-fly', {}, h('span.dr-item-face', { text: ITEM_BY_ID.get(id).emoji, 'aria-hidden': 'true' }));
+    const ghost = h('div.dr-fly', {}, itemFace(ITEM_BY_ID.get(id), images));
     document.body.append(ghost);
     flying.add(ghost);
     return ghost;
@@ -539,7 +569,7 @@ export function doctorScreen(app, params = {}) {
       if (Math.hypot(e.clientX - press.x0, e.clientY - press.y0) < DRAG_START_PX) return;
       press.dragging = true;
       play('tap');
-      dragGhost = h('div.dr-fly.dr-drag', {}, h('span.dr-item-face', { text: ITEM_BY_ID.get(press.id).emoji, 'aria-hidden': 'true' }));
+      dragGhost = h('div.dr-fly.dr-drag', {}, itemFace(ITEM_BY_ID.get(press.id), images));
       document.body.append(dragGhost);
       trayItem(press.id)?.classList.add('lifted');
     }
@@ -583,27 +613,36 @@ export function doctorScreen(app, params = {}) {
     app.idlePaused = Date.now() - app.lastTouchAt > IDLE_PAUSE_MS;
   }, 5000);
 
-  // ---------- Bắt đầu / chơi tiếp ----------
-  const s = snapshot;
-  if (params.continueDirectly && s && Date.now() - s.savedAt < SNAPSHOT_MS && s.level === level) {
-    cases = s.cases;
-    caseIdx = s.caseIdx;
-    // Ra nền sau khi ca cuối đã khỏi: hoan hô + sticker luôn.
-    if (caseIdx >= cases.length) {
-      caseIdx = cases.length - 1;
-      renderPatient();
-      finishRound();
-    } else startCase(s);
-  } else {
-    cases = pickCases(level, { seen: progress.seen });
-    caseIdx = 0;
-    startCase();
-  }
+  // ---------- Bắt đầu / chơi tiếp (sau khi nạp ảnh bố mẹ thêm) ----------
+  loadDoctorImages(app).catch(() => null).then((loaded) => {
+    images = loaded;
+    if (signal.aborted) return;
+    if (images?.bg) {
+      stage.style.backgroundImage = `url("${images.bg}")`;
+      stage.classList.add('has-bg');
+    }
+    const s = snapshot;
+    if (params.continueDirectly && s && Date.now() - s.savedAt < SNAPSHOT_MS && s.level === level) {
+      cases = s.cases;
+      caseIdx = s.caseIdx;
+      // Ra nền sau khi ca cuối đã khỏi: hoan hô + sticker luôn.
+      if (caseIdx >= cases.length) {
+        caseIdx = cases.length - 1;
+        renderPatient();
+        finishRound();
+      } else startCase(s);
+    } else {
+      cases = pickCases(level, { seen: progress.seen });
+      caseIdx = 0;
+      startCase();
+    }
+  });
 
   return () => {
     cancelAll();
     clearInterval(idleTimer);
     clearTimeout(captionTimer);
     bunny.destroy();
+    images?.revoke();
   };
 }

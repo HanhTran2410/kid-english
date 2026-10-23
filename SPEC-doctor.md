@@ -1,6 +1,6 @@
 # SPEC — 🩺 Bác sĩ nhí (Doctor)
 
-> Phiên bản spec: **draft2** · Ngày: 2026-10-23 · **D1 đã làm ở app 0.28.0** (mức 1; ghi chú khi code ở mục 15), D2–D3 chưa làm. Một trò mới trong Góc trò chơi (🎲 Play), trò đầu tiên của nhóm **"đóng vai nghề"** (mục 13).
+> Phiên bản spec: **draft2** · Ngày: 2026-10-23 · **D1 đã làm ở app 0.28.0** (mức 1; ghi chú khi code ở mục 15), **ảnh (D3) ở 0.28.1** (mục 10), D2 chưa làm. Một trò mới trong Góc trò chơi (🎲 Play), trò đầu tiên của nhóm **"đóng vai nghề"** (mục 13).
 > Bé làm **bác sĩ**, các bạn thú đến phòng khám. **Bông làm y tá** đứng cạnh, hướng dẫn bé. Bé chạm đúng chỗ đau, khám bằng dụng cụ, chữa bằng đồ chữa, bạn thú khỏe lại và cảm ơn.
 > - draft1: bản đầu.
 > - **draft2, sửa theo review:**
@@ -264,16 +264,27 @@ enter ─► step[0] ─► step[1] … ─► healed ─► leave ─┬─► 
 - **Nhiều ngón:** chỉ nhận ngón đầu tiên. Đang kéo đồ bằng ngón 1 mà ngón 2 chạm bạn thú: **bỏ qua ngón 2** (không nói triệu chứng, không tính nhầm).
 - **Giảm chuyển động:** đồ hiện thẳng ở chỗ đau, bạn thú không nhún, ra vào bằng mờ dần. **Vẫn giữ** viền sáng chỗ chạm đúng, đổi mặt buồn → vui, dấu hiệu bệnh biến mất, để bé biết bước đã xong.
 
-## 10. Ảnh
-- **D1–D2 không cần ảnh:** bạn thú, dấu hiệu bệnh, mũ y tá đều là SVG trong code; dụng cụ là emoji.
-- **D3 (tùy chọn):** bố mẹ thay ảnh **dụng cụ** ở *Góc bố mẹ → Ảnh Bác sĩ nhí* (kho ảnh, mã `doctor:tools`, có sao lưu, chia sẻ như Ai kêu thế?). Ảnh bạn thú **không** thay được, vì vùng chạm gắn với khung vẽ.
+## 10. Ảnh (làm ở 0.28.1, trước D2)
+- **Không bao giờ phải có ảnh mới chơi được:** mặc định là bạn thú vẽ SVG + emoji + nền vẽ sẵn, chạy offline.
+- **Ảnh đồ** (8 đồ chữa + 3 dụng cụ khám, `images`: `lessonId = 'doctor:items'`, `word = mã đồ`) ở *Góc bố mẹ → 🩺 Ảnh Bác sĩ nhí*:
+  - từng đồ: **Chọn / Thay ảnh** (app bỏ nền trắng), **Dùng emoji** (xóa ảnh);
+  - **dùng lại ảnh có sẵn** trùng một trong các tên `reuse` của đồ (*medicine ← spoon*, *warm water ← water, cup*, *flashlight ← torch*…):
+    - ảnh đồ vật của các trò khác trước — sticker Dán tranh, Cho Bông ăn, Trốn tìm, Tìm đồ còn thiếu, Ai kêu thế? (đã bỏ nền, chép nguyên ảnh);
+    - rồi ảnh bài học (mới nhất trước, bỏ nền trắng khi chép);
+    - nút chung *"Dùng lại ảnh đã có (n đồ)"* cho các đồ chưa có ảnh (lấy ảnh đầu tiên); từng đồ có *"Ảnh có sẵn (n)…"* để chọn ảnh khác;
+    - dùng lại = **sao chép**: sửa / xóa ảnh gốc không ảnh hưởng trò này, và ngược lại;
+  - **ảnh lưới** 3 × 3 cho các đồ chưa có ảnh (prompt có mô tả `draw` từng đồ, nền trắng, không kim tiêm / viên thuốc), xem trước rồi lưu.
+- **Ảnh nền phòng khám** (`lessonId = 'doctor:bg'`, `word = 'room'`, tùy chọn): có prompt (giường khám ở giữa phía dưới, chừa trống giữa khung). Có ảnh nền thì ẩn giường vẽ sẵn; khay luôn có nền trắng riêng.
+- Ảnh hiện ở khay, khi kéo, khi bay tới bạn thú; băng dán dán lên người cũng dùng ảnh. Ảnh hỏng → emoji.
+- **Ảnh bạn thú không thay được:** vùng chạm (mắt, tai, tay…) gắn với hình vẽ sẵn; ảnh khác lệch vị trí thì bé chạm tai lại tính là đầu.
+- Ảnh `doctor:` không bị dùng làm ảnh từ vựng (bộ lọc ảnh trò chơi trong `db.js`, `parent/feed.js`). Có trong bản sao lưu đầy đủ; **chia sẻ** qua khối chung (file / Drive / link), nhập ở trang này hoặc ở Quản lý bài; ảnh mới hơn thắng.
 
 ## 11. Mốc làm
 | Mốc | Nội dung | Nghiệm thu |
 |---|---|---|
 | **D1** | Khung thân bạn thú + 4 đầu (SVG), vùng chạm, Bông y tá; dữ liệu ca theo `steps`; mức 1 (5 ca, `touch` + `treat`), kéo / chạm đồ, nhầm, gợi ý, nhắc, khóa thao tác, mã lượt / bước, lượt 3 ca + sticker, ra nền, tiến độ Body | Bé 3 tuổi chơi hết một lượt không cần người lớn; chạm nhanh không tính trùng. **Thử với bé trước khi làm D2** |
 | **D2** | Mức 2–3 (bước `check`, 6 ca thêm, khay 3–4 món), giọng bạn thú khác cao độ, tự lên mức, khóa mức, chọn ca ít gặp | Mọi câu sinh ra đúng ngữ pháp (unit) |
-| **D3** | Ảnh dụng cụ thay được, chia sẻ / sao lưu | Như các trò có ảnh trước |
+| **D3** | ✅ đã làm ở 0.28.1 (mục 10): ảnh đồ thay được / dùng lại ảnh có sẵn, ảnh nền, chia sẻ / sao lưu | Như các trò có ảnh trước |
 
 ## 12. Kiểm thử
 **Unit**
