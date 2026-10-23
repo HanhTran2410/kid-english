@@ -2588,3 +2588,94 @@ img.dr-admin-face { width: 100%; height: 100%; object-fit: contain; }
 .jb-play.jb-done .jb-stage { overflow-y: auto; align-content: center; background: none; }
 .jb-play.jb-done .jb-stage::before { display: none; }
 .jb-play.jb-done .hooray { font-size: clamp(60px, 12vmin, 120px); }
+/* Cảnh sát giúp bạn (SPEC-jobs mục 6): công viên, đồ chơi tô màu, bụi cây che đồ, bạn thú bị mất đồ. */
+.jb-jobs .jb-job-police { background: #d0ebff; }
+.jb-cap-police::after { content: '★'; font-size: 15px; font-weight: 900; line-height: 1; color: #1c7ed6; }
+.pl-stage { background: linear-gradient(#e3fafc 0 40%, #b2f2bb 40%); }
+.pl-tree { position: absolute; right: 2%; top: 4%; width: 90px; height: 120px; border-radius: 50% 50% 40% 40%; background: radial-gradient(circle at 50% 35%, #69db7c 0 55%, transparent 56%), linear-gradient(transparent 60%, #a9744a 60% 100%) center / 18px 100% no-repeat; opacity: 0.8; pointer-events: none; }
+.pl-park { position: absolute; inset: 0; }
+.pl-asker { position: absolute; left: 3%; bottom: 4%; height: 64%; aspect-ratio: 240 / 300; }
+.pl-asker .dr-svg { width: 100%; height: 100%; display: block; }
+.pl-asker.enter { animation: dr-enter 0.65s ease-out; }
+.pl-asker.leave { animation: dr-leave 0.6s ease-in forwards; }
+.pl-asker.hop { animation: dr-hop 0.5s ease-in-out 2; }
+.pl-asker.talking .dr-svg { animation: dr-talk 0.5s ease-in-out infinite; transform-origin: 50% 100%; }
+.pl-item, .pl-bush {
+  position: absolute; width: clamp(90px, 15vmin, 140px); aspect-ratio: 1; padding: 0; border: 0; background: none;
+  transform: translate(-50%, -50%); touch-action: manipulation;
+}
+.pl-item.small { width: clamp(56px, 9vmin, 86px); }
+.pl-item svg, .pl-bush svg, .pl-friend svg { width: 100%; height: 100%; display: block; }
+.pl-toy-face, .pl-friend { display: block; width: 100%; height: 100%; pointer-events: none; }
+.pl-item.nudge { animation: hint-hop 0.5s ease-in-out 3; }
+.pl-item.shake { animation: dr-shake 0.45s; }
+.pl-bush { width: clamp(120px, 20vmin, 180px); z-index: 2; transition: transform 350ms ease-out, opacity 350ms; }
+.pl-bush.moved { transform: translate(10%, -10%) scale(0.75); opacity: 0.35; pointer-events: none; }
+.pl-bush.nudge { animation: hint-hop 0.5s ease-in-out 3; }
+.pl-fly { display: block; width: 90px; height: 90px; }
+.pl-fly svg { width: 100%; height: 100%; }
+@media (max-width: 600px) {
+  .pl-asker { height: 42%; left: 2%; }
+}
+
+/* Lính cứu hỏa (SPEC-jobs mục 7): ngôi nhà có lửa nhỏ, tia nước, thẻ số, cái cây + thang. */
+.jb-jobs .jb-job-fire { background: #ffe3e3; }
+.jb-cap-fire::after { content: '▲'; font-size: 13px; font-weight: 900; line-height: 1; color: #e03131; }
+.fr-stage { background: linear-gradient(#e7f5ff 0 66%, #b2f2bb 66%); }
+.fr-scene { position: absolute; left: 50%; bottom: 6%; height: 80%; aspect-ratio: 1; transform: translateX(-42%); }
+.fr-scene.enter { animation: dr-enter 0.65s ease-out; }
+.fr-scene.leave { animation: dr-fade 0.6s forwards; }
+.fr-house, .fr-tree { position: absolute; inset: 0; }
+.fr-house svg, .fr-tree svg { width: 100%; height: 100%; display: block; }
+.fr-fire {
+  position: absolute; width: 22%; aspect-ratio: 60 / 80; padding: 0; border: 0; background: none; transform: translate(-50%, -60%);
+  transform-origin: 50% 100%; animation: fr-flicker 0.6s ease-in-out infinite alternate; touch-action: manipulation;
+}
+.fr-fire svg { width: 100%; height: 100%; display: block; pointer-events: none; }
+.fr-fire.out { animation: fr-out 0.45s ease-in forwards; pointer-events: none; }
+.fr-fire.nudge { outline: 4px solid var(--yellow); border-radius: 50%; }
+@keyframes fr-flicker { from { transform: translate(-50%, -60%) scale(1, 1); } to { transform: translate(-50%, -60%) scale(1.06, 0.94); } }
+@keyframes fr-out { to { transform: translate(-50%, -60%) scale(0.1); opacity: 0; } }
+.fr-water { font-family: var(--emoji); font-size: 48px; }
+.fr-hose { position: absolute; left: 3%; bottom: 4%; font-family: var(--emoji); font-size: clamp(60px, 12vmin, 110px); line-height: 1; pointer-events: none; }
+.fr-resident { position: absolute; right: 3%; bottom: 4%; height: 46%; aspect-ratio: 240 / 300; }
+.fr-resident .dr-svg { width: 100%; height: 100%; display: block; }
+.fr-resident.enter { animation: dr-enter 0.65s ease-out; }
+.fr-resident.leave { animation: dr-leave 0.6s ease-in forwards; }
+.fr-resident.hop { animation: dr-hop 0.5s ease-in-out 2; }
+.fr-resident.talking .dr-svg { animation: dr-talk 0.5s ease-in-out infinite; transform-origin: 50% 100%; }
+.fr-choices { position: absolute; left: 50%; top: 6%; display: flex; gap: 16px; transform: translateX(-50%); z-index: 3; }
+.fr-number { width: clamp(76px, 12vmin, 104px); height: clamp(76px, 12vmin, 104px); border-radius: 24px; background: #fff; box-shadow: var(--shadow); font-size: clamp(40px, 7vmin, 60px); font-weight: 900; color: var(--ink); }
+.fr-choices.locked .fr-number:not(.right) { opacity: 0.55; }
+.fr-number.right { outline: 6px solid #63d2a8; }
+.fr-number.nudge { animation: hint-hop 0.5s ease-in-out 3; outline: 5px solid var(--yellow); }
+.fr-number.shake { animation: as-shake 0.4s; }
+.fr-ladder { position: absolute; left: 62%; top: 34%; font-family: var(--emoji); font-size: clamp(70px, 16vmin, 140px); opacity: 0; transform: rotate(-20deg); transition: opacity 250ms; pointer-events: none; }
+.fr-climber { position: absolute; left: 60%; top: 14%; width: 30%; aspect-ratio: 240 / 300; transition: top 0.8s ease-in-out, left 0.8s ease-in-out; }
+.fr-climber .dr-svg { width: 100%; height: 100%; display: block; }
+.fr-scene.laddered .fr-ladder { opacity: 1; }
+.fr-scene.down .fr-climber { top: 66%; left: 70%; }
+@media (max-width: 600px) {
+  .fr-scene { height: 62%; bottom: 18%; transform: translateX(-50%); }
+  .fr-resident { height: 30%; }
+  .fr-hose { font-size: 52px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .pl-asker.enter, .pl-asker.hop, .pl-asker.talking .dr-svg, .pl-item.nudge, .pl-item.shake, .pl-bush.nudge,
+  .fr-scene.enter, .fr-fire, .fr-resident.enter, .fr-resident.hop, .fr-resident.talking .dr-svg, .fr-number.nudge, .fr-number.shake { animation: none; }
+  .pl-asker.leave, .fr-resident.leave { animation: dr-fade 0.3s forwards; }
+  .pl-bush, .fr-climber, .fr-ladder { transition: none; }
+  .fr-fire.out { animation: none; opacity: 0; }
+}
+/* Bụi cây che kín đồ (kể cả đồ to): to hơn đồ và lệch xuống để không lộ mép trên. */
+.pl-bush { width: clamp(150px, 26vmin, 230px); transform: translate(-50%, -42%); }
+.pl-bush.moved { transform: translate(-10%, -60%) scale(0.7); }
+@media (max-width: 600px) {
+  .pl-asker { left: 0; right: 0; margin-inline: auto; bottom: 3%; height: 34%; }
+  .pl-tree { display: none; }
+  .pl-bush { width: 128px; }
+}
+/* Đồ / bạn nấp sau bụi cây: ẩn hẳn tới khi bé chạm bụi (không ló đầu lộ đáp án). */
+.pl-hidden:not(.open) .pl-item { visibility: hidden; }
+.fr-fire.nudge { outline: none; animation: fr-flicker 0.6s ease-in-out infinite alternate, fr-glow 0.5s ease-in-out 3; }
+@keyframes fr-glow { 50% { filter: drop-shadow(0 0 10px #ffd43b) drop-shadow(0 0 4px #ffd43b); } }

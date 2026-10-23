@@ -1,6 +1,6 @@
 # SPEC — 🧑‍⚕️ Đóng vai nghề (Jobs)
 
-> Phiên bản spec: **draft2** · Ngày: 2026-10-23 · **J0 + J1 đã làm ở app 0.29.0** (khung chung, trang chọn nghề, Bán hàng), **J2 ở 0.30.0** (Bưu tá), **J3 ở 0.31.0** (Cô giáo nhí); ghi chú ở mục 12. J4–J6 chưa làm. Tiếp theo `SPEC-doctor.md` mục 13.
+> Phiên bản spec: **draft2** · Ngày: 2026-10-23 · **J0 + J1 đã làm ở app 0.29.0** (khung chung, trang chọn nghề, Bán hàng), **J2 ở 0.30.0** (Bưu tá), **J3 ở 0.31.0** (Cô giáo nhí), **J4 + J5 ở 0.32.0** (Cảnh sát, Cứu hỏa); ghi chú ở mục 12. J6 (khóa mức từng nghề trong Cài đặt) và ảnh nền các nghề chưa làm. Tiếp theo `SPEC-doctor.md` mục 13.
 > - draft1: bản đầu.
 > - **draft2, sửa theo review:** danh sách nghề được bật (2.1); **bước / thao tác con** và luật khóa (2.2); quy tắc ghi `rounds` / `seen` / "đã gặp" — một lần, kể cả ra nền và 🧹 (2.2); ranh giới `kit.js` ↔ nghề (2.3); Bán hàng: số lượng, món bố mẹ thêm, điều kiện trả xu; Bưu tá: mỗi thư đúng một nhà, mức 3 = 4 nhà; Cô giáo: chấm nhầm thì chọn lại, không bắt bấm nút đối diện; Cảnh sát: dữ liệu đồ, bụi cây không tính nhầm; Cứu hỏa: câu theo số thật, thẻ số, ngọn lửa mục tiêu, ca trên cây; test JOBS-01…10 (mục 10).
 > Gom Bác sĩ nhí và **5 nghề mới** vào một trang chọn nghề: 🛒 Bán hàng, 📮 Bưu tá, 👩‍🏫 Cô giáo nhí, 👮 Cảnh sát giúp bạn, 🚒 Lính cứu hỏa.
@@ -223,9 +223,9 @@ Mỗi mốc là một bản app riêng (commit + đưa lên GitHub Pages), để
 | JOBS-03 | Bán hàng mức 3, hai món | thứ tự nào cũng được, đủ cả hai mới xong | ✅ |
 | JOBS-04 | Bưu tá | không có thư nào có hai nhà đúng | ✅ (unit) |
 | JOBS-05 | Cô giáo chấm nhầm | chọn lại được, không tự sang câu | ✅ |
-| JOBS-06 | Cảnh sát chạm bụi cây | đồ lộ ra, không tính nhầm | J4 |
-| JOBS-07 | Cứu hỏa 1 / 2 ngọn lửa | câu tổng kết đúng số ít / nhiều | J5 |
-| JOBS-08 | Cứu hỏa mức 2 thẻ số | 3 số khác nhau, đúng một đáp án | J5 |
+| JOBS-06 | Cảnh sát chạm bụi cây | đồ lộ ra, không tính nhầm | ✅ |
+| JOBS-07 | Cứu hỏa 1 / 2 ngọn lửa | câu tổng kết đúng số ít / nhiều | ✅ |
+| JOBS-08 | Cứu hỏa mức 2 thẻ số | 3 số khác nhau, đúng một đáp án | ✅ (unit + UI) |
 | JOBS-09 | 🧹 lúc đang có hiệu ứng | việc cũ không đổi lượt mới; không ghi tiến độ lần hai | ✅ (Bán hàng; Bác sĩ DOC-07) |
 | JOBS-10 | Ra nền khi đã đưa một trong hai món | món đã đưa không tính lại, món còn lại vẫn đưa được | ✅ |
 
@@ -261,3 +261,9 @@ Mỗi mốc là một bản app riêng (commit + đưa lên GitHub Pages), để
 - Chấm đúng: ✅ khi Bông đúng → *"Yay! I'm right!"*; ❌ khi Bông sai → *"Oops! What is it?"* → chờ ~2 giây → *"It's a dog! Thank you, teacher!"*. Chấm nhầm: *"Hmm, are you sure? Look again!"* + nói lại câu, chọn lại; nhầm lần 2 nút đúng nhún.
 - Bé không thấy khay đồ (ẩn); `.tc-picture[data-right]` chỉ để test.
 - **Test:** `tests/unit/teacher.test.js`, `tests/ui/teacher.spec.js` (JOBS-05, 5 hình → sticker, ảnh bài học + ra nền, mức 3).
+
+### J4 — Cảnh sát giúp bạn, J5 — Lính cứu hỏa (0.32.0, ra cùng một bản)
+- **Cảnh sát:** `app/js/jobs/police.js`, `screens/police.js`. Đồ chơi vẽ SVG tô màu (*ball, balloon, hat, kite, car*; bỏ *teddy* vì trùng bạn thú). Mức 3: đồ cần tìm luôn nấp sau bụi cây, có thể thêm một đồ nấp khác; đồ / bạn sau bụi **ẩn hẳn** tới khi bé chạm bụi (không ló mép lộ đáp án). Ca tìm bạn bị lạc dùng `FRIEND_LOOK` (teddy *big and brown*, kitty *small and orange*, puppy *small and white*, piggy *small and pink* — mỗi mô tả khớp một bạn). "Đã gặp": màu của đồ tìm đúng. Màn dọc: đồ ở nửa trên, bạn thú giữa phía dưới.
+- **Cứu hỏa:** `app/js/jobs/fire.js`, `screens/fire.js`. Còi xe cứu hỏa dùng file `fire-truck.mp3` của Ai kêu thế?. Mỗi ngọn lửa tắt một lần (chạm đúp không đếm lại); không khóa giữa các ngọn, chỉ khóa khi ngọn cuối tắt. Ca cây: thả / chạm cái thang ở khay. Mức 2 chọn số nhầm: *"That's four. Let's count again!"*, nhầm lần 2 thì thẻ đúng nhún. Ca xong là lưu ca sau ngay (ra nền giữa hoạt ảnh không kẹt). Chưa ghi "đã gặp" số (bài Số dùng khóa khác).
+- `data-target` trên công viên / cảnh cháy chỉ để test.
+- **Test:** `tests/unit/police.test.js`, `tests/unit/fire.test.js`, `tests/ui/police.spec.js` (JOBS-06), `tests/ui/fire.spec.js` (JOBS-07, JOBS-08, ca cây, mức 3 theo chỗ).

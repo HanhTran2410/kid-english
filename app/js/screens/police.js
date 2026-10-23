@@ -21,6 +21,9 @@ const COLOR_EMOJI = { red: '🔴', blue: '🔵', yellow: '🟡', green: '🟢', 
 /** Chỗ đặt đồ trong công viên (phần trăm của sân khấu, phía phải bạn thú). */
 const SLOTS = [[46, 30], [76, 26], [52, 66], [82, 64]];
 const SLOTS_3 = [[48, 36], [78, 30], [64, 70]];
+/** Màn dọc (điện thoại): đồ ở nửa trên, bạn thú đứng giữa phía dưới. */
+const SLOTS_PORTRAIT = [[27, 16], [73, 16], [27, 44], [73, 44]];
+const SLOTS_PORTRAIT_3 = [[27, 18], [73, 18], [50, 44]];
 
 /** Đồ chơi một màu (viewBox 100 × 100). */
 function toySvg(toy, color) {
@@ -91,7 +94,9 @@ export function policeScreen(app, params = {}) {
     askerEl.innerHTML = patientSvg(a.id, { mood: 'sad', title: a.name });
     askerEl.dataset.asker = a.id;
     count.textContent = `${caseIdx + 1}/${plan.cases.length}`;
-    const slots = c.items.length <= 3 ? SLOTS_3 : SLOTS;
+    park.dataset.target = c.target; // cho test; bé không thấy
+    const portrait = stage.clientHeight > stage.clientWidth;
+    const slots = portrait ? (c.items.length <= 3 ? SLOTS_PORTRAIT_3 : SLOTS_PORTRAIT) : (c.items.length <= 3 ? SLOTS_3 : SLOTS);
     park.replaceChildren(...c.items.map((x, i) => {
       const [left, top] = slots[i];
       const face = c.kind === 'friend'
@@ -129,6 +134,7 @@ export function policeScreen(app, params = {}) {
     snap();
     play('whoosh');
     bush.classList.add('moved');
+    bush.parentElement?.classList.add('open');
   }
 
   // ---------- Ca ----------

@@ -10,6 +10,8 @@ export const JOBS = [
   { id: 'shop', emoji: '🛒', en: 'Shopkeeper', vi: 'Bán hàng', screen: 'shop' },
   { id: 'post', emoji: '📮', en: 'Postman', vi: 'Bưu tá', screen: 'post' },
   { id: 'teacher', emoji: '👩‍🏫', en: 'Teacher', vi: 'Cô giáo nhí', screen: 'teacher' },
+  { id: 'police', emoji: '👮', en: 'Police officer', vi: 'Cảnh sát giúp bạn', screen: 'police' },
+  { id: 'fire', emoji: '🚒', en: 'Firefighter', vi: 'Lính cứu hỏa', screen: 'fire' },
 ];
 
 export function jobsScreen(app) {
