@@ -2380,14 +2380,14 @@ details > summary { cursor: pointer; font-weight: 800; padding: 6px 0; }
 .bb-want .bb-img { width: 80%; height: 80%; }
 
 /* ---------- Bác sĩ nhí (SPEC-doctor.md) ---------- */
-.home-btn.game-doctor { background: #ffe1ea; }
-.child-screen.dr-play { display: grid; grid-template-columns: minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr) auto auto; gap: 6px; height: 100vh; height: 100dvh; min-height: 0; }
-.dr-nurse { position: relative; }
-.dr-cap {
+.home-btn.game-jobs { background: #ffe1ea; }
+.child-screen.jb-play { display: grid; grid-template-columns: minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr) auto auto; gap: 6px; height: 100vh; height: 100dvh; min-height: 0; }
+.jb-helper { position: relative; }
+.jb-cap {
   position: absolute; z-index: 2; left: 50%; top: 2px; width: 40%; height: 22%; transform: translateX(-50%);
   display: grid; place-items: center; border-radius: 10px 10px 4px 4px; background: #fff; border: 2px solid #ffc9d6; pointer-events: none;
 }
-.dr-cap::after { content: '✚'; font-size: 15px; font-weight: 900; line-height: 1; color: #ff5a6e; }
+.jb-cap-nurse::after { content: '✚'; font-size: 15px; font-weight: 900; line-height: 1; color: #ff5a6e; }
 .dr-stage { position: relative; display: grid; place-items: center; min-height: 0; overflow: hidden; margin: 0 12px; border-radius: 28px; background: linear-gradient(#eaf7ff 0 62%, #fff0f4 62%); }
 .dr-bed { position: absolute; left: 50%; bottom: 3%; width: min(78%, 520px); height: 20%; transform: translateX(-50%); border-radius: 26px; background: #cfe9fb; box-shadow: inset 0 -10px 0 #a9d4f2; }
 .dr-patient { position: absolute; inset: 2% 0 0; touch-action: none; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
@@ -2409,13 +2409,13 @@ details > summary { cursor: pointer; font-weight: 800; padding: 6px 0; }
 @keyframes dr-hop { 50% { transform: translateY(-6%); } }
 @keyframes dr-talk { 50% { transform: scale(1.02, 0.98); } }
 .dr-who { font-family: var(--emoji); margin-right: 8px; }
-.dr-say { height: 84px; }
-.dr-tray {
+.jb-say { height: 84px; }
+.jb-tray {
   display: flex; flex-wrap: nowrap; justify-content: center; gap: 14px; min-height: 120px; box-sizing: border-box;
   padding: 10px 12px max(12px, env(safe-area-inset-bottom)); border-radius: 26px 26px 0 0;
   background: var(--card); box-shadow: var(--shadow); -webkit-user-select: none; user-select: none; transition: transform 250ms ease-out, opacity 250ms;
 }
-.dr-tray.off { transform: translateY(40%); opacity: 0; pointer-events: none; }
+.jb-tray.off { transform: translateY(40%); opacity: 0; pointer-events: none; }
 .dr-item {
   display: grid; place-items: center; width: 96px; height: 96px; border-radius: 24px;
   background: #f1f8ff; box-shadow: var(--shadow); touch-action: none; -webkit-touch-callout: none; transition: opacity 150ms;
@@ -2425,7 +2425,7 @@ details > summary { cursor: pointer; font-weight: 800; padding: 6px 0; }
 .dr-item.hint { outline: 5px solid var(--yellow); }
 .dr-item.nudge { animation: hint-hop 0.5s ease-in-out 3; }
 .dr-item.shake { animation: as-shake 0.4s; }
-.dr-tray.locked .dr-item { opacity: 0.55; }
+.jb-tray.locked .dr-item { opacity: 0.55; }
 .dr-fly {
   position: fixed; z-index: 60; width: 90px; height: 90px; margin: -45px 0 0 -45px;
   display: grid; place-items: center; pointer-events: none; filter: drop-shadow(0 4px 4px rgba(61, 44, 94, 0.3));
@@ -2439,16 +2439,16 @@ details > summary { cursor: pointer; font-weight: 800; padding: 6px 0; }
 @keyframes dr-wiggle { 25% { transform: rotate(-14deg); } 75% { transform: rotate(14deg); } }
 @keyframes dr-gulp { 60% { transform: scale(1) rotate(-30deg); opacity: 1; } 100% { transform: scale(0.3) rotate(-30deg); opacity: 0; } }
 @media (max-width: 600px) {
-  .dr-play .sp-title { display: none; }
+  .jb-play .sp-title { display: none; }
   .dr-item { width: 76px; height: 76px; border-radius: 20px; }
   .dr-item-face { font-size: 46px; }
-  .dr-tray { min-height: 100px; gap: 10px; }
+  .jb-tray { min-height: 100px; gap: 10px; }
 }
 @media (prefers-reduced-motion: reduce) {
   .dr-patient.enter, .dr-patient.shake, .dr-patient.hop, .dr-patient.talking .dr-svg, .dr-item.nudge, .dr-item.shake, .dr-fly .dr-item-face { animation: none; }
   .dr-patient.leave { animation: dr-fade 0.3s forwards; }
   .dr-glow { animation: none; }
-  .dr-tray { transition: none; }
+  .jb-tray { transition: none; }
 }
 @keyframes dr-fade { to { opacity: 0; } }
 /* Bác sĩ nhí — ảnh bố mẹ thêm (SPEC-doctor mục 10): ảnh đồ vừa khung vuông; ảnh nền phòng khám thay nền vẽ sẵn. */
@@ -2459,3 +2459,63 @@ details > summary { cursor: pointer; font-weight: 800; padding: 6px 0; }
 .dr-admin-face { font-family: var(--emoji); font-size: 40px; line-height: 1; }
 img.dr-admin-face { width: 100%; height: 100%; object-fit: contain; }
 .dr-admin-bg { display: block; width: min(100%, 420px); aspect-ratio: 4 / 3; object-fit: cover; border-radius: 16px; margin-bottom: 8px; }
+
+/* ---------- Đóng vai nghề (SPEC-jobs.md): trang chọn nghề, sân khấu chung, mũ Bông theo nghề ---------- */
+.jb-jobs .jb-job-doctor { background: #ffe1ea; }
+.jb-jobs .jb-job-shop { background: #fff1c9; }
+.jb-stage { position: relative; display: grid; place-items: center; min-height: 0; overflow: hidden; margin: 0 12px; border-radius: 28px; }
+.jb-stage-plain { background: linear-gradient(#eaf7ff 0 62%, #fff0f4 62%); }
+.jb-cap-shop::after { content: '★'; font-size: 15px; font-weight: 900; line-height: 1; color: #f59f00; }
+/* Bán hàng (SPEC-jobs mục 3): mái hiên sọc, khách sau quầy, bong bóng món khách muốn, két + xu đồ chơi. */
+.sh-stage { background: linear-gradient(#fff6e0 0 64%, #f3d9b1 64%); }
+.sh-stage::before { content: ''; position: absolute; inset: 0 0 auto; height: 11%; background: repeating-linear-gradient(90deg, #ff8fab 0 46px, #fff 46px 92px); border-radius: 0 0 18px 18px; z-index: 1; }
+.sh-customer { position: absolute; left: 0; right: 0; bottom: 20%; height: 66%; aspect-ratio: 240 / 300; margin-inline: auto; touch-action: none; }
+.sh-customer .dr-svg { width: 100%; height: 100%; display: block; }
+.sh-customer.enter { animation: dr-enter 0.65s ease-out; }
+.sh-customer.leave { animation: dr-leave 0.6s ease-in forwards; }
+.sh-customer.shake { animation: dr-shake 0.45s; }
+.sh-customer.hop { animation: dr-hop 0.5s ease-in-out; }
+.sh-customer.talking .dr-svg { animation: dr-talk 0.5s ease-in-out infinite; transform-origin: 50% 100%; }
+.sh-counter {
+  position: absolute; left: 3%; right: 3%; bottom: 0; height: 28%; z-index: 2; box-sizing: border-box;
+  display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 0 4%;
+  background: #d9a066; border-top: 10px solid #b97f48; border-radius: 18px 18px 0 0;
+}
+.sh-coins { display: flex; gap: 12px; flex-wrap: wrap; }
+.sh-coin {
+  display: grid; place-items: center; width: 64px; height: 64px; padding: 0; border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%, #fff3bf 0 12%, #ffd43b 13% 70%, #f59f00 71%); border: 3px solid #e67700;
+  color: #fff; font-size: 28px; font-weight: 900; box-shadow: 0 4px 0 rgba(0, 0, 0, 0.15); touch-action: manipulation;
+}
+.sh-coin.nudge { animation: hint-hop 0.5s ease-in-out 3; }
+.sh-coin-fly { width: 54px; height: 54px; }
+.sh-till { position: relative; display: grid; place-items: center; width: 96px; height: 70px; border-radius: 14px; background: #74c0fc; border: 4px solid #4dabf7; }
+.sh-till-slot { position: absolute; top: 10px; width: 46px; height: 8px; border-radius: 4px; background: #1c7ed6; }
+.sh-till-count { margin-top: 14px; font-size: 26px; font-weight: 900; color: #fff; }
+.sh-till.hop { animation: dr-hop 0.4s ease-in-out; }
+.sh-wish {
+  position: absolute; top: 14%; right: 6%; z-index: 3; display: flex; gap: 8px; align-items: center;
+  padding: 8px 12px; border-radius: 22px; background: #fff; box-shadow: var(--shadow); border: 3px solid var(--yellow);
+}
+.sh-wish-item { position: relative; display: grid; place-items: center; width: 64px; height: 64px; }
+.sh-wish-face { width: 100%; height: 100%; object-fit: contain; }
+.sh-wish-face.emoji { width: auto; height: auto; font-family: var(--emoji); font-size: 46px; line-height: 1; }
+.sh-wish-item[data-done="true"] { opacity: 0.5; }
+.sh-wish-count { position: absolute; right: -6px; bottom: -6px; padding: 0 6px; border-radius: 10px; background: var(--ink); color: #fff; font-size: 15px; font-weight: 900; }
+.sh-wish-tick { position: absolute; inset: 0; display: grid; place-items: center; font-size: 44px; font-weight: 900; color: #2fb380; }
+@media (max-width: 600px) {
+  .sh-coin { width: 52px; height: 52px; font-size: 22px; }
+  .sh-till { width: 76px; height: 58px; }
+  .sh-wish-item { width: 48px; height: 48px; }
+  .sh-wish { top: 12%; right: 3%; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .sh-customer.enter, .sh-customer.shake, .sh-customer.hop, .sh-customer.talking .dr-svg, .sh-coin.nudge, .sh-till.hop { animation: none; }
+  .sh-customer.leave { animation: dr-fade 0.3s forwards; }
+}
+/* Khay nhiều món (kệ Bán hàng mức 3: 6 món) trên điện thoại: ô tự co cho vừa một hàng. */
+@media (max-width: 600px) {
+  .jb-tray .dr-item { width: min(76px, calc((100vw - 84px) / 6)); height: min(76px, calc((100vw - 84px) / 6)); }
+  .jb-tray .dr-item-face, .jb-tray .fd-face.emoji { font-size: min(46px, calc((100vw - 84px) / 10)); }
+}
+.jb-job .home-en, .jb-job .home-vi { color: var(--ink); text-shadow: none; }

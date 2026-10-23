@@ -26,7 +26,7 @@
 - Bạn thú không khóc to, không la hét. Kêu đau thì chỉ *"Ouch!"* nhỏ, mặt buồn.
 
 ## 2. Vị trí trong app
-- Thẻ mới ở Góc trò chơi: **🩺 Doctor / Bác sĩ nhí** (`games.js`, cạnh *Who says moo?*).
+- Thẻ mới ở Góc trò chơi: **🩺 Doctor / Bác sĩ nhí** (`games.js`, cạnh *Who says moo?*). **Từ 0.29.0:** vào qua thẻ **🧑‍⚕️ Jobs / Đóng vai** → trang chọn nghề (`SPEC-jobs.md`); 🎲 trong trò về trang chọn nghề.
 - Không cần mic. Câu *"Say aah!"* chờ ~2 giây cho bé nói theo rồi đi tiếp, như *"Can you say moo?"* ở Ai kêu thế?.
 
 ## 3. Màn hình
@@ -260,7 +260,7 @@ enter ─► step[0] ─► step[1] … ─► healed ─► leave ─┬─► 
   - người nói câu của bước đó nói lại (bước `touch`: bạn thú nói triệu chứng rồi Bông hỏi);
   - ra nền lúc khỏe lại / ra về: quay lại là ca sau. Sau ca 3: hoan hô + sticker luôn (chỉ một lần).
 - **Rời game** (🏠 / 🎲): hủy hết, lượt dở không lưu (tiến độ Body đã ghi thì giữ).
-- **🧹:** đổi mã lượt, khám lại từ ca 1 với **cùng 3 ca** và cùng bạn thú (bé hay muốn chơi lại ca vừa thích). Chơi lại một ca đã khỏi thì `seen` của ca đó tăng thêm (mỗi lần khỏi là một lần gặp); `rounds` chỉ tăng khi xong ca 3.
+- **🧹:** đổi mã lượt, khám lại từ ca 1 với **cùng 3 ca** và cùng bạn thú (bé hay muốn chơi lại ca vừa thích). Chơi lại **không** ghi lại `seen` / "đã gặp" của ca đã ghi trong lượt (từ 0.29.0, theo `SPEC-jobs.md` 2.2); `rounds` chỉ tăng khi xong ca 3.
 - **Nhiều ngón:** chỉ nhận ngón đầu tiên. Đang kéo đồ bằng ngón 1 mà ngón 2 chạm bạn thú: **bỏ qua ngón 2** (không nói triệu chứng, không tính nhầm).
 - **Giảm chuyển động:** đồ hiện thẳng ở chỗ đau, bạn thú không nhún, ra vào bằng mờ dần. **Vẫn giữ** viền sáng chỗ chạm đúng, đổi mặt buồn → vui, dấu hiệu bệnh biến mất, để bé biết bước đã xong.
 

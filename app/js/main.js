@@ -23,6 +23,8 @@ import { puzzleHome, puzzleList, puzzleScreen } from './screens/puzzle.js';
 import { missingScreen } from './screens/missing.js';
 import { animalSoundsHome, animalSoundsScreen } from './screens/animal-sounds.js';
 import { doctorScreen } from './screens/doctor.js';
+import { jobsScreen } from './screens/jobs.js';
+import { shopScreen } from './screens/shop.js';
 import { bubblesHome, bubblesScreen } from './screens/bubbles.js';
 import { parentScreen } from './screens/parent/index.js';
 
@@ -131,8 +133,10 @@ async function boot() {
   app.register('animal-sounds-play', animalSoundsScreen);
   app.register('bubbles', bubblesHome);
   app.register('bubbles-play', bubblesScreen);
-  // Bác sĩ nhí (SPEC-doctor.md): chạm chỗ đau, đưa đồ chữa cho bạn thú.
+  // Đóng vai nghề (SPEC-jobs.md): trang chọn nghề; Bác sĩ nhí (SPEC-doctor.md), Bán hàng.
+  app.register('jobs', jobsScreen);
   app.register('doctor', doctorScreen);
+  app.register('shop', shopScreen);
   app.register('sleep', sleepScreen);
   app.register('parent', parentScreen);
 

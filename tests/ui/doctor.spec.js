@@ -22,6 +22,7 @@ async function openDoctor(page) {
   await fakeSpeech(page);
   await startApp(page);
   await page.getByRole('button', { name: 'Trò chơi' }).click();
+  await page.getByRole('button', { name: 'Đóng vai' }).click();
   await page.getByRole('button', { name: 'Bác sĩ nhí' }).click();
   await expect(play(page)).toHaveAttribute('data-state', 'touch', { timeout: 15000 });
 }
@@ -171,6 +172,7 @@ test('giọng đọc lỗi: phụ đề vẫn hiện, chơi hết lượt đư�
   });
   await startApp(page);
   await page.getByRole('button', { name: 'Trò chơi' }).click();
+  await page.getByRole('button', { name: 'Đóng vai' }).click();
   await page.getByRole('button', { name: 'Bác sĩ nhí' }).click();
   await expect(page.locator('.dr-say .caption-en')).toBeVisible({ timeout: 15000 });
   for (let i = 0; i < 3; i++) {
@@ -222,6 +224,7 @@ test('trò chơi dùng ảnh đồ bố mẹ thêm (khay) và ảnh nền phòng
   for (const id of ['bandage', 'medicine', 'tissue', 'toothbrush', 'icepack', 'drops', 'water', 'blanket']) await addImage(page, 'doctor:items', id);
   await addImage(page, 'doctor:bg', 'room');
   await page.getByRole('button', { name: 'Trò chơi' }).click();
+  await page.getByRole('button', { name: 'Đóng vai' }).click();
   await page.getByRole('button', { name: 'Bác sĩ nhí' }).click();
   await expect(play(page)).toHaveAttribute('data-state', 'touch', { timeout: 15000 });
   await expect(page.locator('.dr-stage.has-bg')).toHaveCount(1);
