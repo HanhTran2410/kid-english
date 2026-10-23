@@ -1,6 +1,6 @@
 # SPEC — 🧑‍⚕️ Đóng vai nghề (Jobs)
 
-> Phiên bản spec: **draft2** · Ngày: 2026-10-23 · **J0 + J1 đã làm ở app 0.29.0** (khung chung, trang chọn nghề, Bán hàng; ghi chú ở mục 12), J2–J6 chưa làm. Tiếp theo `SPEC-doctor.md` mục 13.
+> Phiên bản spec: **draft2** · Ngày: 2026-10-23 · **J0 + J1 đã làm ở app 0.29.0** (khung chung, trang chọn nghề, Bán hàng), **J2 ở 0.30.0** (Bưu tá); ghi chú ở mục 12. J3–J6 chưa làm. Tiếp theo `SPEC-doctor.md` mục 13.
 > - draft1: bản đầu.
 > - **draft2, sửa theo review:** danh sách nghề được bật (2.1); **bước / thao tác con** và luật khóa (2.2); quy tắc ghi `rounds` / `seen` / "đã gặp" — một lần, kể cả ra nền và 🧹 (2.2); ranh giới `kit.js` ↔ nghề (2.3); Bán hàng: số lượng, món bố mẹ thêm, điều kiện trả xu; Bưu tá: mỗi thư đúng một nhà, mức 3 = 4 nhà; Cô giáo: chấm nhầm thì chọn lại, không bắt bấm nút đối diện; Cảnh sát: dữ liệu đồ, bụi cây không tính nhầm; Cứu hỏa: câu theo số thật, thẻ số, ngọn lửa mục tiêu, ca trên cây; test JOBS-01…10 (mục 10).
 > Gom Bác sĩ nhí và **5 nghề mới** vào một trang chọn nghề: 🛒 Bán hàng, 📮 Bưu tá, 👩‍🏫 Cô giáo nhí, 👮 Cảnh sát giúp bạn, 🚒 Lính cứu hỏa.
@@ -221,7 +221,7 @@ Mỗi mốc là một bản app riêng (commit + đưa lên GitHub Pages), để
 | JOBS-01 | Trang chọn nghề | chỉ hiện các nghề trong `JOBS` | ✅ (đếm đủ số thẻ) |
 | JOBS-02 | Bán hàng mức 2, *two apples* | quả thứ nhất chưa xong bước, quả thứ hai mới *"Here you are!"* | ✅ |
 | JOBS-03 | Bán hàng mức 3, hai món | thứ tự nào cũng được, đủ cả hai mới xong | ✅ |
-| JOBS-04 | Bưu tá | không có thư nào có hai nhà đúng | J2 |
+| JOBS-04 | Bưu tá | không có thư nào có hai nhà đúng | ✅ (unit) |
 | JOBS-05 | Cô giáo chấm nhầm | chọn lại được, không tự sang câu | J3 |
 | JOBS-06 | Cảnh sát chạm bụi cây | đồ lộ ra, không tính nhầm | J4 |
 | JOBS-07 | Cứu hỏa 1 / 2 ngọn lửa | câu tổng kết đúng số ít / nhiều | J5 |
@@ -243,3 +243,12 @@ Mỗi mốc là một bản app riêng (commit + đưa lên GitHub Pages), để
 - Kệ trên điện thoại: ô tự co để 6 món vừa một hàng.
 - **Ghi một lần (draft2):** Bán hàng và Bác sĩ nhí giữ `recorded` (mã ca + món / `body`, `seen`) trong bản lưu; 🧹 chơi lại không ghi "đã gặp" / `seen` lần hai. Bán hàng ghi "đã gặp" khi món **đủ số**, không phải mỗi cái.
 - **Test:** `tests/unit/shop.test.js`, `tests/ui/shop.spec.js` (trang chọn nghề, mức 1 đủ luồng, 3 khách → sticker, mức 2 trả xu + ra nền giữa lúc trả xu, mức 3 hai món, ảnh món Cho Bông ăn trên kệ).
+
+### J2 — Bưu tá (0.30.0)
+- Dữ liệu + câu `app/js/jobs/post.js` (dãy nhà, 5 thư, địa chỉ màu / số / tên, câu nhầm theo kiểu địa chỉ), màn `screens/post.js`.
+- Nhà vẽ SVG (mái + tường theo màu, số trên cửa ở mức 2+, đầu bạn thú ở cửa sổ ở mức 3); cửa mở = bạn thú ló đầu ra lúc nói câu cảm ơn / câu nhầm.
+- Thư nằm ở khay (túi thư): kéo thả vào nhà, hoặc **chạm thẳng vào nhà**; chạm lá thư (không kéo) thì Bông nói lại địa chỉ.
+- Mức 3 là **4 nhà** (4 bạn thú, mỗi nhà một bạn) để thư theo tên luôn đúng một nhà.
+- "Đã gặp": màu (bài Colors) khi đưa đúng thư theo màu; số chưa ghi (bài số dùng kiểu khác).
+- Điện thoại dọc: nhà xếp 2 hàng.
+- **Test:** `tests/unit/post.test.js` (dãy nhà, thư, JOBS-04, câu), `tests/ui/post.spec.js` (mức 1 đủ luồng + nhầm, 5 thư → sticker + "đã gặp" màu, mức 2 cùng màu + kéo thả + ra nền, mức 3 đủ ba kiểu địa chỉ). Trang chọn nghề so số thẻ với `JOBS` (JOBS-01).

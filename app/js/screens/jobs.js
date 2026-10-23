@@ -8,6 +8,7 @@ import { homeButton } from '../player/layout.js';
 export const JOBS = [
   { id: 'doctor', emoji: '🩺', en: 'Doctor', vi: 'Bác sĩ nhí', screen: 'doctor' },
   { id: 'shop', emoji: '🛒', en: 'Shopkeeper', vi: 'Bán hàng', screen: 'shop' },
+  { id: 'post', emoji: '📮', en: 'Postman', vi: 'Bưu tá', screen: 'post' },
 ];
 
 export function jobsScreen(app) {

@@ -12,7 +12,8 @@ async function openShop(page, settings) {
   if (settings) await page.evaluate((s) => window.kidEnglish.setSetting('shopGame', s), settings);
   await page.getByRole('button', { name: 'Trò chơi' }).click();
   await page.getByRole('button', { name: 'Đóng vai' }).click();
-  await expect(page.locator('.jb-job')).toHaveCount(2);
+  // JOBS-01: chỉ hiện các nghề trong danh sách được bật.
+  await expect(page.locator('.jb-job')).toHaveCount(await page.evaluate(async () => (await import('/js/screens/jobs.js')).JOBS.length));
   await expect.poll(async () => (await spoken(page)).includes('What do you want to be today?')).toBe(true);
   await page.getByRole('button', { name: 'Bán hàng' }).click();
   await expect(play(page)).toHaveAttribute('data-state', 'order', { timeout: 15000 });
@@ -32,7 +33,7 @@ async function serve(page) {
   }
 }
 
-test('trang chọn nghề có Bác sĩ nhí + Bán hàng; mức 1: chào, gọi món, đưa nhầm → câu nhầm + bong bóng, món đúng nhún; đưa đúng → "Here you are!" → cảm ơn → khách 2', async ({ page }) => {
+test('trang chọn nghề; mức 1: chào, gọi món, đưa nhầm → câu nhầm + bong bóng, món đúng nhún; đưa đúng → "Here you are!" → cảm ơn → khách 2', async ({ page }) => {
   await openShop(page);
   expect(await spoken(page)).toContain('Hello! Welcome to our shop!');
   await expect(page.locator('.jb-count')).toHaveText('1/3');

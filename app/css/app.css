@@ -2519,3 +2519,30 @@ img.dr-admin-face { width: 100%; height: 100%; object-fit: contain; }
   .jb-tray .dr-item-face, .jb-tray .fd-face.emoji { font-size: min(46px, calc((100vw - 84px) / 10)); }
 }
 .jb-job .home-en, .jb-job .home-vi { color: var(--ink); text-shadow: none; }
+/* Bưu tá (SPEC-jobs mục 4): dãy nhà, cửa mở cho bạn thú ló ra, bạn thú ở cửa sổ (mức 3). */
+.jb-jobs .jb-job-post { background: #dbe4ff; }
+.jb-cap-post::after { content: '✉'; font-size: 15px; font-weight: 900; line-height: 1; color: #1c7ed6; }
+.ps-stage { background: linear-gradient(#d0ebff 0 58%, #b2f2bb 58%); }
+.ps-sky { position: absolute; inset: 0; pointer-events: none; }
+.ps-sun { position: absolute; top: 8%; left: 6%; width: 60px; height: 60px; border-radius: 50%; background: #ffd43b; box-shadow: 0 0 0 10px rgba(255, 212, 59, 0.3); }
+.ps-cloud { position: absolute; top: 12%; right: 12%; width: 120px; height: 40px; border-radius: 40px; background: #fff; box-shadow: 30px -16px 0 -4px #fff, -24px -8px 0 -8px #fff; }
+.ps-street { position: absolute; left: 2%; right: 2%; bottom: 5%; display: flex; justify-content: space-evenly; align-items: flex-end; gap: 2%; }
+.ps-house { position: relative; width: min(23%, 210px); aspect-ratio: 100 / 120; padding: 0; border: 0; background: none; touch-action: manipulation; }
+.ps-house-svg { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+.ps-window { position: absolute; left: 18%; top: 48.3%; width: 22%; height: 15%; overflow: hidden; border-radius: 3px; pointer-events: none; }
+.ps-window svg, .ps-peek svg { width: 100%; height: 100%; display: block; }
+.ps-peek { position: absolute; left: 30%; top: 56%; width: 40%; height: 34%; opacity: 0; transform: scale(0.6); transition: opacity 200ms, transform 200ms; pointer-events: none; }
+.ps-house.open .ps-door { fill: #3d2c5e; }
+.ps-house.open .ps-peek { opacity: 1; transform: scale(1); }
+.ps-house.nudge { animation: hint-hop 0.5s ease-in-out 3; }
+.ps-house.shake { animation: dr-shake 0.45s; }
+.ps-letter { font-family: var(--emoji); }
+@media (prefers-reduced-motion: reduce) {
+  .ps-house.nudge, .ps-house.shake { animation: none; }
+  .ps-peek { transition: none; }
+}
+.ps-window .dr-svg, .ps-peek .dr-svg { overflow: hidden; }
+@media (max-width: 600px) {
+  .ps-street { flex-wrap: wrap; row-gap: 4%; bottom: 4%; }
+  .ps-house { width: 42%; }
+}
