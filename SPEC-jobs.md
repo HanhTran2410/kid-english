@@ -1,6 +1,6 @@
 # SPEC — 🧑‍⚕️ Đóng vai nghề (Jobs)
 
-> Phiên bản spec: **draft2** · Ngày: 2026-10-23 · **J0 + J1 đã làm ở app 0.29.0** (khung chung, trang chọn nghề, Bán hàng), **J2 ở 0.30.0** (Bưu tá); ghi chú ở mục 12. J3–J6 chưa làm. Tiếp theo `SPEC-doctor.md` mục 13.
+> Phiên bản spec: **draft2** · Ngày: 2026-10-23 · **J0 + J1 đã làm ở app 0.29.0** (khung chung, trang chọn nghề, Bán hàng), **J2 ở 0.30.0** (Bưu tá), **J3 ở 0.31.0** (Cô giáo nhí); ghi chú ở mục 12. J4–J6 chưa làm. Tiếp theo `SPEC-doctor.md` mục 13.
 > - draft1: bản đầu.
 > - **draft2, sửa theo review:** danh sách nghề được bật (2.1); **bước / thao tác con** và luật khóa (2.2); quy tắc ghi `rounds` / `seen` / "đã gặp" — một lần, kể cả ra nền và 🧹 (2.2); ranh giới `kit.js` ↔ nghề (2.3); Bán hàng: số lượng, món bố mẹ thêm, điều kiện trả xu; Bưu tá: mỗi thư đúng một nhà, mức 3 = 4 nhà; Cô giáo: chấm nhầm thì chọn lại, không bắt bấm nút đối diện; Cảnh sát: dữ liệu đồ, bụi cây không tính nhầm; Cứu hỏa: câu theo số thật, thẻ số, ngọn lửa mục tiêu, ca trên cây; test JOBS-01…10 (mục 10).
 > Gom Bác sĩ nhí và **5 nghề mới** vào một trang chọn nghề: 🛒 Bán hàng, 📮 Bưu tá, 👩‍🏫 Cô giáo nhí, 👮 Cảnh sát giúp bạn, 🚒 Lính cứu hỏa.
@@ -222,7 +222,7 @@ Mỗi mốc là một bản app riêng (commit + đưa lên GitHub Pages), để
 | JOBS-02 | Bán hàng mức 2, *two apples* | quả thứ nhất chưa xong bước, quả thứ hai mới *"Here you are!"* | ✅ |
 | JOBS-03 | Bán hàng mức 3, hai món | thứ tự nào cũng được, đủ cả hai mới xong | ✅ |
 | JOBS-04 | Bưu tá | không có thư nào có hai nhà đúng | ✅ (unit) |
-| JOBS-05 | Cô giáo chấm nhầm | chọn lại được, không tự sang câu | J3 |
+| JOBS-05 | Cô giáo chấm nhầm | chọn lại được, không tự sang câu | ✅ |
 | JOBS-06 | Cảnh sát chạm bụi cây | đồ lộ ra, không tính nhầm | J4 |
 | JOBS-07 | Cứu hỏa 1 / 2 ngọn lửa | câu tổng kết đúng số ít / nhiều | J5 |
 | JOBS-08 | Cứu hỏa mức 2 thẻ số | 3 số khác nhau, đúng một đáp án | J5 |
@@ -252,3 +252,12 @@ Mỗi mốc là một bản app riêng (commit + đưa lên GitHub Pages), để
 - "Đã gặp": màu (bài Colors) khi đưa đúng thư theo màu; số chưa ghi (bài số dùng kiểu khác).
 - Điện thoại dọc: nhà xếp 2 hàng.
 - **Test:** `tests/unit/post.test.js` (dãy nhà, thư, JOBS-04, câu), `tests/ui/post.spec.js` (mức 1 đủ luồng + nhầm, 5 thư → sticker + "đã gặp" màu, mức 2 cùng màu + kéo thả + ra nền, mức 3 đủ ba kiểu địa chỉ). Trang chọn nghề so số thẻ với `JOBS` (JOBS-01).
+
+### J3 — Cô giáo nhí (0.31.0)
+- Dữ liệu + câu `app/js/jobs/teacher.js`, màn `screens/teacher.js`.
+- **Chỉ dùng danh từ trong bảng `NOUNS`** (24 từ của bài Animals, Food, Vehicles, Body, mạo từ / số nhiều khai báo sẵn: *It's a cat*, *It's an egg*, *It's rice*, *They're eyes*) để câu của Bông luôn đúng ngữ pháp; từ bé đã học (`practiceCount > 0`) trong bảng được ưu tiên. Từ của bài bố mẹ tự tạo **chưa** dùng (chưa biết mạo từ).
+- Mức 3: đồ vẽ SVG tô màu (*ball, balloon, star*) — *"It's a red ball!"*; nhiều con / quả bằng emoji lặp lại — *"I see two cats!"*; câu sai đổi đúng một thuộc tính.
+- Ảnh hình: ảnh bài học mới nhất của từ (`latestImageForWord`, chỉ đọc) → emoji.
+- Chấm đúng: ✅ khi Bông đúng → *"Yay! I'm right!"*; ❌ khi Bông sai → *"Oops! What is it?"* → chờ ~2 giây → *"It's a dog! Thank you, teacher!"*. Chấm nhầm: *"Hmm, are you sure? Look again!"* + nói lại câu, chọn lại; nhầm lần 2 nút đúng nhún.
+- Bé không thấy khay đồ (ẩn); `.tc-picture[data-right]` chỉ để test.
+- **Test:** `tests/unit/teacher.test.js`, `tests/ui/teacher.spec.js` (JOBS-05, 5 hình → sticker, ảnh bài học + ra nền, mức 3).

@@ -285,6 +285,8 @@ export function jobScreen(app, opts) {
     beforeCompletion?.();
     renderTray([]);
     sayBox.replaceChildren();
+    // Màn hoan hô cần cả chiều cao: ẩn hàng phụ đề + khay, sân khấu cuộn được (hộp quà, nút ✔ không bị che).
+    app.root.classList.add('jb-done');
     const teacher = new Teacher(app, { signal, bunny, stage });
     try {
       await runCompletion({ app, teacher, stage, signal });

@@ -65,6 +65,9 @@ test('3 khách → Hoan hô + sticker; đếm lượt', async ({ page }) => {
     await serve(page);
   }
   await expect(page.locator('.prize-sticker')).toBeVisible({ timeout: 15000 });
+  // Màn hoan hô không bị cắt: hộp quà và nút ✔ nằm trọn trong màn hình.
+  await expect(page.locator('.done-btn')).toBeInViewport({ ratio: 1, timeout: 15000 });
+  await expect(page.locator('.gift')).toBeInViewport({ ratio: 1 });
   expect((await page.evaluate(() => window.kidEnglish.settings.shopGame)).rounds).toBe(1);
 });
 

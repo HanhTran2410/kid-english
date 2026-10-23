@@ -77,6 +77,9 @@ test('3 ca → Hoan hô + sticker; đếm lượt + seen một lần; ghi "đã 
     healed.push(await healCurrent(page));
   }
   await expect(page.locator('.prize-sticker')).toBeVisible({ timeout: 15000 });
+  // Màn hoan hô không bị cắt: hộp quà và nút ✔ nằm trọn trong màn hình.
+  await expect(page.locator('.done-btn')).toBeInViewport({ ratio: 1, timeout: 15000 });
+  await expect(page.locator('.gift')).toBeInViewport({ ratio: 1 });
   const game = await page.evaluate(() => window.kidEnglish.settings.doctorGame);
   expect(game.rounds).toBe(1);
   expect(game.level).toBe(1);
