@@ -104,9 +104,16 @@ const SOUNDS = {
   munch: (c) => [0, 0.28, 0.56].forEach((t) => noise(c, { start: t, duration: 0.09, gain: 0.22, filter: 1100 })),
   burp: (c) => tone(c, { freq: 120, endFreq: 70, duration: 0.45, type: 'sawtooth', gain: 0.1 }),
   rumble: (c) => [0, 0.22].forEach((t) => tone(c, { freq: 90, endFreq: 60, start: t, duration: 0.2, type: 'triangle', gain: 0.14 })),
+  // Bác sĩ nhí (SPEC-doctor): chuông cửa "ding dong", hỉ mũi, chải răng.
+  doorbell: (c) => {
+    tone(c, { freq: 784, duration: 0.5, gain: 0.18 });
+    tone(c, { freq: 622, start: 0.35, duration: 0.7, gain: 0.18 });
+  },
+  honk: (c) => tone(c, { freq: 240, endFreq: 200, duration: 0.35, type: 'sawtooth', gain: 0.08 }),
+  brush: (c) => [0, 0.2, 0.4, 0.6].forEach((t) => noise(c, { start: t, duration: 0.14, gain: 0.18, filter: 3000 })),
 };
 
-/** Phát hiệu ứng: 'tap' | 'pop' | 'ding' | 'boing' | 'whoosh' | 'cheer' | 'ring' | 'hangup' | 'drumroll' | 'tada' | 'sparkle' | 'chomp' | 'munch' | 'burp' | 'rumble'. Không có âm thanh thì bỏ qua. */
+/** Phát hiệu ứng: 'tap' | 'pop' | 'ding' | 'boing' | 'whoosh' | 'cheer' | 'ring' | 'hangup' | 'drumroll' | 'tada' | 'sparkle' | 'chomp' | 'munch' | 'burp' | 'rumble' | 'doorbell' | 'honk' | 'brush'. Không có âm thanh thì bỏ qua. */
 export function play(name) {
   const c = audioContext();
   if (!c || c.state !== 'running') return;

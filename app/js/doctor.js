@@ -1,0 +1,315 @@
+// Trò Bác sĩ nhí (SPEC-doctor.md): bạn thú đến phòng khám, Bông làm y tá hướng dẫn, bé chạm đúng chỗ đau
+// rồi đưa dụng cụ khám / đồ chữa. Mỗi ca khai báo danh sách bước (mục 6.3); bước nào có từ mức nào ghi ở `from`.
+// File này chỉ có dữ liệu + luật (chạy được trong node để test); màn chơi ở screens/doctor.js.
+
+export const CASES_PER_ROUND = 3;
+export const ROUNDS_TO_LEVEL_UP = 3;
+/** D1: mới chơi được mức 1 (bước khám và các ca mức 2–3 làm ở D2). Tăng lên 3 khi có D2. */
+export const PLAYABLE_LEVEL = 1;
+/** Số món trong khay theo mức và loại bước (SPEC mục 7). */
+export const TRAY_SIZE = {
+  1: { check: 3, treat: 2 },
+  2: { check: 3, treat: 3 },
+  3: { check: 3, treat: 4 },
+};
+/** Chọn 3 ca: thử chừng này bộ để tránh hai ca cùng đồ chữa; không được thì dùng bộ cuối (mục 7.2). */
+const PICK_TRIES = 20;
+/** Trong một lượt, tối đa chừng này ca là ca bé ít gặp nhất. */
+export const LEAST_SEEN_PER_ROUND = 2;
+
+// ---------- Vùng chạm (mục 5) ----------
+/** `word`: tên trong câu ("my hand"); `body`: từ bài Body để ghi "đã gặp" (không có thì không ghi). */
+export const REGIONS = {
+  head: { word: 'head', vi: 'cái đầu' },
+  eye: { word: 'eye', vi: 'con mắt', body: 'eyes', emoji: '👀' },
+  ear: { word: 'ear', vi: 'cái tai', body: 'ears', emoji: '👂' },
+  nose: { word: 'nose', vi: 'cái mũi', body: 'nose', emoji: '👃' },
+  mouth: { word: 'mouth', vi: 'cái miệng', body: 'mouth', emoji: '👄' },
+  tummy: { word: 'tummy', vi: 'cái bụng' },
+  hand: { word: 'hand', vi: 'bàn tay', body: 'hands', emoji: '👐' },
+  foot: { word: 'foot', vi: 'bàn chân', body: 'feet', emoji: '🦶' },
+};
+
+/**
+ * Hình học vùng chạm trong viewBox 240 × 300 của bạn thú (chung cho cả 4 bạn).
+ * Tầng 1 (mắt, mũi, miệng, tai, tay, chân) thắng tầng 2 (bụng), tầng 2 thắng tầng 3 (đầu):
+ * "vùng nhỏ hơn thắng". Trong cùng tầng: tâm gần nhất thắng. Hai bên tai / mắt / tay / chân cùng một vùng.
+ */
+export const VIEW_W = 240;
+export const VIEW_H = 300;
+export const SPOTS = [
+  { region: 'eye', x: 92, y: 88, r: 24, tier: 1 },
+  { region: 'eye', x: 148, y: 88, r: 24, tier: 1 },
+  { region: 'nose', x: 120, y: 112, r: 20, tier: 1 },
+  { region: 'mouth', x: 120, y: 138, r: 22, tier: 1 },
+  { region: 'ear', x: 62, y: 38, r: 28, tier: 1 },
+  { region: 'ear', x: 178, y: 38, r: 28, tier: 1 },
+  { region: 'hand', x: 40, y: 214, r: 30, tier: 1 },
+  { region: 'hand', x: 200, y: 214, r: 30, tier: 1 },
+  { region: 'foot', x: 80, y: 276, r: 28, tier: 1 },
+  { region: 'foot', x: 160, y: 276, r: 28, tier: 1 },
+  { region: 'tummy', x: 120, y: 222, r: 60, tier: 2 },
+  { region: 'head', x: 120, y: 95, r: 76, tier: 3 },
+];
+
+/** Vùng tại điểm (x, y) trong viewBox; ngoài người bạn thú thì null. */
+export function regionAt(x, y) {
+  let best = null;
+  for (const s of SPOTS) {
+    const d = Math.hypot(x - s.x, y - s.y);
+    if (d > s.r) continue;
+    if (!best || s.tier < best.tier || (s.tier === best.tier && d < best.d)) best = { ...s, d };
+  }
+  return best?.region ?? null;
+}
+
+/** Điểm đại diện của một vùng (đồ bay tới đây). Ưu tiên bên phải bạn thú (bên trái màn hình) cho tự nhiên. */
+export const regionPoint = (region, side = 1) => {
+  const spots = SPOTS.filter((s) => s.region === region);
+  return spots[Math.min(side, spots.length - 1)] ?? spots[0];
+};
+
+// ---------- Bạn thú ----------
+export const PATIENTS = [
+  { id: 'teddy', name: 'Teddy', vi: 'Gấu Teddy', emoji: '🐻' },
+  { id: 'kitty', name: 'Kitty', vi: 'Mèo Kitty', emoji: '🐱' },
+  { id: 'puppy', name: 'Puppy', vi: 'Cún Puppy', emoji: '🐶' },
+  { id: 'piggy', name: 'Piggy', vi: 'Heo Piggy', emoji: '🐷' },
+];
+export const PATIENT_BY_ID = new Map(PATIENTS.map((p) => [p.id, p]));
+
+// ---------- Dụng cụ khám, đồ chữa (mục 6.1, 6.2) ----------
+/**
+ * Mọi cụm câu lưu sẵn cho từng đồ, không sinh từ mạo từ:
+ * `ask` (câu xin / đưa), `wrong` (câu nhầm "Hmm, …"), `notThis` (câu "không phải", mức 2+), `the` (tên có "the").
+ */
+export const TOOLS = [
+  { id: 'stethoscope', kind: 'check', emoji: '🩺', name: 'stethoscope', vi: 'ống nghe', the: 'the stethoscope', wrong: "that's the stethoscope", notThis: 'not the stethoscope' },
+  { id: 'thermometer', kind: 'check', emoji: '🌡️', name: 'thermometer', vi: 'nhiệt kế', the: 'the thermometer', wrong: "that's the thermometer", notThis: 'not the thermometer' },
+  { id: 'flashlight', kind: 'check', emoji: '🔦', name: 'flashlight', vi: 'đèn pin', the: 'the flashlight', wrong: "that's the flashlight", notThis: 'not the flashlight' },
+];
+export const TREATS = [
+  { id: 'bandage', kind: 'treat', emoji: '🩹', name: 'bandage', vi: 'miếng băng dán', ask: 'a bandage', wrong: "that's the bandage", notThis: 'not the bandage' },
+  { id: 'medicine', kind: 'treat', emoji: '🥄', name: 'medicine', vi: 'thìa si-rô', ask: 'some medicine', wrong: "that's the medicine", notThis: 'not the medicine' },
+  { id: 'tissue', kind: 'treat', emoji: '🧻', name: 'tissue', vi: 'giấy lau mũi', ask: 'a tissue', wrong: "that's the tissue", notThis: 'not the tissue' },
+  { id: 'toothbrush', kind: 'treat', emoji: '🪥', name: 'toothbrush', vi: 'bàn chải đánh răng', ask: 'a toothbrush', wrong: "that's the toothbrush", notThis: 'not the toothbrush' },
+  { id: 'icepack', kind: 'treat', emoji: '🧊', name: 'ice pack', vi: 'túi chườm lạnh', ask: 'an ice pack', wrong: "that's the ice pack", notThis: 'not the ice pack' },
+  { id: 'drops', kind: 'treat', emoji: '💧', name: 'eye drops', vi: 'thuốc nhỏ mắt', ask: 'some eye drops', wrong: 'those are the eye drops', notThis: 'not the eye drops' },
+  { id: 'water', kind: 'treat', emoji: '🍵', name: 'warm water', vi: 'cốc nước ấm', ask: 'some warm water', wrong: "that's the warm water", notThis: 'not the warm water' },
+  { id: 'blanket', kind: 'treat', emoji: '🛏️', name: 'blanket', vi: 'cái chăn', ask: 'a blanket', wrong: "that's the blanket", notThis: 'not the blanket' },
+];
+export const ITEM_BY_ID = new Map([...TOOLS, ...TREATS].map((t) => [t.id, t]));
+
+// ---------- Ca (mục 6.3) ----------
+/**
+ * `say`: triệu chứng lúc vào phòng; `remind`: nhắc lại sau câu nhầm chỗ ("That's my nose! My tummy hurts!");
+ * `hurt`: tên chỗ đau trong câu "Yes! My …" (ca răng: tooth, dù vùng chạm là miệng);
+ * `sign`: dấu hiệu vẽ trên người (screens/doctor.js); `steps`: các bước, `from` = mức thấp nhất có bước đó.
+ */
+export const CASES = [
+  {
+    id: 'cut-hand', level: 1, sign: 'cut-hand', hurt: 'hand',
+    say: ['Ouch! My hand hurts!', 'Ui da! Tay tớ đau quá!'], remind: ['My hand hurts!', 'Tay tớ đau cơ!'],
+    steps: [{ type: 'touch', target: 'hand' }, { type: 'treat', item: 'bandage' }],
+  },
+  {
+    id: 'cut-foot', level: 1, sign: 'cut-foot', hurt: 'foot',
+    say: ['Ouch! My foot hurts!', 'Ui da! Chân tớ đau quá!'], remind: ['My foot hurts!', 'Chân tớ đau cơ!'],
+    steps: [{ type: 'touch', target: 'foot' }, { type: 'treat', item: 'bandage' }],
+  },
+  {
+    id: 'tummy', level: 1, sign: 'tummy', hurt: 'tummy',
+    say: ['My tummy hurts!', 'Bụng tớ đau quá!'], remind: ['My tummy hurts!', 'Bụng tớ đau cơ!'],
+    steps: [{ type: 'touch', target: 'tummy' }, { type: 'check', item: 'stethoscope', from: 2 }, { type: 'treat', item: 'medicine' }],
+  },
+  {
+    id: 'runny-nose', level: 1, sign: 'runny-nose', hurt: 'nose',
+    say: ['Achoo! My nose!', 'Hắt xì! Mũi tớ!'], remind: ['My nose is runny!', 'Mũi tớ chảy nước cơ!'],
+    steps: [{ type: 'touch', target: 'nose' }, { type: 'treat', item: 'tissue' }],
+  },
+  {
+    id: 'tooth', level: 1, sign: 'tooth', hurt: 'tooth',
+    say: ['My tooth hurts!', 'Răng tớ đau quá!'], remind: ['My tooth hurts!', 'Răng tớ đau cơ!'],
+    steps: [{ type: 'touch', target: 'mouth' }, { type: 'check', item: 'flashlight', from: 2 }, { type: 'treat', item: 'toothbrush' }],
+  },
+  {
+    id: 'ear-bug', level: 2, sign: null, hurt: 'ear',
+    say: ['My ear feels funny!', 'Tai tớ nghe lạ lắm!'], remind: ['My ear feels funny!', 'Tai tớ lạ lắm cơ!'],
+    steps: [{ type: 'touch', target: 'ear' }, { type: 'check', item: 'flashlight', from: 2, effect: 'bug' }],
+  },
+  {
+    id: 'eye', level: 2, sign: 'eye', hurt: 'eye',
+    say: ['Something in my eye!', 'Có gì bay vào mắt tớ!'], remind: ['Something in my eye!', 'Mắt tớ cộm quá!'],
+    steps: [{ type: 'touch', target: 'eye' }, { type: 'treat', item: 'drops' }],
+  },
+  {
+    id: 'bump', level: 2, sign: 'bump', hurt: 'head',
+    say: ['Ouch! I bumped my head!', 'Ui da! Tớ bị cộc đầu!'], remind: ['My head hurts!', 'Đầu tớ đau cơ!'],
+    steps: [{ type: 'touch', target: 'head' }, { type: 'treat', item: 'icepack' }],
+  },
+  {
+    id: 'sleepy', level: 2, sign: 'sleepy', hurt: null, face: 'sleepy',
+    say: ["I'm so sleepy…", 'Tớ buồn ngủ quá…'], remind: ["I'm so sleepy…", 'Tớ buồn ngủ quá…'],
+    steps: [{ type: 'treat', item: 'blanket' }],
+  },
+  {
+    id: 'fever', level: 3, sign: 'fever', hurt: 'head',
+    say: ['I feel hot. My head hurts.', 'Tớ thấy nóng. Đầu tớ đau.'], remind: ['My head hurts!', 'Đầu tớ đau cơ!'],
+    steps: [{ type: 'touch', target: 'head' }, { type: 'check', item: 'thermometer', from: 2 }, { type: 'treat', item: 'icepack' }],
+  },
+  {
+    id: 'cough', level: 3, sign: 'cough', hurt: null,
+    say: ['Cough! Cough!', 'Khụ! Khụ!'], remind: ['Cough! Cough!', 'Khụ! Khụ!'],
+    steps: [{ type: 'check', item: 'stethoscope', from: 2 }, { type: 'treat', item: 'water' }],
+  },
+];
+export const CASE_BY_ID = new Map(CASES.map((c) => [c.id, c]));
+
+/** Các bước của một ca ở một mức (chỉ bước có `from` ≤ mức). */
+export const stepsFor = (c, level) => c.steps.filter((s) => (s.from ?? 1) <= level);
+/** Ca có ở mức này (gồm cả ca của mức thấp hơn). */
+export const casesFor = (level) => CASES.filter((c) => c.level <= level);
+/** Đồ chữa cuối của ca (để tránh hai ca cùng đồ chữa trong một lượt). */
+const lastItem = (c, level) => stepsFor(c, level).at(-1)?.item ?? null;
+
+// ---------- Ngẫu nhiên ----------
+const shuffle = (list, rng) => {
+  const a = [...list];
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(rng() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+};
+
+/**
+ * Khay của một bước (mục 7.1): đúng một đồ đúng + đồ gây nhiễu cùng loại (dụng cụ khám / đồ chữa), không trùng, xáo vị trí.
+ * @returns {string[]} mã đồ
+ */
+export function trayFor(step, level, { rng = Math.random } = {}) {
+  const pool = step.type === 'check' ? TOOLS : TREATS;
+  const size = Math.min(TRAY_SIZE[level]?.[step.type] ?? 2, pool.length);
+  const others = shuffle(pool.filter((t) => t.id !== step.item), rng).slice(0, size - 1);
+  return shuffle([ITEM_BY_ID.get(step.item), ...others], rng).map((t) => t.id);
+}
+
+/**
+ * 3 ca của một lượt (mục 7.2), luôn trả về kết quả:
+ * 1. 3 ca khác nhau trong nhóm của mức (bắt buộc);
+ * 2. tối đa 2 ca bé ít gặp nhất (`seen`: mã ca → số lần khỏi), còn lại ngẫu nhiên;
+ * 3. nên: không có hai ca cùng đồ chữa cuối — thử tối đa 20 bộ, không đạt thì dùng bộ cuối.
+ * Mỗi ca một bạn thú khác nhau.
+ * @returns {Array<{ id: string, patient: string }>}
+ */
+export function pickCases(level, { seen = {}, rng = Math.random, pool = casesFor(level), n = CASES_PER_ROUND } = {}) {
+  const count = (c) => (Number.isInteger(seen?.[c.id]) ? seen[c.id] : 0);
+  let pick = [];
+  for (let i = 0; i < PICK_TRIES; i++) {
+    const bySeen = shuffle(pool, rng).sort((a, b) => count(a) - count(b));
+    const least = bySeen.slice(0, Math.min(LEAST_SEEN_PER_ROUND, n));
+    const rest = shuffle(bySeen.slice(least.length), rng).slice(0, n - least.length);
+    pick = shuffle([...least, ...rest], rng);
+    const items = pick.map((c) => lastItem(c, level));
+    if (new Set(items).size === items.length) break;
+  }
+  const patients = shuffle(PATIENTS, rng);
+  return pick.map((c, i) => ({ id: c.id, patient: patients[i % patients.length].id }));
+}
+
+// ---------- Câu nói (mục 6.4): mỗi câu [tiếng Anh, tiếng Việt] ----------
+const capital = (s) => s.charAt(0).toUpperCase() + s.slice(1);
+
+export const COME_IN_LINE = ['Hello! Come in!', 'Chào bạn! Mời bạn vào!'];
+export const HELLO_DOCTOR_LINE = ['Hello, doctor!', 'Chào bác sĩ!'];
+export const WHERE_LINE = ['Where does it hurt? Touch it!', 'Bạn đau ở đâu? Con chạm vào nhé!'];
+export const HOW_HELP_LINE = ['How can we help?', 'Mình giúp bạn thế nào nhỉ?'];
+export const BETTER_LINE = ['I feel better! Thank you, doctor!', 'Tớ khỏe rồi! Cảm ơn bác sĩ!'];
+export const GREAT_LINE = ['I feel great! Thank you, doctor!', 'Tớ khỏe lắm rồi! Cảm ơn bác sĩ!'];
+export const GOOD_JOB_LINE = ['Great job, doctor!', 'Bác sĩ giỏi quá!'];
+export const BYE_LINE = ['Bye-bye!', 'Tạm biệt!'];
+export const ALL_BETTER_LINE = ["All better! You're a great doctor!", 'Các bạn khỏe hết rồi! Con là bác sĩ giỏi!'];
+
+/** Chạm đúng chỗ đau: "Yes! My tummy." */
+export const yesTouchLine = (c) => {
+  const word = c.hurt ?? stepsFor(c, 3).find((s) => s.type === 'touch')?.target;
+  const vi = word === 'tooth' ? 'cái răng' : REGIONS[word]?.vi ?? word;
+  return [`Yes! My ${word}.`, `Đúng rồi! ${capital(vi)} của tớ.`];
+};
+/** Chạm nhầm chỗ: "That's my nose! My tummy hurts!" */
+export const wrongTouchLine = (region, c) => [`That's my ${REGIONS[region].word}! ${c.remind[0]}`, `Đó là ${REGIONS[region].vi} của tớ! ${c.remind[1]}`];
+/** Bước khám: Bông gọi tên dụng cụ. */
+export const checkLine = (item) => [`Let's check! Use ${ITEM_BY_ID.get(item).the}.`, `Mình khám nào! Dùng ${ITEM_BY_ID.get(item).vi} nhé.`];
+/** Bước chữa mức 1: bạn thú xin đồ có tên ("A bandage, please!"). */
+export const askLine = (item) => [`${capital(ITEM_BY_ID.get(item).ask)}, please!`, `Cho tớ ${ITEM_BY_ID.get(item).vi} nhé!`];
+/** Câu xin của bước chữa / khám: mức 1 có tên đồ; mức 2+ Bông hỏi "How can we help?" (bước khám luôn có tên). */
+export const stepPrompt = (step, level) => {
+  if (step.type === 'touch') return { who: 'bong', line: WHERE_LINE };
+  if (step.type === 'check') return { who: 'bong', line: checkLine(step.item) };
+  return level <= 1 ? { who: 'patient', line: askLine(step.item) } : { who: 'bong', line: HOW_HELP_LINE };
+};
+
+/**
+ * Câu khi đưa nhầm đồ (mục 4.3). Bước có tên (khám mọi mức, chữa mức 1): "Hmm, that's the toothbrush. I need a bandage!"
+ * (bước khám: "… Use the flashlight!"), đồ đúng nhún ngay. Chữa mức 2+: lần 1 "Hmm, not the toothbrush.", từ lần 2 nói tên đồ cần.
+ * @returns {{ line: [string, string], hint: boolean }}
+ */
+export function wrongItemLine(given, step, level, wrongs) {
+  const g = ITEM_BY_ID.get(given);
+  const need = ITEM_BY_ID.get(step.item);
+  const named = step.type === 'check' || level <= 1;
+  const needEn = step.type === 'check' ? `Use ${need.the}!` : `I need ${need.ask}!`;
+  const needVi = step.type === 'check' ? `Dùng ${need.vi} cơ!` : `Tớ cần ${need.vi} cơ!`;
+  if (named) return { line: [`Hmm, ${g.wrong}. ${needEn}`, `Ừm, đó là ${g.vi}. ${needVi}`], hint: true };
+  if (wrongs <= 1) return { line: [`Hmm, ${g.notThis}.`, `Ừm, không phải ${g.vi}.`], hint: false };
+  return { line: [needEn, needVi], hint: true };
+}
+
+/** Câu khi đưa đúng đồ (mục 6.4): ai nói + câu. */
+export const DONE_LINES = {
+  bandage: { who: 'patient', line: ['A bandage! Thank you!', 'Miếng băng dán! Cảm ơn bác sĩ!'] },
+  medicine: { who: 'bong', line: ["Here's your medicine.", 'Thuốc của bạn đây.'] },
+  tissue: { who: 'bong', line: ['Blow!', 'Hỉ mũi nào!'] },
+  toothbrush: { who: 'bong', line: ['Brush, brush!', 'Đánh răng nào!'] },
+  drops: { who: 'patient', line: ['Blink, blink!', 'Chớp chớp!'] },
+  icepack: { who: 'patient', line: ['Nice and cool!', 'Mát quá!'] },
+  water: { who: 'patient', line: ['Mmm, warm water.', 'Ừm, nước ấm.'] },
+  blanket: { who: 'bong', line: ['Time to rest.', 'Nghỉ một chút nhé.'] },
+  stethoscope: { who: 'bong', line: ['Listen! Thump, thump.', 'Nghe này! Thình thịch.'] },
+  thermometer: { who: 'bong', line: ['You feel warm!', 'Bạn hơi nóng!'] },
+  flashlight: { who: 'bong', line: ['Open wide! Say aah!', 'Há miệng ra! Nói "a" nào!'] },
+};
+/** Câu khám riêng theo ca (ca ho nghe "Breathe in…", ca tai soi thấy bọ). */
+export const doneLine = (c, step) => {
+  if (step.item === 'stethoscope' && c.id === 'cough') return { who: 'bong', line: ['Breathe in… breathe out.', 'Hít vào… thở ra.'] };
+  if (step.effect === 'bug') return { who: 'bong', line: ['Let me look… A little bug! Bye-bye, bug!', 'Để mình xem… Một chú bọ nhỏ! Tạm biệt bọ nhé!'] };
+  return DONE_LINES[step.item];
+};
+export const betterLine = (c) => (c.face === 'sleepy' ? GREAT_LINE : BETTER_LINE);
+
+// ---------- Mức, tiến độ (mục 7.3) ----------
+export function cleanDoctorState(saved, { maxLevel = PLAYABLE_LEVEL } = {}) {
+  const s = saved && typeof saved === 'object' ? saved : {};
+  const ok = (n) => Number.isInteger(n) && n >= 1 && n <= maxLevel;
+  const lock = ok(s.lock) ? s.lock : null;
+  const seen = {};
+  if (s.seen && typeof s.seen === 'object') {
+    for (const [id, n] of Object.entries(s.seen)) if (CASE_BY_ID.has(id) && Number.isInteger(n) && n > 0) seen[id] = n;
+  }
+  return {
+    level: lock ?? (ok(s.level) ? s.level : 1),
+    rounds: Number.isInteger(s.rounds) && s.rounds >= 0 ? s.rounds : 0,
+    lock,
+    seen,
+  };
+}
+
+/** Xong một lượt (3 ca): đủ 3 lượt ở mức hiện tại thì lên một mức (tới mức chơi được cao nhất). Khóa mức: không đếm. */
+export function afterDoctorRound(state, { maxLevel = PLAYABLE_LEVEL } = {}) {
+  if (state.lock) return { ...state, level: state.lock, rounds: 0 };
+  const rounds = state.rounds + 1;
+  if (state.level < maxLevel && rounds >= ROUNDS_TO_LEVEL_UP) return { ...state, level: state.level + 1, rounds: 0 };
+  return { ...state, rounds };
+}
+
+/** Một ca vừa khỏi: `seen` của ca +1. */
+export const afterHealed = (state, caseId) => ({ ...state, seen: { ...state.seen, [caseId]: (state.seen[caseId] ?? 0) + 1 } });

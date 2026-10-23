@@ -2378,3 +2378,76 @@ details > summary { cursor: pointer; font-weight: 800; padding: 6px 0; }
 /* Bắt bong bóng — Từ vựng: ảnh bài học trong bong bóng (tròn, nằm gọn trong quả). */
 .bb-img { width: 64%; height: 64%; object-fit: contain; border-radius: 50%; pointer-events: none; }
 .bb-want .bb-img { width: 80%; height: 80%; }
+
+/* ---------- Bác sĩ nhí (SPEC-doctor.md) ---------- */
+.home-btn.game-doctor { background: #ffe1ea; }
+.child-screen.dr-play { display: grid; grid-template-columns: minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr) auto auto; gap: 6px; height: 100vh; height: 100dvh; min-height: 0; }
+.dr-nurse { position: relative; }
+.dr-cap {
+  position: absolute; z-index: 2; left: 50%; top: 2px; width: 40%; height: 22%; transform: translateX(-50%);
+  display: grid; place-items: center; border-radius: 10px 10px 4px 4px; background: #fff; border: 2px solid #ffc9d6; pointer-events: none;
+}
+.dr-cap::after { content: '✚'; font-size: 15px; font-weight: 900; line-height: 1; color: #ff5a6e; }
+.dr-stage { position: relative; display: grid; place-items: center; min-height: 0; overflow: hidden; margin: 0 12px; border-radius: 28px; background: linear-gradient(#eaf7ff 0 62%, #fff0f4 62%); }
+.dr-bed { position: absolute; left: 50%; bottom: 3%; width: min(78%, 520px); height: 20%; transform: translateX(-50%); border-radius: 26px; background: #cfe9fb; box-shadow: inset 0 -10px 0 #a9d4f2; }
+.dr-patient { position: absolute; inset: 2% 0 0; touch-action: none; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
+.dr-svg { display: block; width: 100%; height: 100%; overflow: visible; }
+.dr-spot { cursor: pointer; }
+.dr-glow { stroke: #ff6b6b; stroke-width: 5; stroke-dasharray: 9 6; animation: dr-blink 0.9s ease-in-out infinite; pointer-events: none; }
+.dr-picked { stroke: #63d2a8; stroke-width: 6; pointer-events: none; }
+.dr-glows, .dr-applied, .dr-sign, .dr-face { pointer-events: none; }
+.dr-applied-item { font-family: var(--emoji); }
+@keyframes dr-blink { 50% { opacity: 0.25; } }
+.dr-patient.enter { animation: dr-enter 0.65s ease-out; }
+.dr-patient.leave { animation: dr-leave 0.6s ease-in forwards; }
+.dr-patient.shake { animation: dr-shake 0.45s; }
+.dr-patient.hop { animation: dr-hop 0.5s ease-in-out 2; }
+.dr-patient.talking .dr-svg { animation: dr-talk 0.5s ease-in-out infinite; transform-origin: 50% 100%; }
+@keyframes dr-enter { from { transform: translateX(60vw); opacity: 0; } 70% { transform: translateX(-12px); opacity: 1; } }
+@keyframes dr-leave { to { transform: translateX(-60vw); opacity: 0; } }
+@keyframes dr-shake { 25% { transform: rotate(-4deg); } 75% { transform: rotate(4deg); } }
+@keyframes dr-hop { 50% { transform: translateY(-6%); } }
+@keyframes dr-talk { 50% { transform: scale(1.02, 0.98); } }
+.dr-who { font-family: var(--emoji); margin-right: 8px; }
+.dr-say { height: 84px; }
+.dr-tray {
+  display: flex; flex-wrap: nowrap; justify-content: center; gap: 14px; min-height: 120px; box-sizing: border-box;
+  padding: 10px 12px max(12px, env(safe-area-inset-bottom)); border-radius: 26px 26px 0 0;
+  background: var(--card); box-shadow: var(--shadow); -webkit-user-select: none; user-select: none; transition: transform 250ms ease-out, opacity 250ms;
+}
+.dr-tray.off { transform: translateY(40%); opacity: 0; pointer-events: none; }
+.dr-item {
+  display: grid; place-items: center; width: 96px; height: 96px; border-radius: 24px;
+  background: #f1f8ff; box-shadow: var(--shadow); touch-action: none; -webkit-touch-callout: none; transition: opacity 150ms;
+}
+.dr-item-face { font-family: var(--emoji); font-size: 58px; line-height: 1; pointer-events: none; }
+.dr-item.lifted { opacity: 0.45; }
+.dr-item.hint { outline: 5px solid var(--yellow); }
+.dr-item.nudge { animation: hint-hop 0.5s ease-in-out 3; }
+.dr-item.shake { animation: as-shake 0.4s; }
+.dr-tray.locked .dr-item { opacity: 0.55; }
+.dr-fly {
+  position: fixed; z-index: 60; width: 90px; height: 90px; margin: -45px 0 0 -45px;
+  display: grid; place-items: center; pointer-events: none; filter: drop-shadow(0 4px 4px rgba(61, 44, 94, 0.3));
+}
+.dr-fly .dr-item-face { font-size: 64px; }
+.dr-fly.use-toothbrush .dr-item-face { animation: dr-brush 0.25s ease-in-out 4; }
+.dr-fly.use-tissue .dr-item-face, .dr-fly.use-flashlight .dr-item-face { animation: dr-wiggle 0.3s ease-in-out 3; }
+.dr-fly.use-medicine .dr-item-face { animation: dr-gulp 1s ease-in forwards; }
+.dr-fly.use-bandage .dr-item-face, .dr-fly.use-stethoscope .dr-item-face { animation: pop 0.4s ease-in-out 2; }
+@keyframes dr-brush { 50% { transform: translateX(22px); } }
+@keyframes dr-wiggle { 25% { transform: rotate(-14deg); } 75% { transform: rotate(14deg); } }
+@keyframes dr-gulp { 60% { transform: scale(1) rotate(-30deg); opacity: 1; } 100% { transform: scale(0.3) rotate(-30deg); opacity: 0; } }
+@media (max-width: 600px) {
+  .dr-play .sp-title { display: none; }
+  .dr-item { width: 76px; height: 76px; border-radius: 20px; }
+  .dr-item-face { font-size: 46px; }
+  .dr-tray { min-height: 100px; gap: 10px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .dr-patient.enter, .dr-patient.shake, .dr-patient.hop, .dr-patient.talking .dr-svg, .dr-item.nudge, .dr-item.shake, .dr-fly .dr-item-face { animation: none; }
+  .dr-patient.leave { animation: dr-fade 0.3s forwards; }
+  .dr-glow { animation: none; }
+  .dr-tray { transition: none; }
+}
+@keyframes dr-fade { to { opacity: 0; } }
