@@ -2682,3 +2682,8 @@ img.dr-admin-face { width: 100%; height: 100%; object-fit: contain; }
 /* Ảnh nền bố mẹ thêm cho các nghề (SPEC-jobs mục 8): phủ kín sân khấu, ẩn đồ trang trí vẽ sẵn. */
 .jb-stage.has-bg { background-size: cover; background-position: center; background-repeat: no-repeat; }
 .sh-stage.has-bg::before, .ps-stage.has-bg .ps-sky, .pl-stage.has-bg .pl-tree { display: none; }
+/* Góc bố mẹ → Quản lý bài → 📚 Thư viện bài (SPEC-drive mục 8). */
+.shared-list { list-style: none; margin: 8px 0 0; padding: 0; display: grid; gap: 8px; }
+.shared-item { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding: 8px 10px; border-radius: 14px; background: var(--card); box-shadow: var(--shadow); }
+.shared-item .grow { flex: 1 1 200px; min-width: 0; display: grid; }
+.shared-status { font-size: 13px; }

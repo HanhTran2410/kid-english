@@ -1,8 +1,9 @@
 // Service worker: cache toàn bộ phần code để chạy offline (SPEC mục 2).
 // Mỗi lần sửa code: tăng VERSION (trùng APP_VERSION trong js/app.js) để máy tải bản mới.
 // Thêm/bớt file trong app/ thì cập nhật ASSETS (test tests/unit/sw.test.js sẽ báo nếu thiếu).
+// Thư viện bài app/shared/ (file .zip + index.json) KHÔNG lưu offline: tải từ mạng khi bố mẹ mở Thư viện bài.
 
-const VERSION = '0.33.0';
+const VERSION = '0.34.0';
 const CACHE = `kid-english-${VERSION}`;
 
 const ASSETS = [
@@ -84,6 +85,7 @@ const ASSETS = [
   'js/jobs/police.js',
   'js/jobs/fire.js',
   'js/jobs/backgrounds.js',
+  'js/link-import.js',
   'js/screens/jobs.js',
   'js/screens/shop.js',
   'js/screens/post.js',
@@ -95,6 +97,7 @@ const ASSETS = [
   'js/screens/parent/feed.js',
   'js/screens/parent/doctor.js',
   'js/screens/parent/jobs.js',
+  'js/screens/parent/library.js',
   'js/screens/parent/hide.js',
   'js/screens/parent/puzzle.js',
   'js/screens/parent/missing.js',

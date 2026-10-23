@@ -35,6 +35,13 @@ jobs:
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      # Thư viện bài (SPEC-drive mục 8): tạo lại app/shared/index.json từ các file .zip (kể cả file tải lên qua web GitHub).
+      - run: node scripts/make-shared-index.mjs
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:

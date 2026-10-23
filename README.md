@@ -81,6 +81,16 @@ Nút **🎲 Play / Trò chơi** mở Góc trò chơi: **🎨 Dán tranh**, **�
 
 Muốn ảnh đẹp hơn emoji / hình vẽ sẵn: Góc bố mẹ → **🎨 Ảnh Dán tranh** → chọn tranh → **Copy prompt ảnh tranh** (prompt ghi rõ vật nào nằm ở đâu) và **Copy prompt ảnh lưới** cho sticker → dán vào ChatGPT/Gemini → chọn ảnh AI vẽ. App tự cắt ảnh tranh về 4:3 và tự bỏ nền trắng của sticker. Chi tiết ở [SPEC-scenes.md](SPEC-scenes.md).
 
+### Chia sẻ bài qua GitHub (thư viện bài)
+File bài để trong thư mục `app/shared/` sẽ hiện ở **Góc bố mẹ → Quản lý bài → 📚 Thư viện bài** trên mọi máy (cần mạng). Thêm bài mới:
+
+1. Trong app: Quản lý bài → mở bài → **Chia sẻ bài** → lưu file `.zip` về máy.
+2. Trên github.com: vào repo → thư mục `app/shared` → **Add file → Upload files** → kéo file `.zip` vào → **Commit changes**. (Mỗi file tối đa 25 MB khi tải qua web.)
+3. Chờ 1–2 phút để trang app cập nhật (workflow tự tạo lại danh sách `index.json`).
+4. Gửi người khác link nhập bài: trong 📚 Thư viện bài bấm **Copy link** ở bài đó.
+
+Repo công khai: **không** để file có ảnh người thật.
+
 ## 6. Test
 
 ```bash

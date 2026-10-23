@@ -23,7 +23,8 @@ const assets = [...swSource.matchAll(/^\s+'([^']+)',$/gm)].map((m) => m[1]);
 
 test('service worker cache mọi file cần để chạy offline', async () => {
   // File giấy phép / ghi nguồn (sounds/CREDITS.md) không cần khi chạy app.
-  const files = (await walk(appDir)).filter((f) => f !== 'sw.js' && !/LICENSE|OFL\.txt|CREDITS\.md/.test(f));
+  // Thư viện bài (shared/) không lưu offline (SPEC-drive mục 8).
+  const files = (await walk(appDir)).filter((f) => f !== 'sw.js' && !f.startsWith('shared/') && !/LICENSE|OFL\.txt|CREDITS\.md/.test(f));
   const missing = files.filter((f) => !assets.includes(f));
   assert.deepEqual(missing, [], `Thêm vào ASSETS trong sw.js: ${missing.join(', ')}`);
   const extra = assets.filter((a) => a !== './' && !files.includes(a));

@@ -1,10 +1,11 @@
 // Góc bố mẹ — Google Drive (SPEC-drive.md): cài đặt, nút tải file bài lên Drive, nhập bài từ Drive.
 
 import { h, toast, formatDateTime, copyText } from '../../ui.js';
-import { appDrive, appFolder, loadGis, DriveError, DEFAULT_FOLDER, importLink, parseDriveLink, downloadPublicFile } from '../../drive.js';
+import { appDrive, appFolder, loadGis, DriveError, DEFAULT_FOLDER, importLink, downloadPublicFile } from '../../drive.js';
+import { parseImportLink, downloadZip, LinkError } from '../../link-import.js';
 import { section, field, notice } from './common.js';
 
-const message = (err) => (err instanceof DriveError ? err.message : 'Có lỗi khi làm việc với Google Drive.');
+const message = (err) => (err instanceof DriveError || err instanceof LinkError ? err.message : 'Có lỗi khi làm việc với Google Drive.');
 
 /** Không bật được "ai có link đều xem được": giải thích theo lý do Google trả về. */
 export function shareErrorMessage(err) {
@@ -159,25 +160,32 @@ export function driveUploadButton(app, getFile, status) {
  * @param {(file: File) => Promise<void>} importFile
  */
 export function linkImportButton(app, importFile) {
-  const input = h('input', { type: 'url', placeholder: 'Dán link nhập bài…', 'aria-label': 'Link bài học', autocomplete: 'off' });
+  const input = h('input', { type: 'url', placeholder: 'Dán link nhập bài (Google Drive hoặc GitHub)…', 'aria-label': 'Link bài học', autocomplete: 'off' });
   const go = h('button.btn.primary', {
     type: 'button',
     text: 'Nhập',
     onclick: async () => {
-      const parsed = parseDriveLink(input.value);
+      const parsed = parseImportLink(input.value);
       if (!parsed) {
-        toast('Link không đúng. Hãy dán "link nhập bài" từ máy gửi.', 3500);
+        toast('Link không đúng. Hãy dán "link nhập bài", link Google Drive, hoặc link file .zip trên GitHub.', 4000);
         return;
       }
-      const key = parsed.key || String(app.settings.driveApiKey ?? '').trim();
-      if (!key) {
-        toast('Link này là link Google Drive thường. Hãy dán "link nhập bài" (nút Copy link ở máy gửi).', 4500);
-        return;
+      let download;
+      if (parsed.type === 'zip') {
+        status.textContent = 'Đang tải bài…';
+        download = () => downloadZip(parsed.url);
+      } else {
+        const key = parsed.key || String(app.settings.driveApiKey ?? '').trim();
+        if (!key) {
+          toast('Link này là link Google Drive thường. Hãy dán "link nhập bài" (nút Copy link ở máy gửi).', 4500);
+          return;
+        }
+        status.textContent = 'Đang tải bài từ Google Drive…';
+        download = () => downloadPublicFile(parsed.id, key);
       }
       go.disabled = true;
-      status.textContent = 'Đang tải bài từ Google Drive…';
       try {
-        const { name, blob } = await downloadPublicFile(parsed.id, key);
+        const { name, blob } = await download();
         status.textContent = '';
         await importFile(new File([blob], name, { type: 'application/zip' }));
       } catch (err) {

@@ -24,6 +24,7 @@ import { parentLayout, goParent, section, notice } from './common.js';
 import { lessonPreview } from './create.js';
 import { saveFile } from './backup.js';
 import { driveUploadButton, driveImportButton, linkImportButton } from './drive.js';
+import { sharedLibrary } from './library.js';
 import { appDrive } from '../../drive.js';
 import { isSceneImage } from '../../sticker-scenes.js';
 import { acceptDressPayload } from './dress.js';
@@ -125,13 +126,15 @@ export function lessonsView(app) {
   };
   const fromDrive = driveImportButton(app, importFile);
   const fromLink = linkImportButton(app, importFile);
+  const library = sharedLibrary(app, importFile);
   body.append(
-    notice('info', 'Tạo bài và thêm ảnh trên máy tính (mở cùng link app), bấm "Chia sẻ bài" để xuất file, gửi sang iPhone/iPad (AirDrop, iCloud, Zalo… hoặc tải lên Google Drive) rồi bấm "Nhập bài từ file" / "Nhập bài từ Google Drive" ở đây.'),
+    notice('info', 'Tạo bài và thêm ảnh trên máy tính (mở cùng link app), bấm "Chia sẻ bài" để xuất file, gửi sang iPhone/iPad (AirDrop, iCloud, Zalo… hoặc tải lên Google Drive) rồi bấm "Nhập bài từ file" / "Nhập bài từ Google Drive" ở đây. Bài để sẵn trên GitHub: bấm "📚 Thư viện bài".'),
     section(null, list), h('div.actions', {},
     h('button.btn.primary', { type: 'button', text: 'Nhập bài từ file', onclick: () => importInput.click() }),
     importInput,
     fromDrive.btn,
     fromLink.btn,
+    library.btn,
     h('button.btn', {
       type: 'button',
       text: 'Thêm lại bài mẫu',
@@ -142,6 +145,7 @@ export function lessonsView(app) {
       },
     })),
     fromLink.box,
+    library.box,
     fromDrive.box);
 
   const log = app.settings.importLog ?? [];

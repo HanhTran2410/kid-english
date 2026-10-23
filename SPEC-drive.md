@@ -47,3 +47,17 @@ Máy nhận **dùng tài khoản Google khác hoặc không có tài khoản** v
 - Ai có link đều tải được file bài (nội dung bài + ảnh; không có giọng bé, tiến độ). API key bị giới hạn theo trang web và chỉ Drive API.
 - Test: unit (đọc/tạo link, tải công khai không gửi vé đăng nhập, key sai / file chưa chia sẻ, bật chia sẻ) và giao diện (máy A tải lên → link; máy C mới tinh dán link → nhập, không đăng nhập; mở app bằng link → điền sẵn).
 - **App 0.6.2:** lỗi của Google hiện kèm **lý do Google trả về** (ví dụ `400, publishOutNotPermitted: …`). Bước bật chia sẻ link tách riêng: lỗi ở bước này vẫn báo "đã tải lên", và nếu tài khoản bị chặn chia sẻ ra ngoài (thường gặp ở tài khoản công ty / trường học — Google Workspace) thì giải thích và gợi ý dùng **Gmail cá nhân** hoặc nhờ quản trị viên cho phép.
+
+## 8. Thư viện bài trên GitHub (app 0.34.0, 2026-10-23)
+Chia sẻ bài cho nhiều người mà không cần Google Drive / API key: file bài để ngay trên trang app (GitHub Pages).
+
+- **Chỗ để file:** thư mục `app/shared/` của repo — file `.zip` của app (bài học, ảnh trò chơi). Trang app phục vụ ở `https://hanhtran2410.github.io/kid-english/shared/<tên file>.zip`. Repo **công khai**: không để ảnh người thật (ảnh gia đình, ảnh bé).
+- **Danh sách:** `app/shared/index.json` (tên bài, loại, số ảnh, dung lượng), tạo bằng `node scripts/make-shared-index.mjs`. Workflow deploy **chạy lại script này trước khi đưa app lên**, nên bố mẹ chỉ cần tải file `.zip` vào `app/shared/` (kể cả qua trang web GitHub: *Add file → Upload files*) là thư viện tự cập nhật sau 1–2 phút.
+- **Không lưu offline:** service worker không cache `shared/` (test `sw.test.js` bỏ qua thư mục này); mở Thư viện bài cần mạng.
+- **Góc bố mẹ → Quản lý bài → 📚 Thư viện bài:** danh sách file; mỗi file có **Nhập** (tải thẳng từ trang app, nhập như "Nhập bài từ file") và **Copy link** (link nhập bài `…/kid-english/#zip=shared%2F<file>` — mở link là app điền sẵn ở "Nhập bài từ link"). Bài đã có cùng tên trên máy hiện "✓ Đã có" (nhập lại vẫn được: bài trùng tên được đặt "… 2").
+- **"Nhập bài từ link"** hiểu thêm (`app/js/link-import.js`):
+  - link file `.zip` trên trang app (tuyệt đối hoặc tương đối `shared/…`), link nhập bài `#zip=`;
+  - `github.com/<người>/<repo>/blob|raw/<nhánh>/<đường dẫn>.zip` → đổi sang `raw.githubusercontent.com` (cho tải trực tiếp);
+  - link `.zip` bất kỳ — chỉ được nếu trang đó cho phép tải trực tiếp (OneDrive / Dropbox / Zalo thường **không**: tải file về rồi "Nhập bài từ file");
+  - link Google Drive như mục 7.
+- **Test:** `tests/unit/link-import.test.js` (đọc link, tải lỗi, index khớp file), `tests/ui/library.spec.js` (Thư viện bài → Nhập → "Đã có", dán link, mở app bằng `#zip=`).
