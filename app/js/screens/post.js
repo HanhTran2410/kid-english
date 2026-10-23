@@ -8,6 +8,7 @@ import { markPracticed } from '../player/track.js';
 import { patientSvg } from '../patients.js';
 import { PATIENT_BY_ID } from '../doctor.js';
 import { cleanJobState, afterJobRound } from '../jobs/levels.js';
+import { JOBS_BG_IMAGES } from '../jobs/backgrounds.js';
 import { jobScreen, saveSnap, takeSnap, clearSnap, restartAnim, center, wait, WRONG_LOCK_MS, MAX_NUDGES } from '../jobs/kit.js';
 import {
   MAX_LEVEL, COLOR_BY_ID, planRound, letterLine, wrongLine, THANKS_LINE, DRAG_LINE,
@@ -52,7 +53,7 @@ export function postScreen(app, params = {}) {
 
   const street = h('div.ps-street');
   const kit = jobScreen(app, {
-    job: JOB, className: 'ps-play', stageClass: 'ps-stage', title: '📮 Postman', helperLabel: 'Bông bưu tá', cap: 'post',
+    job: JOB, background: { lessonId: JOBS_BG_IMAGES, word: JOB }, className: 'ps-play', stageClass: 'ps-stage', title: '📮 Postman', helperLabel: 'Bông bưu tá', cap: 'post',
     resetLabel: 'Đưa lại', trayLabel: 'Túi thư',
     icon: (who) => (who?.startsWith('r:') ? PATIENT_BY_ID.get(who.slice(2))?.emoji ?? '' : '🐰'),
     onReset: () => restart(),

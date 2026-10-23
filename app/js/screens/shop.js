@@ -11,6 +11,7 @@ import { PATIENT_BY_ID } from '../doctor.js';
 import { allFoods } from '../feed.js';
 import { loadFeedImages, foodFace } from './feed.js';
 import { cleanJobState, afterJobRound } from '../jobs/levels.js';
+import { JOBS_BG_IMAGES } from '../jobs/backgrounds.js';
 import { jobScreen, saveSnap, takeSnap, clearSnap, restartAnim, center, wait, WRONG_LOCK_MS, MAX_NUDGES } from '../jobs/kit.js';
 import {
   MAX_LEVEL, FOOD_LESSON_WORDS, planRound, coinsFor, remaining, orderDone, orderLine, wrongLine, enoughLine, countLine, coinLine,
@@ -54,7 +55,7 @@ export function shopScreen(app, params = {}) {
   const counter = h('div.sh-counter', {}, coinsEl, till);
 
   const kit = jobScreen(app, {
-    job: JOB, className: 'sh-play', stageClass: 'sh-stage', title: '🛒 Shop', helperLabel: 'Bông bán hàng', cap: 'shop',
+    job: JOB, background: { lessonId: JOBS_BG_IMAGES, word: JOB }, className: 'sh-play', stageClass: 'sh-stage', title: '🛒 Shop', helperLabel: 'Bông bán hàng', cap: 'shop',
     resetLabel: 'Bán lại', trayLabel: 'Kệ hàng',
     icon: (who) => (who === 'customer' ? customer()?.emoji ?? '' : '🐰'),
     onTalk: (who) => customerEl.classList.toggle('talking', who === 'customer'),

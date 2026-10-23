@@ -14,6 +14,7 @@ import { cleanShapeState } from '../../shapes.js';
 import { cleanMissingState } from '../../missing.js';
 import { cleanSoundsState } from '../../animal-sounds.js';
 import { cleanBubblesState } from '../../bubbles.js';
+import { cleanJobState } from '../../jobs/levels.js';
 
 export function settingsView(app) {
   const body = parentLayout(app, { title: 'Cài đặt & chẩn đoán', back: () => goParent(app) });
@@ -87,6 +88,7 @@ export function settingsView(app) {
     missingSection(app, save),
     soundsSection(app, save),
     bubblesSection(app, save),
+    jobsSection(app, save),
     section('Thời gian',
       field('Giới hạn mỗi buổi', limit, `Giới hạn mềm: hết giờ vẫn cho học hết bài. Khi ${characterName(app)} ngủ, bố mẹ nhấn giữ 🌙 3 giây để cho thêm 15 phút.`)),
     driveSettingsSection(app),
@@ -185,6 +187,21 @@ function bubblesSection(app, save) {
   const sel = levelSelect(app, save, 'bubblesGame', cleanBubblesState,
     [['1', 'Mức 1 — 3 loại, số 1–5, bay chậm'], ['2', 'Mức 2 — 4 loại, số 1–10'], ['3', 'Mức 3 — 6 loại, bay nhanh hơn']]);
   return section('Bắt bong bóng', field('Mức chơi Bắt bong bóng', sel, 'Tự lên mức sau 3 lượt chơi xong.'));
+}
+
+/** Đóng vai nghề (SPEC-jobs J6): khóa mức từng nghề. Bác sĩ nhí mới có mức 1 nên không có ô chọn. */
+const JOB_LEVELS = [
+  ['shopGame', 'Bán hàng', ['Mức 1 — 3 món, mua 1 cái', 'Mức 2 — mua nhiều cái + trả xu', 'Mức 3 — mua hai món + trả xu']],
+  ['postGame', 'Bưu tá', ['Mức 1 — theo màu nhà', 'Mức 2 — theo số nhà', 'Mức 3 — màu / số / tên bạn thú']],
+  ['teacherGame', 'Cô giáo nhí', ['Mức 1 — Bông nói sai khác hẳn', 'Mức 2 — Bông nói sai gần giống', 'Mức 3 — màu và số']],
+  ['policeGame', 'Cảnh sát giúp bạn', ['Mức 1 — theo màu', 'Mức 2 — màu + to / nhỏ', 'Mức 3 — có bụi cây, tìm bạn bị lạc']],
+  ['fireGame', 'Lính cứu hỏa', ['Mức 1 — 1–3 ngọn lửa', 'Mức 2 — đếm số lửa + cứu bạn trên cây', 'Mức 3 — dập theo chỗ Bông gọi']],
+];
+function jobsSection(app, save) {
+  const clean = (v) => cleanJobState(v);
+  return section('Đóng vai nghề', ...JOB_LEVELS.map(([key, name, labels]) => field(`Mức chơi ${name}`,
+    levelSelect(app, save, key, clean, labels.map((text, i) => [String(i + 1), text])),
+    'Tự lên mức sau 3 lượt chơi xong. Khóa mức thì không đếm lượt.')));
 }
 
 function diagnostics(app) {

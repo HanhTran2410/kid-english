@@ -8,6 +8,7 @@ import { play } from '../speech/sfx.js';
 import { markPracticed } from '../player/track.js';
 import { bongSvg } from '../bong.js';
 import { cleanJobState, afterJobRound } from '../jobs/levels.js';
+import { JOBS_BG_IMAGES } from '../jobs/backgrounds.js';
 import { jobScreen, saveSnap, takeSnap, clearSnap, restartAnim, wait, WRONG_LOCK_MS, MAX_NUDGES } from '../jobs/kit.js';
 import {
   MAX_LEVEL, NOUN_BY_EN, COUNTABLES, planRound, claimLine, fixLine, practiceWord,
@@ -58,7 +59,7 @@ export function teacherScreen(app, params = {}) {
   const answers = h('div.tc-answers', {}, yesBtn, noBtn);
 
   const kit = jobScreen(app, {
-    job: JOB, className: 'tc-play', stageClass: 'tc-stage', title: '👩‍🏫 Teacher', helperLabel: 'Bông học trò', cap: 'teacher',
+    job: JOB, background: { lessonId: JOBS_BG_IMAGES, word: JOB }, className: 'tc-play', stageClass: 'tc-stage', title: '👩‍🏫 Teacher', helperLabel: 'Bông học trò', cap: 'teacher',
     resetLabel: 'Học lại',
     icon: () => '🐰',
     onTalk: (who) => student.classList.toggle('talking', who === 'bong'),

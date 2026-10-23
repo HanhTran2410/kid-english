@@ -1,6 +1,6 @@
 # SPEC — 🧑‍⚕️ Đóng vai nghề (Jobs)
 
-> Phiên bản spec: **draft2** · Ngày: 2026-10-23 · **J0 + J1 đã làm ở app 0.29.0** (khung chung, trang chọn nghề, Bán hàng), **J2 ở 0.30.0** (Bưu tá), **J3 ở 0.31.0** (Cô giáo nhí), **J4 + J5 ở 0.32.0** (Cảnh sát, Cứu hỏa); ghi chú ở mục 12. J6 (khóa mức từng nghề trong Cài đặt) và ảnh nền các nghề chưa làm. Tiếp theo `SPEC-doctor.md` mục 13.
+> Phiên bản spec: **draft2** · Ngày: 2026-10-23 · **J0 + J1 đã làm ở app 0.29.0** (khung chung, trang chọn nghề, Bán hàng), **J2 ở 0.30.0** (Bưu tá), **J3 ở 0.31.0** (Cô giáo nhí), **J4 + J5 ở 0.32.0** (Cảnh sát, Cứu hỏa), **J6 + ảnh nền ở 0.33.0**; ghi chú ở mục 12. Đã làm đủ các mốc. Tiếp theo `SPEC-doctor.md` mục 13.
 > - draft1: bản đầu.
 > - **draft2, sửa theo review:** danh sách nghề được bật (2.1); **bước / thao tác con** và luật khóa (2.2); quy tắc ghi `rounds` / `seen` / "đã gặp" — một lần, kể cả ra nền và 🧹 (2.2); ranh giới `kit.js` ↔ nghề (2.3); Bán hàng: số lượng, món bố mẹ thêm, điều kiện trả xu; Bưu tá: mỗi thư đúng một nhà, mức 3 = 4 nhà; Cô giáo: chấm nhầm thì chọn lại, không bắt bấm nút đối diện; Cảnh sát: dữ liệu đồ, bụi cây không tính nhầm; Cứu hỏa: câu theo số thật, thẻ số, ngọn lửa mục tiêu, ca trên cây; test JOBS-01…10 (mục 10).
 > Gom Bác sĩ nhí và **5 nghề mới** vào một trang chọn nghề: 🛒 Bán hàng, 📮 Bưu tá, 👩‍🏫 Cô giáo nhí, 👮 Cảnh sát giúp bạn, 🚒 Lính cứu hỏa.
@@ -194,7 +194,8 @@ Bé dập những ngọn lửa nhỏ và giúp bạn thú xuống khỏi cây.
 ## 8. Ảnh
 - **Bán hàng:** dùng chung ảnh món của Cho Bông ăn.
 - **Cô giáo nhí:** dùng ảnh bài học (không chép, chỉ đọc).
-- **Bưu tá, Cảnh sát, Cứu hỏa:** chạy bằng SVG vẽ sẵn (nhà, đồ chơi tô màu, lửa) — **không cần ảnh**. Ảnh nền thay được (như ảnh nền phòng khám) để sau.
+- **Bưu tá, Cảnh sát, Cứu hỏa:** chạy bằng SVG vẽ sẵn (nhà, đồ chơi tô màu, lửa) — **không cần ảnh**. Nhà / đồ chơi / lửa **không** thay bằng ảnh, vì màu / số / cỡ của chúng là đáp án.
+- **Ảnh nền từng nghề** (0.33.0): *Góc bố mẹ → 🧑‍⚕️ Ảnh Đóng vai* — Bán hàng, Bưu tá, Cô giáo nhí, Cảnh sát, Cứu hỏa; mỗi nghề có prompt (chừa trống đúng chỗ game vẽ đè lên), chọn / thay / bỏ ảnh; lưu `lessonId = 'jobs:bg'`, `word = mã nghề`; có sao lưu, chia sẻ, nhập ở Quản lý bài; không bị dùng làm ảnh từ vựng. Có ảnh nền thì ẩn đồ trang trí vẽ sẵn (mái hiên, mặt trời / mây, cây). Bác sĩ nhí giữ trang ảnh riêng.
 
 ## 9. Mốc làm
 | Mốc | Nội dung | Nghiệm thu |
@@ -267,3 +268,8 @@ Mỗi mốc là một bản app riêng (commit + đưa lên GitHub Pages), để
 - **Cứu hỏa:** `app/js/jobs/fire.js`, `screens/fire.js`. Còi xe cứu hỏa dùng file `fire-truck.mp3` của Ai kêu thế?. Mỗi ngọn lửa tắt một lần (chạm đúp không đếm lại); không khóa giữa các ngọn, chỉ khóa khi ngọn cuối tắt. Ca cây: thả / chạm cái thang ở khay. Mức 2 chọn số nhầm: *"That's four. Let's count again!"*, nhầm lần 2 thì thẻ đúng nhún. Ca xong là lưu ca sau ngay (ra nền giữa hoạt ảnh không kẹt). Chưa ghi "đã gặp" số (bài Số dùng khóa khác).
 - `data-target` trên công viên / cảnh cháy chỉ để test.
 - **Test:** `tests/unit/police.test.js`, `tests/unit/fire.test.js`, `tests/ui/police.spec.js` (JOBS-06), `tests/ui/fire.spec.js` (JOBS-07, JOBS-08, ca cây, mức 3 theo chỗ).
+
+### J6 + ảnh nền (0.33.0)
+- **Cài đặt → Đóng vai nghề:** ô chọn mức cho Bán hàng, Bưu tá, Cô giáo nhí, Cảnh sát, Cứu hỏa (tự lên mức / khóa mức 1–3, dùng chung `levelSelect` như Ai kêu thế?). Bác sĩ nhí chưa có ô chọn (mới có mức 1).
+- **Ảnh nền:** `app/js/jobs/backgrounds.js` (prompt từng nghề), `screens/parent/jobs.js` (trang Ảnh Đóng vai); `jobScreen` nhận `background: { lessonId, word }` và tự nạp ảnh.
+- **Test:** `tests/ui/job-images.spec.js` (trang Ảnh Đóng vai, ảnh nền hiện trong trò, khóa mức trong Cài đặt).

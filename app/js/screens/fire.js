@@ -9,6 +9,7 @@ import { PATIENT_BY_ID } from '../doctor.js';
 import { SOUND_BY_ID } from '../animal-sounds.js';
 import { playSoundFile } from './animal-sounds.js';
 import { cleanJobState, afterJobRound } from '../jobs/levels.js';
+import { JOBS_BG_IMAGES } from '../jobs/backgrounds.js';
 import { jobScreen, saveSnap, takeSnap, clearSnap, restartAnim, center, wait, WRONG_LOCK_MS, MAX_NUDGES } from '../jobs/kit.js';
 import {
   MAX_LEVEL, planRound, countLine, allGoneLine, rightNumberLine, wrongNumberLine, whereLine, firstLine,
@@ -67,7 +68,7 @@ export function fireScreen(app, params = {}) {
   const hose = h('div.fr-hose', { text: '🧑‍🚒', 'aria-hidden': 'true' });
   const choices = h('div.fr-choices');
   const kit = jobScreen(app, {
-    job: JOB, className: 'fr-play', stageClass: 'fr-stage', title: '🚒 Firefighter', helperLabel: 'Bông cứu hỏa', cap: 'fire',
+    job: JOB, background: { lessonId: JOBS_BG_IMAGES, word: JOB }, className: 'fr-play', stageClass: 'fr-stage', title: '🚒 Firefighter', helperLabel: 'Bông cứu hỏa', cap: 'fire',
     resetLabel: 'Chơi lại', trayLabel: 'Đồ cứu hỏa',
     icon: (who) => (who === 'resident' ? resident()?.emoji ?? '' : '🐰'),
     onTalk: (who) => residentEl.classList.toggle('talking', who === 'resident'),

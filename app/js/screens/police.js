@@ -8,6 +8,7 @@ import { markPracticed } from '../player/track.js';
 import { patientSvg } from '../patients.js';
 import { PATIENT_BY_ID } from '../doctor.js';
 import { cleanJobState, afterJobRound } from '../jobs/levels.js';
+import { JOBS_BG_IMAGES } from '../jobs/backgrounds.js';
 import { jobScreen, saveSnap, takeSnap, clearSnap, restartAnim, center, wait, WRONG_LOCK_MS, MAX_NUDGES } from '../jobs/kit.js';
 import {
   MAX_LEVEL, planRound, lostLine, describeLine, foundLine, wrongLine, HELLO_LINE, LOOK_LINE, BUSH_LINE,
@@ -60,7 +61,7 @@ export function policeScreen(app, params = {}) {
   const askerEl = h('div.pl-asker');
   const park = h('div.pl-park');
   const kit = jobScreen(app, {
-    job: JOB, className: 'pl-play', stageClass: 'pl-stage', title: '👮 Police', helperLabel: 'Bông cảnh sát', cap: 'police',
+    job: JOB, background: { lessonId: JOBS_BG_IMAGES, word: JOB }, className: 'pl-play', stageClass: 'pl-stage', title: '👮 Police', helperLabel: 'Bông cảnh sát', cap: 'police',
     resetLabel: 'Tìm lại',
     icon: (who) => (who === 'asker' ? asker()?.emoji ?? '' : '🐰'),
     onTalk: (who) => askerEl.classList.toggle('talking', who === 'asker'),

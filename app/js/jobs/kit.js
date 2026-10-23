@@ -4,6 +4,7 @@
 // Mỗi nghề chỉ viết dữ liệu + câu (file thuần) và phần vẽ / thao tác riêng.
 
 import { h } from '../ui.js';
+import { mediaBlob } from '../db.js';
 import { play } from '../speech/sfx.js';
 import { homeButton } from '../player/layout.js';
 import { createBunny, Teacher } from '../player/teacher.js';
@@ -47,7 +48,8 @@ export function takeSnap(job, { level, continueDirectly }) {
  * - `icon(who)`: hình người nói ở phụ đề ('bong' → 🐰); `onTalk(who | null)`: ai đang nói (để nhân vật nhún);
  * - `onReset()` (🧹), `onHelper()` (chạm Bông);
  * - `nudge`: { ready(), key(), fire(rearm) } — nhắc sau 10 giây không thao tác;
- * - `tray`: { face(id), label(id), canGive(), dropOk(x, y), give(id, from) } — kéo / chạm đồ trong khay.
+ * - `tray`: { face(id), label(id), canGive(), dropOk(x, y), give(id, from) } — kéo / chạm đồ trong khay;
+ * - `background`: { lessonId, word } — ảnh nền bố mẹ thêm (Ảnh Đóng vai), không có thì nền vẽ sẵn.
  */
 export function jobScreen(app, opts) {
   const signal = app.startActivity();
@@ -297,6 +299,19 @@ export function jobScreen(app, opts) {
   }
 
   const extraCleanups = [];
+
+  // Ảnh nền bố mẹ thêm (SPEC-jobs mục 8): có thì thay nền vẽ sẵn của sân khấu; hỏng / chưa có thì giữ nền vẽ.
+  if (opts.background) {
+    const { lessonId, word } = opts.background;
+    app.db.getAllByIndex('images', 'lessonId', lessonId).catch(() => []).then((rows) => {
+      const img = rows.filter((r) => r.word === word).sort((a, b) => (b.createdAt ?? 0) - (a.createdAt ?? 0))[0];
+      if (!img || signal.aborted) return;
+      const url = URL.createObjectURL(mediaBlob(img));
+      extraCleanups.push(() => URL.revokeObjectURL(url));
+      stage.style.backgroundImage = `url("${url}")`;
+      stage.classList.add('has-bg');
+    });
+  }
   function cleanup() {
     cancelAll();
     clearInterval(idleTimer);
