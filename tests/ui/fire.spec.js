@@ -45,7 +45,8 @@ test('mức 1: chạm từng ngọn lửa → Bông đếm; JOBS-07 — hết l�
   const before = (await spoken(page)).length;
   await page.locator('.fr-fire').first().dblclick();
   await expect.poll(() => saidSince(page, before, /^One!$/)).toBe(true);
-  await expect(page.locator('.fr-fire.out')).toHaveCount(1);
+  // Ca chỉ có 1 ngọn: chạm xong là sang ca sau ngay (chế độ chạy nhanh) — không kiểm ngọn đã tắt trên cảnh cũ.
+  if (n > 1) await expect(page.locator('.fr-fire.out')).toHaveCount(1);
   for (let k = 1; k < n; k++) {
     await page.locator('.fr-fire:not(.out)').first().click();
     await expect(page.locator('.fr-fire.out')).toHaveCount(k + 1, { timeout: 15000 });

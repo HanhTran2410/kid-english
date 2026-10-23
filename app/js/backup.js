@@ -37,9 +37,14 @@ const wordSignature = (lesson) => (Array.isArray(lesson.turns)
 
 const withoutBlob = ({ blob, data, ...meta }) => meta;
 
+/** Cài đặt bí mật (chỉ ở máy này): không bao giờ đi vào file sao lưu / file chia sẻ. */
+export const SECRET_SETTINGS = ['githubToken'];
+
 async function readAll(db) {
   const entries = await Promise.all(STORES.map(async (s) => [s, await db.getAll(s)]));
-  return Object.fromEntries(entries);
+  const data = Object.fromEntries(entries);
+  data.settings = data.settings.filter((s) => !SECRET_SETTINGS.includes(s.key));
+  return data;
 }
 
 /** Dung lượng ước tính của file sao lưu (byte), để hiện trước cho bố mẹ. */
@@ -222,10 +227,14 @@ export async function readBackup(input, { JSZip = globalThis.JSZip } = {}) {
  * @returns {Promise<{ added: number, updated: number }>} số bài thêm mới / cập nhật
  */
 export async function applyBackup(db, payload, mode, { updateLessons = false } = {}) {
+  // Cài đặt bí mật (token) không bao giờ lấy từ file; khôi phục "thay toàn bộ" vẫn giữ bản của máy này.
+  payload = { ...payload, settings: (payload.settings ?? []).filter((x) => !SECRET_SETTINGS.includes(x?.key)) };
   if (mode === 'replace') {
+    const secrets = (await db.getAll('settings')).filter((x) => SECRET_SETTINGS.includes(x.key));
     await db.write(STORES, (tx) => {
       for (const s of STORES) tx.objectStore(s).clear();
       for (const s of STORES) for (const item of payload[s] ?? []) tx.objectStore(s).put(item);
+      for (const item of secrets) tx.objectStore('settings').put(item);
     });
     return { added: payload.lessons.length, updated: 0 };
   }

@@ -61,3 +61,19 @@ Chia sẻ bài cho nhiều người mà không cần Google Drive / API key: fil
   - link `.zip` bất kỳ — chỉ được nếu trang đó cho phép tải trực tiếp (OneDrive / Dropbox / Zalo thường **không**: tải file về rồi "Nhập bài từ file");
   - link Google Drive như mục 7.
 - **Test:** `tests/unit/link-import.test.js` (đọc link, tải lỗi, index khớp file), `tests/ui/library.spec.js` (Thư viện bài → Nhập → "Đã có", dán link, mở app bằng `#zip=`).
+
+## 9. Tải bài lên Thư viện bài bằng một nút (app 0.35.0, 2026-10-23)
+Không cần lên github.com để tải file: app gọi GitHub REST API (cho gọi thẳng từ trình duyệt) bằng **fine-grained token** bố mẹ tạo một lần.
+
+- **Token:** github.com → Settings → Developer settings → Personal access tokens → Fine-grained tokens → Generate new token; *Only select repositories* → repo của app; *Contents: Read and write* (chỉ quyền này). Dán ở **Góc bố mẹ → Cài đặt → GitHub — Thư viện bài** (ô mật khẩu) → **Kiểm tra** (đọc repo, báo có quyền ghi không).
+- **Token chỉ ở máy này:** `githubToken` nằm trong `SECRET_SETTINGS` (`backup.js`) — không bao giờ vào file sao lưu / file chia sẻ; khôi phục "thay toàn bộ" giữ token của máy, token trong file (nếu có) bị bỏ. Ai mở được Góc bố mẹ trên máy đó cũng tải lên được → chỉ dán token trên máy bố mẹ.
+- **Repo:** mặc định đoán từ địa chỉ GitHub Pages (`<owner>.github.io/<repo>/`), sửa được (`githubRepo`).
+- **Tải lên tay:** Quản lý bài → mở bài → Chia sẻ bài → **☁️ Tải lên Thư viện bài (GitHub)** (lần đầu hỏi xác nhận: repo công khai, không tải bài có ảnh người thật). File: `app/shared/<số>-<tên>.zip` (`lessonFileName`). Đã có file cùng tên mà không phải bài này (bài máy khác trùng số) → hỏi ghi đè. Xong: hiện link nhập bài `#zip=` + Copy link; bài đã tải thì nút thành **☁️ Cập nhật trên Thư viện bài** (ghi đè, có `sha`).
+- **Tự tải lên** (ô tích ở Cài đặt, mặc định tắt):
+  - bài **mới tạo** (Tạo bài → Lưu bài) được đánh dấu chờ (`githubPending`);
+  - trang chi tiết bài dựng lại sau mỗi lần thêm ảnh, nên chỉ tải khi **rời hẳn bài 15 giây** (vào lại đúng bài thì hủy hẹn); mở Quản lý bài thì tải ngay các bài còn chờ;
+  - bài **đã có trong thư viện** (`githubUploads`: mã bài → file, dấu hiệu nội dung) mà sửa / thêm ảnh → tự tải lại khi rời trang;
+  - bài nhập từ nơi khác / bài mẫu không tự tải; file trùng tên của bài khác → tự đặt tên `-2`, `-3`…;
+  - lỗi (mất mạng, token hết hạn) chỉ báo nhẹ; bài vẫn chờ, lần sau thử lại.
+- Mỗi lần tải = một commit vào `main` → workflow deploy tạo lại `index.json`, bài hiện trong 📚 Thư viện bài sau 1–2 phút.
+- **Test:** `tests/unit/github.test.js` (repo, API giả, lỗi, token không vào sao lưu / khôi phục giữ token), `tests/ui/github.spec.js` (Kiểm tra, nút tải lên, tự tải lên — API GitHub giả lập).

@@ -27,6 +27,11 @@ export const DEFAULT_SETTINGS = {
   driveClientId: '', // Google Drive (SPEC-drive.md): Client ID do bố mẹ tạo
   driveFolderName: 'Kid English',
   driveFolder: null, // { id, name } thư mục của app trên Drive (nhớ để không phải tìm lại)
+  githubRepo: null, // Thư viện bài trên GitHub (SPEC-drive mục 9): "owner/repo", null = repo của app
+  githubToken: '', // fine-grained token (chỉ máy này; không vào file sao lưu — backup.js SECRET_SETTINGS)
+  githubAutoUpload: false, // tự tải lên khi tạo bài mới / sửa bài đã có trong thư viện
+  githubUploads: {}, // mã bài → { file, sig, at } bài đã tải lên
+  githubPending: [], // mã bài mới tạo đang chờ tự tải lên
   lastPromptReviewWords: [],
   lastPromptTopic: '',
   importLog: [], // các file bài đã nhập gần đây: { file, at, summary, lessons }

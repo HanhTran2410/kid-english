@@ -25,6 +25,7 @@ import { lessonPreview } from './create.js';
 import { saveFile } from './backup.js';
 import { driveUploadButton, driveImportButton, linkImportButton } from './drive.js';
 import { sharedLibrary } from './library.js';
+import { githubUploadButton, scheduleAutoUpload, cancelAutoUpload, flushPendingUploads } from './github.js';
 import { appDrive } from '../../drive.js';
 import { isSceneImage } from '../../sticker-scenes.js';
 import { acceptDressPayload } from './dress.js';
@@ -127,6 +128,8 @@ export function lessonsView(app) {
   const fromDrive = driveImportButton(app, importFile);
   const fromLink = linkImportButton(app, importFile);
   const library = sharedLibrary(app, importFile);
+  // Bài mới tạo đang chờ tự tải lên Thư viện bài (GitHub): bố mẹ đã rời trang bài → tải ngay.
+  flushPendingUploads(app).catch(() => {});
   body.append(
     notice('info', 'Tạo bài và thêm ảnh trên máy tính (mở cùng link app), bấm "Chia sẻ bài" để xuất file, gửi sang iPhone/iPad (AirDrop, iCloud, Zalo… hoặc tải lên Google Drive) rồi bấm "Nhập bài từ file" / "Nhập bài từ Google Drive" ở đây. Bài để sẵn trên GitHub: bấm "📚 Thư viện bài".'),
     section(null, list), h('div.actions', {},
@@ -178,6 +181,8 @@ function lessonGrid(app, lesson, urls, imageOf, { prefix = 'Ảnh lưới', what
 export function lessonDetailView(app, { lessonId }) {
   const body = parentLayout(app, { title: 'Bài học', back: () => goParent(app, 'lessons') });
   const urls = [];
+  // Tự tải lên Thư viện bài: trang này dựng lại sau mỗi lần thêm ảnh — chỉ tải khi đã rời hẳn bài (xem github.js).
+  cancelAutoUpload(lessonId);
 
   (async () => {
     const lesson = await app.db.get('lessons', lessonId);
@@ -314,7 +319,10 @@ export function lessonDetailView(app, { lessonId }) {
       section(null, remove));
   })();
 
-  return () => urls.forEach((u) => URL.revokeObjectURL(u));
+  return () => {
+    urls.forEach((u) => URL.revokeObjectURL(u));
+    scheduleAutoUpload(app, lessonId);
+  };
 }
 
 /**
@@ -491,11 +499,13 @@ function shareSection(app, lesson) {
     },
   });
   const { btn: driveBtn, linkBox } = driveUploadButton(app, () => made, status);
+  const github = githubUploadButton(app, lesson, status);
   return section('Chia sẻ bài sang máy khác',
     h('p', { text: `File ${lessonFileName(lesson)} gồm nội dung bài và ảnh (không có ghi âm, tiến độ của bé). Trên máy kia: Góc bố mẹ → Quản lý bài → "Nhập bài từ file".` }),
-    h('div.actions', {}, makeBtn, sendBtn, driveBtn),
+    h('div.actions', {}, makeBtn, sendBtn, driveBtn, github.btn),
     status,
     linkBox,
+    github.linkBox,
     appDrive(app) ? null : h('p.field-hint', { text: 'Muốn tải thẳng lên Google Drive: Góc bố mẹ → Cài đặt → Google Drive.' }));
 }
 

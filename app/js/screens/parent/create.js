@@ -9,6 +9,7 @@ import { parseLesson, createLessonRecord, overlapWithLessons, uniqueTitle, baseT
 import { listLessons } from '../../db.js';
 import { quizQuestions } from '../../player/plan.js';
 import { parentLayout, goParent, section, notice, speakButton, field } from './common.js';
+import { markNewLesson } from './github.js';
 
 const TOPICS = ['Animals', 'Food', 'Colors', 'Toys', 'Family', 'Vehicles', 'At the park', 'Fruits', 'Body', 'Weather'];
 
@@ -217,6 +218,7 @@ export function pasteView(app) {
         record.topic = app.settings.lastPromptTopic || baseTitle(parsed.lesson.title);
         record.no = nextLessonNo(await listLessons(app.db));
         await app.db.put('lessons', record);
+        await markNewLesson(app, record.id);
         await app.setSetting('lastPromptReviewWords', []);
         await app.setSetting('lastPromptTopic', '');
         toast('Đã lưu bài. Bé đã thấy bài này trong 📚.');

@@ -91,6 +91,8 @@ File bài để trong thư mục `app/shared/` sẽ hiện ở **Góc bố mẹ 
 
 Repo công khai: **không** để file có ảnh người thật.
 
+**Tải lên bằng một nút (không cần vào github.com):** tạo token một lần — github.com → Settings → Developer settings → Personal access tokens → *Fine-grained tokens* → Generate new token → *Only select repositories*: `kid-english` → Permissions: *Contents: Read and write* → Generate → copy. Dán vào **Góc bố mẹ → Cài đặt → GitHub — Thư viện bài** → Kiểm tra. Sau đó mỗi bài có nút **☁️ Tải lên Thư viện bài (GitHub)** ở mục Chia sẻ bài; bật ô **Tự tải lên** để bài mới tạo tự lên thư viện. Token chỉ lưu trên máy đó, không nằm trong file sao lưu.
+
 ## 6. Test
 
 ```bash

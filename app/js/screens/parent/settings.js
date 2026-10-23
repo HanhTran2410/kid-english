@@ -7,6 +7,7 @@ import { LIMIT_OPTIONS } from '../../session.js';
 import { isStandalone, characterName } from '../child.js';
 import { parentLayout, goParent, section, field, notice } from './common.js';
 import { driveSettingsSection } from './drive.js';
+import { githubSettingsSection } from './github.js';
 import { cleanFeedState } from '../../feed.js';
 import { cleanHideState } from '../../hide-seek.js';
 import { cleanPuzzleState, piecesForNext } from '../../puzzle.js';
@@ -92,6 +93,7 @@ export function settingsView(app) {
     section('Thời gian',
       field('Giới hạn mỗi buổi', limit, `Giới hạn mềm: hết giờ vẫn cho học hết bài. Khi ${characterName(app)} ngủ, bố mẹ nhấn giữ 🌙 3 giây để cho thêm 15 phút.`)),
     driveSettingsSection(app),
+    githubSettingsSection(app),
     diagnostics(app));
 }
 
