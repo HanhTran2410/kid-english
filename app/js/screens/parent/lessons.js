@@ -45,6 +45,77 @@ export function imageErrorMessage(err) {
   return 'Không đọc được ảnh này, hãy chọn ảnh khác.';
 }
 
+/**
+ * Nhập một file bài / file ảnh trò chơi (dùng chung: Quản lý bài, Thư viện bài, chuông thông báo ở màn hình chính).
+ * @returns {Promise<string>} câu tóm tắt ("Đã nhập 1 bài mới…"); ném BackupError nếu file không dùng được
+ */
+export async function importPackage(app, file) {
+  const payload = await readBackup(file);
+  // File ảnh Dán tranh (SPEC-scenes mục 10.5) nhập ở đây cũng được.
+  const sceneImages = payload.images.filter(isSceneImage).length;
+  // File đồ Mặc đồ (SPEC-dressup mục 12) cũng nhập ở đây được.
+  const hasDress = payload.images.some((img) => img.lessonId === DRESS_IMAGES) || payload.settings.some((s) => s.key === 'dressUpCustom');
+  // File ảnh Cho Bông ăn (SPEC-feed mục 7.4) cũng nhập ở đây được.
+  const hasFeed = payload.images.some((img) => String(img.lessonId ?? '').startsWith('feed:')) || payload.settings.some((s) => s.key === 'feedCustom');
+  // File ảnh Trốn tìm (SPEC-hide mục 7.6) cũng nhập ở đây được.
+  const hasHide = payload.images.some((img) => String(img.lessonId ?? '').startsWith('hide:'));
+  // File ảnh Ghép hình (SPEC-puzzle mục 6) cũng nhập ở đây được.
+  const hasPuzzle = payload.images.some((img) => img.lessonId === 'puzzle:photos') || payload.settings.some((s) => s.key === 'puzzlePhotos');
+  // File ảnh Tìm đồ còn thiếu (SPEC-missing mục 6) cũng nhập ở đây được.
+  const hasMissing = payload.images.some((img) => String(img.lessonId ?? '').startsWith('missing:'));
+  // File ảnh & tiếng Ai kêu thế? (SPEC-sounds mục 6) cũng nhập ở đây được.
+  const hasSounds = payload.images.some((img) => String(img.lessonId ?? '').startsWith('sounds:'));
+  // File ảnh Bác sĩ nhí (SPEC-doctor mục 10) cũng nhập ở đây được.
+  const hasDoctor = payload.images.some((img) => String(img.lessonId ?? '').startsWith('doctor:'));
+  // File ảnh nền Đóng vai (SPEC-jobs mục 8) cũng nhập ở đây được.
+  const hasJobs = payload.images.some((img) => String(img.lessonId ?? '').startsWith('jobs:'));
+  if (!payload.lessons.length && !sceneImages && !hasDress && !hasFeed && !hasHide && !hasPuzzle && !hasMissing && !hasSounds && !hasDoctor && !hasJobs) throw new BackupError('File này không có bài học nào.');
+  const existing = await listLessons(app.db);
+  const before = new Set(existing.map((l) => l.id));
+  // Bài mới trùng tên với bài đang có thì đặt tên "… 2", "… 3".
+  const titles = existing.map((l) => l.title);
+  for (const l of payload.lessons) {
+    if (before.has(l.id)) continue;
+    l.title = uniqueTitle(l.title, titles);
+    titles.push(l.title);
+  }
+  // Chỉ lấy bài và ảnh; không đụng tới tiến độ, sticker, cài đặt, ghi âm của máy này.
+  // Bài đã có trên máy này (cùng bài, chia sẻ lại sau khi sửa) thì cập nhật nội dung và ảnh mới hơn.
+  const { added, updated } = await applyBackup(app.db,
+    { ...payload, recordings: [], progress: [], stickers: [], settings: [] }, 'merge', { updateLessons: true });
+  await ensureLessonNumbers(app.db);
+  const dress = hasDress ? await acceptDressPayload(app, payload) : { images: 0, items: 0 };
+  const feed = hasFeed ? await acceptFeedPayload(app, payload) : { images: 0, foods: 0 };
+  const hide = hasHide ? await acceptHidePayload(app, payload) : { images: 0 };
+  const puzzle = hasPuzzle ? await acceptPuzzlePayload(app, payload) : { images: 0, photos: 0 };
+  const missing = hasMissing ? await acceptMissingPayload(app, payload) : { images: 0 };
+  const sounds = hasSounds ? await acceptSoundsPayload(app, payload) : { images: 0 };
+  const doctor = hasDoctor ? await acceptDoctorPayload(app, payload) : { images: 0 };
+  const jobs = hasJobs ? await acceptJobsPayload(app, payload) : { images: 0 };
+  const parts = [];
+  if (added) parts.push(`nhập ${added} bài mới`);
+  if (updated) parts.push(`cập nhật ${updated} bài đã có`);
+  if (sceneImages) parts.push(`nhận ${sceneImages} ảnh Dán tranh`);
+  if (dress.images || dress.items) parts.push(`nhận ${dress.images} ảnh đồ Mặc đồ${dress.items ? `, ${dress.items} món mới` : ''}`);
+  if (hide.images) parts.push(`nhận ${hide.images} ảnh Trốn tìm`);
+  if (puzzle.images || puzzle.photos) parts.push(`nhận ${puzzle.images} ảnh Ghép hình`);
+  if (missing.images) parts.push(`nhận ${missing.images} ảnh Tìm đồ còn thiếu`);
+  if (sounds.images) parts.push(`nhận ${sounds.images} ảnh / tiếng Ai kêu thế?`);
+  if (doctor.images) parts.push(`nhận ${doctor.images} ảnh Bác sĩ nhí`);
+  if (jobs.images) parts.push(`nhận ${jobs.images} ảnh Đóng vai`);
+  if (feed.images || feed.foods) parts.push(`nhận ${feed.images} ảnh Cho Bông ăn${feed.foods ? `, ${feed.foods} món mới` : ''}`);
+  const summary = parts.length ? `Đã ${parts.join(', ')}` : 'Không có gì thay đổi';
+  // Ghi lại đã nhập file nào, để biết file nào nhập rồi / chưa nhập.
+  const entry = {
+    file: file.name,
+    at: Date.now(),
+    summary,
+    lessons: payload.lessons.map((l) => `${l.no ? `#${formatLessonNo(l.no)} ` : ''}${l.title}`),
+  };
+  await app.setSetting('importLog', [entry, ...(app.settings.importLog ?? [])].slice(0, IMPORT_LOG_MAX));
+  return summary;
+}
+
 export function lessonsView(app) {
   const body = parentLayout(app, { title: 'Quản lý bài', back: () => goParent(app) });
   const list = h('ul.lesson-admin-list');
@@ -56,70 +127,7 @@ export function lessonsView(app) {
   // Nhập một file bài (từ ô chọn file hoặc tải về từ Google Drive).
   const importFile = async (file) => {
     try {
-      const payload = await readBackup(file);
-      // File ảnh Dán tranh (SPEC-scenes mục 10.5) nhập ở đây cũng được.
-      const sceneImages = payload.images.filter(isSceneImage).length;
-      // File đồ Mặc đồ (SPEC-dressup mục 12) cũng nhập ở đây được.
-      const hasDress = payload.images.some((img) => img.lessonId === DRESS_IMAGES) || payload.settings.some((s) => s.key === 'dressUpCustom');
-      // File ảnh Cho Bông ăn (SPEC-feed mục 7.4) cũng nhập ở đây được.
-      const hasFeed = payload.images.some((img) => String(img.lessonId ?? '').startsWith('feed:')) || payload.settings.some((s) => s.key === 'feedCustom');
-      // File ảnh Trốn tìm (SPEC-hide mục 7.6) cũng nhập ở đây được.
-      const hasHide = payload.images.some((img) => String(img.lessonId ?? '').startsWith('hide:'));
-      // File ảnh Ghép hình (SPEC-puzzle mục 6) cũng nhập ở đây được.
-      const hasPuzzle = payload.images.some((img) => img.lessonId === 'puzzle:photos') || payload.settings.some((s) => s.key === 'puzzlePhotos');
-      // File ảnh Tìm đồ còn thiếu (SPEC-missing mục 6) cũng nhập ở đây được.
-      const hasMissing = payload.images.some((img) => String(img.lessonId ?? '').startsWith('missing:'));
-      // File ảnh & tiếng Ai kêu thế? (SPEC-sounds mục 6) cũng nhập ở đây được.
-      const hasSounds = payload.images.some((img) => String(img.lessonId ?? '').startsWith('sounds:'));
-      // File ảnh Bác sĩ nhí (SPEC-doctor mục 10) cũng nhập ở đây được.
-      const hasDoctor = payload.images.some((img) => String(img.lessonId ?? '').startsWith('doctor:'));
-      // File ảnh nền Đóng vai (SPEC-jobs mục 8) cũng nhập ở đây được.
-      const hasJobs = payload.images.some((img) => String(img.lessonId ?? '').startsWith('jobs:'));
-      if (!payload.lessons.length && !sceneImages && !hasDress && !hasFeed && !hasHide && !hasPuzzle && !hasMissing && !hasSounds && !hasDoctor && !hasJobs) throw new BackupError('File này không có bài học nào.');
-      const existing = await listLessons(app.db);
-      const before = new Set(existing.map((l) => l.id));
-      // Bài mới trùng tên với bài đang có thì đặt tên "… 2", "… 3".
-      const titles = existing.map((l) => l.title);
-      for (const l of payload.lessons) {
-        if (before.has(l.id)) continue;
-        l.title = uniqueTitle(l.title, titles);
-        titles.push(l.title);
-      }
-      // Chỉ lấy bài và ảnh; không đụng tới tiến độ, sticker, cài đặt, ghi âm của máy này.
-      // Bài đã có trên máy này (cùng bài, chia sẻ lại sau khi sửa) thì cập nhật nội dung và ảnh mới hơn.
-      const { added, updated } = await applyBackup(app.db,
-        { ...payload, recordings: [], progress: [], stickers: [], settings: [] }, 'merge', { updateLessons: true });
-      await ensureLessonNumbers(app.db);
-      const dress = hasDress ? await acceptDressPayload(app, payload) : { images: 0, items: 0 };
-      const feed = hasFeed ? await acceptFeedPayload(app, payload) : { images: 0, foods: 0 };
-      const hide = hasHide ? await acceptHidePayload(app, payload) : { images: 0 };
-      const puzzle = hasPuzzle ? await acceptPuzzlePayload(app, payload) : { images: 0, photos: 0 };
-      const missing = hasMissing ? await acceptMissingPayload(app, payload) : { images: 0 };
-      const sounds = hasSounds ? await acceptSoundsPayload(app, payload) : { images: 0 };
-      const doctor = hasDoctor ? await acceptDoctorPayload(app, payload) : { images: 0 };
-      const jobs = hasJobs ? await acceptJobsPayload(app, payload) : { images: 0 };
-      const parts = [];
-      if (added) parts.push(`nhập ${added} bài mới`);
-      if (updated) parts.push(`cập nhật ${updated} bài đã có`);
-      if (sceneImages) parts.push(`nhận ${sceneImages} ảnh Dán tranh`);
-      if (dress.images || dress.items) parts.push(`nhận ${dress.images} ảnh đồ Mặc đồ${dress.items ? `, ${dress.items} món mới` : ''}`);
-      if (hide.images) parts.push(`nhận ${hide.images} ảnh Trốn tìm`);
-      if (puzzle.images || puzzle.photos) parts.push(`nhận ${puzzle.images} ảnh Ghép hình`);
-      if (missing.images) parts.push(`nhận ${missing.images} ảnh Tìm đồ còn thiếu`);
-      if (sounds.images) parts.push(`nhận ${sounds.images} ảnh / tiếng Ai kêu thế?`);
-      if (doctor.images) parts.push(`nhận ${doctor.images} ảnh Bác sĩ nhí`);
-      if (jobs.images) parts.push(`nhận ${jobs.images} ảnh Đóng vai`);
-      if (feed.images || feed.foods) parts.push(`nhận ${feed.images} ảnh Cho Bông ăn${feed.foods ? `, ${feed.foods} món mới` : ''}`);
-      const summary = parts.length ? `Đã ${parts.join(', ')}` : 'Không có gì thay đổi';
-      toast(`${summary}.`, 3500);
-      // Ghi lại đã nhập file nào, để biết file nào nhập rồi / chưa nhập.
-      const entry = {
-        file: file.name,
-        at: Date.now(),
-        summary,
-        lessons: payload.lessons.map((l) => `${l.no ? `#${formatLessonNo(l.no)} ` : ''}${l.title}`),
-      };
-      await app.setSetting('importLog', [entry, ...(app.settings.importLog ?? [])].slice(0, IMPORT_LOG_MAX));
+      toast(`${await importPackage(app, file)}.`, 3500);
       goParent(app, 'lessons');
     } catch (err) {
       toast(err instanceof BackupError ? err.message : 'Không đọc được file bài học.', 4000);

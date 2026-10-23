@@ -4,6 +4,7 @@
 import { h, toast, copyText, formatBytes } from '../../ui.js';
 import { listLessons } from '../../db.js';
 import { SHARED_DIR, SHARED_INDEX, downloadZip, zipImportLink, LinkError } from '../../link-import.js';
+import { markLibrarySeen } from '../../notices.js';
 
 /**
  * @param {(file: File) => Promise<void>} importFile cách nhập giống "Nhập bài từ file"
@@ -33,6 +34,8 @@ export function sharedLibrary(app, importFile) {
     }
     const have = new Set((await listLessons(app.db).catch(() => [])).map((l) => String(l.title).trim().toLowerCase()));
     const files = Array.isArray(index?.files) ? index.files : [];
+    // Bố mẹ đã xem thư viện: chuông không báo các bài này nữa.
+    markLibrarySeen(app, null, files).catch(() => {});
     if (!files.length) {
       box.replaceChildren(h('p.muted', { text: 'Thư viện chưa có bài nào.' }));
       return;

@@ -77,3 +77,16 @@ Không cần lên github.com để tải file: app gọi GitHub REST API (cho g�
   - lỗi (mất mạng, token hết hạn) chỉ báo nhẹ; bài vẫn chờ, lần sau thử lại.
 - Mỗi lần tải = một commit vào `main` → workflow deploy tạo lại `index.json`, bài hiện trong 📚 Thư viện bài sau 1–2 phút.
 - **Test:** `tests/unit/github.test.js` (repo, API giả, lỗi, token không vào sao lưu / khôi phục giữ token), `tests/ui/github.spec.js` (Kiểm tra, nút tải lên, tự tải lên — API GitHub giả lập).
+
+## 10. Chuông thông báo 🔔 (app 0.36.0, 2026-10-23)
+Báo cho bố mẹ ngay ở **màn hình chính** (và đầu các trang Góc bố mẹ) khi có bản app mới, hoặc có bài mới / bài cập nhật trong Thư viện bài.
+
+- **Kiểm tra** (`app/js/notices.js`): 2 giây sau khi mở app, mỗi lần quay lại app, và mỗi 30 phút. Cần mạng; lỗi / offline thì im lặng.
+  - **Bản mới:** đọc `VERSION` trong `sw.js` trên trang (không qua cache), mới hơn `APP_VERSION` thì báo.
+  - **Bài mới:** đọc `shared/index.json`; so với `librarySeen` (tên file|dung lượng đã thấy trên máy này). File chưa thấy = bài mới; file đã thấy mà dung lượng đổi = bản cập nhật. **Lần đầu** (chưa có `librarySeen`) lấy cả thư viện hiện có làm mốc, không báo.
+- **Chuông** (`screens/notice-bell.js`): nút 🔔 có số, **chỉ hiện khi có tin** (rung nhẹ 3 lần). Bấm → bảng thông báo:
+  - "Có bản mới x.y.z" → **Cập nhật ngay** (áp dụng bản service worker đang chờ, chưa có thì tải rồi mở lại app);
+  - danh sách bài mới / cập nhật → **Nhập** từng bài (tải từ trang app, nhập như "Nhập bài từ file" — `importPackage` dùng chung với Quản lý bài), **Nhập hết**, **Để sau** (đánh dấu đã xem, không báo lại).
+- Mở 📚 Thư viện bài trong Quản lý bài cũng tính là đã xem cả thư viện.
+- Chuông ở màn hình của bé bấm được trực tiếp (theo yêu cầu bố mẹ: dễ thấy); việc bé có thể làm là nhập bài / cập nhật app — không mất dữ liệu.
+- **Test:** `tests/unit/notices.test.js`, `tests/ui/notices.spec.js` (mốc lần đầu, bài mới → Nhập → chuông ẩn; bản mới; Để sau).

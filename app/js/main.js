@@ -24,6 +24,7 @@ import { missingScreen } from './screens/missing.js';
 import { animalSoundsHome, animalSoundsScreen } from './screens/animal-sounds.js';
 import { doctorScreen } from './screens/doctor.js';
 import { jobsScreen } from './screens/jobs.js';
+import { startNotices } from './notices.js';
 import { shopScreen } from './screens/shop.js';
 import { postScreen } from './screens/post.js';
 import { teacherScreen } from './screens/teacher.js';
@@ -150,6 +151,8 @@ async function boot() {
 
   app.go('start');
   registerServiceWorker(app);
+  // Chuông thông báo (SPEC-drive mục 10): bản app mới, bài mới trong Thư viện bài.
+  startNotices(app);
 }
 
 boot();

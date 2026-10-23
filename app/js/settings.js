@@ -32,6 +32,7 @@ export const DEFAULT_SETTINGS = {
   githubAutoUpload: false, // tự tải lên khi tạo bài mới / sửa bài đã có trong thư viện
   githubUploads: {}, // mã bài → { file, sig, at } bài đã tải lên
   githubPending: [], // mã bài mới tạo đang chờ tự tải lên
+  librarySeen: null, // chuông (SPEC-drive mục 10): các file Thư viện bài đã thấy (tên|dung lượng); null = chưa lấy mốc
   lastPromptReviewWords: [],
   lastPromptTopic: '',
   importLog: [], // các file bài đã nhập gần đây: { file, at, summary, lessons }

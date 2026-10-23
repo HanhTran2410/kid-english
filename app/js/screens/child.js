@@ -19,6 +19,7 @@ import { TALK_KIND } from '../talk.js';
 
 const ALL = '__all__';
 import { bongElement } from '../bong.js';
+import { noticeBell } from './notice-bell.js';
 
 export const PARENT_HOLD_MS = 3000;
 
@@ -101,7 +102,7 @@ export function homeScreen(app) {
 
   const bunny = createBunny(app);
   app.root.append(
-    h('header.home-top', {}, parentButton(app, { dot: due })),
+    h('header.home-top', {}, parentButton(app, { dot: due }), noticeBell(app)),
     h('div.home-grid', {},
       big('📚', 'Words', 'Từ vựng', () => app.go('lessons'), '.lessons'),
       big('💬', 'Phrases', 'Câu nói', () => app.go('phrases'), '.phrases'),

@@ -28,7 +28,8 @@ async function doCase(page, i) {
   for (let k = 0; k < n; k++) {
     const want = await page.locator('.fr-scene').getAttribute('data-target');
     await page.locator(want ? `.fr-fire[data-id="${want}"]` : '.fr-fire:not(.out)').first().click();
-    await expect(page.locator('.fr-fire.out')).toHaveCount(k + 1, { timeout: 15000 });
+    // Ngọn cuối: ca có thể đã sang ca sau ngay (chế độ chạy nhanh) — không đếm trên cảnh cũ.
+    if (k < n - 1) await expect(page.locator('.fr-fire.out')).toHaveCount(k + 1, { timeout: 15000 });
   }
   const level = (await page.evaluate(() => window.kidEnglish.settings.fireGame))?.level ?? 1;
   if (level === 2) {
