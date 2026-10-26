@@ -11,9 +11,10 @@ test.beforeEach(async ({ page }) => {
 test('màn hình chính có nút Chữ cái; 5 bài A–Z; sơ đồ chữ A: nhánh mọc ra, chạm từ nào Bông đọc từ đó', async ({ page }) => {
   await startApp(page);
   await page.getByRole('button', { name: 'Chữ cái' }).click();
-  await expect(page.locator('.lesson-card')).toHaveCount(5);
-  await expect(page.locator('.lesson-card').first()).toHaveAttribute('aria-label', 'Letters A–F');
-  await expect(page.locator('.lesson-card').first().locator('.lesson-words')).toHaveText('A B C D E F');
+  // 5 bài chữ cái ABC (+ 3 bài Âm & ghép vần kiểu Jolly, SPEC-jolly.md, ở tab Sounds).
+  await expect(page.locator('.lesson-card[aria-label^="Letters "]')).toHaveCount(5);
+  await expect(page.locator('.lesson-card[aria-label^="Letters "]').first()).toHaveAttribute('aria-label', 'Letters A–F');
+  await expect(page.locator('.lesson-card[aria-label^="Letters "]').first().locator('.lesson-words')).toHaveText('A B C D E F');
   await page.getByRole('button', { name: 'Letters A–F', exact: true }).click();
 
   await expect(page.locator('.mind-center')).toBeVisible();

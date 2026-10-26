@@ -55,13 +55,16 @@ export class Teacher {
    * @param {string} text câu hỏi tiếng Anh
    * @param {{ meaning?: string, vi?: string }} [opts] meaning: nghĩa tiếng Việt của từ / câu trong câu hỏi;
    *   vi: bản tiếng Việt có sẵn của cả câu (bài hội thoại) — dùng thay cho bản dịch theo mẫu (phụ đề khi chạm 🔊)
+   *   speak: cách nói câu hỏi (mặc định: giọng máy đọc `text`) — câu có âm rời phát từ file (SPEC-jolly mục 6):
+   *   giọng máy không được đọc âm rời, nên cả lần hỏi lẫn lần nghe lại 🔊 đều dùng `speak`
    */
-  ask(text, { meaning = '', vi = '' } = {}) {
+  ask(text, { meaning = '', vi = '', speak = null } = {}) {
     this.question = text;
     this.questionMeaning = meaning;
     this.questionVi = vi;
+    this.questionSpeak = speak;
     if (this.replayBtn) this.replayBtn.hidden = false;
-    return this.say(text);
+    return speak ? speak() : this.say(text);
   }
 
   /** Bé chạm 🔊: đọc lại câu hỏi (bỏ qua nếu Bông đang nói). */
@@ -78,7 +81,7 @@ export class Teacher {
     if (this.app.speaker.speaking) return;
     play('tap');
     this.bunny.set('idle');
-    this.say(this.question).catch(() => {});
+    (this.questionSpeak ? this.questionSpeak() : this.say(this.question)).catch(() => {});
   }
 
   /** Phụ đề phía trên màn hình; chạm vào thì ẩn, tự ẩn sau ~5 giây hoặc khi câu hỏi kết thúc. */
@@ -102,6 +105,7 @@ export class Teacher {
   /** Câu hỏi đã xong (bé trả lời, hết bước): ẩn nút 🔊. */
   endQuestion() {
     this.question = null;
+    this.questionSpeak = null;
     this.questionMeaning = '';
     this.questionVi = '';
     this.hideCaption();

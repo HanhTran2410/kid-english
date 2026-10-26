@@ -4,6 +4,10 @@ import { parseLesson, createLessonRecord, baseTitle } from './lesson.js';
 import { ensureLessonNumbers } from './db.js';
 import { builtInNumberLessons } from './numbers.js';
 import { builtInPhonicsLessons } from './phonics.js';
+import { builtInJollyLessons } from './jolly.js';
+
+/** Bài phonics có sẵn: chữ cái ABC (SPEC-phonics) + Âm & ghép vần kiểu Jolly Phonics (SPEC-jolly). */
+const allPhonicsLessons = () => [...builtInPhonicsLessons(), ...builtInJollyLessons()];
 import { builtInTalkLessons } from './talk.js';
 
 export const SAMPLE_FILES = ['lessons/animals.json', 'lessons/colors.json'];
@@ -47,7 +51,7 @@ async function addNumberLessons(app, only = null) {
 /** Bài phonics có sẵn (SPEC-phonics mục 4). `only`: chỉ thêm các bài có mã này. */
 async function addPhonicsLessons(app, only = null) {
   const now = Date.now();
-  const list = builtInPhonicsLessons().filter((l) => !only || only.includes(l.builtin));
+  const list = allPhonicsLessons().filter((l) => !only || only.includes(l.builtin));
   for (const [i, lesson] of list.entries()) {
     await app.db.put('lessons', createLessonRecord(lesson, now - list.length + i));
   }
@@ -95,7 +99,7 @@ export async function seedSamplesOnce(app) {
   }
   // Bài phonics: mỗi bài có sẵn chỉ tự thêm MỘT lần.
   const phonicsSeeded = app.settings.phonicsLessonsSeeded ?? [];
-  const newPhonics = builtInPhonicsLessons().map((l) => l.builtin).filter((id) => !phonicsSeeded.includes(id));
+  const newPhonics = allPhonicsLessons().map((l) => l.builtin).filter((id) => !phonicsSeeded.includes(id));
   if (newPhonics.length) {
     try {
       await addPhonicsLessons(app, newPhonics);
@@ -124,13 +128,15 @@ export async function seedSamplesOnce(app) {
  * (ví dụ bỏ "orange" khỏi chữ O). Giữ nguyên tên, số bài, chỗ học dở, số lần học; chỉ bài có mã `builtin`.
  */
 export async function upgradePhonicsLessons(app) {
-  const fresh = new Map(builtInPhonicsLessons().map((l) => [l.builtin, l]));
+  const fresh = new Map(allPhonicsLessons().map((l) => [l.builtin, l]));
   for (const lesson of await app.db.getAll('lessons')) {
     const src = fresh.get(lesson.builtin);
     if (!src) continue;
-    const same = JSON.stringify(lesson.letters) === JSON.stringify(src.letters);
-    if (same) continue;
+    // Bài Jolly: cả các lượt ghép âm (`blends`) cũng theo dữ liệu mới của app.
+    const pick = (l) => JSON.stringify([l.letters, l.mode ?? null, l.blends ?? null, l.blendOnly ?? null]);
+    if (pick(lesson) === pick(src)) continue;
     lesson.letters = src.letters;
+    if (src.mode) Object.assign(lesson, { mode: src.mode, blends: src.blends, blendOnly: src.blendOnly });
     await app.db.put('lessons', lesson);
   }
 }

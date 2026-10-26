@@ -110,8 +110,11 @@ test('mức 3: Bông gọi chỗ lửa; chạm ngọn khác → "The fire … fi
       expect((await spoken(page)).some((t) => /^The fire is (on the roof|in the window|by the door)!$/.test(t))).toBe(true);
       const want = await page.locator('.fr-scene').getAttribute('data-target');
       const n = (await spoken(page)).length;
-      await page.locator(`.fr-fire:not([data-id="${want}"])`).first().click();
-      await expect.poll(() => saidSince(page, n, /^The fire (on the roof|in the window|by the door) first!$/)).toBe(true);
+      // Chạm khi Bông đang nói thì không tính — chạm lại tới khi Bông nhắc.
+      await expect(async () => {
+        await page.locator(`.fr-fire:not([data-id="${want}"])`).first().click();
+        expect(await saidSince(page, n, /^The fire (on the roof|in the window|by the door) first!$/)).toBe(true);
+      }).toPass({ timeout: 15000 });
       await expect(page.locator('.fr-fire.out')).toHaveCount(0);
     }
     await doCase(page, i);

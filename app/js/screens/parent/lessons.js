@@ -10,6 +10,7 @@ import { isPhraseLesson, MOTION_NAMES, frameGroups, frameSteps, defaultFrameMapp
 import { buildFramesPrompt } from '../../prompts.js';
 import { isNumberLesson, numberKey, countPhrase } from '../../numbers.js';
 import { isPhonicsLesson, letterKey } from '../../phonics.js';
+import { isJollyLesson, soundKey, BLEND_BY } from '../../jolly.js';
 import { isTalkLesson, talkKey, talkPictures } from '../../talk.js';
 import { getFrameSets, setFrameSet, removeFrameSet, frameBlobs } from '../../db.js';
 import { createFlipbook } from '../../player/flipbook.js';
@@ -520,6 +521,7 @@ function shareSection(app, lesson) {
 /** Đổi số bài, tên bài, chủ đề (dùng chung cho bài từ vựng và bài câu). */
 function kindLabel(lesson) {
   if (isTalkLesson(lesson)) return '🗨️ Hội thoại';
+  if (isJollyLesson(lesson)) return '🐍 Âm & ghép vần';
   if (isPhonicsLesson(lesson)) return '🔤 Chữ cái';
   if (isNumberLesson(lesson)) return lesson.mode === 'shapes' ? '🔢 Số đếm (Đếm hình)' : lesson.mode === 'game' ? '🔢 Số đếm (trò chơi)' : '🔢 Số đếm';
   return isPhraseLesson(lesson) ? '💬 Câu nói' : '📚 Từ vựng';
@@ -527,6 +529,7 @@ function kindLabel(lesson) {
 
 function sizeLabel(lesson) {
   if (isTalkLesson(lesson)) return `${lesson.turns.length} lượt`;
+  if (isJollyLesson(lesson)) return lesson.blendOnly ? `${lesson.blends.length} từ ghép` : `${lesson.letters.length} âm`;
   if (isPhonicsLesson(lesson)) return `${lesson.letters.length} chữ`;
   if (isNumberLesson(lesson)) return `${lesson.numbers.length} số`;
   return isPhraseLesson(lesson) ? `${lesson.phrases.length} câu` : `${lesson.words.length} từ`;
@@ -597,6 +600,7 @@ function talkPicturesSection(app, lesson, pics, imageOf, urls) {
 
 /** Trang bài phonics: tiến độ từng chữ và các từ của chữ (SPEC-phonics mục 10). */
 async function phonicsDetailSection(app, lesson) {
+  if (isJollyLesson(lesson)) return jollyDetailSection(app, lesson);
   const rows = [];
   for (const l of lesson.letters) {
     const rec = await app.db.get('progress', letterKey(l.letter));
@@ -610,6 +614,26 @@ async function phonicsDetailSection(app, lesson) {
   return section('Tiến độ từng chữ',
     h('p.muted', { text: 'Bài chữ cái có sẵn trong app (từ bắt đầu bằng âm chính của chữ). Muốn đẹp hơn emoji thì thêm ảnh ở các mục "Ảnh chữ …" bên dưới. Sao chỉ tăng, không bao giờ bị trừ.' }),
     h('ul.progress-list', {}, ...rows));
+}
+
+/** Trang bài âm kiểu Jolly (SPEC-jolly mục 7): tiến độ từng âm (`sound:`) + các từ ghép âm của bài. */
+async function jollyDetailSection(app, lesson) {
+  const rows = [];
+  for (const l of lesson.blendOnly ? [] : lesson.letters) {
+    const rec = await app.db.get('progress', soundKey(l.letter));
+    const a = rec?.attempts;
+    rows.push(h('li', {},
+      h('span.p-emoji', { text: l.letter }),
+      h('span.p-word', { text: `âm /${l.letter}/: ${l.words.map((w) => `${w.emoji} ${w.en}`).join(', ')}` }),
+      h('span.p-stars', { text: rec?.mastery ? '⭐'.repeat(rec.mastery) : '—' }),
+      h('span.p-meta', { text: rec ? `gặp ${rec.practiceCount} lần${a ? ` · chọn: đúng ngay ${a.right}, sai ${a.wrong}` : ''}` : 'chưa học' })));
+  }
+  const blends = (lesson.blends ?? []).map((b) => BLEND_BY.get(b)).filter(Boolean)
+    .map((w) => `${w.sounds.join('-')} → ${w.en}${w.emoji ? ` ${w.emoji}` : ''}`).join(' · ');
+  return section('Tiến độ từng âm',
+    h('p.muted', { text: 'Bài âm kiểu Jolly Phonics có sẵn trong app: bé học ÂM của chữ (không phải tên chữ), âm rời phát từ file ghi âm thật. Làm động tác cùng bé khi Bông kể chuyện. Sao chỉ tăng, không bao giờ bị trừ.' }),
+    ...(rows.length ? [h('ul.progress-list', {}, ...rows)] : []),
+    h('p', { text: `Ghép âm: ${blends}` }));
 }
 
 /** Bài số dưới dạng "danh sách từ" (tên đồ vật) để dùng lại phần ảnh lưới của bài từ vựng. */

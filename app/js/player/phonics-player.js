@@ -12,8 +12,12 @@ import { startIndexFor, resumeAfter } from './plan.js';
 import { runSkippable, endSkippable } from './stage-kit.js';
 import { runCompletion } from './completion-stage.js';
 import { runMap, runFind, runCase, runHear, runPop } from './phonics-stages.js';
+import { isJollyLesson, buildJollySteps, BLEND_BY } from '../jolly.js';
+import { runMeet, runStart, runLetter, runBlend } from './jolly-stages.js';
 
 const RUNNERS = { map: runMap, find: runFind, case: runCase, hear: runHear, pop: runPop };
+// Âm & ghép vần kiểu Jolly Phonics (SPEC-jolly.md): gặp âm, nghe âm đầu, tìm chữ, ghép âm.
+const JOLLY_RUNNERS = { meet: runMeet, start: runStart, letter: runLetter, blend: runBlend };
 
 /**
  * Ảnh các từ của bài: ảnh bố mẹ thêm ở bài này, không có thì ảnh mới nhất của từ đó (bài từ vựng…); không có thì emoji.
@@ -43,6 +47,7 @@ export async function loadPhonicsImages(db, lesson) {
  */
 export function phonicsLessonScreen(app, { lessonId, start = 'begin' }) {
   const layout = activityLayout(app, 'phonics-lesson');
+  layout.stage.dataset.soundCount = '0';
   const signal = app.startActivity();
   let urls = [];
 
@@ -79,7 +84,8 @@ export function phonicsLessonScreen(app, { lessonId, start = 'begin' }) {
       imageOf: images.imageOf,
     };
 
-    const steps = buildPhonicsSteps(lesson);
+    const jolly = isJollyLesson(lesson);
+    const steps = jolly ? buildJollySteps(lesson) : buildPhonicsSteps(lesson);
     const resume = start === 'resume';
     let i = resume ? startIndexFor(steps, lesson.resume) : 0;
     if (!resume && lesson.resume) {
@@ -91,8 +97,13 @@ export function phonicsLessonScreen(app, { lessonId, start = 'begin' }) {
       layout.setProgress(i / steps.length);
       const step = steps[i];
       layout.stage.dataset.stage = `phonics-${step.stage}`;
-      const entry = ['case', 'hear'].includes(step.stage) ? order[step.index % order.length] : lesson.letters[step.index];
-      await runSkippable(ctx, signal, () => RUNNERS[step.stage](ctx, entry));
+      if (jolly) {
+        const entry = step.stage === 'blend' ? BLEND_BY.get(lesson.blends[step.index]) : lesson.letters[step.index];
+        if (entry) await runSkippable(ctx, signal, () => JOLLY_RUNNERS[step.stage](ctx, entry));
+      } else {
+        const entry = ['case', 'hear'].includes(step.stage) ? order[step.index % order.length] : lesson.letters[step.index];
+        await runSkippable(ctx, signal, () => RUNNERS[step.stage](ctx, entry));
+      }
       lesson.resume = resumeAfter(steps, i);
       await saveLesson(lesson);
     }

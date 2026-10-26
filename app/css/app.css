@@ -2707,3 +2707,28 @@ img.dr-admin-face { width: 100%; height: 100%; object-fit: contain; }
 .notice-sub { margin-top: 6px; font-weight: 800; }
 .notice-status { display: block; font-size: 13px; }
 @media (prefers-reduced-motion: reduce) { .notice-bell { animation: none; } }
+/* Âm & ghép vần — Jolly Phonics (SPEC-jolly.md): chữ thường thật to, dòng động tác cho bố mẹ, thẻ ghép âm sáng theo âm. */
+.jolly-meet { display: grid; justify-items: center; align-content: center; gap: 18px; height: 100%; }
+.jolly-big {
+  width: clamp(180px, 34vmin, 300px); aspect-ratio: 1; border-radius: 40px; background: var(--card); box-shadow: var(--shadow);
+  font-size: clamp(140px, 28vmin, 240px); font-weight: 900; line-height: 1; color: var(--letter-color); display: grid; place-items: center; padding: 0 0 4%;
+}
+.jolly-big.pop, .jolly-big.sounding { animation: pop 0.45s ease-in-out; }
+.jolly-action { margin: 0; max-width: 34ch; padding: 8px 16px; border-radius: 16px; background: var(--card); box-shadow: var(--shadow); font-size: clamp(16px, 2.6vmin, 22px); font-weight: 800; color: var(--ink); text-align: center; }
+.jolly-action-label { color: var(--ink-soft); }
+.jolly-letter .lower { font-size: 1.15em; }
+.jolly-ear { font-family: var(--emoji); font-size: clamp(70px, 14vmin, 120px); line-height: 1; }
+.letter-card.sounding, .letter-card.shake { animation: pop 0.45s ease-in-out; }
+.blend-area { display: grid; justify-items: center; align-content: center; gap: 18px; height: 100%; }
+.blend-row { display: flex; gap: clamp(10px, 3vw, 28px); transition: gap 350ms ease-in-out; }
+.blend-row.merged { gap: 2px; }
+.blend-tile {
+  display: grid; place-items: center; width: clamp(76px, 15vmin, 120px); aspect-ratio: 1; border-radius: 22px; background: var(--card); box-shadow: var(--shadow);
+  font-size: clamp(54px, 11vmin, 92px); font-weight: 900; line-height: 1; color: var(--letter-color); transition: transform 200ms;
+}
+.blend-tile.lit { transform: translateY(-14px) scale(1.12); box-shadow: 0 0 0 6px var(--yellow), var(--shadow); }
+.blend-word { font-size: clamp(40px, 8vmin, 70px); font-weight: 900; color: var(--ink); letter-spacing: 0.04em; }
+@media (prefers-reduced-motion: reduce) {
+  .jolly-big.pop, .jolly-big.sounding, .letter-card.sounding, .letter-card.shake { animation: none; }
+  .blend-row, .blend-tile { transition: none; }
+}

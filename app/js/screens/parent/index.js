@@ -6,7 +6,7 @@ import { listLessons, getStickers } from '../../db.js';
 import { isBackupDue } from '../../settings.js';
 import { STICKERS } from '../../stickers.js';
 import { buildTeacherPrompt } from '../../prompts.js';
-import { pickWordsForPrompt, isLearned, KNOWN_MASTERY, wordRecords, phraseRecords, numberRecords, letterRecords } from '../../progress.js';
+import { pickWordsForPrompt, isLearned, KNOWN_MASTERY, wordRecords, phraseRecords, numberRecords, letterRecords, soundRecords } from '../../progress.js';
 import { isWordLesson } from '../../phrase.js';
 import { isStandalone, micProblem } from '../child.js';
 import { parentLayout, goParent, section, notice } from './common.js';
@@ -162,7 +162,8 @@ function progressView(app) {
     const phrases = sorted(phraseRecords(list));
     const numbers = numberRecords(list).filter(isLearned).sort((a, b) => Number(a.word.split(':')[1]) - Number(b.word.split(':')[1]));
     const letters = letterRecords(list).filter(isLearned).sort((a, b) => a.word.localeCompare(b.word));
-    if (!words.length && !phrases.length && !numbers.length && !letters.length) {
+    const sounds = soundRecords(list).filter(isLearned).sort((a, b) => a.word.localeCompare(b.word));
+    if (!words.length && !phrases.length && !numbers.length && !letters.length && !sounds.length) {
       body.append(section(null, h('p', { text: 'Bé chưa học từ, câu, số hay chữ cái nào.' })));
       return;
     }
@@ -189,6 +190,11 @@ function progressView(app) {
     if (letters.length) {
       body.append(section(`Chữ cái — ${known(letters)}/${letters.length} chữ đã thuộc (từ 3⭐)`,
         h('ul.progress-list', {}, ...letters.map((r) => row(r, `chữ ${r.word.replace(/^letter:/, '').toUpperCase()}`,
+          r.attempts ? ` · chọn: đúng ngay ${r.attempts.right}, sai ${r.attempts.wrong}` : '')))));
+    }
+    if (sounds.length) {
+      body.append(section(`Âm (Jolly) — ${known(sounds)}/${sounds.length} âm đã thuộc (từ 3⭐)`,
+        h('ul.progress-list', {}, ...sounds.map((r) => row(r, `âm /${r.word.replace(/^sound:/, '')}/`,
           r.attempts ? ` · chọn: đúng ngay ${r.attempts.right}, sai ${r.attempts.wrong}` : '')))));
     }
   });

@@ -32,3 +32,16 @@ Giấy phép đã kiểm tra trên chính trang của từng file (2026-10-21).
 | drum.mp3 | https://commons.wikimedia.org/wiki/File:Ceramic_Djembe.wav | RutgerMuller | CC0 1.0 |
 | dishes.mp3 | https://bigsoundbank.com/stack-of-shaking-plates-s1199.html | Joseph SARDIN | CC0 (BigSoundBank) |
 | phone.mp3 | https://bigsoundbank.com/socotel-loud-ringtones-1-s3302.html | Joseph SARDIN | CC0 (BigSoundBank) |
+
+## Âm rời Jolly Phonics — phonics/ (SPEC-jolly.md)
+Âm rời cho mục 🔤 Phonics → Sounds. Cắt đoạn, lọc tiếng trầm < 120–150 Hz, nhỏ dần hai đầu, chỉnh cùng độ to, mp3 mono 64 kbps.
+Bản đã cắt của file CC BY-SA 3.0 cũng theo giấy phép CC BY-SA 3.0.
+
+| File | Nguồn (đoạn cắt) | Tác giả | Giấy phép |
+|---|---|---|---|
+| phonics/s.mp3 | https://commons.wikimedia.org/wiki/File:Voiceless_alveolar_sibilant.ogg (0,24–0,445 s + 1,70–1,965 s, ghép) | Peter Isotalo | CC BY-SA 3.0 |
+| phonics/a.mp3 | https://commons.wikimedia.org/wiki/File:Near-open_front_unrounded_vowel.ogg (0,03–0,54 s) | Denelson83 | CC BY-SA 3.0 |
+| phonics/i.mp3 | https://commons.wikimedia.org/wiki/File:Near-close_near-front_unrounded_vowel.ogg (0,02–0,52 s) | Denelson83 | CC BY-SA 3.0 |
+| phonics/n.mp3 | https://commons.wikimedia.org/wiki/File:Alveolar_nasal.ogg (0,25–0,495 s + 1,47–1,715 s, ghép) | Wikimedia Commons (IPA) | CC BY-SA 3.0 |
+| phonics/t.mp3 | https://commons.wikimedia.org/wiki/File:En-us-tap.ogg (0,068–0,138 s: tiếng bật hơi đầu từ, lặp 3 lần) | Dvortygirl | Public domain |
+| phonics/p.mp3 | https://commons.wikimedia.org/wiki/File:En-us-pin.ogg (0,338–0,396 s: tiếng bật hơi đầu từ, lặp 3 lần) | Dvortygirl | Public domain |
