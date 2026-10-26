@@ -4,8 +4,8 @@
 
 export const CASES_PER_ROUND = 3;
 export const ROUNDS_TO_LEVEL_UP = 3;
-/** D1: mới chơi được mức 1 (bước khám và các ca mức 2–3 làm ở D2). Tăng lên 3 khi có D2. */
-export const PLAYABLE_LEVEL = 1;
+/** D2 (0.41.0): chơi được cả 3 mức (bước khám, 11 ca, khay 3–4 món). */
+export const PLAYABLE_LEVEL = 3;
 /** Số món trong khay theo mức và loại bước (SPEC mục 7). */
 export const TRAY_SIZE = {
   1: { check: 3, treat: 2 },
@@ -83,10 +83,11 @@ export const regionPoint = (region, side = 1) => {
 
 // ---------- Bạn thú ----------
 export const PATIENTS = [
-  { id: 'teddy', name: 'Teddy', vi: 'Gấu Teddy', emoji: '🐻' },
-  { id: 'kitty', name: 'Kitty', vi: 'Mèo Kitty', emoji: '🐱' },
-  { id: 'puppy', name: 'Puppy', vi: 'Cún Puppy', emoji: '🐶' },
-  { id: 'piggy', name: 'Piggy', vi: 'Heo Piggy', emoji: '🐷' },
+  // `pitch`: cao độ giọng (Bông y tá giọng thường = 1), mỗi bạn một giọng (SPEC-doctor mục 4.5).
+  { id: 'teddy', name: 'Teddy', vi: 'Gấu Teddy', emoji: '🐻', pitch: 0.75 },
+  { id: 'kitty', name: 'Kitty', vi: 'Mèo Kitty', emoji: '🐱', pitch: 1.45 },
+  { id: 'puppy', name: 'Puppy', vi: 'Cún Puppy', emoji: '🐶', pitch: 1.25 },
+  { id: 'piggy', name: 'Piggy', vi: 'Heo Piggy', emoji: '🐷', pitch: 0.9 },
 ];
 export const PATIENT_BY_ID = new Map(PATIENTS.map((p) => [p.id, p]));
 

@@ -46,6 +46,7 @@ export function takeSnap(job, { level, continueDirectly }) {
  * Dựng màn chơi chung. `opts`:
  * - `job`, `className` (class của root), `title`, `helperLabel` (tên Bông), `cap` (mũ của Bông: 'nurse' | 'shop' | …);
  * - `icon(who)`: hình người nói ở phụ đề ('bong' → 🐰); `onTalk(who | null)`: ai đang nói (để nhân vật nhún);
+ * - `pitch(who)`: cao độ giọng của người nói (không có = giọng thường);
  * - `onReset()` (🧹), `onHelper()` (chạm Bông);
  * - `nudge`: { ready(), key(), fire(rearm) } — nhắc sau 10 giây không thao tác;
  * - `tray`: { face(id), label(id), canGive(), dropOk(x, y), give(id, from) } — kéo / chạm đồ trong khay;
@@ -111,7 +112,7 @@ export function jobScreen(app, opts) {
         caption(en, vi, who);
         opts.onTalk?.(who);
         try {
-          await app.speaker.speak(en, { signal });
+          await app.speaker.speak(en, { signal, pitch: opts.pitch?.(who) });
         } catch {
           if (signal.aborted) return false;
         }

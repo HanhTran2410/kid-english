@@ -144,13 +144,20 @@ test('5 tranh → Hoan hô + sticker; đếm lượt để lên mức; ghi "đã
 
 test('mức 3: vẫn xem tranh đầy đủ trước (khay trống, chưa có bóng), rồi 3 bóng mờ hơn; 2 đồ lạ', async ({ page }) => {
   await fakeSpeech(page);
+  // Ghi lại ngay lúc tranh vừa hiện (chế độ chạy nhanh: lúc xem tranh rất ngắn, đọc sau có thể đã qua).
+  await page.addInitScript(() => {
+    new MutationObserver((_, obs) => {
+      if (!document.querySelector('.ms-item')) return;
+      window.__preview = { ghosts: document.querySelectorAll('.ms-item.ms-ghost').length, pieces: document.querySelectorAll('.ms-piece').length };
+      obs.disconnect();
+    }).observe(document, { childList: true, subtree: true });
+  });
   await startApp(page);
   await page.evaluate(() => window.kidEnglish.setSetting('missingGame', { lock: 3 }));
   await page.getByRole('button', { name: 'Trò chơi' }).click();
   await page.getByRole('button', { name: 'Tìm đồ còn thiếu' }).click();
   await expect(page.locator('.ms-item').first()).toBeVisible();
-  expect(await page.locator('.ms-item.ms-ghost').count()).toBe(0);
-  expect(await page.locator('.ms-piece').count()).toBe(0);
+  expect(await page.evaluate(() => window.__preview)).toEqual({ ghosts: 0, pieces: 0 });
   await waitState(page, 'playing');
   await expect(page.locator('.ms-item.ms-ghost').first()).toBeVisible();
   expect(await holes(page)).toHaveLength(3);

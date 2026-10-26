@@ -29,7 +29,9 @@ const ITEM_TARGET = {
   bandage: null, medicine: 'mouth', tissue: 'nose', toothbrush: 'mouth', drops: 'eye', icepack: 'head', water: 'mouth',
   blanket: 'tummy', stethoscope: 'tummy', thermometer: 'hand', flashlight: null,
 };
-const ITEM_SOUND = { bandage: 'pop', medicine: 'chomp', tissue: 'honk', toothbrush: 'brush', stethoscope: 'ding' };
+const ITEM_SOUND = { bandage: 'pop', medicine: 'chomp', tissue: 'honk', toothbrush: 'brush', stethoscope: 'ding', thermometer: 'ding', drops: 'pop', icepack: 'pop', water: 'chomp', blanket: 'sparkle' };
+const BUG_MS = 1200; // bọ rùa bay ra khỏi tai (ca tai)
+const REST_MS = 2000; // ca buồn ngủ: zZz 2 giây
 
 /** Ảnh bố mẹ thêm (SPEC mục 10): ảnh từng đồ (theo mã đồ) và ảnh nền phòng khám. */
 export async function loadDoctorImages(app) {
@@ -84,6 +86,7 @@ export function doctorScreen(app, params = {}) {
     job: JOB, className: 'dr-play', stageClass: 'dr-stage', title: '🩺 Doctor', helperLabel: 'Bông y tá', cap: 'nurse',
     resetLabel: 'Khám lại', trayLabel: 'Đồ của bác sĩ',
     icon: (who) => (who === 'patient' ? curPatient()?.emoji ?? '' : '🐰'),
+    pitch: (who) => (who === 'patient' ? curPatient()?.pitch : undefined),
     onTalk: (who) => patientEl.classList.toggle('talking', who === 'patient'),
     onReset: () => restart(),
     onHelper: () => repeatPrompt(),
@@ -310,6 +313,29 @@ export function doctorScreen(app, params = {}) {
     if (e !== kit.epoch) return;
     if (id === 'flashlight' && c.id === 'tooth') {
       await wait(SAY_AAH_MS);
+      if (e !== kit.epoch) return;
+    }
+    // Ca tai: soi đèn thấy bọ rùa → bọ bay ra khỏi tai.
+    if (step.effect === 'bug') {
+      const bug = h('div.dr-bug', { text: '🐞', 'aria-hidden': 'true' });
+      const at = toScreen(spot.x, spot.y);
+      Object.assign(bug.style, { left: `${at.x}px`, top: `${at.y}px` });
+      document.body.append(bug);
+      play('sparkle');
+      await wait(BUG_MS);
+      bug.remove();
+      if (e !== kit.epoch) return;
+    }
+    // Ca buồn ngủ: đắp chăn, mắt nhắm, zZz 2 giây.
+    if (id === 'blanket') {
+      setMood('sleep');
+      const z = h('div.dr-zzz', { text: '💤', 'aria-hidden': 'true' });
+      const head = regionPoint('head', 0);
+      const at = toScreen(head.x, head.y);
+      Object.assign(z.style, { left: `${at.x}px`, top: `${at.y}px` });
+      document.body.append(z);
+      await wait(REST_MS);
+      z.remove();
       if (e !== kit.epoch) return;
     }
     // Băng dán ở lại trên người bạn thú (cả lúc ra về).

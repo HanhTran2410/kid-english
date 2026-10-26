@@ -16,6 +16,7 @@ import { cleanMissingState } from '../../missing.js';
 import { cleanSoundsState } from '../../animal-sounds.js';
 import { cleanBubblesState } from '../../bubbles.js';
 import { cleanJobState } from '../../jobs/levels.js';
+import { cleanDoctorState } from '../../doctor.js';
 
 export function settingsView(app) {
   const body = parentLayout(app, { title: 'Cài đặt & chẩn đoán', back: () => goParent(app) });
@@ -197,13 +198,20 @@ const JOB_LEVELS = [
   ['postGame', 'Bưu tá', ['Mức 1 — theo màu nhà', 'Mức 2 — theo số nhà', 'Mức 3 — màu / số / tên bạn thú']],
   ['teacherGame', 'Cô giáo nhí', ['Mức 1 — Bông nói sai khác hẳn', 'Mức 2 — Bông nói sai gần giống', 'Mức 3 — màu và số']],
   ['policeGame', 'Cảnh sát giúp bạn', ['Mức 1 — theo màu', 'Mức 2 — màu + to / nhỏ', 'Mức 3 — có bụi cây, tìm bạn bị lạc']],
-  ['fireGame', 'Lính cứu hỏa', ['Mức 1 — 1–3 ngọn lửa', 'Mức 2 — đếm số lửa + cứu bạn trên cây', 'Mức 3 — dập theo chỗ Bông gọi']],
+  ['fireGame', 'Lính cứu hỏa', ['Mức 1 — mặc đồ, 1–3 ngọn lửa, an toàn với lửa', 'Mức 2 — Bông gọi từng món đồ, đếm số lửa, cứu bạn (cây / trong nhà)', 'Mức 3 — dập theo chỗ Bông gọi, phố không khói, bấm 114']],
 ];
 function jobsSection(app, save) {
   const clean = (v) => cleanJobState(v);
-  return section('Đóng vai nghề', ...JOB_LEVELS.map(([key, name, labels]) => field(`Mức chơi ${name}`,
-    levelSelect(app, save, key, clean, labels.map((text, i) => [String(i + 1), text])),
-    'Tự lên mức sau 3 lượt chơi xong. Khóa mức thì không đếm lượt.')));
+  return section('Đóng vai nghề',
+    // Bác sĩ nhí (SPEC-doctor mục 7.3, D2): dữ liệu riêng (`seen` theo ca).
+    field('Mức chơi Bác sĩ nhí', levelSelect(app, save, 'doctorGame', (v) => cleanDoctorState(v), [
+      ['1', 'Mức 1 — chạm chỗ đau, bạn thú xin đồ có tên (5 ca)'],
+      ['2', 'Mức 2 — thêm bước khám (ống nghe, đèn pin), đoán đồ chữa (9 ca)'],
+      ['3', 'Mức 3 — thêm sốt, ho; khay 4 món (11 ca)'],
+    ]), 'Tự lên mức sau 3 lượt chơi xong. Khóa mức thì không đếm lượt.'),
+    ...JOB_LEVELS.map(([key, name, labels]) => field(`Mức chơi ${name}`,
+      levelSelect(app, save, key, clean, labels.map((text, i) => [String(i + 1), text])),
+      'Tự lên mức sau 3 lượt chơi xong. Khóa mức thì không đếm lượt.')));
 }
 
 function diagnostics(app) {

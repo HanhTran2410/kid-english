@@ -144,9 +144,10 @@ export class Speaker {
    * Đọc một câu. Luôn kết thúc: nếu iOS không báo đã đọc xong thì hết thời gian chờ sẽ tự đi tiếp.
    * Nếu câu không bắt đầu được (giọng đọc bị kẹt) thì gỡ kẹt và thử lại một lần.
    * @param {string} text
-   * @param {{ lang?: 'en'|'vi', signal?: AbortSignal, rate?: number }} [options]
+   * @param {{ lang?: 'en'|'vi', signal?: AbortSignal, rate?: number, pitch?: number }} [options] — `pitch`: cao độ (1 = thường;
+   *   bạn thú ở Bác sĩ nhí mỗi bạn một cao độ). Máy không hỗ trợ thì giọng thường.
    */
-  speak(text, { lang = 'en', signal, rate } = {}) {
+  speak(text, { lang = 'en', signal, rate, pitch } = {}) {
     const s = synth();
     const voice = lang === 'vi' ? this.vi : this.en;
     if (!s || !text || (lang === 'vi' && !voice)) return Promise.resolve();
@@ -183,6 +184,7 @@ export class Speaker {
         if (voice) u.voice = voice;
         u.lang = voice?.lang ?? (lang === 'vi' ? 'vi-VN' : 'en-US');
         u.rate = speed;
+        if (pitch != null) u.pitch = pitch;
         current = u;
         // Chỉ xử lý sự kiện của câu đang đọc (câu bị hủy khi thử lại sẽ báo lỗi "canceled").
         u.onstart = () => {

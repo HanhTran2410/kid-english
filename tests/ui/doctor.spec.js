@@ -236,3 +236,90 @@ test('trò chơi dùng ảnh đồ bố mẹ thêm (khay) và ảnh nền phòng
   await expect(play(page)).toHaveAttribute('data-state', 'treat', { timeout: 15000 });
   await expect(page.locator('.dr-item img.dr-item-img')).toHaveCount(2);
 });
+
+// ---------- D2: mức 2–3 (bước khám, 11 ca), giọng bạn thú, Cài đặt ----------
+/** Khám xong ca đang mở ở `level`: làm lần lượt mọi bước (chạm / khám / chữa) theo dữ liệu ca. */
+async function healAt(page, level) {
+  await expect(play(page)).toHaveAttribute('data-state', /touch|check|treat/, { timeout: 15000 });
+  const id = await page.locator('.dr-patient').getAttribute('data-case');
+  const steps = await page.evaluate(async ([caseId, lv]) => {
+    const m = await import('/js/doctor.js');
+    return m.stepsFor(m.CASE_BY_ID.get(caseId), lv);
+  }, [id, level]);
+  for (const [k, s] of steps.entries()) {
+    await expect(play(page)).toHaveAttribute('data-state', s.type, { timeout: 15000 });
+    if (s.type === 'touch') await spot(page, s.target).click();
+    else await page.locator(`.dr-item[data-item="${s.item}"]`).click();
+    if (k < steps.length - 1) await expect(play(page)).toHaveAttribute('data-state', steps[k + 1].type, { timeout: 15000 });
+  }
+  return { id, steps };
+}
+
+test('D2 mức 2: có bước khám (Bông gọi tên dụng cụ, khay 3 món), đồ chữa không gọi tên ("How can we help?"); bạn thú nói giọng khác Bông; ca tai thấy bọ; 3 ca → sticker', async ({ page }) => {
+  await fakeSpeech(page);
+  await startApp(page);
+  // Ưu tiên ca có bước khám (tummy, tooth, ear-bug): các ca khác coi như đã gặp nhiều.
+  await page.evaluate(() => window.kidEnglish.setSetting('doctorGame', {
+    level: 2, rounds: 0, lock: 2, seen: { 'cut-hand': 9, 'cut-foot': 9, 'runny-nose': 9, eye: 9, bump: 9, sleepy: 9 },
+  }));
+  await page.getByRole('button', { name: 'Trò chơi' }).click();
+  await page.getByRole('button', { name: 'Đóng vai' }).click();
+  await page.getByRole('button', { name: 'Bác sĩ nhí' }).click();
+  let sawCheck = false;
+  const ids = [];
+  for (let i = 0; i < 3; i++) {
+    await expect(page.locator('.dr-count')).toHaveText(`${i + 1}/3`, { timeout: 15000 });
+    const before = (await spoken(page)).length;
+    const { id, steps } = await healAt(page, 2);
+    ids.push(id);
+    if (steps.some((s) => s.type === 'check')) sawCheck = true;
+    if (id === 'ear-bug') await expect.poll(() => saidSince(page, before, /^Let me look… A little bug! Bye-bye, bug!$/)).toBe(true);
+  }
+  expect(sawCheck).toBe(true);
+  await expect(page.locator('.prize-sticker')).toBeVisible({ timeout: 15000 });
+  const said = await spoken(page);
+  expect(said.some((t) => /^Let's check! Use the (stethoscope|flashlight|thermometer)\.$/.test(t))).toBe(true);
+  expect(said).toContain('How can we help?');
+  expect(said.some((t) => / please!$/.test(t))).toBe(false);
+  // Bạn thú ("Hello, doctor!") nói giọng cao độ khác; Bông ("Hello! Come in!") giọng thường.
+  const voice = await page.evaluate(() => window.__spoken.map((t, i) => [t, window.__pitches[i]]));
+  expect(voice.filter(([t]) => t === 'Hello, doctor!').every(([, p]) => p !== 1)).toBe(true);
+  expect(voice.filter(([t]) => t === 'Hello! Come in!').every(([, p]) => p === 1)).toBe(true);
+  expect(ids.length).toBe(3);
+});
+
+test('D2 mức 3: chơi hết lượt với 11 ca (sốt: nhiệt kế; ho: không chạm), khay chữa 4 món; Cài đặt có "Mức chơi Bác sĩ nhí" khóa được mức', async ({ page }) => {
+  await fakeSpeech(page);
+  await startApp(page);
+  const others = ['cut-hand', 'cut-foot', 'tummy', 'runny-nose', 'tooth', 'ear-bug', 'eye', 'bump', 'sleepy'];
+  await page.evaluate((o) => window.kidEnglish.setSetting('doctorGame', { level: 3, rounds: 0, lock: 3, seen: Object.fromEntries(o.map((id) => [id, 9])) }), others);
+  await page.getByRole('button', { name: 'Trò chơi' }).click();
+  await page.getByRole('button', { name: 'Đóng vai' }).click();
+  await page.getByRole('button', { name: 'Bác sĩ nhí' }).click();
+  const ids = [];
+  for (let i = 0; i < 3; i++) {
+    await expect(page.locator('.dr-count')).toHaveText(`${i + 1}/3`, { timeout: 15000 });
+    const id = await page.locator('.dr-patient').getAttribute('data-case');
+    const state = await play(page).getAttribute('data-state');
+    if (id === 'cough') expect(['check', 'enter']).toContain(state);
+    ids.push((await healAt(page, 3)).id);
+  }
+  // Ca ít gặp nhất (sốt, ho) luôn được chọn.
+  expect(ids).toEqual(expect.arrayContaining(['fever', 'cough']));
+  await expect(page.locator('.prize-sticker')).toBeVisible({ timeout: 15000 });
+  const said = await spoken(page);
+  expect(said).toContain('You feel warm!');
+  expect(said).toContain('Cough! Cough!');
+});
+
+test('D2: Cài đặt → "Mức chơi Bác sĩ nhí" có 3 mức, chọn mức 3 thì khóa mức 3', async ({ page }) => {
+  await fakeSpeech(page);
+  await startApp(page);
+  const { openParent } = await import('./helpers.js');
+  await openParent(page);
+  await page.getByRole('button', { name: /Cài đặt/ }).click();
+  const sel = page.locator('label, .field').filter({ hasText: 'Mức chơi Bác sĩ nhí' }).locator('select');
+  await expect(sel.locator('option')).toHaveCount(4);
+  await sel.selectOption('3');
+  await expect.poll(() => page.evaluate(() => window.kidEnglish.settings.doctorGame)).toMatchObject({ level: 3, lock: 3 });
+});

@@ -283,7 +283,7 @@ enter ─► step[0] ─► step[1] … ─► healed ─► leave ─┬─► 
 | Mốc | Nội dung | Nghiệm thu |
 |---|---|---|
 | **D1** | Khung thân bạn thú + 4 đầu (SVG), vùng chạm, Bông y tá; dữ liệu ca theo `steps`; mức 1 (5 ca, `touch` + `treat`), kéo / chạm đồ, nhầm, gợi ý, nhắc, khóa thao tác, mã lượt / bước, lượt 3 ca + sticker, ra nền, tiến độ Body | Bé 3 tuổi chơi hết một lượt không cần người lớn; chạm nhanh không tính trùng. **Thử với bé trước khi làm D2** |
-| **D2** | Mức 2–3 (bước `check`, 6 ca thêm, khay 3–4 món), giọng bạn thú khác cao độ, tự lên mức, khóa mức, chọn ca ít gặp | Mọi câu sinh ra đúng ngữ pháp (unit) |
+| **D2** ✅ (0.41.0) | Mức 2–3 (bước `check`, 6 ca thêm, khay 3–4 món), giọng bạn thú khác cao độ, tự lên mức, khóa mức, chọn ca ít gặp | Mọi câu sinh ra đúng ngữ pháp (unit) |
 | **D3** | ✅ đã làm ở 0.28.1 (mục 10): ảnh đồ thay được / dùng lại ảnh có sẵn, ảnh nền, chia sẻ / sao lưu | Như các trò có ảnh trước |
 
 ## 12. Kiểm thử
@@ -341,3 +341,9 @@ enter ─► step[0] ─► step[1] … ─► healed ─► leave ─┬─► 
 - **Ghi một lần:** nhận thao tác đúng thì `stepIdx` tăng ngay và lưu snapshot (ca khỏi: ghi `seen`, snapshot trỏ ca sau); mọi việc chạy sau kiểm `epoch` (🧹 / rời màn / chơi tiếp đổi mã).
 - **Tiếng hiệu ứng mới** (`sfx.js`): `doorbell`, `honk`, `brush`.
 - **Test:** `tests/unit/doctor.test.js` (DOC-01…04, 09…11 và dữ liệu), `tests/ui/doctor.spec.js` (luồng mức 1, DOC-06…08, 12, 15, giọng đọc lỗi). DOC-05, 13, 14 thuộc D2 (bước khám, đổi mức) / thử tay.
+
+## 16. Ghi chú khi code D2 (0.41.0)
+- `PLAYABLE_LEVEL = 3`: tự lên mức sau 3 lượt; **Cài đặt → Đóng vai nghề → Mức chơi Bác sĩ nhí** khóa mức 1 / 2 / 3.
+- **Giọng bạn thú:** `Speaker.speak(text, { pitch })` (Web Speech `pitch`), khung nghề nhận `pitch(who)`; Teddy 0,75 · Piggy 0,9 · Puppy 1,25 · Kitty 1,45; Bông y tá giọng thường. Máy không hỗ trợ `pitch` thì đọc giọng thường.
+- **Hoạt ảnh mức 2–3:** nhiệt kế kẹp tay có vạch đỏ dâng lên; nhỏ mắt (giọt nhún), túi đá / nhiệt kế lắc, nước ấm (uống), chăn → mặt ngủ + 💤 2 giây; ca tai: soi đèn → bọ rùa 🐞 bay ra (1,2 giây).
+- **Test:** unit mức + cao độ; UI mức 2 (bước khám, "How can we help?", không xin đồ có tên, giọng bạn thú khác Bông, ca tai có bọ), mức 3 (sốt + ho), Cài đặt khóa mức.

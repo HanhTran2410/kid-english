@@ -3,6 +3,7 @@
 export async function fakeSpeech(page, { recognition = false, mic = true } = {}) {
   await page.addInitScript(({ recognition, mic }) => {
     window.__spoken = [];
+    window.__pitches = []; // cao độ từng câu (bạn thú Bác sĩ nhí nói giọng khác)
     class FakeUtterance {
       constructor(text) {
         this.text = text;
@@ -17,7 +18,10 @@ export async function fakeSpeech(page, { recognition = false, mic = true } = {})
       speaking: false,
       getVoices: () => voices,
       speak(u) {
-        if (u.text.trim()) window.__spoken.push(u.text);
+        if (u.text.trim()) {
+          window.__spoken.push(u.text);
+          window.__pitches.push(u.pitch ?? 1);
+        }
         setTimeout(() => u.onend?.(), 5);
       },
       cancel() {},

@@ -2435,6 +2435,22 @@ details > summary { cursor: pointer; font-weight: 800; padding: 6px 0; }
 .dr-fly.use-tissue .dr-item-face, .dr-fly.use-flashlight .dr-item-face { animation: dr-wiggle 0.3s ease-in-out 3; }
 .dr-fly.use-medicine .dr-item-face { animation: dr-gulp 1s ease-in forwards; }
 .dr-fly.use-bandage .dr-item-face, .dr-fly.use-stethoscope .dr-item-face { animation: pop 0.4s ease-in-out 2; }
+/* D2 (mức 2–3): nhiệt kế có vạch đỏ dâng lên; nhỏ mắt, túi đá, nước ấm, chăn; bọ rùa bay ra khỏi tai; zZz. */
+.dr-fly.use-thermometer::after {
+  content: ''; position: absolute; left: 70%; bottom: 12%; width: 10px; height: 0; border-radius: 5px; background: #e03131; animation: dr-temp 1s ease-out forwards;
+}
+@keyframes dr-temp { to { height: 64%; } }
+.dr-fly.use-drops .dr-item-face { animation: dr-drip 0.35s ease-in-out 3; }
+@keyframes dr-drip { 50% { transform: translateY(8px); } }
+.dr-fly.use-icepack .dr-item-face, .dr-fly.use-thermometer .dr-item-face { animation: dr-wiggle 0.3s ease-in-out 3; }
+.dr-fly.use-water .dr-item-face { animation: dr-gulp 1s ease-in forwards; }
+.dr-fly.use-blanket .dr-item-face { animation: pop 0.5s ease-in-out; }
+.dr-bug, .dr-zzz { position: fixed; z-index: 61; pointer-events: none; transform: translate(-50%, -50%); font-family: var(--emoji); font-size: clamp(30px, 6vmin, 52px); }
+.dr-bug { animation: dr-bug 1.2s ease-in forwards; }
+@keyframes dr-bug { 0% { transform: translate(-50%, -50%) scale(0.6); } 30% { transform: translate(-50%, -80%) scale(1); } 100% { transform: translate(160px, -220px) rotate(40deg) scale(0.8); opacity: 0; } }
+.dr-zzz { animation: dr-zzz 2s ease-out forwards; }
+@keyframes dr-zzz { from { transform: translate(-20%, -60%) scale(0.6); opacity: 0; } 30% { opacity: 1; } to { transform: translate(20%, -180%) scale(1.3); opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .dr-bug, .dr-zzz, .dr-fly.use-thermometer::after { animation: none; } .dr-fly.use-thermometer::after { height: 64%; } }
 @keyframes dr-brush { 50% { transform: translateX(22px); } }
 @keyframes dr-wiggle { 25% { transform: rotate(-14deg); } 75% { transform: rotate(14deg); } }
 @keyframes dr-gulp { 60% { transform: scale(1) rotate(-30deg); opacity: 1; } 100% { transform: scale(0.3) rotate(-30deg); opacity: 0; } }

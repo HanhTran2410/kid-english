@@ -1,6 +1,6 @@
 # SPEC — 🩺 Bác sĩ nhí: nhiệm vụ mới
 
-> Phiên bản spec: **draft2** (sửa theo review, mục 12) · Ngày: 2026-10-26 · **Chưa làm** (làm sau Cứu hỏa FF2–FF3, chia 3 mốc DR1–DR3). Bổ sung cho `SPEC-doctor.md` (11 ca bệnh, 3 loại bước chạm / khám / chữa, luật nhầm, mức, ảnh — **giữ nguyên**).
+> Phiên bản spec: **draft2** (sửa theo review, mục 12) · Ngày: 2026-10-26 · **Chưa làm** (làm sau Cứu hỏa FF2–FF3 **và sau D2 — bật mức 2–3 của trò Bác sĩ, xong ở 0.41.0**; chia 3 mốc DR1–DR3). Bổ sung cho `SPEC-doctor.md` (11 ca bệnh, 3 loại bước chạm / khám / chữa, luật nhầm, mức, ảnh — **giữ nguyên**).
 > Cùng hướng với Cứu hỏa (`SPEC-fire2.md`): thêm việc **trước khi khám**, **ca kiểu mới** xen với ca bệnh, và việc nhỏ **sau khi chữa**.
 
 ## 1. Mục tiêu

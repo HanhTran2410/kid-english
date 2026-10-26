@@ -147,18 +147,22 @@ test('câu: chạm đúng / nhầm chỗ, câu xin mức 1, câu nhầm đồ (c
   assert.equal(stepPrompt({ type: 'treat', item: 'bandage' }, 2).line[0], 'How can we help?');
 });
 
-test('mức: dữ liệu hỏng → mức 1; D1 chỉ chơi được mức 1 (không lên mức), đếm lượt; seen chỉ giữ mã ca có thật', () => {
-  assert.equal(PLAYABLE_LEVEL, 1);
+test('mức (D2): chơi được cả 3 mức; dữ liệu hỏng → mức 1; đủ 3 lượt thì lên một mức, mức 3 không lên thêm; khóa mức không đếm; seen chỉ giữ mã ca có thật', () => {
+  assert.equal(PLAYABLE_LEVEL, 3);
   assert.deepEqual(cleanDoctorState(null), { level: 1, rounds: 0, lock: null, seen: {} });
-  assert.deepEqual(cleanDoctorState({ level: 3, rounds: -1, lock: 7, seen: { tummy: 2, nope: 3, tooth: 'x' } }), { level: 1, rounds: 0, lock: null, seen: { tummy: 2 } });
-  let s = cleanDoctorState({});
-  for (let i = 0; i < 4; i++) s = afterDoctorRound(s);
-  assert.equal(s.level, 1);
-  assert.equal(s.rounds, 4);
-  // Khi có mức 2–3 (D2): đủ 3 lượt thì lên một mức; khóa mức thì không đếm.
-  let t = cleanDoctorState({}, { maxLevel: 3 });
-  for (let i = 0; i < 3; i++) t = afterDoctorRound(t, { maxLevel: 3 });
+  assert.deepEqual(cleanDoctorState({ level: 3, rounds: -1, lock: 7, seen: { tummy: 2, nope: 3, tooth: 'x' } }), { level: 3, rounds: 0, lock: null, seen: { tummy: 2 } });
+  assert.equal(cleanDoctorState({ level: 9 }).level, 1);
+  let t = cleanDoctorState({});
+  for (let i = 0; i < 3; i++) t = afterDoctorRound(t);
   assert.deepEqual([t.level, t.rounds], [2, 0]);
-  assert.deepEqual(afterDoctorRound({ level: 2, rounds: 2, lock: 2, seen: {} }, { maxLevel: 3 }), { level: 2, rounds: 0, lock: 2, seen: {} });
-  assert.deepEqual(afterHealed(afterHealed(s, 'tummy'), 'tummy').seen, { tummy: 2 });
+  for (let i = 0; i < 6; i++) t = afterDoctorRound(t);
+  assert.deepEqual([t.level, t.rounds], [3, 3]);
+  assert.deepEqual(afterDoctorRound({ level: 2, rounds: 2, lock: 2, seen: {} }), { level: 2, rounds: 0, lock: 2, seen: {} });
+  assert.deepEqual(afterHealed(afterHealed(t, 'tummy'), 'tummy').seen, { tummy: 2 });
+});
+
+test('giọng bạn thú: mỗi bạn một cao độ khác nhau, khác giọng thường của Bông (1)', () => {
+  const pitches = PATIENTS.map((p) => p.pitch);
+  assert.ok(pitches.every((x) => typeof x === 'number' && x !== 1 && x >= 0.5 && x <= 2));
+  assert.equal(new Set(pitches).size, PATIENTS.length);
 });
