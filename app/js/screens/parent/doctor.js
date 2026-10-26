@@ -94,6 +94,8 @@ export function doctorAdminView(app) {
     for (const item of [...TOOLS, ...TREATS]) cands.set(item.id, await reusableForItem(app.db, item));
     body.append(
       notice('info', 'Trò chơi chạy ngay bằng emoji và bạn thú vẽ sẵn. Muốn đẹp hơn: dùng lại ảnh đã có (sticker, ảnh trò khác, ảnh bài học trùng tên), thay ảnh từng đồ, hoặc vẽ nhiều đồ một lần bằng ảnh lưới. App tự bỏ nền trắng. Bạn thú (gấu, mèo, cún, heo) không thay ảnh được, vì chỗ bé chạm (mắt, tai, tay…) gắn với hình vẽ sẵn.'),
+      // SPEC-doctor2 mục 3: ghi chú rửa tay chỉ ở Góc bố mẹ, không hiện trong màn chơi.
+      notice('info', '🧼 Mỗi lượt Bác sĩ nhí bắt đầu bằng rửa tay (xà phòng → nước → khăn, từ mức 2 thêm đeo găng) để bé quen thói quen rửa tay. Bố mẹ có thể nói lại "Wash your hands!" trước bữa ăn.'),
       reuseAllSection(cands),
       itemsSection('🩹 Đồ chữa', TREATS, cands),
       itemsSection('🩺 Dụng cụ khám (từ mức 2)', TOOLS, cands),

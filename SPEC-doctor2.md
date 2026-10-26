@@ -1,6 +1,6 @@
 # SPEC — 🩺 Bác sĩ nhí: nhiệm vụ mới
 
-> Phiên bản spec: **draft2** (sửa theo review, mục 12) · Ngày: 2026-10-26 · **Chưa làm** (làm sau Cứu hỏa FF2–FF3 **và sau D2 — bật mức 2–3 của trò Bác sĩ, xong ở 0.41.0**; chia 3 mốc DR1–DR3). Bổ sung cho `SPEC-doctor.md` (11 ca bệnh, 3 loại bước chạm / khám / chữa, luật nhầm, mức, ảnh — **giữ nguyên**).
+> Phiên bản spec: **draft2** (sửa theo review, mục 12) · Ngày: 2026-10-26 · **DR1 đã làm (0.42.0)**; DR2, DR3 chưa làm (D2 — bật mức 2–3 của trò Bác sĩ — xong ở 0.41.0). Bổ sung cho `SPEC-doctor.md` (11 ca bệnh, 3 loại bước chạm / khám / chữa, luật nhầm, mức, ảnh — **giữ nguyên**).
 > Cùng hướng với Cứu hỏa (`SPEC-fire2.md`): thêm việc **trước khi khám**, **ca kiểu mới** xen với ca bệnh, và việc nhỏ **sau khi chữa**.
 
 ## 1. Mục tiêu
@@ -108,7 +108,7 @@ Sau khi bạn thú khỏe lại (*"I feel better! Thank you, doctor!"*), trướ
 ## 9. Mốc làm
 | Mốc | Nội dung | Nghiệm thu |
 |---|---|---|
-| **DR1** | Rửa tay (+ găng từ mức 2) + Tặng sticker cho bạn thú | Unit + UI mục 10 (phần DR1) |
+| **DR1** ✅ (0.42.0) | Rửa tay (+ găng từ mức 2) + Tặng sticker cho bạn thú | Unit + UI mục 10 (phần DR1) |
 | DR2 | Ca Đo chiều cao (đếm, thẻ số, so cao / thấp) | Unit + UI mục 10 (phần DR2) |
 | DR3 | Ca Khám mắt (bảng hình từ bài đã học + bộ mặc định, kính) | Unit + UI mục 10 (phần DR3) |
 
@@ -162,3 +162,10 @@ Sau khi bạn thú khỏe lại (*"I feel better! Thank you, doctor!"*), trướ
 | Âm thanh chồng nhau | Một tiếng mỗi thao tác được nhận, nhỏ hơn giọng đọc (mục 7) |
 | Ghi chú rửa tay chỉ ở Góc bố mẹ | Có (mục 3) |
 | Bảng test DR-T01…T14 | Đưa vào mục 10 |
+
+## 13. Ghi chú khi làm DR1 (0.42.0)
+- Mã món rửa tay: `soap`, `rinse` (đọc là *water* — mã `water` đã dùng cho nước ấm của ca ho), `towel` (khăn vẽ SVG, không có emoji khăn), `gloves`.
+- Bồn rửa + hai bàn tay vẽ SVG; lớp bọt / nước chảy / ✨ khô / găng xanh bật theo món đã dùng (ra nền quay lại vẽ đúng trạng thái).
+- Ca khỏi bệnh: bản lưu chuyển sang bước `sticker` của **cùng ca** (trước đây nhảy sang ca sau); dán xong mới lưu là ca sau.
+- Sticker dán lên bụng bạn thú (lớp `dr-applied`, ở lại tới khi ra về).
+- Ghi chú rửa tay cho bố mẹ ở Góc bố mẹ → Ảnh Bác sĩ nhí.

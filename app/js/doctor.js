@@ -338,3 +338,82 @@ export function afterDoctorRound(state, { maxLevel = PLAYABLE_LEVEL } = {}) {
 
 /** Một ca vừa khỏi: `seen` của ca +1. */
 export const afterHealed = (state, caseId) => ({ ...state, seen: { ...state.seen, [caseId]: (state.seen[caseId] ?? 0) + 1 } });
+
+// ---------- SPEC-doctor2 DR1: rửa tay đầu lượt, tặng sticker cho bạn thú sau mỗi ca ----------
+const shuffleList = (list, rng) => {
+  const a = [...list];
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(rng() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+};
+
+/** Đồ rửa tay (mục 3): mỗi món một câu khi dùng. Găng chỉ từ mức 2. */
+export const WASH_ITEMS = [
+  { id: 'soap', emoji: '🧼', name: 'soap', vi: 'xà phòng', line: ['Rub, rub, rub!', 'Xoa, xoa, xoa!'] },
+  // Mã 'rinse' (không phải 'water'): 'water' là nước ấm của ca ho.
+  { id: 'rinse', emoji: '💧', name: 'water', vi: 'nước', line: ['Rinse!', 'Xả nước nào!'] },
+  { id: 'towel', emoji: '', name: 'towel', vi: 'khăn', line: ['Dry your hands!', 'Lau khô tay nào!'] },
+  { id: 'gloves', emoji: '🧤', name: 'gloves', vi: 'găng tay', line: ['Gloves on! Ready!', 'Đeo găng rồi! Sẵn sàng!'] },
+];
+export const WASH_BY = new Map(WASH_ITEMS.map((x) => [x.id, x]));
+/** Các món rửa tay của mức, theo thứ tự đúng (mức 1 dùng thứ tự nào cũng được). */
+export const washFor = (level) => (level >= 2 ? ['soap', 'rinse', 'towel', 'gloves'] : ['soap', 'rinse', 'towel']);
+/** Món cần dùng tiếp theo (mức 2–3); mức 1 → null (món nào cũng được). */
+export const nextWash = (level, washed) => (level >= 2 ? washFor(level).find((id) => !washed.includes(id)) ?? null : null);
+export const WASH_START_LINE = ["Doctors wash their hands! Let's wash!", 'Bác sĩ rửa tay trước nhé! Mình rửa tay nào!'];
+export const WASH_DONE_LINE = ["Clean hands! Let's help our friends!", 'Tay sạch rồi! Mình giúp các bạn nào!'];
+/** Mức 2–3 dùng sai thứ tự: "Soap first!" */
+export const washFirstLine = (want) => [`${capital(WASH_BY.get(want).name)} first!`, `${capital(WASH_BY.get(want).vi)} trước nhé!`];
+
+/** Sticker tặng bạn thú (mục 4): hình × màu. */
+export const STICKER_SHAPES = [
+  { id: 'star', vi: 'ngôi sao' }, { id: 'heart', vi: 'trái tim' }, { id: 'circle', vi: 'hình tròn' }, { id: 'square', vi: 'hình vuông' },
+];
+export const STICKER_COLORS = [
+  { id: 'red', vi: 'đỏ', hex: '#fa5252' }, { id: 'blue', vi: 'xanh dương', hex: '#339af0' },
+  { id: 'yellow', vi: 'vàng', hex: '#fcc419' }, { id: 'green', vi: 'xanh lá', hex: '#51cf66' },
+];
+const SHAPE_VI = new Map(STICKER_SHAPES.map((x) => [x.id, x.vi]));
+const COLOR_VI = new Map(STICKER_COLORS.map((x) => [x.id, x.vi]));
+export const stickerId = (st) => `st-${st.color}-${st.shape}`;
+/** Sticker có khớp yêu cầu không (một hàm cho mọi mức): `want` rỗng = cái nào cũng đúng. */
+export const matchesSticker = (st, want) => !want || ((!want.color || st.color === want.color) && (!want.shape || st.shape === want.shape));
+
+/**
+ * Bộ sticker + yêu cầu của một ca (sinh sẵn lúc lập kế hoạch lượt):
+ * - mức 1: 3 sticker khác nhau, không yêu cầu;
+ * - mức 2: 3 sticker khác màu, yêu cầu theo màu;
+ * - mức 3: 4 sticker, yêu cầu màu + hình; đúng một cái khớp cả hai, có một cái cùng màu khác hình và một cái cùng hình khác màu.
+ */
+export function planSticker(level, { rng = Math.random } = {}) {
+  const colors = shuffleList(STICKER_COLORS.map((x) => x.id), rng);
+  const shapes = shuffleList(STICKER_SHAPES.map((x) => x.id), rng);
+  if (level >= 3) {
+    const [c, c2, c3] = colors;
+    const [sh, s2, s3] = shapes;
+    const set = [{ color: c, shape: sh }, { color: c, shape: s2 }, { color: c2, shape: sh }, { color: c3, shape: s3 }];
+    return { set: shuffleList(set, rng), want: { color: c, shape: sh } };
+  }
+  if (level === 2) {
+    const set = colors.slice(0, 3).map((color) => ({ color, shape: shapes[Math.floor(rng() * shapes.length)] }));
+    return { set, want: { color: set[Math.floor(rng() * set.length)].color } };
+  }
+  return { set: colors.slice(0, 3).map((color, i) => ({ color, shape: shapes[i] })), want: null };
+}
+
+const stickerName = (st) => `${st.color} ${st.shape}`;
+const stickerNameVi = (st) => `${SHAPE_VI.get(st.shape)} ${COLOR_VI.get(st.color)}`;
+export const STICKER_ASK_LINE = ['Can I have a sticker, please?', 'Cho tớ một nhãn dán được không?'];
+/** Yêu cầu (mức 2: "A blue one, please!"; mức 3: "A yellow star, please!"). */
+export const stickerWantLine = (want) => (want.shape
+  ? [`A ${want.color} ${want.shape}, please!`, `Cho tớ ${SHAPE_VI.get(want.shape)} ${COLOR_VI.get(want.color)} nhé!`]
+  : [`A ${want.color} one, please!`, `Cho tớ cái màu ${COLOR_VI.get(want.color)} nhé!`]);
+/** Đúng — nói theo chính sticker bé chọn: "A blue star! I love it!" */
+export const stickerLoveLine = (st) => [`A ${stickerName(st)}! I love it!`, `${capital(stickerNameVi(st))}! Tớ thích lắm!`];
+/** Nhầm — tên sticker vừa chạm + nhắc yêu cầu: "That's a green heart. A blue one, please!" */
+export const stickerWrongLine = (st, want) => {
+  const [en, vi] = stickerWantLine(want);
+  return [`That's a ${stickerName(st)}. ${en}`, `Đó là ${stickerNameVi(st)}. ${vi}`];
+};

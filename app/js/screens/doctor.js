@@ -1,6 +1,6 @@
 // Trò Bác sĩ nhí (SPEC-doctor.md): bạn thú vào phòng khám kêu đau, Bông y tá hướng dẫn. Mỗi ca làm lần lượt các bước
 // của ca (chạm chỗ đau → khám → chữa, theo mức) rồi khỏe lại, cảm ơn, ra về. 3 ca → Hoan hô + sticker.
-// Trạng thái (mục 8): enter → touch / check / treat ⇄ busy → healed → leave → ca sau | done.
+// Trạng thái (mục 8): wash (đầu lượt, SPEC-doctor2) → enter → touch / check / treat ⇄ busy → healed → sticker → leave → ca sau | done.
 // Nhận một thao tác đúng = chuyển bước NGAY (ghi tiến độ, lưu để chơi tiếp); hoạt ảnh + câu nói chỉ để trình diễn.
 // Phần chung với các nghề khác (nói, nhắc, khay, đồ bay, lượt, ra nền) ở jobs/kit.js (SPEC-jobs mục 2.3).
 
@@ -16,6 +16,8 @@ import {
   CASE_BY_ID, PATIENT_BY_ID, ITEM_BY_ID, REGIONS, regionAt, regionPoint, stepsFor, trayFor, pickCases,
   cleanDoctorState, afterDoctorRound, afterHealed, stepPrompt, wrongItemLine, doneLine, betterLine,
   DOCTOR_ITEM_IMAGES, DOCTOR_BG_IMAGES, BG_KEY, COME_IN_LINE, HELLO_DOCTOR_LINE, GOOD_JOB_LINE, BYE_LINE, yesTouchLine, wrongTouchLine,
+  WASH_BY, washFor, nextWash, WASH_START_LINE, WASH_DONE_LINE, washFirstLine,
+  STICKER_COLORS, planSticker, stickerId, matchesSticker, STICKER_ASK_LINE, stickerWantLine, stickerLoveLine, stickerWrongLine,
 } from '../doctor.js';
 
 const JOB = 'doctor';
@@ -24,6 +26,42 @@ const SAY_AAH_MS = 2000; // "Open wide! Say aah!": chờ bé nói theo
 const ENTER_MS = 650;
 const LEAVE_MS = 600;
 const STEP_STATES = ['touch', 'check', 'treat'];
+/** Bước chờ bé thao tác (nhắc 10 giây, khay sáng): bước khám chữa + rửa tay + tặng sticker (SPEC-doctor2). */
+const ACTIVE = [...STEP_STATES, 'wash', 'sticker'];
+const WASH_MS = 700; // hoạt ảnh rửa tay, không chặn thao tác tiếp
+const INK = '#3d2c5e';
+const COLOR_HEX = new Map(STICKER_COLORS.map((c) => [c.id, c.hex]));
+
+/** Hình sticker (SVG) theo hình + màu; `size` = cỡ cố định (dán lên bạn thú), 0 = co theo khung (khay). */
+function stickerShape(st, size = 0) {
+  const fill = COLOR_HEX.get(st.color);
+  const body = {
+    star: `<path d="M20 3 L25 15 L38 15 L27.5 23 L31.5 36 L20 28 L8.5 36 L12.5 23 L2 15 L15 15 Z" fill="${fill}" stroke="${INK}" stroke-width="2.5" stroke-linejoin="round"/>`,
+    heart: `<path d="M20 35 C8 26 3 19 3 12.5 C3 7 7.5 3.5 12 3.5 C15.5 3.5 18.5 5.5 20 9 C21.5 5.5 24.5 3.5 28 3.5 C32.5 3.5 37 7 37 12.5 C37 19 32 26 20 35 Z" fill="${fill}" stroke="${INK}" stroke-width="2.5"/>`,
+    circle: `<circle cx="20" cy="20" r="16" fill="${fill}" stroke="${INK}" stroke-width="2.5"/>`,
+    square: `<rect x="5" y="5" width="30" height="30" rx="5" fill="${fill}" stroke="${INK}" stroke-width="2.5"/>`,
+  }[st.shape];
+  return `<svg viewBox="0 0 40 40"${size ? ` width="${size}" height="${size}"` : ''}>${body}</svg>`;
+}
+/** Khăn (không có emoji khăn): khăn gấp sọc. */
+const TOWEL_SVG = `<svg viewBox="0 0 40 40"><rect x="6" y="8" width="28" height="26" rx="4" fill="#a5d8ff" stroke="${INK}" stroke-width="2.5"/><path d="M6 15 H34 M6 27 H34" stroke="#fff" stroke-width="3"/></svg>`;
+/** Bồn rửa tay + hai bàn tay: lớp bọt / nước / khô / găng bật theo món đã dùng. */
+const HAND = `<rect x="0" y="30" width="44" height="52" rx="18"/><rect x="2" y="6" width="9" height="34" rx="4.5"/><rect x="12.5" y="0" width="9" height="38" rx="4.5"/><rect x="23" y="2" width="9" height="36" rx="4.5"/><rect x="33.5" y="10" width="9" height="30" rx="4.5"/><ellipse cx="48" cy="54" rx="8" ry="14" transform="rotate(-25 48 54)"/>`;
+const WASH_SVG = `<svg class="dr-wash-svg" viewBox="0 0 300 230" aria-hidden="true">
+  <rect x="140" y="6" width="14" height="30" rx="4" fill="#adb5bd" stroke="${INK}" stroke-width="2.5"/>
+  <rect x="140" y="30" width="38" height="12" rx="5" fill="#adb5bd" stroke="${INK}" stroke-width="2.5"/>
+  <rect class="dr-stream" x="166" y="42" width="10" height="140" rx="5" fill="#74c0fc"/>
+  <g class="dr-hands">
+    <g class="dr-skin" transform="translate(96 84)" stroke="${INK}" stroke-width="2.5">${HAND}</g>
+    <g class="dr-skin" transform="translate(250 84) scale(-1 1)" stroke="${INK}" stroke-width="2.5">${HAND}</g>
+  </g>
+  <g class="dr-bubbles" fill="#fff" stroke="#74c0fc" stroke-width="2">
+    <circle cx="108" cy="110" r="9"/><circle cx="126" cy="140" r="7"/><circle cx="150" cy="124" r="11"/><circle cx="196" cy="108" r="8"/>
+    <circle cx="214" cy="142" r="10"/><circle cx="172" cy="150" r="6"/><circle cx="236" cy="118" r="6"/>
+  </g>
+  <text class="dr-dry" x="150" y="76" text-anchor="middle" font-size="30">✨</text>
+  <path d="M36 178 H264 Q258 226 150 226 Q42 226 36 178 Z" fill="#e9ecef" stroke="${INK}" stroke-width="3"/>
+</svg>`;
 /** Đồ bay tới vùng nào; null = chỗ đau của ca (vùng của bước chạm). */
 const ITEM_TARGET = {
   bandage: null, medicine: 'mouth', tissue: 'nose', toothbrush: 'mouth', drops: 'eye', icepack: 'head', water: 'mouth',
@@ -73,6 +111,8 @@ export function doctorScreen(app, params = {}) {
   let images = null;
   // Tiến độ đã ghi trong lượt này ('body:ca', 'seen:ca'): ra nền / 🧹 khám lại không ghi lần hai.
   let recorded = new Set();
+  let washed = []; // món rửa tay đã dùng (đầu lượt)
+  let washDone = false;
 
   const curCase = () => CASE_BY_ID.get(cases[caseIdx]?.id);
   const curPatient = () => PATIENT_BY_ID.get(cases[caseIdx]?.patient);
@@ -81,6 +121,13 @@ export function doctorScreen(app, params = {}) {
   const P = (line) => ({ who: 'patient', line });
   const B = (line) => ({ who: 'bong', line });
   const patientEl = h('div.dr-patient');
+  const washEl = h('div.dr-wash', { hidden: true, html: WASH_SVG });
+  const sticker = () => {
+    const c = cases[caseIdx];
+    if (c && !c.sticker) c.sticker = planSticker(level); // bản lưu cũ chưa có bộ sticker
+    return c?.sticker;
+  };
+  const stickerById = (id) => sticker()?.set.find((st) => stickerId(st) === id);
 
   const kit = jobScreen(app, {
     job: JOB, className: 'dr-play', stageClass: 'dr-stage', title: '🩺 Doctor', helperLabel: 'Bông y tá', cap: 'nurse',
@@ -91,11 +138,16 @@ export function doctorScreen(app, params = {}) {
     onReset: () => restart(),
     onHelper: () => repeatPrompt(),
     nudge: {
-      ready: () => STEP_STATES.includes(state) && nudges < MAX_NUDGES,
+      ready: () => ACTIVE.includes(state) && nudges < MAX_NUDGES,
       key: () => stepKey(),
       fire: (rearm) => {
         nudges += 1;
         snap();
+        if (state === 'wash' || state === 'sticker') {
+          restartAnim(kit.trayItem(wantedItem()), 'nudge');
+          kit.talk(promptLines()).then(rearm);
+          return;
+        }
         const step = curStep();
         if (step.type === 'touch') setGlow(step.target);
         else restartAnim(kit.trayItem(step.item), 'nudge');
@@ -104,19 +156,45 @@ export function doctorScreen(app, params = {}) {
       },
     },
     tray: {
-      face: (id) => itemFace(ITEM_BY_ID.get(id), images),
-      label: (id) => ITEM_BY_ID.get(id).name,
-      canGive: () => STEP_STATES.includes(state),
-      dropOk: (x, y) => Boolean(regionAtScreen(x, y)),
-      give: (id, from) => give(id, from),
+      face: (id) => trayFace(id),
+      label: (id) => (WASH_BY.has(id) ? WASH_BY.get(id).name : stickerById(id) ? `${stickerById(id).color} ${stickerById(id).shape}` : ITEM_BY_ID.get(id).name),
+      canGive: () => ACTIVE.includes(state),
+      // Rửa tay / tặng sticker: thả ở đâu cũng được (đồ tự tới tay / tự dán lên bạn thú).
+      dropOk: (x, y) => state === 'wash' || state === 'sticker' || Boolean(regionAtScreen(x, y)),
+      give: (id, from) => (state === 'wash' ? useWash(id, from) : state === 'sticker' ? giveSticker(id, from) : give(id, from)),
     },
   });
   const { stage, count, talk } = kit;
   count.classList.add('dr-count');
   kit.sayBox.classList.add('dr-say');
   kit.trayEl.classList.add('dr-tray');
-  stage.append(h('div.dr-bed', { 'aria-hidden': 'true' }), patientEl);
-  const stepKey = () => `${kit.epoch}:${caseIdx}:${stepIdx}`;
+  const bed = h('div.dr-bed', { 'aria-hidden': 'true' });
+  stage.append(bed, patientEl, washEl);
+  const stepKey = () => `${kit.epoch}:${caseIdx}:${stepIdx}:${washed.length}:${state}`;
+  /** Hình trong khay: đồ rửa tay (emoji / khăn vẽ), sticker (SVG), đồ khám chữa (ảnh bố mẹ thêm hoặc emoji). */
+  function trayFace(id) {
+    if (WASH_BY.has(id)) {
+      return id === 'towel' ? h('span.dr-item-face.dr-svg-face', { 'aria-hidden': 'true', html: TOWEL_SVG }) : h('span.dr-item-face', { text: WASH_BY.get(id).emoji, 'aria-hidden': 'true' });
+    }
+    const st = stickerById(id);
+    if (st) return h('span.dr-item-face.dr-svg-face', { 'aria-hidden': 'true', html: stickerShape(st) });
+    return itemFace(ITEM_BY_ID.get(id), images);
+  }
+  /** Món cần đưa (để nhắc / nhún): món rửa tay tiếp theo, sticker khớp yêu cầu. */
+  function wantedItem() {
+    if (state === 'wash') return nextWash(level, washed) ?? washFor(level).find((id) => !washed.includes(id));
+    const s = sticker();
+    return stickerId(s.set.find((st) => matchesSticker(st, s.want)));
+  }
+  /** Câu của bước rửa tay / sticker (nhắc, chạm Bông). */
+  function promptLines() {
+    if (state === 'wash') {
+      const want = nextWash(level, washed);
+      return want ? [B(washFirstLine(want))] : [B(WASH_START_LINE)];
+    }
+    const s = sticker();
+    return [P(STICKER_ASK_LINE), ...(s.want ? [P(stickerWantLine(s.want))] : [])];
+  }
 
   // ---------- Vẽ ----------
   const group = (cls) => patientEl.querySelector(`.${cls}`);
@@ -140,7 +218,7 @@ export function doctorScreen(app, params = {}) {
   const renderTray = () => kit.renderTray(tray);
   function setState(s) {
     state = s;
-    kit.setState(s, STEP_STATES.includes(s));
+    kit.setState(s, ACTIVE.includes(s));
   }
 
   // ---------- Tọa độ: màn hình ⇄ viewBox của bạn thú ----------
@@ -163,7 +241,7 @@ export function doctorScreen(app, params = {}) {
   const targetOf = (id) => ITEM_TARGET[id] ?? curCase().steps.find((s) => s.type === 'touch')?.target ?? 'tummy';
 
   // ---------- Lưu để chơi tiếp, tiến độ ----------
-  const snap = () => saveSnap(JOB, { level, cases, caseIdx, stepIdx, wrongs, nudges, tray, recorded: [...recorded] });
+  const snap = () => saveSnap(JOB, { level, cases, caseIdx, stepIdx, wrongs, nudges, tray, recorded: [...recorded], washed: [...washed], washDone, phase: state });
   const saveProgress = () => app.setSetting('doctorGame', progress).catch(() => {});
 
   /**
@@ -181,7 +259,8 @@ export function doctorScreen(app, params = {}) {
         progress = afterHealed(progress, curCase().id);
         saveProgress();
       }
-      saveSnap(JOB, { level, cases, caseIdx: caseIdx + 1, stepIdx: 0, wrongs: 0, nudges: 0, tray: [], recorded: [...recorded] });
+      // Khỏi rồi: lưu ở bước tặng sticker — ra nền rồi quay lại thì bạn thú vẫn xin sticker (SPEC-doctor2 mục 4).
+      saveSnap(JOB, { level, cases, caseIdx, stepIdx, wrongs: 0, nudges: 0, tray: [], recorded: [...recorded], washed: [...washed], washDone, phase: 'sticker' });
     } else snap();
   }
 
@@ -192,9 +271,20 @@ export function doctorScreen(app, params = {}) {
     wrongs = resume?.wrongs ?? 0;
     nudges = resume?.nudges ?? 0;
     tray = [];
+    washEl.hidden = true;
+    bed.hidden = false;
+    patientEl.hidden = false;
     setState('enter');
     renderPatient();
     renderTray();
+    if (resume?.phase === 'sticker') {
+      // Ra nền sau khi khỏi, chưa dán sticker: bạn thú khỏe (mặt vui), xin sticker lại.
+      setMood('happy');
+      const sign = group('dr-sign');
+      if (sign) sign.innerHTML = '';
+      startSticker();
+      return;
+    }
     snap();
     if (resume) {
       beginStep(resume);
@@ -366,8 +456,65 @@ export function doctorScreen(app, params = {}) {
     if (sign) sign.innerHTML = '';
     play('sparkle');
     restartAnim(patientEl, 'hop');
-    await talk([P(betterLine(c)), B(GOOD_JOB_LINE), P(BYE_LINE)]);
+    await talk([P(betterLine(c)), B(GOOD_JOB_LINE)]);
     if (e !== kit.epoch) return;
+    startSticker();
+  }
+
+  // ---------- Tặng sticker cho bạn thú (SPEC-doctor2 mục 4) ----------
+  async function startSticker() {
+    const e = kit.epoch;
+    const s = sticker();
+    tray = s.set.map(stickerId);
+    renderTray();
+    // Sticker cần chọn (cho test): '' = cái nào cũng được, 'blue-' = theo màu, 'blue-star' = màu + hình.
+    patientEl.dataset.want = s.want ? `${s.want.color}-${s.want.shape ?? ''}` : '';
+    setState('sticker');
+    snap();
+    await talk(promptLines());
+    if (e === kit.epoch && state === 'sticker') kit.armNudge();
+  }
+  async function giveSticker(id, from) {
+    if (state !== 'sticker') return;
+    const e = kit.epoch;
+    const s = sticker();
+    const st = stickerById(id);
+    if (!st) return;
+    if (!matchesSticker(st, s.want)) {
+      if (!countWrong(`s:${id}`)) return;
+      restartAnim(kit.trayItem(id), 'shake');
+      if (wrongs >= 2) restartAnim(kit.trayItem(wantedItem()), 'nudge');
+      const k = stepKey();
+      await talk([P(stickerWrongLine(st, s.want))]);
+      if (k === stepKey()) kit.armNudge();
+      return;
+    }
+    // Đúng: nhận NGAY (một lần) — ghi tiến độ (đúng ngay lần đầu, mức 2–3), lưu để chơi tiếp là ca sau.
+    setState('busy');
+    kit.clearNudge();
+    if (s.want && wrongs === 0 && !recorded.has(`sticker:${caseIdx}`)) {
+      recorded.add(`sticker:${caseIdx}`);
+      markPracticed(app, st.color, '');
+      if (s.want.shape) markPracticed(app, st.shape, '');
+    }
+    wrongs = 0;
+    nudges = 0;
+    saveSnap(JOB, { level, cases, caseIdx: caseIdx + 1, stepIdx: 0, wrongs: 0, nudges: 0, tray: [], recorded: [...recorded], washed: [...washed], washDone, phase: 'start' });
+    tray = [];
+    const spot = regionPoint('tummy', 0);
+    const ghost = await kit.flyTo(trayFace(id), from, toScreen(spot.x, spot.y));
+    kit.renderTray([]);
+    if (e !== kit.epoch) return;
+    play('pop');
+    kit.removeGhost(ghost);
+    group('dr-applied')?.insertAdjacentHTML('beforeend', `<g class="dr-applied-item" transform="translate(${spot.x - 18} ${spot.y - 18})">${stickerShape(st, 36).replace('<svg ', '<svg x="0" y="0" ')}</g>`);
+    await talk([P(stickerLoveLine(st)), P(BYE_LINE)]);
+    if (e !== kit.epoch) return;
+    leave();
+  }
+
+  async function leave() {
+    const e = kit.epoch;
     setState('leave');
     restartAnim(patientEl, 'leave');
     await wait(LEAVE_MS);
@@ -393,11 +540,88 @@ export function doctorScreen(app, params = {}) {
     if (state === 'done' || !cases.length) return;
     kit.cancelAll();
     caseIdx = 0;
+    washed = [];
+    washDone = false;
+    startWash();
+  }
+
+  // ---------- Rửa tay đầu lượt (SPEC-doctor2 mục 3) ----------
+  function renderWash() {
+    const has = (id) => washed.includes(id);
+    washEl.classList.toggle('soap', has('soap') && !has('rinse'));
+    washEl.classList.toggle('water', has('rinse') && !has('towel'));
+    washEl.classList.toggle('dry', has('towel'));
+    washEl.classList.toggle('gloves', has('gloves'));
+  }
+  async function startWash() {
+    const e = kit.epoch;
+    bed.hidden = true;
+    patientEl.hidden = true;
+    washEl.hidden = false;
+    count.textContent = `1/${cases.length}`;
+    renderWash();
+    tray = washFor(level).filter((id) => !washed.includes(id));
+    renderTray();
+    // Nhận đồ ngay từ lúc Bông nói.
+    setState('wash');
+    snap();
+    await talk([B(WASH_START_LINE)]);
+    if (e === kit.epoch && state === 'wash') kit.armNudge();
+  }
+  async function useWash(id, from) {
+    if (state !== 'wash' || washed.includes(id)) return;
+    const e = kit.epoch;
+    const want = nextWash(level, washed);
+    if (want && id !== want) {
+      if (!countWrong(`w:${id}`)) return;
+      restartAnim(kit.trayItem(id), 'shake');
+      if (wrongs >= 2) restartAnim(kit.trayItem(want), 'nudge');
+      const k = stepKey();
+      await talk([B(washFirstLine(want))]);
+      if (k === stepKey()) kit.armNudge();
+      return;
+    }
+    // Dùng món: nhận NGAY, món rời khay (chạm lại không tính hai lần).
+    washed.push(id);
+    wrongs = 0;
+    nudges = 0;
+    const all = washFor(level).every((x) => washed.includes(x));
+    if (all) {
+      washDone = true;
+      setState('busy');
+    }
+    snap();
+    kit.clearNudge();
+    tray = washFor(level).filter((x) => !washed.includes(x));
+    renderTray();
+    const ghost = await kit.flyTo(trayFace(id), from, center(washEl.getBoundingClientRect()));
+    kit.removeGhost(ghost);
+    if (e !== kit.epoch) return;
+    play(id === 'rinse' ? 'whoosh' : 'pop');
+    renderWash();
+    restartAnim(washEl, 'rub');
+    if (!all) {
+      const k = stepKey();
+      await talk([B(WASH_BY.get(id).line)]);
+      if (k === stepKey()) kit.armNudge();
+      return;
+    }
+    await Promise.all([talk([B(WASH_BY.get(id).line)]), wait(WASH_MS)]);
+    if (e !== kit.epoch) return;
+    play('sparkle');
+    await talk([B(WASH_DONE_LINE)]);
+    if (e !== kit.epoch) return;
+    caseIdx = 0;
     startCase();
   }
 
   /** Chạm Bông y tá: nói lại câu của bước hiện tại. */
   function repeatPrompt() {
+    if (state === 'wash' || state === 'sticker') {
+      const k = stepKey();
+      talk(promptLines()).then(() => k === stepKey() && kit.armNudge());
+      return;
+    }
     if (!STEP_STATES.includes(state)) return;
     const { who, line } = stepPrompt(curStep(), level);
     const k = stepKey();
@@ -431,16 +655,20 @@ export function doctorScreen(app, params = {}) {
       cases = s.cases;
       caseIdx = s.caseIdx;
       recorded = new Set(s.recorded ?? []);
+      washed = s.washed ?? [];
+      washDone = s.washDone ?? true;
+      if (!washDone) startWash();
       // Ra nền sau khi ca cuối đã khỏi: hoan hô + sticker luôn.
-      if (caseIdx >= cases.length) {
+      else if (caseIdx >= cases.length) {
         caseIdx = cases.length - 1;
         renderPatient();
         finishRound();
       } else startCase(s);
     } else {
-      cases = pickCases(level, { seen: progress.seen });
+      // Bộ sticker của từng ca sinh sẵn cùng kế hoạch lượt (ra nền không bốc lại).
+      cases = pickCases(level, { seen: progress.seen }).map((c) => ({ ...c, sticker: planSticker(level) }));
       caseIdx = 0;
-      startCase();
+      startWash();
     }
   });
 

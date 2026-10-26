@@ -2451,6 +2451,18 @@ details > summary { cursor: pointer; font-weight: 800; padding: 6px 0; }
 .dr-zzz { animation: dr-zzz 2s ease-out forwards; }
 @keyframes dr-zzz { from { transform: translate(-20%, -60%) scale(0.6); opacity: 0; } 30% { opacity: 1; } to { transform: translate(20%, -180%) scale(1.3); opacity: 0; } }
 @media (prefers-reduced-motion: reduce) { .dr-bug, .dr-zzz, .dr-fly.use-thermometer::after { animation: none; } .dr-fly.use-thermometer::after { height: 64%; } }
+/* SPEC-doctor2 DR1: rửa tay đầu lượt (bồn + hai bàn tay; lớp bọt / nước / khô / găng), sticker tặng bạn thú. */
+.dr-wash { position: absolute; inset: 4% 8%; z-index: 2; display: grid; place-items: center; }
+.dr-wash[hidden], .dr-patient[hidden], .dr-bed[hidden] { display: none; }
+.dr-wash-svg { width: 100%; height: 100%; display: block; }
+.dr-skin { fill: #ffd8b1; transition: fill 0.3s; }
+.dr-wash.gloves .dr-skin { fill: #74c0fc; }
+.dr-stream, .dr-bubbles, .dr-dry { opacity: 0; transition: opacity 0.3s; }
+.dr-wash.soap .dr-bubbles, .dr-wash.water .dr-stream, .dr-wash.dry .dr-dry { opacity: 1; }
+.dr-wash.rub .dr-hands { animation: dr-rub 0.25s ease-in-out 3; }
+@keyframes dr-rub { 50% { transform: translateX(6px); } }
+.dr-svg-face svg { width: 100%; height: 100%; display: block; }
+@media (prefers-reduced-motion: reduce) { .dr-wash.rub .dr-hands { animation: none; } }
 @keyframes dr-brush { 50% { transform: translateX(22px); } }
 @keyframes dr-wiggle { 25% { transform: rotate(-14deg); } 75% { transform: rotate(14deg); } }
 @keyframes dr-gulp { 60% { transform: scale(1) rotate(-30deg); opacity: 1; } 100% { transform: scale(0.3) rotate(-30deg); opacity: 0; } }

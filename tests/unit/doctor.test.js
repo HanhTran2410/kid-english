@@ -5,6 +5,7 @@ import {
   CASES, CASE_BY_ID, TOOLS, TREATS, ITEM_BY_ID, REGIONS, SPOTS, PATIENTS, TRAY_SIZE, PLAYABLE_LEVEL,
   regionAt, stepsFor, casesFor, trayFor, pickCases, stepPrompt, wrongItemLine, doneLine, yesTouchLine, wrongTouchLine, askLine,
   cleanDoctorState, afterDoctorRound, afterHealed,
+  washFor, nextWash, washFirstLine, WASH_BY, planSticker, matchesSticker, stickerId, stickerWantLine, stickerLoveLine, stickerWrongLine,
 } from '../../app/js/doctor.js';
 
 /** rng cố định để test lặp lại được. */
@@ -165,4 +166,38 @@ test('giọng bạn thú: mỗi bạn một cao độ khác nhau, khác giọng 
   const pitches = PATIENTS.map((p) => p.pitch);
   assert.ok(pitches.every((x) => typeof x === 'number' && x !== 1 && x >= 0.5 && x <= 2));
   assert.equal(new Set(pitches).size, PATIENTS.length);
+});
+
+test('SPEC-doctor2 DR1 — rửa tay: mức 1 ba món thứ tự tùy ý (không găng); mức 2–3 có găng, món tiếp theo theo thứ tự; mã không trùng đồ chữa', () => {
+  assert.deepEqual(washFor(1), ['soap', 'rinse', 'towel']);
+  assert.deepEqual(washFor(2), ['soap', 'rinse', 'towel', 'gloves']);
+  assert.equal(nextWash(1, []), null);
+  assert.equal(nextWash(2, ['soap']), 'rinse');
+  assert.equal(nextWash(3, ['soap', 'rinse', 'towel', 'gloves']), null);
+  assert.deepEqual(washFirstLine('rinse'), ['Water first!', 'Nước trước nhé!']);
+  for (const id of washFor(3)) assert.ok(!ITEM_BY_ID.has(id), id);
+  assert.ok(WASH_BY.get('gloves').line[0]);
+});
+
+test('SPEC-doctor2 DR1 — sticker: mức 1 ba cái khác nhau, cái nào cũng đúng; mức 2 ba màu khác, đúng một cái khớp màu; mức 3 đúng một khớp màu + hình, có cái trùng màu và cái trùng hình', () => {
+  const rng = seeded(31);
+  for (let i = 0; i < 200; i++) {
+    const a = planSticker(1, { rng });
+    assert.equal(a.want, null);
+    assert.equal(new Set(a.set.map(stickerId)).size, 3);
+    assert.ok(a.set.every((st) => matchesSticker(st, a.want)));
+    const b = planSticker(2, { rng });
+    assert.equal(new Set(b.set.map((st) => st.color)).size, 3);
+    assert.equal(b.set.filter((st) => matchesSticker(st, b.want)).length, 1);
+    const c = planSticker(3, { rng });
+    assert.equal(c.set.length, 4);
+    assert.equal(new Set(c.set.map(stickerId)).size, 4);
+    assert.equal(c.set.filter((st) => matchesSticker(st, c.want)).length, 1);
+    assert.ok(c.set.some((st) => st.color === c.want.color && st.shape !== c.want.shape));
+    assert.ok(c.set.some((st) => st.shape === c.want.shape && st.color !== c.want.color));
+  }
+  assert.equal(stickerWantLine({ color: 'blue' })[0], 'A blue one, please!');
+  assert.equal(stickerWantLine({ color: 'yellow', shape: 'star' })[0], 'A yellow star, please!');
+  assert.equal(stickerLoveLine({ color: 'red', shape: 'heart' })[0], 'A red heart! I love it!');
+  assert.equal(stickerWrongLine({ color: 'green', shape: 'heart' }, { color: 'blue' })[0], "That's a green heart. A blue one, please!");
 });

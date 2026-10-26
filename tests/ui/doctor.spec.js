@@ -18,12 +18,30 @@ async function currentCase(page) {
 }
 const spot = (page, region) => page.locator(`.dr-spot[data-region="${region}"]`).first();
 
+/** Rửa tay đầu lượt (SPEC-doctor2 DR1): dùng lần lượt các món có trong khay. */
+async function washUp(page) {
+  await expect(play(page)).toHaveAttribute('data-state', 'wash', { timeout: 15000 });
+  for (const id of ['soap', 'rinse', 'towel', 'gloves']) {
+    const item = page.locator(`.dr-item[data-item="${id}"]`);
+    if (!(await item.count())) continue;
+    await item.click();
+    await expect(item).toHaveCount(0, { timeout: 15000 });
+  }
+}
+/** Tặng sticker cho bạn thú vừa khỏi (đúng yêu cầu nếu có). */
+async function giveSticker(page) {
+  await expect(play(page)).toHaveAttribute('data-state', 'sticker', { timeout: 15000 });
+  const want = await page.locator('.dr-patient').getAttribute('data-want');
+  await page.locator(want ? `.dr-item[data-item^="st-${want}"]` : '.dr-item[data-item^="st-"]').first().click();
+}
+
 async function openDoctor(page) {
   await fakeSpeech(page);
   await startApp(page);
   await page.getByRole('button', { name: 'Trò chơi' }).click();
   await page.getByRole('button', { name: 'Đóng vai' }).click();
   await page.getByRole('button', { name: 'Bác sĩ nhí' }).click();
+  await washUp(page);
   await expect(play(page)).toHaveAttribute('data-state', 'touch', { timeout: 15000 });
 }
 
@@ -34,6 +52,7 @@ async function healCurrent(page) {
   await spot(page, c.target).click();
   await expect(play(page)).toHaveAttribute('data-state', 'treat', { timeout: 15000 });
   await page.locator(`.dr-item[data-item="${c.item}"]`).click();
+  await giveSticker(page);
   return c;
 }
 
@@ -65,6 +84,7 @@ test('mức 1: vào phòng → chạm nhầm chỗ → câu nhầm; chạm đún
   await expect(page.locator(`.dr-item[data-item="${c.item}"].hint`)).toHaveCount(1);
   await page.locator(`.dr-item[data-item="${c.item}"]`).click();
   await expect.poll(async () => (await spoken(page)).includes('I feel better! Thank you, doctor!'), { timeout: 15000 }).toBe(true);
+  await giveSticker(page);
   await expect(page.locator('.dr-count')).toHaveText('2/3', { timeout: 15000 });
   await expect(play(page)).toHaveAttribute('data-state', 'touch', { timeout: 15000 });
 });
@@ -154,8 +174,11 @@ test('ra nền ngay sau khi chạm đúng → quay lại đúng ca, ở bước 
   expect(count).toBe({ hand: 1, foot: 1, nose: 1, mouth: 1 }[c.target] ?? 0);
   // Khỏi ca 1, sang ca 2 rồi 🧹: về ca 1, cùng bạn thú, cùng bệnh; seen / rounds không tính lại lượt.
   await page.locator(`.dr-item[data-item="${c.item}"]`).click();
+  await giveSticker(page);
   await expect(page.locator('.dr-count')).toHaveText('2/3', { timeout: 15000 });
   await page.getByRole('button', { name: 'Khám lại' }).click();
+  // 🧹 khám lại: làm lại từ rửa tay (SPEC-doctor2 mục 8).
+  await washUp(page);
   await expect(page.locator('.dr-count')).toHaveText('1/3');
   await expect(page.locator('.dr-patient')).toHaveAttribute('data-case', c.id);
   await expect(play(page)).toHaveAttribute('data-state', 'touch', { timeout: 15000 });
@@ -178,6 +201,7 @@ test('giọng đọc lỗi: phụ đề vẫn hiện, chơi hết lượt đư�
   await page.getByRole('button', { name: 'Đóng vai' }).click();
   await page.getByRole('button', { name: 'Bác sĩ nhí' }).click();
   await expect(page.locator('.dr-say .caption-en')).toBeVisible({ timeout: 15000 });
+  await washUp(page);
   for (let i = 0; i < 3; i++) {
     await expect(page.locator('.dr-count')).toHaveText(`${i + 1}/3`, { timeout: 15000 });
     await healCurrent(page);
@@ -229,6 +253,7 @@ test('trò chơi dùng ảnh đồ bố mẹ thêm (khay) và ảnh nền phòng
   await page.getByRole('button', { name: 'Trò chơi' }).click();
   await page.getByRole('button', { name: 'Đóng vai' }).click();
   await page.getByRole('button', { name: 'Bác sĩ nhí' }).click();
+  await washUp(page);
   await expect(play(page)).toHaveAttribute('data-state', 'touch', { timeout: 15000 });
   await expect(page.locator('.dr-stage.has-bg')).toHaveCount(1);
   const c = await currentCase(page);
@@ -252,6 +277,7 @@ async function healAt(page, level) {
     else await page.locator(`.dr-item[data-item="${s.item}"]`).click();
     if (k < steps.length - 1) await expect(play(page)).toHaveAttribute('data-state', steps[k + 1].type, { timeout: 15000 });
   }
+  await giveSticker(page);
   return { id, steps };
 }
 
@@ -265,6 +291,7 @@ test('D2 mức 2: có bước khám (Bông gọi tên dụng cụ, khay 3 món),
   await page.getByRole('button', { name: 'Trò chơi' }).click();
   await page.getByRole('button', { name: 'Đóng vai' }).click();
   await page.getByRole('button', { name: 'Bác sĩ nhí' }).click();
+  await washUp(page);
   let sawCheck = false;
   const ids = [];
   for (let i = 0; i < 3; i++) {
@@ -280,7 +307,8 @@ test('D2 mức 2: có bước khám (Bông gọi tên dụng cụ, khay 3 món),
   const said = await spoken(page);
   expect(said.some((t) => /^Let's check! Use the (stethoscope|flashlight|thermometer)\.$/.test(t))).toBe(true);
   expect(said).toContain('How can we help?');
-  expect(said.some((t) => / please!$/.test(t))).toBe(false);
+  // Bạn thú không xin đồ chữa có tên (câu xin sticker "A blue one, please!" thì có — SPEC-doctor2).
+  expect(said.some((t) => / please!$/.test(t) && !/^A (red|blue|yellow|green) (one|star|heart|circle|square), please!$/.test(t))).toBe(false);
   // Bạn thú ("Hello, doctor!") nói giọng cao độ khác; Bông ("Hello! Come in!") giọng thường.
   const voice = await page.evaluate(() => window.__spoken.map((t, i) => [t, window.__pitches[i]]));
   expect(voice.filter(([t]) => t === 'Hello, doctor!').every(([, p]) => p !== 1)).toBe(true);
@@ -296,6 +324,7 @@ test('D2 mức 3: chơi hết lượt với 11 ca (sốt: nhiệt kế; ho: khô
   await page.getByRole('button', { name: 'Trò chơi' }).click();
   await page.getByRole('button', { name: 'Đóng vai' }).click();
   await page.getByRole('button', { name: 'Bác sĩ nhí' }).click();
+  await washUp(page);
   const ids = [];
   for (let i = 0; i < 3; i++) {
     await expect(page.locator('.dr-count')).toHaveText(`${i + 1}/3`, { timeout: 15000 });
@@ -323,3 +352,130 @@ test('D2: Cài đặt → "Mức chơi Bác sĩ nhí" có 3 mức, chọn mức 
   await sel.selectOption('3');
   await expect.poll(() => page.evaluate(() => window.kidEnglish.settings.doctorGame)).toMatchObject({ level: 3, lock: 3 });
 });
+
+// ---------- SPEC-doctor2 DR1: rửa tay đầu lượt, tặng sticker cho bạn thú ----------
+const setVisibility = (page, v) => page.evaluate((s) => {
+  Object.defineProperty(document, 'visibilityState', { value: s, configurable: true });
+  document.dispatchEvent(new Event('visibilitychange'));
+}, v);
+async function enterDoctor(page, settings) {
+  await fakeSpeech(page);
+  await startApp(page);
+  await page.evaluate((s) => window.kidEnglish.setSetting('doctorGame', s), settings);
+  await page.getByRole('button', { name: 'Trò chơi' }).click();
+  await page.getByRole('button', { name: 'Đóng vai' }).click();
+  await page.getByRole('button', { name: 'Bác sĩ nhí' }).click();
+  await expect(play(page)).toHaveAttribute('data-state', 'wash', { timeout: 15000 });
+}
+
+test('DR1 mức 1: rửa tay 3 món thứ tự tùy ý (không găng), món dùng rồi rời khay; "Clean hands!" → ca 1; khỏi bệnh → xin sticker, cái nào cũng được, câu cảm ơn khớp sticker → ca 2', async ({ page }) => {
+  await enterDoctor(page, { level: 1, rounds: 0, lock: 1, seen: {} });
+  await expect.poll(() => spoken(page)).toContain("Doctors wash their hands! Let's wash!");
+  await expect(page.locator('.dr-tray .dr-item')).toHaveCount(3);
+  await expect(page.locator('.dr-item[data-item="gloves"]')).toHaveCount(0);
+  for (const [id, line] of [['towel', 'Dry your hands!'], ['soap', 'Rub, rub, rub!'], ['rinse', 'Rinse!']]) {
+    await page.locator(`.dr-item[data-item="${id}"]`).click();
+    await expect(page.locator(`.dr-item[data-item="${id}"]`)).toHaveCount(0, { timeout: 15000 });
+    await expect.poll(() => spoken(page)).toContain(line);
+  }
+  await expect.poll(() => spoken(page)).toContain("Clean hands! Let's help our friends!");
+  const c = await currentCase(page);
+  await expect(play(page)).toHaveAttribute('data-state', 'touch', { timeout: 15000 });
+  await spot(page, c.target).click();
+  await expect(play(page)).toHaveAttribute('data-state', 'treat', { timeout: 15000 });
+  await page.locator(`.dr-item[data-item="${c.item}"]`).click();
+  await expect(play(page)).toHaveAttribute('data-state', 'sticker', { timeout: 15000 });
+  await expect.poll(() => spoken(page)).toContain('Can I have a sticker, please?');
+  await expect(page.locator('.dr-tray .dr-item')).toHaveCount(3);
+  const id = await page.locator('.dr-tray .dr-item').nth(1).getAttribute('data-item');
+  const [, color, shape] = id.split('-');
+  await page.locator(`.dr-item[data-item="${id}"]`).click();
+  await expect.poll(() => spoken(page)).toContain(`A ${color} ${shape}! I love it!`);
+  await expect(page.locator('.dr-count')).toHaveText('2/3', { timeout: 15000 });
+});
+
+test('DR1 mức 2: rửa tay đúng thứ tự — sai thứ tự → "Soap first!", không mất món đã dùng; có găng; sticker theo màu: nhầm → "That\'s a … A blue one, please!", không ghi tiến độ màu', async ({ page }) => {
+  await enterDoctor(page, { level: 2, rounds: 0, lock: 2, seen: {} });
+  await expect(page.locator('.dr-tray .dr-item')).toHaveCount(4);
+  const n = (await spoken(page)).length;
+  await expect(async () => {
+    await page.locator('.dr-item[data-item="towel"]').click();
+    expect(await saidSince(page, n, /^Soap first!$/)).toBe(true);
+  }).toPass({ timeout: 15000 });
+  await expect(page.locator('.dr-item[data-item="towel"]')).toHaveCount(1);
+  await page.locator('.dr-item[data-item="soap"]').click();
+  await expect(page.locator('.dr-item[data-item="soap"]')).toHaveCount(0, { timeout: 15000 });
+  const m = (await spoken(page)).length;
+  await expect(async () => {
+    await page.locator('.dr-item[data-item="gloves"]').click();
+    expect(await saidSince(page, m, /^Water first!$/)).toBe(true);
+  }).toPass({ timeout: 15000 });
+  await expect(page.locator('.dr-tray .dr-item')).toHaveCount(3);
+  for (const id of ['rinse', 'towel', 'gloves']) {
+    await page.locator(`.dr-item[data-item="${id}"]`).click();
+    await expect(page.locator(`.dr-item[data-item="${id}"]`)).toHaveCount(0, { timeout: 15000 });
+  }
+  await expect.poll(() => spoken(page)).toContain('Gloves on! Ready!');
+  await expect(page.locator('.dr-wash')).toHaveClass(/gloves/);
+  await healAtNoSticker(page, 2);
+  await expect(play(page)).toHaveAttribute('data-state', 'sticker', { timeout: 15000 });
+  const want = await page.locator('.dr-patient').getAttribute('data-want');
+  const color = want.replace(/-$/, '');
+  await expect.poll(() => spoken(page)).toContain(`A ${color} one, please!`);
+  const wrong = await page.locator(`.dr-tray .dr-item:not([data-item^="st-${color}-"])`).first().getAttribute('data-item');
+  const [, wc, ws] = wrong.split('-');
+  const k = (await spoken(page)).length;
+  await expect(async () => {
+    await page.locator(`.dr-item[data-item="${wrong}"]`).click();
+    expect(await saidSince(page, k, new RegExp(`^That's a ${wc} ${ws}\\. A ${color} one, please!$`))).toBe(true);
+  }).toPass({ timeout: 15000 });
+  await page.locator(`.dr-item[data-item^="st-${color}-"]`).click();
+  await expect(page.locator('.dr-count')).toHaveText('2/3', { timeout: 15000 });
+  // Đã nhầm trước khi đúng: không ghi màu "đã gặp".
+  expect(await page.evaluate((c) => window.kidEnglish.db.get('progress', c), color)).toBeFalsy();
+});
+
+test('DR1 mức 3: sticker màu + hình — đúng một cái khớp; đúng ngay lần đầu → ghi màu + hình đã gặp; ra nền trước khi dán → quay lại vẫn xin sticker; sau khi dán → ca sau', async ({ page }) => {
+  await enterDoctor(page, { level: 3, rounds: 0, lock: 3, seen: {} });
+  await washUp(page);
+  await healAtNoSticker(page, 3);
+  await expect(play(page)).toHaveAttribute('data-state', 'sticker', { timeout: 15000 });
+  await expect(page.locator('.dr-tray .dr-item')).toHaveCount(4);
+  const want = await page.locator('.dr-patient').getAttribute('data-want');
+  const [color, shape] = want.split('-');
+  await expect(page.locator(`.dr-item[data-item="st-${color}-${shape}"]`)).toHaveCount(1);
+  await expect(page.locator(`.dr-item[data-item^="st-${color}-"]`)).toHaveCount(2);
+  await expect(page.locator(`.dr-item[data-item$="-${shape}"]`)).toHaveCount(2);
+  await setVisibility(page, 'hidden');
+  await setVisibility(page, 'visible');
+  await page.locator('.resume-overlay .start-btn').click();
+  await expect(play(page)).toHaveAttribute('data-state', 'sticker', { timeout: 15000 });
+  await expect(page.locator('.dr-count')).toHaveText('1/3');
+  await expect(page.locator('.dr-patient')).toHaveAttribute('data-want', want);
+  await page.locator(`.dr-item[data-item="st-${color}-${shape}"]`).click();
+  await expect.poll(() => spoken(page)).toContain(`A ${color} ${shape}! I love it!`);
+  await expect(page.locator('.dr-count')).toHaveText('2/3', { timeout: 15000 });
+  const words = await page.evaluate(async () => (await window.kidEnglish.db.getAll('progress')).map((p) => p.word));
+  expect(words).toEqual(expect.arrayContaining([color, shape]));
+  await setVisibility(page, 'hidden');
+  await setVisibility(page, 'visible');
+  await page.locator('.resume-overlay .start-btn').click();
+  await expect(play(page)).toHaveAttribute('data-state', /touch|check|treat/, { timeout: 15000 });
+  await expect(page.locator('.dr-count')).toHaveText('2/3');
+});
+
+/** Khám chữa xong ca đang mở, dừng ở bước tặng sticker. */
+async function healAtNoSticker(page, level) {
+  await expect(play(page)).toHaveAttribute('data-state', /touch|check|treat/, { timeout: 15000 });
+  const id = await page.locator('.dr-patient').getAttribute('data-case');
+  const steps = await page.evaluate(async ([caseId, lv]) => {
+    const m = await import('/js/doctor.js');
+    return m.stepsFor(m.CASE_BY_ID.get(caseId), lv);
+  }, [id, level]);
+  for (const [k, s] of steps.entries()) {
+    await expect(play(page)).toHaveAttribute('data-state', s.type, { timeout: 15000 });
+    if (s.type === 'touch') await spot(page, s.target).click();
+    else await page.locator(`.dr-item[data-item="${s.item}"]`).click();
+    if (k < steps.length - 1) await expect(play(page)).toHaveAttribute('data-state', steps[k + 1].type, { timeout: 15000 });
+  }
+}
