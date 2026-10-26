@@ -144,6 +144,15 @@ test('dán tranh: thả ngoài tranh và ngoài khay → về chỗ cũ; chạm 
   await expect(page.locator('.sp-request')).toBeVisible();
 });
 
+/**
+ * Chạm một sticker đã dán (pointerdown trên đúng sticker + pointerup), kể cả khi sticker khác vừa dán ngẫu nhiên đè lên nó
+ * — chạm vào giữa sticker sẽ trúng sticker nằm trên. Đây là đường xử lý chạm thật của app (không dùng tọa độ).
+ */
+async function tapPlaced(locator) {
+  await locator.dispatchEvent('pointerdown', { pointerId: 77, button: 0, isPrimary: true, bubbles: true });
+  await locator.page().evaluate(() => window.dispatchEvent(new PointerEvent('pointerup', { pointerId: 77, bubbles: true })));
+}
+
 test('Bông hỏi ngược: sau một việc dán, chạm Bông → "Where is the …?"; chạm nhầm → "That\'s the …!", nhầm 2 lần sticker đúng nhún; chạm đúng → "Yes! The … is …!"', async ({ page }) => {
   await fakeSpeech(page);
   await startApp(page);
@@ -167,11 +176,11 @@ test('Bông hỏi ngược: sau một việc dán, chạm Bông → "Where is th
   await expect.poll(() => lastSpoken(page)).toBe(`Where is the ${want.replace(/-/g, ' ')}?`);
   const wrong = page.locator(`.placed:not([data-sticker="${want}"])`).first();
   const wrongName = (await wrong.getAttribute('data-sticker')).replace(/-/g, ' ');
-  await wrong.click();
+  await tapPlaced(wrong);
   await expect.poll(() => lastSpoken(page)).toBe(`That's the ${wrongName}! Where is the ${want.replace(/-/g, ' ')}?`);
-  await wrong.click();
+  await tapPlaced(wrong);
   await expect(page.locator(`.placed[data-sticker="${want}"]`).first()).toHaveClass(/bounce/);
-  await page.locator(`.placed[data-sticker="${want}"]`).first().click();
+  await tapPlaced(page.locator(`.placed[data-sticker="${want}"]`).first());
   await expect.poll(() => lastSpoken(page)).toMatch(new RegExp(`^Yes! The ${want.replace(/-/g, ' ')} (is|are) (in|on|under) the `));
   await expect(page.locator('.sp-request')).toBeHidden();
 });
