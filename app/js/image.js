@@ -272,7 +272,7 @@ export async function loadGridImage(file, expected = null) {
  * Cắt ảnh lưới thành MỌI ô (trái → phải, trên → dưới), bỏ một chút viền mỗi ô để không dính đường kẻ.
  * @returns {Promise<Array<{ blob: Blob, width: number, height: number, mimeType: string }>>}
  */
-export async function sliceGrid({ source, w0, h0, detected }, { cols, rows }, max = MAX_IMAGE_SIZE) {
+export async function sliceGrid({ source, w0, h0, detected }, { cols, rows }, max = MAX_IMAGE_SIZE, { inset: insetPart = 0.04 } = {}) {
   // Cắt theo đúng vị trí đường kẻ nếu đã tìm thấy và khớp kiểu lưới; không thì chia đều.
   const useLines = detected?.xs && detected.cols === cols && detected.rows === rows;
   const xs = useLines ? detected.xs : Array.from({ length: cols + 1 }, (_, i) => (w0 * i) / cols);
@@ -283,7 +283,7 @@ export async function sliceGrid({ source, w0, h0, detected }, { cols, rows }, ma
     const r = Math.floor(i / cols);
     const cw = xs[c + 1] - xs[c];
     const ch = ys[r + 1] - ys[r];
-    const inset = Math.min(cw, ch) * 0.04;
+    const inset = Math.min(cw, ch) * insetPart;
     tiles.push(await crop(source, xs[c] + inset, ys[r] + inset, cw - 2 * inset, ch - 2 * inset, max));
   }
   return tiles;
@@ -395,4 +395,56 @@ export async function resizeCover(file, ratio = 4 / 3, max = 1200) {
   const out = await crop(source, sx, sy, sw, sh, max);
   source.close?.();
   return out;
+}
+
+// ---------- Ảnh lưới cảnh (SPEC-art): bỏ lề trắng quanh từng ô sau khi cắt ----------
+/**
+ * Khung chứa phần CÓ HÌNH của ảnh (điểm có kênh màu nhỏ nhất < `limit`, tức không gần trắng), nới thêm `pad` (phần
+ * cạnh ngắn) cho đỡ sát; trả về null nếu cả ảnh gần trắng. Hàm thuần — test được.
+ * @returns {{ x: number, y: number, w: number, h: number } | null}
+ */
+export function contentBox(rgba, width, height, { limit = 235, pad = 0.02 } = {}) {
+  let x0 = width;
+  let y0 = height;
+  let x1 = -1;
+  let y1 = -1;
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) {
+      const i = (y * width + x) * 4;
+      if (rgba[i + 3] < 16 || Math.min(rgba[i], rgba[i + 1], rgba[i + 2]) >= limit) continue;
+      if (x < x0) x0 = x;
+      if (x > x1) x1 = x;
+      if (y < y0) y0 = y;
+      if (y > y1) y1 = y;
+    }
+  }
+  if (x1 < 0) return null;
+  const p = Math.round(Math.min(width, height) * pad);
+  const x = Math.max(0, x0 - p);
+  const y = Math.max(0, y0 - p);
+  return { x, y, w: Math.min(width, x1 + p + 1) - x, h: Math.min(height, y1 + p + 1) - y };
+}
+
+/**
+ * Cắt bỏ lề trắng quanh một ô ảnh lưới (AI hay vẽ ô lệch, có lề / khe trắng không đều). Không tìm được hình thì giữ nguyên.
+ * @param {{ blob: Blob }} tile
+ */
+export async function trimWhiteMargin(tile, max = MAX_IMAGE_SIZE) {
+  const { source, w0, h0 } = await decode(tile.blob);
+  try {
+    // Dò khung trên bản thu nhỏ cho nhanh, rồi cắt trên ảnh gốc.
+    const k = Math.min(1, 240 / Math.max(w0, h0));
+    const w = Math.max(1, Math.round(w0 * k));
+    const hgt = Math.max(1, Math.round(h0 * k));
+    const canvas = document.createElement('canvas');
+    canvas.width = w;
+    canvas.height = hgt;
+    const ctx = canvas.getContext('2d', { willReadFrequently: true });
+    ctx.drawImage(source, 0, 0, w, hgt);
+    const box = contentBox(ctx.getImageData(0, 0, w, hgt).data, w, hgt);
+    if (!box || (box.w >= w - 1 && box.h >= hgt - 1)) return tile;
+    return await crop(source, box.x / k, box.y / k, box.w / k, box.h / k, max);
+  } finally {
+    source.close?.();
+  }
 }

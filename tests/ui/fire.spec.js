@@ -467,3 +467,112 @@ test('FF3 mức 3: sau 3 đồ là điện thoại 114 — phím cần bấm sá
   await expect.poll(() => spoken(page)).toContain("Fire station! We're coming!");
   await expect(page.locator('.prize-sticker')).toBeVisible({ timeout: 15000 });
 });
+
+// ---------- SPEC-art ART2: chú lính cứu hỏa (hình vẽ sẵn / ảnh lưới 6 ô) ----------
+const GEAR_FRAMES = ['plain', 'full', 'helmet', 'jacket', 'boots', 'spray'];
+/** Ảnh vuông màu để thử (canvas → png) vào kho ảnh. */
+const addGearImage = (page, word, color) => page.evaluate(async ({ word, color }) => {
+  const db = await import('/js/db.js');
+  const png = await new Promise((r) => {
+    const c = document.createElement('canvas');
+    c.width = 80;
+    c.height = 80;
+    const g = c.getContext('2d');
+    g.fillStyle = color;
+    g.fillRect(10, 10, 60, 60);
+    c.toBlob(r, 'image/png');
+  });
+  await db.setWordImage(window.kidEnglish.db, { lessonId: 'jobs:fire-gear', word, blob: png, mimeType: 'image/png', width: 80, height: 80 });
+}, { word, color });
+
+test('ART2 hình vẽ sẵn: chú lính cứu hỏa (không phải Bông) — mặc từng món hiện đúng lớp, đủ đồ thì "ff-done"; ca dập lửa người cầm vòi là chú, có đầu vòi', async ({ page }) => {
+  await enterFire(page, { level: 1, rounds: 0, lock: 1, seen: {} });
+  await expect(page.locator('.ff-dress .ff-svg')).toHaveCount(1);
+  await expect(page.locator('.ff-dress .bong-svg, .ff-dress .bong-ear')).toHaveCount(0);
+  await expect(page.locator('.jb-tray .ff-gear-face')).toHaveCount(3);
+  await page.locator('.jb-tray [data-item="jacket"]').click();
+  await expect(page.locator('.ff-dress [data-gear="jacket"]')).toHaveClass(/ff-on/, { timeout: 15000 });
+  await dressUp(page);
+  await arrive(page);
+  await expect(play(page)).toHaveAttribute('data-state', ACTIVE, { timeout: 15000 });
+  await expect(page.locator('.fr-hose .ff-svg.ff-all')).toHaveCount(1);
+  await expect(page.locator('.fr-hose .ff-tip')).toHaveCount(1);
+});
+
+test('ART2 ảnh lưới: đủ 6 ô → mặc đồ bằng ảnh (món dán lên ảnh chú mặc đồ thường, đủ thì chuyển sang ảnh mặc đủ đồ), khay là ảnh món, ca dùng ảnh cầm vòi và vẫn phun được; thiếu một ô → hình vẽ sẵn', async ({ page }) => {
+  await fakeSpeech(page);
+  await startApp(page);
+  for (const [i, f] of GEAR_FRAMES.entries()) await addGearImage(page, f, ['#e03131', '#f08c00', '#2f9e44', '#1c7ed6', '#7048e8', '#c2255c'][i]);
+  await page.evaluate(() => window.kidEnglish.setSetting('fireGame', { level: 1, rounds: 0, lock: 1, seen: {} }));
+  await page.getByRole('button', { name: 'Trò chơi' }).click();
+  await page.getByRole('button', { name: 'Đóng vai' }).click();
+  await page.getByRole('button', { name: 'Lính cứu hỏa' }).click();
+  await expect(play(page)).toHaveAttribute('data-state', 'dress', { timeout: 15000 });
+  await expect(page.locator('.ff-dress.ff-photos .ff-photo-base')).toHaveCount(1);
+  await expect(page.locator('.jb-tray img.ff-gear-img')).toHaveCount(3);
+  await page.locator('.jb-tray [data-item="helmet"]').click();
+  await expect(page.locator('.ff-photo-part[data-gear="helmet"]')).toHaveClass(/ff-on/, { timeout: 15000 });
+  await expect(page.locator('.ff-dress')).not.toHaveClass(/ff-done/);
+  await page.locator('.jb-tray [data-item="jacket"]').click();
+  await expect(page.locator('.ff-photo-part[data-gear="jacket"]')).toHaveClass(/ff-on/, { timeout: 15000 });
+  await page.evaluate(() => {
+    window.__done = false;
+    new MutationObserver(() => { if (document.querySelector('.ff-dress.ff-done')) window.__done = true; })
+      .observe(document.body, { subtree: true, attributes: true, attributeFilter: ['class'] });
+  });
+  await page.locator('.jb-tray [data-item="boots"]').click();
+  await expect.poll(() => page.evaluate(() => window.__done)).toBe(true);
+  await arrive(page);
+  await expect(play(page)).toHaveAttribute('data-state', ACTIVE, { timeout: 15000 });
+  await expect(page.locator('.fr-hose img.ff-spray')).toHaveCount(1);
+  if ((await page.locator('.fr-scene').getAttribute('data-kind')) === 'fire') {
+    const n = await page.locator('.fr-fire.out').count();
+    await page.getByRole('button', { name: 'Vòi phun nước' }).click();
+    await expect.poll(async () => (await page.locator('.fr-fire.out').count()) > n || (await page.locator('.jb-count').textContent()) !== '1/3', { timeout: 15000 }).toBe(true);
+  }
+  // Thiếu một ô → lượt sau dùng hình vẽ sẵn.
+  await page.evaluate(async () => (await import('/js/db.js')).removeWordImage(window.kidEnglish.db, 'jobs:fire-gear', 'spray'));
+  await page.goto('/?fast&nosw');
+  await page.getByRole('button', { name: 'Bắt đầu' }).click();
+  await page.getByRole('button', { name: 'Trò chơi' }).click();
+  await page.getByRole('button', { name: 'Đóng vai' }).click();
+  await page.getByRole('button', { name: 'Lính cứu hỏa' }).click();
+  await expect(play(page)).toHaveAttribute('data-state', 'dress', { timeout: 15000 });
+  await expect(page.locator('.ff-dress .ff-svg')).toHaveCount(1);
+});
+
+test('ART2 Góc bố mẹ → Ảnh Đóng vai: mục chú lính cứu hỏa có prompt lưới 3 × 2; chọn ảnh lưới → cắt 6 ô gán đúng mã → lưu; "Dùng hình vẽ sẵn" xóa ảnh', async ({ page }) => {
+  await fakeSpeech(page);
+  await startApp(page);
+  const png = await page.evaluate(() => {
+    const c = document.createElement('canvas');
+    c.width = 600;
+    c.height = 400;
+    const g = c.getContext('2d');
+    g.fillStyle = '#fff';
+    g.fillRect(0, 0, 600, 400);
+    ['#e03131', '#f08c00', '#2f9e44', '#1c7ed6', '#7048e8', '#c2255c'].forEach((col, i) => {
+      g.fillStyle = col;
+      g.fillRect((i % 3) * 200 + 40, Math.floor(i / 3) * 200 + 40, 120, 120);
+    });
+    return c.toDataURL('image/png').split(',')[1];
+  });
+  const { openParent } = await import('./helpers.js');
+  await openParent(page);
+  await page.getByRole('button', { name: /Ảnh Đóng vai/ }).click();
+  await expect(page.getByText(/🧑‍🚒 Chú lính cứu hỏa \(mặc đồ\) — đang dùng hình vẽ sẵn/)).toBeVisible();
+  await page.evaluate(() => { navigator.clipboard.writeText = (t) => { window.__copied = t; return Promise.resolve(); }; });
+  const grid = page.locator('section').filter({ hasText: '🧑‍🚒 Ảnh lưới chú lính cứu hỏa' });
+  await grid.getByRole('button', { name: 'Copy prompt ảnh lưới' }).click();
+  await expect.poll(() => page.evaluate(() => window.__copied ?? '')).toContain('The SAME friendly firefighter man');
+  await grid.locator('input[type=file]').setInputFiles({ name: 'firefighter.png', mimeType: 'image/png', buffer: Buffer.from(png, 'base64') });
+  await expect(grid.locator('.grid-cell')).toHaveCount(6, { timeout: 15000 });
+  await expect(grid.locator('.grid-cell select').first()).toHaveValue('plain');
+  await expect(grid.locator('.grid-cell select').last()).toHaveValue('spray');
+  await grid.getByRole('button', { name: 'Lưu các ảnh này' }).click();
+  await expect.poll(() => page.evaluate(async () => (await window.kidEnglish.db.getAllByIndex('images', 'lessonId', 'jobs:fire-gear')).map((i) => i.word).sort()))
+    .toEqual([...GEAR_FRAMES].sort());
+  await expect(page.getByText(/🧑‍🚒 Chú lính cứu hỏa \(mặc đồ\) — đang dùng ảnh/)).toBeVisible({ timeout: 15000 });
+  await page.locator('section').filter({ hasText: 'Chú lính cứu hỏa (mặc đồ)' }).getByRole('button', { name: 'Dùng hình vẽ sẵn' }).click();
+  await expect.poll(() => page.evaluate(async () => (await window.kidEnglish.db.getAllByIndex('images', 'lessonId', 'jobs:fire-gear')).length)).toBe(0);
+});

@@ -16,7 +16,7 @@ import { getFrameSets, setFrameSet, removeFrameSet, frameBlobs } from '../../db.
 import { createFlipbook } from '../../player/flipbook.js';
 import { createScene } from '../../player/scene.js';
 import { speakButton } from './common.js';
-import { resizeImage, sliceGrid, gridShape, loadGridImage, GRID_OPTIONS, ImageError } from '../../image.js';
+import { resizeImage, sliceGrid, gridShape, loadGridImage, GRID_OPTIONS, ImageError, trimWhiteMargin } from '../../image.js';
 import { addSampleLessons } from '../../samples.js';
 import { buildGridImagePrompt, singleImagePrompt } from '../../prompts.js';
 import { createBackup, readBackup, applyBackup, BackupError } from '../../backup.js';
@@ -344,8 +344,10 @@ export function lessonDetailView(app, { lessonId }) {
  * Dùng lại cho ảnh sticker của Dán tranh (SPEC-scenes mục 10): `promptNote` thêm vào cuối prompt, `process` xử lý
  * từng ô sau khi cắt (bỏ nền trắng), `onSaved` thay cho việc quay lại trang bài.
  */
-export function gridSection(app, lesson, urls, title = null, { promptNote = '', process = null, onSaved = null, previewClass = '', prompt: fixedPrompt = null, shape = null } = {}) {
+export function gridSection(app, lesson, urls, title = null, { promptNote = '', process = null, onSaved = null, previewClass = '', prompt: fixedPrompt = null, shape = null, trim = false } = {}) {
   const words = lesson.words.map((w) => w.en);
+  // Tên hiện trong ô chọn (`label`, vd. tên tiếng Việt của ô ảnh lưới cảnh); không có thì tên tiếng Anh.
+  const labelOf = new Map(lesson.words.map((w) => [w.en, w.label ?? w.en]));
   // `shape` / `prompt`: ảnh lưới cảnh có prompt và kiểu lưới riêng (SPEC-art: rửa tay, chú lính cứu hỏa 3 × 2).
   const expected = shape ?? gridShape(words.length);
   const prompt = (fixedPrompt ?? buildGridImagePrompt(lesson.words, expected)) + promptNote;
@@ -374,7 +376,8 @@ export function gridSection(app, lesson, urls, title = null, { promptNote = '', 
       value: shapeKey(o),
       text: `${o.cols} cột × ${o.rows} hàng${image.detected && shapeKey(o) === shapeKey(image.detected) ? ' (app đoán)' : ''}`,
     })));
-    shapeSel.value = shapeKey(image.detected ?? expected);
+    // Lưới cảnh có kiểu cố định (`shape`): mặc định đúng kiểu đó — AI hay vẽ ô lệch, đoán đường kẻ dễ sai (vd. 1 × 2).
+    shapeSel.value = shapeKey(shape ? expected : image.detected ?? expected);
     const cellsBox = h('div.grid-cells');
     let tiles = [];
     let pickers = [];
@@ -383,7 +386,9 @@ export function gridSection(app, lesson, urls, title = null, { promptNote = '', 
       const [cols, rows] = shapeSel.value.split('x').map(Number);
       cellsBox.replaceChildren(h('p.muted', { text: 'Đang cắt ảnh…' }));
       try {
-        tiles = await sliceGrid(image, { cols, rows });
+        // `trim`: cắt sát (ít lẹm vào hình) rồi bỏ lề trắng quanh từng ô (ô của AI không đều).
+        tiles = await sliceGrid(image, { cols, rows }, undefined, trim ? { inset: 0.005 } : undefined);
+        if (trim) tiles = await Promise.all(tiles.map((t) => trimWhiteMargin(t).catch(() => t)));
         // Ô trống (xử lý báo lỗi) thì giữ ô gốc; bố mẹ chọn "bỏ qua" cho ô đó.
         if (process) tiles = await Promise.all(tiles.map((t) => process(t).catch(() => t)));
       } catch (err) {
@@ -394,7 +399,7 @@ export function gridSection(app, lesson, urls, title = null, { promptNote = '', 
       pickers = tiles.map((t, i) => {
         const sel = h('select', { 'aria-label': `Từ cho ô ${i + 1}` },
           h('option', { value: SKIP, text: '— bỏ qua —' }),
-          ...words.map((w) => h('option', { value: w, text: w })));
+          ...words.map((w) => h('option', { value: w, text: labelOf.get(w) })));
         sel.value = words[i] ?? SKIP; // mặc định theo thứ tự; ô thừa thì bỏ qua
         return sel;
       });

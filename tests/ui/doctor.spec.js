@@ -416,8 +416,9 @@ test('DR1 mức 1: rửa tay 3 món thứ tự tùy ý (không găng), món dùn
     await expect.poll(() => spoken(page)).toContain(line);
   }
   await expect.poll(() => spoken(page)).toContain("Clean hands! Let's help our friends!");
-  const c = await currentCase(page);
+  // Chờ bạn thú vào phòng (đã có mã ca) rồi mới đọc ca.
   await expect(play(page)).toHaveAttribute('data-state', 'touch', { timeout: 15000 });
+  const c = await currentCase(page);
   await spot(page, c.target).click();
   await expect(play(page)).toHaveAttribute('data-state', 'treat', { timeout: 15000 });
   await page.locator(`.dr-item[data-item="${c.item}"]`).click();

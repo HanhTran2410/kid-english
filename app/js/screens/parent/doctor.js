@@ -239,8 +239,8 @@ export function doctorAdminView(app) {
             reload();
           },
         })) : null),
-      gridSection(app, { id: WASH_IMAGES, words: WASH_FRAMES.map((f) => ({ en: f })) }, urls, '🧼 Ảnh lưới rửa tay', {
-        prompt: WASH_GRID_PROMPT, shape: { cols: 3, rows: 2 }, onSaved: reload,
+      gridSection(app, { id: WASH_IMAGES, words: WASH_FRAMES.map((f) => ({ en: f, label: `${WASH_FRAMES.indexOf(f) + 1}. ${WASH_FRAME_VI[f]}` })) }, urls, '🧼 Ảnh lưới rửa tay', {
+        prompt: WASH_GRID_PROMPT, shape: { cols: 3, rows: 2 }, trim: true, onSaved: reload,
       }));
   }
 

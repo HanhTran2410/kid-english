@@ -3,7 +3,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   planRound, numberChoices, allGoneLine, rightNumberLine, countLine, whereLine, firstLine, wrongNumberLine,
-  pickRescue, SAFETY_ITEMS, SAFETY_BY, planSafety, lookLine, safetyRightLine, safetyWrongLine, wrongKeyLine, GEAR, ODD_GEAR, HOUSE_COLORS, planGear, planStreet, putOnLine, gearOnLine, wrongGearLine, goToLine, wrongHouseLine, READY_LINE, DRESS_ANY_LINE, GO_LINE,
+  FIRE_GEAR_FRAMES, FIRE_GEAR_PROMPT, GEAR_ANCHOR, pickRescue, SAFETY_ITEMS, SAFETY_BY, planSafety, lookLine, safetyRightLine, safetyWrongLine, wrongKeyLine, GEAR, ODD_GEAR, HOUSE_COLORS, planGear, planStreet, putOnLine, gearOnLine, wrongGearLine, goToLine, wrongHouseLine, READY_LINE, DRESS_ANY_LINE, GO_LINE,
 } from '../../app/js/jobs/fire.js';
 
 function seeded(seed = 1) {
@@ -160,4 +160,12 @@ test('SPEC-fire2 FF3 — đồ An toàn: 2 nóng + 1 an toàn, không lặp; câ
   for (const x of SAFETY_ITEMS) for (const [en, vi] of [lookLine(x.id), safetyRightLine(x.id), safetyWrongLine(x.id)]) {
     assert.ok(en && vi && !/undefined/.test(en + vi), en);
   }
+});
+
+test('SPEC-art ART2 — ảnh lưới chú lính cứu hỏa: 6 ô đúng thứ tự prompt; chỗ dán mũ / áo / ủng nằm trong khung, từ trên xuống', () => {
+  assert.deepEqual(FIRE_GEAR_FRAMES, ['plain', 'full', 'helmet', 'jacket', 'boots', 'spray']);
+  assert.ok(FIRE_GEAR_PROMPT.includes('3x2 grid'));
+  for (const [i, line] of ['1)', '2)', '3)', '4)', '5)', '6)'].entries()) assert.ok(FIRE_GEAR_PROMPT.includes(line), FIRE_GEAR_FRAMES[i]);
+  for (const a of Object.values(GEAR_ANCHOR)) assert.ok(a.left >= 0 && a.left + a.width <= 100 && a.top >= 0 && a.top < 100);
+  assert.ok(GEAR_ANCHOR.helmet.top < GEAR_ANCHOR.jacket.top && GEAR_ANCHOR.jacket.top < GEAR_ANCHOR.boots.top);
 });

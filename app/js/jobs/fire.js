@@ -212,3 +212,28 @@ export const wrongHouseLine = (x, color) => [`That's the ${x} house. Go to the $
 
 /** Tên bạn thú (cho phụ đề / test). */
 export const residentName = (id) => PATIENT_BY_ID.get(id)?.name ?? id;
+
+// ---------- SPEC-art ART2: chú lính cứu hỏa (ảnh lưới 6 ô bố mẹ thêm, chưa có thì hình vẽ sẵn) ----------
+export const FIRE_GEAR_IMAGES = 'jobs:fire-gear';
+/** 6 ô của ảnh lưới, theo thứ tự ô (trái → phải, trên → dưới). */
+export const FIRE_GEAR_FRAMES = ['plain', 'full', 'helmet', 'jacket', 'boots', 'spray'];
+export const FIRE_GEAR_FRAME_VI = {
+  plain: 'chú mặc đồ thường', full: 'chú mặc đủ đồ', helmet: 'mũ', jacket: 'áo khoác', boots: 'ủng', spray: 'chú cầm vòi phun',
+};
+export const FIRE_GEAR_PROMPT = [
+  'A 3x2 grid of six square pictures (3 columns, 2 rows) on a plain white background, separated by thin white gaps.',
+  'Soft cartoon style for a toddler game, thick soft outlines, pastel colours, no text.',
+  'The SAME friendly firefighter man appears in pictures 1, 2 and 6, full body, standing straight, facing the viewer, same size and same position in the square:',
+  '1) wearing a plain t-shirt, jeans and sneakers, no helmet;',
+  '2) wearing full gear: red firefighter helmet, yellow fire jacket with silver reflective stripes, black boots;',
+  '3) only the red firefighter helmet, nothing else;',
+  '4) only the yellow fire jacket with silver reflective stripes, nothing else;',
+  '5) only a pair of black firefighter boots, nothing else;',
+  '6) in full gear holding a fire hose nozzle in both hands, pointing to the right.',
+].join('\n');
+/** Chỗ dán món đồ lên ảnh "plain" (phần trăm khung ô): mũ → đầu, áo → thân, ủng → chân. */
+export const GEAR_ANCHOR = {
+  helmet: { left: 30, top: 2, width: 40 },
+  jacket: { left: 22, top: 24, width: 56 },
+  boots: { left: 28, top: 76, width: 44 },
+};

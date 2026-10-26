@@ -101,3 +101,30 @@ test('mức 3: đồ tô màu / nhiều con, câu "It\'s a red ball!" / "I see t
   expect((await spoken(page)).some((t) => /^I know! (It's a (red|blue|yellow|green|pink|orange) (ball|balloon|star)|I see (one|two|three) \w+)!$/.test(t))).toBe(true);
   await expect(page.locator('.prize-sticker')).toBeVisible({ timeout: 15000 });
 });
+
+test('ảnh thật (512 × 640, ảnh dọc) trên bảng: thẻ hình nằm trọn trong bảng đen (không tràn ra ngoài), cả màn ngang lẫn dọc', async ({ page }) => {
+  for (const size of [{ width: 1920, height: 990 }, { width: 1180, height: 820 }, { width: 390, height: 760 }]) {
+    await page.setViewportSize(size);
+    await openTeacher(page, null, () => page.evaluate(async () => {
+      // Ảnh vuông 512px (như ảnh AI) cho mọi từ của các bài trên máy.
+      const db = await import('/js/db.js');
+      const png = await new Promise((r) => {
+        const c = document.createElement('canvas');
+        c.width = 512;
+        c.height = 640;
+        const g = c.getContext('2d');
+        g.fillStyle = '#ffc9c9';
+        g.fillRect(0, 0, 512, 640);
+        c.toBlob(r, 'image/png');
+      });
+      const t = await import('/js/jobs/teacher.js');
+      for (const n of t.NOUNS) await db.setWordImage(window.kidEnglish.db, { lessonId: 'my-lesson', word: n.en, blob: png, mimeType: 'image/png', width: 512, height: 640 });
+    }));
+    await expect(page.locator('.tc-picture img.tc-img')).toHaveCount(1, { timeout: 15000 });
+    const [board, pic] = await Promise.all(['.tc-board', '.tc-picture'].map((sel) => page.locator(sel).boundingBox()));
+    expect(pic.x).toBeGreaterThanOrEqual(board.x);
+    expect(pic.y).toBeGreaterThanOrEqual(board.y);
+    expect(pic.x + pic.width).toBeLessThanOrEqual(board.x + board.width + 0.5);
+    expect(pic.y + pic.height).toBeLessThanOrEqual(board.y + board.height + 0.5);
+  }
+});

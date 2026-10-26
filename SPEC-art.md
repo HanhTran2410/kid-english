@@ -1,6 +1,6 @@
 # SPEC — 🎨 Hình đẹp hơn: Rửa tay (Bác sĩ nhí) và Mặc đồ (Lính cứu hỏa)
 
-> Phiên bản spec: **draft1** · Ngày: 2026-10-26 · **ART1 đã làm (0.44.0)**; ART2 chưa làm. Bổ sung cho `SPEC-doctor2.md` mục 3 (rửa tay) và `SPEC-fire2.md` mục 3 (mặc đồ). **Cách chơi, câu nói, luật không đổi** — chỉ đổi hình và hiệu ứng.
+> Phiên bản spec: **draft1** · Ngày: 2026-10-26 · **ART1 (0.44.0), ART2 (0.45.0) đã làm.** Bổ sung cho `SPEC-doctor2.md` mục 3 (rửa tay) và `SPEC-fire2.md` mục 3 (mặc đồ). **Cách chơi, câu nói, luật không đổi** — chỉ đổi hình và hiệu ứng.
 > Lý do: bố mẹ thấy hình vẽ hiện tại xấu — bàn tay rửa tay không giống thật; Bông mặc đồ lính cứu hỏa lệch, không cân đối.
 > Bố mẹ chọn: **ảnh bố mẹ thêm (nhờ AI vẽ theo prompt của app) + hiệu ứng ghép ảnh**; nhân vật mặc đồ là **chú lính cứu hỏa** (không phải Bông).
 
@@ -92,3 +92,10 @@
 - Hình vẽ sẵn mới: hai bàn tay có cổ tay + ống tay áo bác sĩ, vẽ 2 lớp (viền rồi màu) để viền chỉ ở mép ngoài và khe ngón; ngón cái hướng vào trong; vòi nước + bồn sứ. Lớp bẩn / bọt / dòng nước (chảy động) / lấp lánh / 👍 bật theo hình; găng đổi màu tay xanh.
 - Ảnh lưới: Góc bố mẹ → Ảnh Bác sĩ nhí → "🧼 Ảnh lưới rửa tay" (prompt + kiểu lưới 3 × 2 cố định), xem trước 6 ô, "Dùng hình vẽ sẵn" xóa cả 6; đi kèm chia sẻ "Ảnh Bác sĩ nhí". Ảnh chuyển mờ dần sang ô mới (~0,4 giây).
 - Hiệu ứng (tắt khi máy bật "giảm chuyển động"): bọt bay lên, giọt nước rơi, ✨ lấp lánh (khăn, găng), găng bật, pháo giấy khi xong.
+
+## 10. Ghi chú khi làm ART2 (0.45.0)
+- Hình vẽ sẵn: chú lính cứu hỏa người (tóc nâu, áo phông xanh, quần jean, giày trắng), **đối xứng quanh trục giữa**; mũ đội giữa đầu (vành ngang, huy hiệu), áo khoác hai tay như nhau + sọc phản quang, hai ủng tách rời. Bản cầm vòi: vòi từ tay phải, đầu vòi hướng phải.
+- Ảnh lưới: Góc bố mẹ → Ảnh Đóng vai → "🧑‍🚒 Ảnh lưới chú lính cứu hỏa" (prompt + kiểu lưới 3 × 2 cố định, app bỏ nền trắng từng ô), xem trước 6 ô, "Dùng hình vẽ sẵn" xóa cả 6; đi kèm chia sẻ "Ảnh Đóng vai".
+- Ghép ảnh: món đồ là ảnh dán đè theo khung tỉ lệ (`GEAR_ANCHOR` — mũ: trái 30%, trên 2%, rộng 40%; áo: 22% / 24% / 56%; ủng: 28% / 76% / 44%), có viền trắng mờ; mặc đủ → ảnh `full` hiện dần, ảnh ghép mờ đi. Ảnh do AI vẽ có thể lệch khung — nếu lệch nhiều thì chỉnh `GEAR_ANCHOR` hoặc prompt.
+- Ca dập lửa / cứu: người cầm vòi là ảnh `spray`; tia nước bắn từ điểm phải-giữa ảnh (42% chiều cao).
+- **Sửa sau khi thử ảnh Gemini thật:** AI vẽ 6 ô không đều (lề / khe trắng, trong ô nhiều mảng trắng) → app đoán nhầm lưới 1 × 2 và chọn sẵn kiểu đoán. Nay ảnh lưới cảnh **luôn mặc định 3 × 2** (chỉ dùng đường kẻ dò được nếu khớp 3 × 2), cắt sát (lẹm 0,5%) rồi **tự bỏ lề trắng** từng ô (`trimWhiteMargin` / `contentBox`); ô chọn hiện tên tiếng Việt có số thứ tự.

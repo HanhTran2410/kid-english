@@ -144,19 +144,17 @@ test('bấm ▶ liên tục giữa các lượt: không kẹt, không lỗi, v�
 });
 
 /** Chơi bài; khi có lựa chọn mang mã trong `want` thì chạm đúng lựa chọn đó (còn lại chạm lựa chọn đầu tiên). */
-async function playChoosing(page, want) {
-  const wanted = want.map((w) => `.talk-choice[data-id="${w}"]`).join(',');
+async function playChoosing(page, want = []) {
   for (let i = 0; i < 400; i++) {
     if (await page.locator('.done-btn').isVisible()) return;
-    const target = page.locator(wanted).first();
-    if (await target.isVisible().catch(() => false)) {
-      await target.click({ timeout: 1000 }).catch(() => {});
-    } else if (wanted && await page.locator('.talk-choice').count() && await page.locator(wanted).count()) {
-      // Hàng lựa chọn vừa hiện, hình muốn chọn chưa kịp hiện (máy chậm): đợi, không chọn bừa hình đầu.
-    } else {
-      const any = page.locator('.choice').first();
-      if (await any.isVisible().catch(() => false)) await any.click({ timeout: 1000 }).catch(() => {});
-    }
+    // Đọc và bấm trong CÙNG một bước trong trang (tránh hàng lựa chọn hiện ra giữa hai lần kiểm tra → bấm nhầm ô đầu):
+    // hàng lựa chọn hội thoại chưa chọn → ô muốn chọn (nếu có) hoặc ô đầu; không có hàng thì nút lựa chọn khác (Ôn tập…).
+    await page.evaluate((w) => {
+      const row = [...document.querySelectorAll('.chat-choices')].filter((r) => !r.querySelector('.correct')).pop();
+      const choices = row ? [...row.querySelectorAll('.talk-choice')] : [];
+      const pick = choices.find((c) => w.includes(c.dataset.id)) ?? choices[0] ?? (row ? null : document.querySelector('.choice'));
+      pick?.click();
+    }, want);
     await page.waitForTimeout(150);
   }
   throw new Error('Không học hết được bài');

@@ -7,7 +7,7 @@
 
 import { h } from '../ui.js';
 import { play } from '../speech/sfx.js';
-import { bongSvg } from '../bong.js';
+import { mediaBlob } from '../db.js';
 import { patientSvg } from '../patients.js';
 import { PATIENT_BY_ID } from '../doctor.js';
 import { SOUND_BY_ID } from '../animal-sounds.js';
@@ -21,6 +21,7 @@ import { scaled } from '../timing.js';
 import {
   MAX_LEVEL, GEAR, GEAR_INFO, planRound, countLine, allGoneLine, rightNumberLine, wrongNumberLine, whereLine, firstLine,
   ALARM_LINE, TAP_LINE, THANKS_LINE, HOW_MANY_LINE, TREE_LINE, LADDER_LINE, DOWN_LINE,
+  FIRE_GEAR_IMAGES, FIRE_GEAR_FRAMES, GEAR_ANCHOR,
   READY_LINE, DRESS_ANY_LINE, GO_LINE, putOnLine, gearOnLine, wrongGearLine, goToLine, wrongHouseLine,
   STUCK_LINE, KNOCK_LINE, KNOCKED_LINE, OPEN_LINE, SAFE_LINE,
   SAFETY_BY, FIRE_NUMBER, KEY_WORDS, SAFETY_INTRO, GROWNUP_LINE, DIAL_LINE, STATION_LINE, lookLine, safetyRightLine, safetyWrongLine, wrongKeyLine,
@@ -61,55 +62,86 @@ const TREE_SVG = `<svg viewBox="0 0 100 120" aria-hidden="true">
   <circle cx="76" cy="46" r="18" fill="#51cf66" stroke="#2b8a3e" stroke-width="3"/>
 </svg>`;
 
-// ---------- Bông lính cứu hỏa: thân + từng món đồ là một lớp (mặc món nào hiện lớp đó) ----------
+// ---------- Chú lính cứu hỏa (SPEC-art ART2): thân + từng món đồ là một lớp (mặc món nào hiện lớp đó) ----------
+// Vẽ đối xứng quanh trục x = 110: mũ giữa đầu, áo hai bên như nhau, hai ủng tách rời.
 const INK = '#3d2c5e';
-const FUR = '#fff8ee';
-const FUR_SHADE = '#f3e3cf';
+const SKIN = '#ffd6b0';
+const SW = `stroke="${INK}" stroke-width="3" stroke-linejoin="round"`;
 const GEAR_PARTS = {
-  jacket: `<ellipse cx="62" cy="218" rx="15" ry="32" fill="#ffd43b" stroke="${INK}" stroke-width="3" transform="rotate(18 62 218)"/>
-    <ellipse cx="160" cy="212" rx="15" ry="32" fill="#ffd43b" stroke="${INK}" stroke-width="3" transform="rotate(-58 160 212)"/>
-    <path d="M64 194 Q110 170 156 194 L161 274 Q110 290 59 274 Z" fill="#ffd43b" stroke="${INK}" stroke-width="3" stroke-linejoin="round"/>
-    <rect x="61" y="238" width="98" height="9" fill="#e9ecef" stroke="#adb5bd" stroke-width="1.5"/>
-    <rect x="60" y="256" width="100" height="9" fill="#e9ecef" stroke="#adb5bd" stroke-width="1.5"/>
-    <path d="M110 186 L110 284" stroke="${INK}" stroke-width="2.5"/>`,
-  boots: `<rect x="79" y="276" width="28" height="32" rx="6" fill="#343a40" stroke="${INK}" stroke-width="2.5"/>
-    <rect x="113" y="276" width="28" height="32" rx="6" fill="#343a40" stroke="${INK}" stroke-width="2.5"/>
-    <ellipse cx="90" cy="310" rx="21" ry="11" fill="#343a40" stroke="${INK}" stroke-width="2.5"/>
-    <ellipse cx="130" cy="310" rx="21" ry="11" fill="#343a40" stroke="${INK}" stroke-width="2.5"/>
-    <rect x="79" y="282" width="28" height="5" fill="#ffd43b"/><rect x="113" y="282" width="28" height="5" fill="#ffd43b"/>`,
-  helmet: `<path d="M44 92 Q48 42 110 38 Q172 42 176 92 Z" fill="#e03131" stroke="${INK}" stroke-width="3" stroke-linejoin="round"/>
-    <ellipse cx="110" cy="92" rx="78" ry="9" fill="#c92a2a" stroke="${INK}" stroke-width="3"/>
-    <circle cx="110" cy="66" r="12" fill="#ffd43b" stroke="${INK}" stroke-width="2.5"/>`,
+  jacket: `<rect x="40" y="114" width="28" height="94" rx="14" fill="#ffd43b" ${SW}/>
+    <rect x="152" y="114" width="28" height="94" rx="14" fill="#ffd43b" ${SW}/>
+    <path d="M64 112 Q110 100 156 112 L158 212 Q110 220 62 212 Z" fill="#ffd43b" ${SW}/>
+    <rect x="63" y="176" width="94" height="8" fill="#e9ecef" stroke="#adb5bd" stroke-width="1.5"/>
+    <rect x="63" y="192" width="94" height="8" fill="#e9ecef" stroke="#adb5bd" stroke-width="1.5"/>
+    <rect x="41" y="180" width="26" height="7" fill="#e9ecef"/><rect x="153" y="180" width="26" height="7" fill="#e9ecef"/>
+    <path d="M110 108 V214" stroke="${INK}" stroke-width="2.5"/>
+    <path d="M92 104 L110 118 L128 104" fill="none" stroke="${INK}" stroke-width="3" stroke-linecap="round"/>`,
+  boots: `<rect x="75" y="242" width="34" height="50" rx="8" fill="#343a40" ${SW}/>
+    <rect x="111" y="242" width="34" height="50" rx="8" fill="#343a40" ${SW}/>
+    <ellipse cx="90" cy="296" rx="22" ry="10" fill="#343a40" ${SW}/>
+    <ellipse cx="130" cy="296" rx="22" ry="10" fill="#343a40" ${SW}/>
+    <rect x="76" y="250" width="32" height="6" fill="#ffd43b"/><rect x="112" y="250" width="32" height="6" fill="#ffd43b"/>`,
+  helmet: `<path d="M68 56 Q68 14 110 12 Q152 14 152 56 Z" fill="#e03131" ${SW}/>
+    <ellipse cx="110" cy="56" rx="54" ry="8" fill="#c92a2a" ${SW}/>
+    <path d="M110 14 V54" stroke="#c92a2a" stroke-width="5"/>
+    <circle cx="110" cy="36" r="10" fill="#ffd43b" stroke="${INK}" stroke-width="2.5"/>`,
 };
 /** Khung nhìn của từng món khi đứng riêng (trong khay / đang bay). */
-const GEAR_VIEW = { jacket: '38 166 144 128', boots: '66 272 88 52', helmet: '30 34 160 70' };
+const GEAR_VIEW = { helmet: '50 4 120 64', jacket: '34 96 152 126', boots: '62 236 96 72' };
 
 function firefighterSvg() {
-  const head = bongSvg({ mood: 'happy' }).replace(/^<svg[^>]*>/, '').replace(/<\/svg>\s*$/, '');
   return `<svg class="ff-svg" viewBox="0 0 220 330" aria-hidden="true">
-    <ellipse cx="62" cy="218" rx="13" ry="30" fill="${FUR}" stroke="${FUR_SHADE}" stroke-width="3" transform="rotate(18 62 218)"/>
-    <ellipse cx="160" cy="212" rx="13" ry="30" fill="${FUR}" stroke="${FUR_SHADE}" stroke-width="3" transform="rotate(-58 160 212)"/>
-    <rect x="82" y="258" width="24" height="46" rx="10" fill="${FUR}" stroke="${FUR_SHADE}" stroke-width="3"/>
-    <rect x="114" y="258" width="24" height="46" rx="10" fill="${FUR}" stroke="${FUR_SHADE}" stroke-width="3"/>
-    <ellipse cx="94" cy="306" rx="16" ry="9" fill="${FUR}" stroke="${FUR_SHADE}" stroke-width="3"/>
-    <ellipse cx="126" cy="306" rx="16" ry="9" fill="${FUR}" stroke="${FUR_SHADE}" stroke-width="3"/>
-    <ellipse cx="110" cy="226" rx="48" ry="54" fill="${FUR}" stroke="${FUR_SHADE}" stroke-width="3"/>
+    <rect x="78" y="196" width="30" height="96" rx="10" fill="#4263eb" ${SW}/>
+    <rect x="112" y="196" width="30" height="96" rx="10" fill="#4263eb" ${SW}/>
+    <ellipse cx="91" cy="296" rx="19" ry="9" fill="#f8f9fa" ${SW}/>
+    <ellipse cx="129" cy="296" rx="19" ry="9" fill="#f8f9fa" ${SW}/>
+    <rect x="47" y="146" width="18" height="58" rx="9" fill="${SKIN}" ${SW}/>
+    <rect x="155" y="146" width="18" height="58" rx="9" fill="${SKIN}" ${SW}/>
+    <rect x="44" y="116" width="24" height="40" rx="12" fill="#4dabf7" ${SW}/>
+    <rect x="152" y="116" width="24" height="40" rx="12" fill="#4dabf7" ${SW}/>
+    <rect x="66" y="110" width="88" height="98" rx="20" fill="#4dabf7" ${SW}/>
+    <rect x="101" y="96" width="18" height="18" fill="${SKIN}" ${SW}/>
     <g class="ff-wear" data-gear="jacket">${GEAR_PARTS.jacket}</g>
     <g class="ff-wear" data-gear="boots">${GEAR_PARTS.boots}</g>
-    <svg x="10" y="0" width="200" height="200" viewBox="0 0 200 200">${head}</svg>
+    <circle cx="70" cy="70" r="8" fill="${SKIN}" ${SW}/>
+    <circle cx="150" cy="70" r="8" fill="${SKIN}" ${SW}/>
+    <circle cx="110" cy="66" r="40" fill="${SKIN}" ${SW}/>
+    <path d="M71 60 Q72 26 110 25 Q148 26 149 60 Q132 44 110 44 Q88 44 71 60 Z" fill="#6b4226" ${SW}/>
+    <circle cx="96" cy="72" r="5" fill="${INK}"/><circle cx="124" cy="72" r="5" fill="${INK}"/>
+    <circle cx="97.5" cy="70" r="1.6" fill="#fff"/><circle cx="125.5" cy="70" r="1.6" fill="#fff"/>
+    <ellipse cx="86" cy="84" rx="7" ry="4" fill="#ff9ab5" opacity="0.6"/><ellipse cx="134" cy="84" rx="7" ry="4" fill="#ff9ab5" opacity="0.6"/>
+    <path d="M98 86 Q110 97 122 86" fill="none" stroke="${INK}" stroke-width="3" stroke-linecap="round"/>
     <g class="ff-wear" data-gear="helmet">${GEAR_PARTS.helmet}</g>
+    <circle cx="56" cy="208" r="11" fill="${SKIN}" ${SW}/>
+    <circle cx="164" cy="208" r="11" fill="${SKIN}" ${SW}/>
     <g class="ff-nozzle">
-      <path d="M150 232 Q176 236 196 214" fill="none" stroke="#495057" stroke-width="9" stroke-linecap="round"/>
-      <rect class="ff-tip" x="192" y="200" width="24" height="13" rx="3" fill="#868e96" stroke="${INK}" stroke-width="2.5" transform="rotate(-24 204 206)"/>
+      <path d="M164 208 Q186 204 198 188" fill="none" stroke="#495057" stroke-width="9" stroke-linecap="round"/>
+      <rect class="ff-tip" x="192" y="174" width="24" height="13" rx="3" fill="#868e96" stroke="${INK}" stroke-width="2.5" transform="rotate(-30 204 180)"/>
     </g>
   </svg>`;
 }
-/** Hình một món đồ (khay / đang bay): đồ cứu hỏa vẽ SVG, món lạ dùng emoji. */
-function gearFace(id) {
-  if (GEAR_INFO[id]?.emoji) return h('span.dr-item-face', { text: GEAR_INFO[id].emoji, 'aria-hidden': 'true' });
-  return h('span.dr-item-face.ff-gear-face', { 'aria-hidden': 'true', html: `<svg viewBox="${GEAR_VIEW[id]}">${GEAR_PARTS[id]}</svg>` });
+/**
+ * Ảnh lưới chú lính cứu hỏa bố mẹ thêm (SPEC-art ART2): đủ 6 ô mới dùng (thiếu thì hình vẽ sẵn — không trộn kiểu).
+ * @returns {Promise<{ map: Map<string, string>, revoke: () => void }>}
+ */
+async function loadGearImages(app) {
+  const map = new Map();
+  for (const img of await app.db.getAllByIndex('images', 'lessonId', FIRE_GEAR_IMAGES).catch(() => [])) {
+    map.set(img.word, URL.createObjectURL(mediaBlob(img)));
+  }
+  return { map, revoke: () => map.forEach((u) => URL.revokeObjectURL(u)) };
 }
-
+/** Màn mặc đồ bằng ảnh: chú mặc đồ thường + các món dán đúng chỗ (ghép ảnh); mặc đủ → chuyển mờ sang ảnh mặc đủ đồ. */
+function photoDress(map) {
+  const part = (id) => {
+    const a = GEAR_ANCHOR[id];
+    return h('img.ff-wear.ff-photo-part', { src: map.get(id), alt: '', dataset: { gear: id }, style: { left: `${a.left}%`, top: `${a.top}%`, width: `${a.width}%` } });
+  };
+  return h('div.ff-photo', {},
+    h('img.ff-photo-base', { src: map.get('plain'), alt: '' }),
+    part('jacket'), part('boots'), part('helmet'),
+    h('img.ff-photo-full', { src: map.get('full'), alt: '' }));
+}
 export function fireScreen(app, params = {}) {
   let progress = cleanJobState(app.settings.fireGame, { maxLevel: MAX_LEVEL });
   const level = progress.level;
@@ -147,7 +179,14 @@ export function fireScreen(app, params = {}) {
   const homes = h('div.fr-homes');
   const truck = h('button.fr-truck', { type: 'button', 'aria-label': 'Xe cứu hỏa', onclick: () => honk() }, h('span', { text: '🚒' }));
   const street = h('div.fr-street', { hidden: true }, homes, h('div.fr-road', {}, truck));
-  const dressFig = h('div.ff-dress', { html: firefighterSvg() });
+  let dressFig = h('div.ff-dress', { html: firefighterSvg() });
+  let gearPhotos = null; // Map ảnh lưới (đủ 6 ô) hoặc null = hình vẽ sẵn
+  /** Hình một món đồ (khay / đang bay): ảnh bố mẹ thêm, chưa có thì hình vẽ; món lạ dùng emoji. */
+  const gearFace = (id) => {
+    if (GEAR_INFO[id]?.emoji) return h('span.dr-item-face', { text: GEAR_INFO[id].emoji, 'aria-hidden': 'true' });
+    if (gearPhotos) return h('img.dr-item-face.ff-gear-img', { src: gearPhotos.get(id), alt: '', draggable: false });
+    return h('span.dr-item-face.ff-gear-face', { 'aria-hidden': 'true', html: `<svg viewBox="${GEAR_VIEW[id]}">${GEAR_PARTS[id]}</svg>` });
+  };
   const safetyEl = h('div.fr-safety', { hidden: true });
 
   const kit = jobScreen(app, {
@@ -222,6 +261,7 @@ export function fireScreen(app, params = {}) {
   // ---------- Mặc đồ (SPEC-fire2 mục 3) ----------
   function renderGear() {
     for (const g of dressFig.querySelectorAll('[data-gear]')) g.classList.toggle('ff-on', worn.has(g.dataset.gear));
+    dressFig.classList.toggle('ff-done', GEAR.every((g) => worn.has(g)));
     kit.renderTray(plan.gear.tray.filter((id) => !worn.has(id)));
   }
   async function startGear() {
@@ -293,6 +333,7 @@ export function fireScreen(app, params = {}) {
     await talk([B(gearOnLine(id))]);
     if (e !== kit.epoch) return;
     play('sparkle');
+    dressFig.classList.add('ff-done'); // ảnh: chuyển mờ dần sang ảnh mặc đủ đồ
     restartAnim(dressFig, 'spin');
     await talk([B(GO_LINE)]);
     if (e !== kit.epoch) return;
@@ -892,23 +933,34 @@ export function fireScreen(app, params = {}) {
     talk([B(promptLine())]).then(() => k === stepKey() && kit.armNudge());
   }
 
-  const s = takeSnap(JOB, { level, continueDirectly: params.continueDirectly });
-  if (s?.plan?.gear) {
-    plan = s.plan;
-    caseIdx = s.caseIdx;
-    worn = new Set(s.worn ?? []);
-    dressed = Boolean(s.dressed);
-    if (!dressed) startGear();
-    else if (caseIdx >= plan.cases.length) {
-      caseIdx = plan.cases.length - 1;
-      renderCase();
-      finishRound();
-    } else startCase(s);
-  } else {
-    plan = planRound(level, { seen: progress.seen });
-    caseIdx = 0;
-    startGear();
-  }
+  // Ảnh lưới chú lính cứu hỏa (SPEC-art ART2): nạp trước khi vẽ; đủ 6 ô thì dùng ảnh (mặc đồ ghép ảnh, cầm vòi là ảnh).
+  loadGearImages(app).catch(() => ({ map: new Map(), revoke() {} })).then((loaded) => {
+    kit.onCleanup(loaded.revoke);
+    if (kit.signal.aborted) return;
+    if (FIRE_GEAR_FRAMES.every((f) => loaded.map.has(f))) {
+      gearPhotos = loaded.map;
+      dressFig = h('div.ff-dress.ff-photos', {}, photoDress(gearPhotos));
+      hose.replaceChildren(h('img.ff-spray', { src: gearPhotos.get('spray'), alt: '' }), h('span.ff-tip'));
+    }
+    const s = takeSnap(JOB, { level, continueDirectly: params.continueDirectly });
+    if (s?.plan?.gear) {
+      plan = s.plan;
+      caseIdx = s.caseIdx;
+      worn = new Set(s.worn ?? []);
+      dressed = Boolean(s.dressed);
+      if (!dressed) startGear();
+      else if (caseIdx >= plan.cases.length) {
+        caseIdx = plan.cases.length - 1;
+        renderCase();
+        finishRound();
+      } else startCase(s);
+    } else {
+      plan = planRound(level, { seen: progress.seen });
+      caseIdx = 0;
+      startGear();
+    }
+
+  });
 
   return kit.cleanup;
 }
