@@ -6,19 +6,56 @@ const spoken = (page) => page.evaluate(() => window.__spoken.slice());
 const saidSince = async (page, n, re) => (await spoken(page)).slice(n).some((t) => re.test(t));
 const play = (page) => page.locator('.fr-play');
 const ACTIVE = /spray|count|tree/;
+const setVisible = (page, v) => page.evaluate((state) => {
+  Object.defineProperty(document, 'visibilityState', { value: state, configurable: true });
+  document.dispatchEvent(new Event('visibilitychange'));
+}, v);
 
-async function openFire(page, settings) {
+async function enterFire(page, settings) {
   await fakeSpeech(page);
   await startApp(page);
   if (settings) await page.evaluate((s) => window.kidEnglish.setSetting('fireGame', s), settings);
   await page.getByRole('button', { name: 'Trò chơi' }).click();
   await page.getByRole('button', { name: 'Đóng vai' }).click();
   await page.getByRole('button', { name: 'Lính cứu hỏa' }).click();
+  await expect(play(page)).toHaveAttribute('data-state', 'dress', { timeout: 15000 });
+}
+/** Mặc đủ 3 món (đúng món Bông gọi nếu có). */
+async function dressUp(page) {
+  await expect(play(page)).toHaveAttribute('data-state', 'dress', { timeout: 15000 });
+  for (;;) {
+    const worn = await page.locator('.ff-dress .ff-wear.ff-on').count();
+    const want = await page.locator('.fr-scene').getAttribute('data-want');
+    await page.locator(want ? `.jb-tray [data-item="${want}"]` : '.jb-tray [data-item="helmet"], .jb-tray [data-item="jacket"], .jb-tray [data-item="boots"]').first().click();
+    if (worn >= 2) return; // món cuối: sang phố ngay
+    await expect(page.locator('.ff-dress .ff-wear.ff-on')).toHaveCount(worn + 1, { timeout: 15000 });
+    await expect(play(page)).toHaveAttribute('data-state', 'dress', { timeout: 15000 });
+  }
+}
+/** Đang ở phố: chạm đúng nhà. */
+async function arrive(page) {
+  await expect(play(page)).toHaveAttribute('data-state', /drive|tree/, { timeout: 15000 });
+  if ((await play(page).getAttribute('data-state')) !== 'drive') return;
+  const color = await page.locator('.fr-street').getAttribute('data-color');
+  await page.locator(`.fr-home[data-color="${color}"]`).click();
+}
+/** Đầu ca: (lái xe tới nhà nếu đang ở phố) rồi chờ tới bước làm việc. */
+async function ready(page) {
+  await expect(play(page)).toHaveAttribute('data-state', /drive|spray|count|tree/, { timeout: 15000 });
+  if ((await play(page).getAttribute('data-state')) === 'drive') await arrive(page);
   await expect(play(page)).toHaveAttribute('data-state', ACTIVE, { timeout: 15000 });
 }
-/** Làm xong ca đang mở: dập lửa (theo thứ tự gọi nếu có), chọn đúng số, hoặc dựng thang. */
+async function openFire(page, settings) {
+  await enterFire(page, settings);
+  await dressUp(page);
+  await arrive(page);
+  await expect(play(page)).toHaveAttribute('data-state', ACTIVE, { timeout: 15000 });
+}
+/** Làm xong ca đang mở: (lái xe tới nhà,) dập lửa (theo thứ tự gọi nếu có), chọn đúng số, hoặc dựng thang. */
 async function doCase(page, i) {
   await expect(page.locator('.jb-count')).toHaveText(`${i + 1}/3`, { timeout: 15000 });
+  await expect(play(page)).toHaveAttribute('data-state', /drive|spray|count|tree/, { timeout: 15000 });
+  if ((await play(page).getAttribute('data-state')) === 'drive') await arrive(page);
   await expect(play(page)).toHaveAttribute('data-state', ACTIVE, { timeout: 15000 });
   if ((await page.locator('.fr-scene').getAttribute('data-kind')) === 'tree') {
     await page.locator('.jb-tray .dr-item').click();
@@ -72,7 +109,7 @@ test('mức 2: hết lửa hỏi "How many fires?" — 3 thẻ số, chọn nh�
   let checkedWrong = false;
   for (let i = 0; i < 3; i++) {
     await expect(page.locator('.jb-count')).toHaveText(`${i + 1}/3`, { timeout: 15000 });
-    await expect(play(page)).toHaveAttribute('data-state', ACTIVE, { timeout: 15000 });
+    await ready(page);
     if ((await page.locator('.fr-scene').getAttribute('data-kind')) === 'tree') {
       sawTree = true;
       const n = (await spoken(page)).length;
@@ -105,7 +142,7 @@ test('mức 3: Bông gọi chỗ lửa; chạm ngọn khác → "The fire … fi
   await openFire(page, { level: 3, rounds: 0, lock: 3, seen: {} });
   for (let i = 0; i < 3; i++) {
     await expect(page.locator('.jb-count')).toHaveText(`${i + 1}/3`, { timeout: 15000 });
-    await expect(play(page)).toHaveAttribute('data-state', ACTIVE, { timeout: 15000 });
+    await ready(page);
     if ((await page.locator('.fr-scene').getAttribute('data-kind')) === 'fire') {
       await expect.poll(async () => (await spoken(page)).some((t) => /^The fire is (on the roof|in the window|by the door)!$/.test(t))).toBe(true);
       const want = await page.locator('.fr-scene').getAttribute('data-target');
@@ -158,6 +195,8 @@ test('chạm ngọn lửa ngay lúc Bông đang báo cháy: lửa vẫn tắt (k
   await page.getByRole('button', { name: 'Trò chơi' }).click();
   await page.getByRole('button', { name: 'Đóng vai' }).click();
   await page.getByRole('button', { name: 'Lính cứu hỏa' }).click();
+  await dressUp(page);
+  await arrive(page);
   await expect.poll(() => spoken(page)).toContain("A little fire! Let's put it out!");
   await page.locator('.fr-fire').first().click();
   await expect(page.locator('.fr-fire.out, .jb-count:text("2/3")').first()).toBeVisible({ timeout: 2500 });
@@ -169,6 +208,7 @@ for (const [w, hgt] of [[390, 760], [844, 390], [1024, 600], [1280, 720], [768, 
     await openFire(page, { level: 2, rounds: 0, lock: 2, seen: {} });
     for (let i = 0; i < 3; i++) {
       await expect(page.locator('.jb-count')).toHaveText(`${i + 1}/3`, { timeout: 15000 });
+      await ready(page);
       if ((await page.locator('.fr-scene').getAttribute('data-kind')) === 'fire') {
         const hits = await page.locator('.fr-fire').evaluateAll((els) => els.map((el) => {
           const r = el.getBoundingClientRect();
@@ -180,3 +220,100 @@ for (const [w, hgt] of [[390, 760], [844, 390], [1024, 600], [1280, 720], [768, 
     }
   });
 }
+
+// ---------- SPEC-fire2 FF1: mặc đồ + lái xe tới đúng nhà ----------
+test('FF1 mức 1: mặc đồ thứ tự tùy bé ("Boots on!"… "I\'m ready! Let\'s go!"); phố 3 nhà khác màu, nhà đúng có khói; nhầm nhà → "That\'s the … house"; đúng → xe tới, nhà của ca cùng màu; ghi màu đã gặp', async ({ page }) => {
+  await enterFire(page, { level: 1, rounds: 0, lock: 1, seen: {} });
+  await expect.poll(() => spoken(page)).toContain('Put on your firefighter clothes!');
+  await expect(page.locator('.jb-tray .dr-item')).toHaveCount(3);
+  for (const [item, line] of [['boots', 'Boots on!'], ['helmet', 'Helmet on!'], ['jacket', 'Jacket on!']]) {
+    await page.locator(`.jb-tray [data-item="${item}"]`).click();
+    await expect.poll(() => spoken(page)).toContain(line);
+  }
+  await expect.poll(() => spoken(page)).toContain("I'm ready! Let's go!");
+  await expect(play(page)).toHaveAttribute('data-state', 'drive', { timeout: 15000 });
+  const color = await page.locator('.fr-street').getAttribute('data-color');
+  const colors = await page.locator('.fr-home').evaluateAll((els) => els.map((e) => e.dataset.color));
+  expect(colors).toHaveLength(3);
+  expect(new Set(colors).size).toBe(3);
+  expect(colors).toContain(color);
+  await expect(page.locator('.fr-home .fr-smoke')).toHaveCount(1);
+  await expect(page.locator(`.fr-home[data-color="${color}"] .fr-smoke`)).toHaveCount(1);
+  await expect.poll(() => spoken(page)).toContain(`Nee-naw! Go to the ${color} house!`);
+  // Còi xe: chạm lúc nào cũng được, không tính lượt.
+  await page.getByRole('button', { name: 'Xe cứu hỏa' }).click();
+  await expect(page.locator('.fr-truck')).toHaveClass(/honk/);
+  await expect(play(page)).toHaveAttribute('data-state', 'drive');
+  const wrong = colors.find((c) => c !== color);
+  await expect(async () => {
+    await page.locator(`.fr-home[data-color="${wrong}"]`).click();
+    expect(await spoken(page)).toContain(`That's the ${wrong} house. Go to the ${color} house!`);
+  }).toPass({ timeout: 15000 });
+  await page.locator(`.fr-home[data-color="${color}"]`).click();
+  await expect(play(page)).toHaveAttribute('data-state', ACTIVE, { timeout: 15000 });
+  await expect(page.locator('.fr-street')).toBeHidden();
+  await expect(page.locator('.fr-hose')).toBeVisible();
+  // Nhầm một lần trước khi chọn đúng: không ghi màu "đã gặp" (chỉ ghi khi đúng ngay lần đầu).
+  expect(await page.evaluate((c) => window.kidEnglish.db.get('progress', c), color)).toBeFalsy();
+});
+
+test('FF1 mức 2: Bông gọi từng món — mặc nhầm thứ tự → "… first!", món chưa mặc; chọn nhà đúng ngay lần đầu → ghi màu đã gặp; chơi hết lượt → sticker', async ({ page }) => {
+  await enterFire(page, { level: 2, rounds: 0, lock: 2, seen: {} });
+  const want = await page.locator('.fr-scene').getAttribute('data-want');
+  expect(['helmet', 'jacket', 'boots']).toContain(want);
+  const other = ['helmet', 'jacket', 'boots'].find((g) => g !== want);
+  await expect(async () => {
+    await page.locator(`.jb-tray [data-item="${other}"]`).click();
+    expect((await spoken(page)).some((t) => / first!$/.test(t))).toBe(true);
+  }).toPass({ timeout: 15000 });
+  await expect(page.locator('.ff-dress .ff-wear.ff-on')).toHaveCount(0);
+  await dressUp(page);
+  let colored = null;
+  for (let i = 0; i < 3; i++) {
+    await expect(play(page)).toHaveAttribute('data-state', /drive|tree/, { timeout: 15000 });
+    if (!colored && (await play(page).getAttribute('data-state')) === 'drive') colored = await page.locator('.fr-street').getAttribute('data-color');
+    await doCase(page, i);
+  }
+  await expect(page.locator('.prize-sticker')).toBeVisible({ timeout: 15000 });
+  expect((await page.evaluate((c) => window.kidEnglish.db.get('progress', c), colored))?.practiceCount).toBeGreaterThan(0);
+});
+
+test('FF1 mức 3: khay có thêm món lạ → "Not the …!"; phố không có khói (chỉ nghe màu)', async ({ page }) => {
+  await enterFire(page, { level: 3, rounds: 0, lock: 3, seen: {} });
+  await expect(page.locator('.jb-tray .dr-item')).toHaveCount(4);
+  const odd = await page.locator('.jb-tray .dr-item').evaluateAll((els) => els.map((e) => e.dataset.item).find((id) => !['helmet', 'jacket', 'boots'].includes(id)));
+  expect(['swimsuit', 'flipflops']).toContain(odd);
+  await expect(async () => {
+    await page.locator(`.jb-tray [data-item="${odd}"]`).click();
+    expect((await spoken(page)).some((t) => /^Not the (swimsuit|flip-flops)! We need the (helmet|jacket|boots)!$/.test(t))).toBe(true);
+  }).toPass({ timeout: 15000 });
+  await dressUp(page);
+  for (let i = 0; i < 3; i++) {
+    await expect(play(page)).toHaveAttribute('data-state', /drive|tree/, { timeout: 15000 });
+    if ((await play(page).getAttribute('data-state')) === 'drive') {
+      await expect(page.locator('.fr-smoke')).toHaveCount(0);
+      break;
+    }
+    await doCase(page, i);
+  }
+});
+
+test('FF1: ra nền giữa lúc mặc đồ rồi quay lại → giữ món đã mặc; ra nền lúc ở phố → quay lại vẫn ở phố, cùng nhà cần tới', async ({ page }) => {
+  await enterFire(page, { level: 1, rounds: 0, lock: 1, seen: {} });
+  await page.locator('.jb-tray [data-item="helmet"]').click();
+  await expect(page.locator('.ff-dress .ff-wear.ff-on')).toHaveCount(1, { timeout: 15000 });
+  await setVisible(page, 'hidden');
+  await setVisible(page, 'visible');
+  await page.locator('.resume-overlay .start-btn').click();
+  await expect(play(page)).toHaveAttribute('data-state', 'dress', { timeout: 15000 });
+  await expect(page.locator('.ff-dress [data-gear="helmet"]')).toHaveClass(/ff-on/);
+  await expect(page.locator('.jb-tray .dr-item')).toHaveCount(2);
+  await dressUp(page);
+  await expect(play(page)).toHaveAttribute('data-state', 'drive', { timeout: 15000 });
+  const color = await page.locator('.fr-street').getAttribute('data-color');
+  await setVisible(page, 'hidden');
+  await setVisible(page, 'visible');
+  await page.locator('.resume-overlay .start-btn').click();
+  await expect(play(page)).toHaveAttribute('data-state', 'drive', { timeout: 15000 });
+  await expect(page.locator('.fr-street')).toHaveAttribute('data-color', color);
+});

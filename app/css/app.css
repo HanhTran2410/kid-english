@@ -2639,9 +2639,47 @@ img.dr-admin-face { width: 100%; height: 100%; object-fit: contain; }
 @keyframes fr-flicker { from { transform: translate(-50%, -60%) scale(1, 1); } to { transform: translate(-50%, -60%) scale(1.06, 0.94); } }
 @keyframes fr-out { to { transform: translate(-50%, -60%) scale(0.1); opacity: 0; } }
 .fr-hose {
-  position: absolute; left: 3%; bottom: 4%; z-index: 3; padding: 0; border: 0; background: none; cursor: pointer; touch-action: manipulation;
-  font-family: var(--emoji); font-size: clamp(60px, 12vmin, 110px); line-height: 1; transform-origin: 30% 100%;
+  position: absolute; left: 2%; bottom: 3%; z-index: 3; padding: 0; border: 0; background: none; cursor: pointer; touch-action: manipulation;
+  width: clamp(78px, 15vmin, 140px); aspect-ratio: 220 / 330; transform-origin: 30% 100%;
 }
+.fr-hose svg { width: 100%; height: 100%; display: block; pointer-events: none; }
+/* Bông lính cứu hỏa (SPEC-fire2 mục 3): mỗi món đồ là một lớp, mặc món nào hiện lớp đó. */
+.ff-wear { opacity: 0; transition: opacity 0.3s; }
+.ff-wear.ff-on, .ff-all .ff-wear { opacity: 1; }
+.ff-nozzle { display: none; }
+.ff-all .ff-nozzle { display: inline; }
+.ff-dress { position: absolute; inset: 2% 18% 0; display: grid; place-items: center; }
+.ff-dress .ff-svg { height: 100%; width: auto; max-width: 100%; display: block; }
+.ff-dress.spin { animation: ff-spin 0.7s ease-in-out; }
+@keyframes ff-spin { 40% { transform: scale(1.08) rotate(-6deg); } 70% { transform: scale(1.04) rotate(5deg); } }
+.ff-gear-face svg { width: 100%; height: 100%; display: block; }
+/* Lái xe tới đúng nhà (SPEC-fire2 mục 4): phố 3 nhà khác màu, đường + xe cứu hỏa. */
+.fr-street { position: absolute; inset: 0; z-index: 2; display: grid; grid-template-rows: minmax(0, 1fr) clamp(44px, 24%, 130px); }
+/* Khay ẩn không giữ chỗ: sân khấu cao hơn (màn ngang điện thoại thấp). */
+.fr-play .jb-tray.off { display: none; }
+.fr-street[hidden] { display: none; }
+.fr-homes { display: flex; justify-content: space-evenly; align-items: flex-end; gap: 2%; padding: 4% 3% 0; min-height: 0; }
+.fr-home { position: relative; height: min(100%, 34vmin); max-width: 30%; aspect-ratio: 1; padding: 0; border: 0; background: none; cursor: pointer; touch-action: manipulation; }
+.fr-home svg { width: 100%; height: 100%; display: block; pointer-events: none; }
+.fr-home.shake { animation: as-shake 0.4s; }
+.fr-home.nudge { animation: hint-hop 0.5s ease-in-out 3; filter: drop-shadow(0 0 10px #ffd43b); }
+.fr-smoke { position: absolute; left: 66%; top: -26%; width: 26%; height: 34%; pointer-events: none; }
+.fr-smoke span { position: absolute; bottom: 0; left: 15%; width: 70%; aspect-ratio: 1; border-radius: 50%; background: rgba(134, 142, 150, 0.75); animation: fr-puff 1.8s ease-out infinite; }
+.fr-smoke span:nth-child(2) { animation-delay: 0.6s; }
+.fr-smoke span:nth-child(3) { animation-delay: 1.2s; }
+@keyframes fr-puff { from { transform: translateY(0) scale(0.5); opacity: 0.9; } to { transform: translateY(-170%) scale(1.5); opacity: 0; } }
+.fr-road {
+  position: relative; container-type: size; background-color: #868e96;
+  background-image: linear-gradient(90deg, #fff 50%, transparent 50%); background-size: 44px 5px; background-repeat: repeat-x; background-position: 0 50%;
+}
+.fr-truck {
+  position: absolute; left: 2%; bottom: 8%; padding: 0; border: 0; background: none; cursor: pointer; touch-action: manipulation;
+  font-family: var(--emoji); font-size: clamp(56px, 13vmin, 108px); font-size: 72cqh; line-height: 1;
+}
+/* Emoji xe cứu hỏa quay đầu sang trái: lật lại để xe chạy sang phải. */
+.fr-truck span { display: inline-block; transform: scaleX(-1); }
+.fr-truck.honk span { animation: fr-honk 0.4s; }
+@keyframes fr-honk { 30% { transform: scaleX(-1) translateY(-6px) rotate(4deg); } }
 .fr-hose.spraying { animation: fr-recoil 0.35s ease-out; }
 @keyframes fr-recoil { 30% { transform: rotate(-9deg) translateX(-6px) scale(1.06); } 70% { transform: rotate(3deg); } }
 /* Tia nước: dải xanh có vệt chảy, vươn từ vòi tới ngọn lửa rồi mờ đi. */
@@ -2678,11 +2716,11 @@ img.dr-admin-face { width: 100%; height: 100%; object-fit: contain; }
 @media (max-width: 600px) {
   .fr-scene { height: 62%; bottom: 18%; transform: translateX(-50%); }
   .fr-resident { height: 30%; }
-  .fr-hose { font-size: 52px; }
+  .fr-hose { width: 70px; }
 }
 @media (prefers-reduced-motion: reduce) {
   .pl-asker.enter, .pl-asker.hop, .pl-asker.talking .dr-svg, .pl-item.nudge, .pl-item.shake, .pl-bush.nudge,
-  .fr-hose.spraying, .fr-jet, .fr-splash,
+  .fr-hose.spraying, .fr-jet, .fr-splash, .ff-dress.spin, .fr-home.nudge, .fr-home.shake, .fr-smoke span, .fr-truck.honk span,
   .fr-scene.enter, .fr-fire, .fr-resident.enter, .fr-resident.hop, .fr-resident.talking .dr-svg, .fr-number.nudge, .fr-number.shake { animation: none; }
   .pl-asker.leave, .fr-resident.leave { animation: dr-fade 0.3s forwards; }
   .pl-bush, .fr-climber, .fr-ladder { transition: none; }

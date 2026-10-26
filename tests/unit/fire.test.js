@@ -1,7 +1,10 @@
 // Lính cứu hỏa (SPEC-jobs.md mục 7): số lửa theo mức, ca trên cây, thẻ số (JOBS-08), câu số ít / nhiều (JOBS-07).
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { planRound, numberChoices, allGoneLine, rightNumberLine, countLine, whereLine, firstLine, wrongNumberLine } from '../../app/js/jobs/fire.js';
+import {
+  planRound, numberChoices, allGoneLine, rightNumberLine, countLine, whereLine, firstLine, wrongNumberLine,
+  GEAR, ODD_GEAR, HOUSE_COLORS, planGear, planStreet, putOnLine, gearOnLine, wrongGearLine, goToLine, wrongHouseLine, READY_LINE, DRESS_ANY_LINE, GO_LINE,
+} from '../../app/js/jobs/fire.js';
 
 function seeded(seed = 1) {
   let s = seed;
@@ -56,4 +59,52 @@ test('JOBS-07: câu theo số lửa thật — số ít / số nhiều; chỗ l�
   assert.equal(whereLine('roof')[0], 'The fire is on the roof!');
   assert.equal(whereLine('door')[0], 'The fire is by the door!');
   assert.equal(firstLine('window')[0], 'The fire in the window first!');
+});
+
+test('SPEC-fire2 FF1 — mặc đồ: mức 1 không món lạ; mức 2 Bông gọi theo thứ tự; mức 3 thêm đúng 1 món lạ trong khay', () => {
+  const rng = seeded(9);
+  for (const level of [1, 2, 3]) for (let i = 0; i < 40; i++) {
+    const g = planGear(level, { rng });
+    assert.deepEqual([...g.order].sort(), [...GEAR].sort());
+    if (level === 1) assert.deepEqual(g.order, GEAR);
+    assert.equal(g.odd, level >= 3 ? g.odd : null);
+    if (level >= 3) assert.ok(ODD_GEAR.includes(g.odd));
+    assert.deepEqual([...g.tray].sort(), [...GEAR, ...(g.odd ? [g.odd] : [])].sort());
+  }
+});
+
+test('SPEC-fire2 FF1 — phố: 3 nhà khác màu, đúng một nhà của ca; ca dập lửa có nhà (khói ở mức 1–2), ca cây không có', () => {
+  const rng = seeded(4);
+  for (const color of HOUSE_COLORS) for (let i = 0; i < 20; i++) {
+    const st = planStreet(color, { rng });
+    assert.equal(st.length, 3);
+    assert.equal(new Set(st).size, 3);
+    assert.equal(st.filter((c) => c === color).length, 1);
+    assert.ok(st.every((c) => HOUSE_COLORS.includes(c)));
+  }
+  for (const level of [1, 2, 3]) for (let i = 0; i < 30; i++) {
+    const { gear, cases } = planRound(level, { rng });
+    assert.ok(gear);
+    for (const c of cases) {
+      if (c.kind === 'tree') assert.equal(c.house, undefined);
+      else {
+        assert.ok(c.house.street.includes(c.house.color));
+        assert.equal(c.house.smoke, level <= 2);
+      }
+    }
+  }
+});
+
+test('SPEC-fire2 FF1 — câu nói: số ít / nhiều đúng, món lạ, đổi nhà; không có chỗ trống', () => {
+  assert.deepEqual(putOnLine('helmet')[0], 'Put on your helmet!');
+  assert.deepEqual(gearOnLine('boots')[0], 'Boots on!');
+  assert.equal(wrongGearLine('jacket', 'helmet')[0], "That's the jacket. Helmet first!");
+  assert.equal(wrongGearLine('boots', 'jacket')[0], 'Those are the boots. Jacket first!');
+  assert.equal(wrongGearLine('swimsuit', 'boots')[0], 'Not the swimsuit! We need the boots!');
+  assert.equal(wrongGearLine('flipflops', 'helmet')[0], 'Not the flip-flops! We need the helmet!');
+  assert.equal(goToLine('red')[0], 'Nee-naw! Go to the red house!');
+  assert.equal(wrongHouseLine('blue', 'red')[0], "That's the blue house. Go to the red house!");
+  const all = [READY_LINE, DRESS_ANY_LINE, GO_LINE, ...GEAR.flatMap((g) => [putOnLine(g), gearOnLine(g)]),
+    ...HOUSE_COLORS.flatMap((c) => [goToLine(c), wrongHouseLine(HOUSE_COLORS.find((x) => x !== c), c)])];
+  for (const [en, vi] of all) assert.ok(en && vi && !/undefined|\{/.test(en + vi), en);
 });
