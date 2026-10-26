@@ -25,6 +25,8 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
+      # Thư viện bài: file .zip tải lên qua web GitHub chưa có trong index.json — tạo lại trước khi test (SPEC-drive mục 8).
+      - run: node scripts/make-shared-index.mjs
       - run: npm test
 
   deploy:

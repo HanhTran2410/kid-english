@@ -52,7 +52,7 @@ Máy nhận **dùng tài khoản Google khác hoặc không có tài khoản** v
 Chia sẻ bài cho nhiều người mà không cần Google Drive / API key: file bài để ngay trên trang app (GitHub Pages).
 
 - **Chỗ để file:** thư mục `app/shared/` của repo — file `.zip` của app (bài học, ảnh trò chơi). Trang app phục vụ ở `https://hanhtran2410.github.io/kid-english/shared/<tên file>.zip`. Repo **công khai**: không để ảnh người thật (ảnh gia đình, ảnh bé).
-- **Danh sách:** `app/shared/index.json` (tên bài, loại, số ảnh, dung lượng), tạo bằng `node scripts/make-shared-index.mjs`. Workflow deploy **chạy lại script này trước khi đưa app lên**, nên bố mẹ chỉ cần tải file `.zip` vào `app/shared/` (kể cả qua trang web GitHub: *Add file → Upload files*) là thư viện tự cập nhật sau 1–2 phút.
+- **Danh sách:** `app/shared/index.json` (tên bài, loại, số ảnh, dung lượng), tạo bằng `node scripts/make-shared-index.mjs`. Workflow **chạy lại script này cả trước bước test lẫn trước khi đưa app lên** (0.36.0: trước đây chỉ chạy ở bước deploy nên file tải qua web làm test `index.json khớp file` hỏng và chặn deploy), nên bố mẹ chỉ cần tải file `.zip` vào `app/shared/` (kể cả qua trang web GitHub: *Add file → Upload files*) là thư viện tự cập nhật sau 1–2 phút.
 - **Không lưu offline:** service worker không cache `shared/` (test `sw.test.js` bỏ qua thư mục này); mở Thư viện bài cần mạng.
 - **Góc bố mẹ → Quản lý bài → 📚 Thư viện bài:** danh sách file; mỗi file có **Nhập** (tải thẳng từ trang app, nhập như "Nhập bài từ file") và **Copy link** (link nhập bài `…/kid-english/#zip=shared%2F<file>` — mở link là app điền sẵn ở "Nhập bài từ link"). Bài đã có cùng tên trên máy hiện "✓ Đã có" (nhập lại vẫn được: bài trùng tên được đặt "… 2").
 - **"Nhập bài từ link"** hiểu thêm (`app/js/link-import.js`):
