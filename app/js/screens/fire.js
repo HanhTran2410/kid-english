@@ -1,7 +1,8 @@
 // Trò Lính cứu hỏa (SPEC-jobs.md mục 7): chạm từng ngọn lửa nhỏ để phun nước (Bông đếm), hết lửa bạn thú cảm ơn.
 // Mức 2: hỏi "How many fires?" (3 thẻ số) + một ca cứu bạn trên cây bằng thang; mức 3: Bông gọi chỗ lửa ("on the roof").
-// SPEC-fire2.md: đầu lượt mặc đồ cho Bông (helmet, jacket, boots); trước ca dập lửa lái xe tới đúng nhà theo màu.
-// 3 ca → sticker. Trạng thái: dress → (drive →) enter → spray | count | tree ⇄ busy → thanks → leave → ca sau | done.
+// SPEC-fire2.md: đầu lượt mặc đồ cho Bông (helmet, jacket, boots); trước ca dập lửa / cứu trong nhà lái xe tới đúng nhà theo
+// màu; ca cứu trong nhà: gõ cửa → mở cửa → bạn thú ra; ca cuối: An toàn với lửa (chạm được không? — mức 3 bấm 114).
+// 3 ca → sticker. Trạng thái: dress → (drive →) enter → spray | count | tree | knock → open ⇄ busy → thanks → leave → ca sau | done.
 // Khung chung ở jobs/kit.js.
 
 import { h } from '../ui.js';
@@ -12,7 +13,7 @@ import { PATIENT_BY_ID } from '../doctor.js';
 import { SOUND_BY_ID } from '../animal-sounds.js';
 import { playSoundFile } from './animal-sounds.js';
 import { markPracticed } from '../player/track.js';
-import { cleanJobState, afterJobRound } from '../jobs/levels.js';
+import { cleanJobState, afterJobRound, afterSeen } from '../jobs/levels.js';
 import { JOBS_BG_IMAGES } from '../jobs/backgrounds.js';
 import { COLOR_BY_ID } from '../jobs/post.js';
 import { jobScreen, saveSnap, takeSnap, clearSnap, restartAnim, center, wait, reduceMotion, WRONG_LOCK_MS, MAX_NUDGES } from '../jobs/kit.js';
@@ -21,6 +22,8 @@ import {
   MAX_LEVEL, GEAR, GEAR_INFO, planRound, countLine, allGoneLine, rightNumberLine, wrongNumberLine, whereLine, firstLine,
   ALARM_LINE, TAP_LINE, THANKS_LINE, HOW_MANY_LINE, TREE_LINE, LADDER_LINE, DOWN_LINE,
   READY_LINE, DRESS_ANY_LINE, GO_LINE, putOnLine, gearOnLine, wrongGearLine, goToLine, wrongHouseLine,
+  STUCK_LINE, KNOCK_LINE, KNOCKED_LINE, OPEN_LINE, SAFE_LINE,
+  SAFETY_BY, FIRE_NUMBER, KEY_WORDS, SAFETY_INTRO, GROWNUP_LINE, DIAL_LINE, STATION_LINE, lookLine, safetyRightLine, safetyWrongLine, wrongKeyLine,
 } from '../jobs/fire.js';
 
 const JOB = 'fire';
@@ -30,7 +33,7 @@ const OUT_MS = 450; // ngọn lửa nhỏ dần rồi tắt
 const JET_MS = 280; // tia nước vươn từ vòi tới ngọn lửa
 const SPLASH_MS = 500;
 const DRIVE_MS = 900; // xe cứu hỏa chạy tới nhà
-const ACTIVE = ['dress', 'drive', 'spray', 'count', 'tree'];
+const ACTIVE = ['dress', 'drive', 'spray', 'count', 'tree', 'knock', 'open', 'safety', 'dial'];
 /** Chỗ ngọn lửa trên ngôi nhà (phần trăm của khung nhà). */
 const SPOT_XY = { roof: [50, 24], window: [30, 56], window2: [70, 56], door: [50, 84], chimney: [76, 12] };
 
@@ -116,6 +119,9 @@ export function fireScreen(app, params = {}) {
   let worn = new Set(); // đồ Bông đã mặc
   let dressed = false;
   let drove = false; // ca này đã lái xe tới nhà
+  let knocked = false; // ca cứu trong nhà: đã gõ cửa
+  let safetyIdx = 0; // ca An toàn: đồ thứ mấy
+  let dialed = 0; // ca An toàn mức 3: đã bấm mấy số của 114
   let wrongs = 0;
   let nudges = 0;
   let state = 'start';
@@ -142,6 +148,7 @@ export function fireScreen(app, params = {}) {
   const truck = h('button.fr-truck', { type: 'button', 'aria-label': 'Xe cứu hỏa', onclick: () => honk() }, h('span', { text: '🚒' }));
   const street = h('div.fr-street', { hidden: true }, homes, h('div.fr-road', {}, truck));
   const dressFig = h('div.ff-dress', { html: firefighterSvg() });
+  const safetyEl = h('div.fr-safety', { hidden: true });
 
   const kit = jobScreen(app, {
     job: JOB, background: { lessonId: JOBS_BG_IMAGES, word: JOB }, className: 'fr-play', stageClass: 'fr-stage', title: '🚒 Firefighter', helperLabel: 'Bông cứu hỏa', cap: 'fire',
@@ -169,8 +176,8 @@ export function fireScreen(app, params = {}) {
     },
   });
   const { stage, count, talk } = kit;
-  stage.append(scene, residentEl, hose, choices, street);
-  const stepKey = () => `${kit.epoch}:${caseIdx}:${out.size}:${worn.size}:${state}`;
+  stage.append(scene, residentEl, hose, choices, street, safetyEl);
+  const stepKey = () => `${kit.epoch}:${caseIdx}:${out.size}:${worn.size}:${safetyIdx}:${dialed}:${state}`;
 
   function setState(s) {
     state = s;
@@ -179,21 +186,28 @@ export function fireScreen(app, params = {}) {
     kit.setState(s, ACTIVE.includes(s));
     choices.classList.toggle('locked', s !== 'count');
   }
-  const snap = () => saveSnap(JOB, { level, plan, caseIdx, out: [...out], worn: [...worn], dressed, drove, wrongs, nudges, phase: state });
+  const snap = () => saveSnap(JOB, { level, plan, caseIdx, out: [...out], worn: [...worn], dressed, drove, knocked, safetyIdx, dialed, wrongs, nudges, phase: state });
   /** Ca xong (nhận thao tác đúng cuối cùng): lưu để chơi tiếp là ca sau — ra nền giữa hoạt ảnh không bị kẹt / làm lại. */
-  const caseDone = () => saveSnap(JOB, { level, plan, caseIdx: caseIdx + 1, out: [], worn: [...worn], dressed: true, drove: false, wrongs: 0, nudges: 0, phase: 'start' });
+  const caseDone = () => saveSnap(JOB, { level, plan, caseIdx: caseIdx + 1, out: [], worn: [...worn], dressed: true, drove: false, knocked: false, safetyIdx: 0, dialed: 0, wrongs: 0, nudges: 0, phase: 'start' });
 
   function promptLine() {
     if (state === 'dress') return wantGear() ? putOnLine(wantGear()) : DRESS_ANY_LINE;
     if (state === 'drive') return goToLine(cur().house.color);
     if (state === 'count') return HOW_MANY_LINE;
     if (state === 'tree') return LADDER_LINE;
+    if (state === 'knock') return KNOCK_LINE;
+    if (state === 'open') return OPEN_LINE;
+    if (state === 'safety') return lookLine(cur().items[safetyIdx]);
+    if (state === 'dial') return DIAL_LINE;
     return targetFire() ? whereLine(spotOf(targetFire())) : TAP_LINE;
   }
   function nudgeWanted() {
     if (state === 'dress') restartAnim(kit.trayItem(nextGear()), 'nudge');
     else if (state === 'drive') restartAnim(homes.querySelector(`[data-color="${cur().house.color}"]`), 'nudge');
     else if (state === 'tree') restartAnim(kit.trayItem('ladder'), 'nudge');
+    else if (state === 'knock' || state === 'open') restartAnim(scene.querySelector('.fr-door'), 'nudge');
+    else if (state === 'safety') restartAnim(safetyEl.querySelector(`[data-answer="${SAFETY_BY.get(cur().items[safetyIdx]).hot ? 'no' : 'yes'}"]`), 'nudge');
+    else if (state === 'dial') restartAnim(safetyEl.querySelector('.fr-key.lit'), 'nudge');
     else if (state === 'count') restartAnim(choices.querySelector(`[data-n="${cur().fires.length}"]`), 'nudge');
     else restartAnim(scene.querySelector(`.fr-fire[data-id="${targetFire() ?? cur().fires.find((f) => !out.has(f.id))?.id}"]`), 'nudge');
   }
@@ -224,6 +238,7 @@ export function fireScreen(app, params = {}) {
     residentEl.hidden = true;
     hose.hidden = true;
     street.hidden = true;
+    safetyEl.hidden = true;
     scene.dataset.kind = 'dress';
     scene.replaceChildren(dressFig);
     renderGear();
@@ -360,6 +375,7 @@ export function fireScreen(app, params = {}) {
     count.textContent = `${caseIdx + 1}/${plan.cases.length}`;
     choices.replaceChildren();
     street.hidden = true;
+    safetyEl.hidden = true;
     hose.hidden = false;
     scene.dataset.kind = c.kind;
     if (c.kind === 'tree') {
@@ -367,6 +383,15 @@ export function fireScreen(app, params = {}) {
         h('div.fr-climber', { html: patientSvg(r.id, { mood: 'sad', title: r.name }) }));
       residentEl.replaceChildren();
       residentEl.hidden = true;
+      return;
+    }
+    if (c.kind === 'house') {
+      // Bạn thú ló ở cửa sổ; cửa là nút (chạm gõ rồi mở). Chạm cửa sổ / bạn thú: cửa nhún, không tính nhầm.
+      residentEl.replaceChildren();
+      residentEl.hidden = true;
+      const door = h('button.fr-door', { type: 'button', 'aria-label': 'Cửa', onclick: () => tapDoor() }, h('span.fr-knob'));
+      const peek = h('button.fr-peek', { type: 'button', 'aria-label': r.name, html: patientSvg(r.id, { mood: 'sad', title: r.name }), onclick: () => tapWindow() });
+      scene.replaceChildren(h('div.fr-house', { html: houseSvg(c.house.color) }), h('div.fr-doorway'), door, peek);
       return;
     }
     residentEl.hidden = false;
@@ -396,7 +421,12 @@ export function fireScreen(app, params = {}) {
     wrongs = resume?.wrongs ?? 0;
     nudges = resume?.nudges ?? 0;
     drove = arrived || Boolean(resume?.drove);
+    knocked = Boolean(resume?.knocked);
     const c = cur();
+    if (c.kind === 'safety') {
+      startSafety(resume);
+      return;
+    }
     if (c.house && !drove) {
       startDrive();
       return;
@@ -419,6 +449,19 @@ export function fireScreen(app, params = {}) {
       return;
     }
     kit.renderTray([]);
+    if (c.kind === 'house') {
+      if (!resume) {
+        restartAnim(scene, 'enter');
+        await wait(ENTER_MS);
+        if (e !== kit.epoch) return;
+      }
+      // Nhận chạm cửa ngay từ lúc bạn thú kêu cứu.
+      setState(knocked ? 'open' : 'knock');
+      snap();
+      await talk([R(STUCK_LINE), B(promptLine())]);
+      if (e === kit.epoch && (state === 'knock' || state === 'open')) kit.armNudge();
+      return;
+    }
     // Chơi tiếp sau khi đã tắt hết lửa (mức 2: còn bước chọn số).
     if (resume && out.size >= c.fires.length) {
       if (level === 2) startCount();
@@ -471,12 +514,216 @@ export function fireScreen(app, params = {}) {
     }
     restartAnim(hose, 'spraying');
     play('tap');
-    if (state === 'tree') {
+    if (state === 'tree' || state === 'knock' || state === 'open') {
       kit.clearNudge();
       nudgeWanted();
       const k = stepKey();
-      talk([B(LADDER_LINE)]).then(() => k === stepKey() && kit.armNudge());
+      talk([B(promptLine())]).then(() => k === stepKey() && kit.armNudge());
     }
+  }
+
+  // ---------- An toàn với lửa (SPEC-fire2 mục 6) ----------
+  async function startSafety(resume) {
+    const e = kit.epoch;
+    safetyIdx = resume?.safetyIdx ?? 0;
+    dialed = resume?.dialed ?? 0;
+    count.textContent = `${caseIdx + 1}/${plan.cases.length}`;
+    residentEl.hidden = true;
+    hose.hidden = true;
+    street.hidden = true;
+    choices.replaceChildren();
+    scene.replaceChildren();
+    scene.dataset.kind = 'safety';
+    kit.renderTray([]);
+    safetyEl.replaceChildren();
+    safetyEl.hidden = false;
+    setState('enter');
+    if (!resume) {
+      await talk([B(SAFETY_INTRO)]);
+      if (e !== kit.epoch) return;
+    }
+    nextSafety();
+  }
+  function nextSafety() {
+    if (safetyIdx < cur().items.length) askItem();
+    else if (cur().dial && dialed < FIRE_NUMBER.length) startDial();
+    else endSafety();
+  }
+  async function askItem() {
+    const e = kit.epoch;
+    const id = cur().items[safetyIdx];
+    const x = SAFETY_BY.get(id);
+    const btn = (answer, emoji, label) => h('button.fr-yn', { type: 'button', 'aria-label': label, dataset: { answer }, onclick: () => answerSafety(answer === 'yes') },
+      h('span', { text: emoji, 'aria-hidden': 'true' }), h('b', { text: label }));
+    safetyEl.dataset.hot = String(x.hot); // cho test
+    safetyEl.replaceChildren(h('div.fr-thing', { role: 'img', 'aria-label': x.name, dataset: { id }, text: x.emoji }),
+      h('div.fr-yns', {}, btn('yes', '👍', 'Yes!'), btn('no', '👎', 'No!')));
+    // Nhận trả lời ngay từ lúc Bông hỏi.
+    setState('safety');
+    snap();
+    await talk([B(lookLine(id))]);
+    if (e === kit.epoch && state === 'safety') kit.armNudge();
+  }
+  async function answerSafety(yes) {
+    if (state !== 'safety') return;
+    const e = kit.epoch;
+    const id = cur().items[safetyIdx];
+    const x = SAFETY_BY.get(id);
+    const btn = safetyEl.querySelector(`[data-answer="${yes ? 'yes' : 'no'}"]`);
+    if (yes === x.hot) {
+      // Nhầm (luật nhầm chung, không dọa): Bông nói lại cho đúng, nút đúng nhún — bé chạm nút đúng để đi tiếp.
+      if (lockedWrong(`s:${yes}`)) return;
+      wrongs += 1;
+      snap();
+      kit.clearNudge();
+      play('boing');
+      restartAnim(btn, 'shake');
+      if (x.hot) restartAnim(safetyEl.querySelector('.fr-thing'), 'hot');
+      restartAnim(safetyEl.querySelector(`[data-answer="${x.hot ? 'no' : 'yes'}"]`), 'nudge');
+      const k = stepKey();
+      await talk([B(safetyWrongLine(id))]);
+      if (k === stepKey()) kit.armNudge();
+      return;
+    }
+    // Đúng: nhận NGAY (một lần), lưu đồ tiếp theo.
+    setState('busy');
+    kit.clearNudge();
+    safetyIdx += 1;
+    wrongs = 0;
+    nudges = 0;
+    snap();
+    play('ding');
+    btn.classList.add('right');
+    await talk([B(safetyRightLine(id))]);
+    if (e !== kit.epoch) return;
+    nextSafety();
+  }
+  function markNextKey() {
+    const want = FIRE_NUMBER[dialed];
+    safetyEl.dataset.next = want == null ? '' : String(want); // cho test
+    for (const k of safetyEl.querySelectorAll('.fr-key')) k.classList.toggle('lit', Number(k.dataset.n) === want);
+  }
+  /** Mức 3: điện thoại đồ chơi, bé bấm 1 → 1 → 4 (phím cần bấm sáng lên). */
+  async function startDial() {
+    const e = kit.epoch;
+    const keys = [1, 2, 3, 4, 5, 6, 7, 8, 9, 0].map((n) => h('button.fr-key', {
+      type: 'button', 'aria-label': String(n), dataset: { n: String(n) }, text: String(n), onclick: () => pressKey(n),
+    }));
+    safetyEl.replaceChildren(h('div.fr-phone', {},
+      h('div.fr-display', { text: FIRE_NUMBER.slice(0, dialed).join('') }),
+      h('div.fr-keys', {}, ...keys),
+      h('p.fr-phone-note', { text: 'Trò chơi — chỉ người lớn gọi 114 khi có cháy thật' })));
+    markNextKey();
+    setState('dial');
+    snap();
+    await talk([B(GROWNUP_LINE), B(DIAL_LINE)]);
+    if (e === kit.epoch && state === 'dial') kit.armNudge();
+  }
+  async function pressKey(n) {
+    if (state !== 'dial') return;
+    const e = kit.epoch;
+    const want = FIRE_NUMBER[dialed];
+    const key = safetyEl.querySelector(`.fr-key[data-n="${n}"]`);
+    if (n !== want) {
+      // Bấm nhầm: không tăng số đã bấm (luật nhầm chung).
+      if (lockedWrong(`k:${n}`)) return;
+      wrongs += 1;
+      snap();
+      kit.clearNudge();
+      play('boing');
+      restartAnim(key, 'shake');
+      if (wrongs >= 2) restartAnim(safetyEl.querySelector('.fr-key.lit'), 'nudge');
+      const k = stepKey();
+      await talk([B(wrongKeyLine(n, want))]);
+      if (k === stepKey()) kit.armNudge();
+      return;
+    }
+    dialed += 1;
+    wrongs = 0;
+    nudges = 0;
+    play('tap');
+    restartAnim(key, 'pressed');
+    safetyEl.querySelector('.fr-display').textContent = FIRE_NUMBER.slice(0, dialed).join('');
+    markNextKey();
+    if (dialed < FIRE_NUMBER.length) {
+      snap();
+      kit.clearNudge();
+      const k = stepKey();
+      await talk([B([`${KEY_WORDS[n].charAt(0).toUpperCase()}${KEY_WORDS[n].slice(1)}!`, `Số ${n}!`])]);
+      if (k === stepKey()) kit.armNudge();
+      return;
+    }
+    setState('busy');
+    kit.clearNudge();
+    snap();
+    play('ring');
+    await wait(900);
+    if (e !== kit.epoch) return;
+    await talk([B(STATION_LINE)]);
+    if (e !== kit.epoch) return;
+    endSafety();
+  }
+  async function endSafety() {
+    const e = kit.epoch;
+    setState('busy');
+    kit.clearNudge();
+    caseDone();
+    // Mức 1–2 kết bằng "tell a grown-up"; mức 3 đã nói trước khi bấm 114.
+    if (!cur().dial) {
+      await talk([B(GROWNUP_LINE)]);
+      if (e !== kit.epoch) return;
+    }
+    play('sparkle');
+    await wait(LEAVE_MS);
+    if (e !== kit.epoch) return;
+    safetyEl.hidden = true;
+    caseIdx += 1;
+    if (caseIdx >= plan.cases.length) finishRound();
+    else startCase();
+  }
+
+  // ---------- Cứu bạn thú trong nhà (SPEC-fire2 mục 5) ----------
+  /** Chạm cửa sổ / bạn thú: cửa nhún để bé biết chạm vào đâu — không tính nhầm. */
+  function tapWindow() {
+    if (state !== 'knock' && state !== 'open') return;
+    play('tap');
+    restartAnim(scene.querySelector('.fr-door'), 'nudge');
+  }
+  async function tapDoor() {
+    const e = kit.epoch;
+    const door = scene.querySelector('.fr-door');
+    if (state === 'knock') {
+      knocked = true;
+      nudges = 0;
+      setState('open');
+      snap();
+      kit.clearNudge();
+      play('knock');
+      restartAnim(door, 'knock');
+      const k = stepKey();
+      await talk([B(KNOCKED_LINE), B(OPEN_LINE)]);
+      if (k === stepKey()) kit.armNudge();
+      return;
+    }
+    if (state !== 'open') return;
+    // Mở cửa: nhận một lần, ca xong ngay (ra nền lúc này thì chơi tiếp là ca sau).
+    setState('busy');
+    kit.clearNudge();
+    caseDone();
+    play('pop');
+    door.classList.add('open');
+    await wait(OUT_MS);
+    if (e !== kit.epoch) return;
+    const r = resident();
+    scene.querySelector('.fr-peek')?.remove();
+    residentEl.innerHTML = patientSvg(r.id, { mood: 'happy', title: r.name });
+    residentEl.hidden = false;
+    residentEl.classList.remove('leave');
+    restartAnim(residentEl, 'enter');
+    play('sparkle');
+    await talk([R(SAFE_LINE)]);
+    if (e !== kit.epoch) return;
+    leave();
   }
 
   /** Chạm một ngọn lửa: tắt (mỗi ngọn một lần, Bông đếm). Mức 3: chỉ ngọn Bông đang gọi. */
@@ -622,6 +869,8 @@ export function fireScreen(app, params = {}) {
     setState('done');
     kit.finishRound(() => {
       clearSnap(JOB);
+      // Ca cứu đã gặp (cây / trong nhà): lượt sau ưu tiên loại ít gặp hơn.
+      for (const c of plan.cases) if (c.kind === 'tree' || c.kind === 'house') progress = afterSeen(progress, c.kind);
       progress = afterJobRound(progress, { maxLevel: MAX_LEVEL });
       app.setSetting('fireGame', progress).catch(() => {});
     });
@@ -656,7 +905,7 @@ export function fireScreen(app, params = {}) {
       finishRound();
     } else startCase(s);
   } else {
-    plan = planRound(level);
+    plan = planRound(level, { seen: progress.seen });
     caseIdx = 0;
     startGear();
   }

@@ -77,20 +77,56 @@ export function planHouse(level, { rng = Math.random } = {}) {
   return { color, street: planStreet(color, { rng }), smoke: level <= 2 };
 }
 
+/** Ca cứu (mức 2–3): cây hay trong nhà — loại bé ít gặp hơn (`seen`), bằng nhau thì ngẫu nhiên (SPEC-fire2 mục 2). */
+export const RESCUE_KINDS = ['tree', 'house'];
+export function pickRescue(seen = {}, rng = Math.random) {
+  const [a, b] = RESCUE_KINDS.map((k) => seen[k] ?? 0);
+  if (a !== b) return a < b ? 'tree' : 'house';
+  return RESCUE_KINDS[Math.floor(rng() * 2)];
+}
+
+// ---------- An toàn với lửa (SPEC-fire2 mục 6) ----------
+/** Đồ của ca An toàn: câu tiếng Anh lưu sẵn từng đồ (không ghép từ tên hiển thị). */
+export const SAFETY_ITEMS = [
+  { id: 'candle', emoji: '🕯️', hot: true, a: 'A candle', name: 'candle', vi: 'cây nến' },
+  { id: 'campfire', emoji: '🔥', hot: true, a: 'A campfire', name: 'campfire', vi: 'đống lửa trại' },
+  { id: 'pan', emoji: '🍳', hot: true, a: 'A hot pan', name: 'pan', vi: 'cái chảo' },
+  { id: 'tea', emoji: '☕', hot: true, a: 'A cup of hot tea', name: 'tea', vi: 'cốc trà nóng' },
+  { id: 'teddy', emoji: '🧸', hot: false, a: 'A teddy', name: 'teddy', vi: 'gấu bông' },
+  { id: 'ball', emoji: '⚽', hot: false, a: 'A ball', name: 'ball', vi: 'quả bóng' },
+  { id: 'book', emoji: '📚', hot: false, a: 'A book', name: 'book', vi: 'quyển sách' },
+  { id: 'apple', emoji: '🍎', hot: false, a: 'An apple', name: 'apple', vi: 'quả táo' },
+];
+export const SAFETY_BY = new Map(SAFETY_ITEMS.map((x) => [x.id, x]));
+/** 3 đồ: 2 đồ nóng + 1 đồ an toàn, không lặp, xáo thứ tự. */
+export function planSafety({ rng = Math.random } = {}) {
+  const hot = shuffle(SAFETY_ITEMS.filter((x) => x.hot), rng).slice(0, 2);
+  const safe = shuffle(SAFETY_ITEMS.filter((x) => !x.hot), rng).slice(0, 1);
+  return shuffle([...hot, ...safe], rng).map((x) => x.id);
+}
+/** Số cứu hỏa (mức 3 bấm trên điện thoại đồ chơi). */
+export const FIRE_NUMBER = [1, 1, 4];
+
 /**
- * Một lượt: mặc đồ, rồi 3 ca, mỗi ca một bạn thú khác nhau. Mức 2–3: đúng một ca cứu bạn trên cây (không có lửa),
- * còn lại dập lửa. Ca dập lửa có `house` (lái xe tới nhà đó trước).
+ * Một lượt: mặc đồ, rồi 3 ca (SPEC-fire2 mục 2, draft2):
+ * - mức 1: 2 ca dập lửa + ca An toàn;
+ * - mức 2–3: 1 ca dập lửa + 1 ca cứu (trên cây — không lái xe; hoặc trong nhà — lái xe, gõ cửa, mở cửa; loại ít gặp hơn) + ca An toàn;
+ * - ca An toàn luôn ở vị trí 3 (chỉ xáo 2 ca trước); mức 3 có bấm 114.
+ * Ca có `house` thì lái xe tới nhà đó trước. Mỗi ca có bạn thú khác nhau (ca An toàn không có bạn thú).
  */
-export function planRound(level, { rng = Math.random } = {}) {
-  const residents = shuffle(PATIENTS, rng).slice(0, CASES_PER_ROUND).map((p) => p.id);
-  const treeAt = level >= 2 ? Math.floor(rng() * CASES_PER_ROUND) : -1;
+export function planRound(level, { rng = Math.random, seen = {} } = {}) {
+  const [r0, r1] = shuffle(PATIENTS, rng).slice(0, 2).map((p) => p.id);
+  const fireCase = (resident) => {
+    const c = { ...makeFireCase(level, resident, { rng }), house: planHouse(level, { rng }) };
+    return level === 2 ? { ...c, choices: numberChoices(c.fires.length, { rng }) } : c;
+  };
+  const rescueCase = (resident) => (pickRescue(seen, rng) === 'tree'
+    ? { kind: 'tree', resident }
+    : { kind: 'house', resident, house: planHouse(level, { rng }) });
+  const first = level >= 2 ? shuffle([fireCase(r0), rescueCase(r1)], rng) : [fireCase(r0), fireCase(r1)];
   return {
     gear: planGear(level, { rng }),
-    cases: residents.map((resident, i) => {
-      if (i === treeAt) return { kind: 'tree', resident };
-      const c = { ...makeFireCase(level, resident, { rng }), house: planHouse(level, { rng }) };
-      return level === 2 ? { ...c, choices: numberChoices(c.fires.length, { rng }) } : c;
-    }),
+    cases: [...first, { kind: 'safety', items: planSafety({ rng }), dial: level >= 3 }],
   };
 }
 
@@ -131,6 +167,41 @@ export function wrongGearLine(id, want) {
   if (ODD_GEAR.includes(id)) return [`Not the ${g.en}! We need the ${w.en}!`, `Không phải ${g.vi}! Mình cần ${w.vi}!`];
   return [`${g.many ? 'Those are' : "That's"} the ${g.en}. ${capital(w.en)} first!`, `Đó là ${g.vi}. ${capital(w.vi)} trước nhé!`];
 }
+
+// Cứu trong nhà (SPEC-fire2 mục 5)
+export const STUCK_LINE = ['Help! The door is stuck!', 'Cứu tớ với! Cửa bị kẹt rồi!'];
+export const KNOCK_LINE = ['Knock on the door!', 'Con gõ cửa đi!'];
+export const KNOCKED_LINE = ['Knock, knock!', 'Cốc, cốc!'];
+export const OPEN_LINE = ['Open the door!', 'Mở cửa ra nào!'];
+export const SAFE_LINE = ["I'm safe! Thank you, firefighter!", 'Tớ an toàn rồi! Cảm ơn chú lính cứu hỏa!'];
+
+// An toàn
+export const SAFETY_INTRO = ["Some things are hot. Let's be safe!", 'Có những thứ rất nóng. Mình cẩn thận nhé!'];
+/** "Look! A candle. Can we touch it?" */
+export const lookLine = (id) => {
+  const x = SAFETY_BY.get(id);
+  return [`Look! ${x.a}. Can we touch it?`, `Nhìn này! ${capital(x.vi)}. Mình có chạm vào được không?`];
+};
+/** Đúng: đồ nóng + 👎 / đồ an toàn + 👍. */
+export const safetyRightLine = (id) => {
+  const x = SAFETY_BY.get(id);
+  return x.hot
+    ? [`That's right! The ${x.name} is hot. Don't touch!`, `Đúng rồi! ${capital(x.vi)} nóng lắm. Đừng chạm vào!`]
+    : [`Yes! You can touch the ${x.name}!`, `Đúng rồi! Con chạm vào ${x.vi} được!`];
+};
+/** Nhầm: đồ nóng + 👍 / đồ an toàn + 👎 (không dọa). */
+export const safetyWrongLine = (id) => {
+  const x = SAFETY_BY.get(id);
+  return x.hot
+    ? [`Oh no! The ${x.name} is hot. Don't touch!`, `Ôi không! ${capital(x.vi)} nóng lắm. Đừng chạm vào!`]
+    : [`It's okay! You can touch the ${x.name}!`, `Không sao đâu! Con chạm vào ${x.vi} được!`];
+};
+export const GROWNUP_LINE = ['If you see a fire, tell a grown-up!', 'Thấy lửa thì báo người lớn nhé!'];
+export const DIAL_LINE = ['Grown-ups call one… one… four!', 'Người lớn gọi số một… một… bốn!'];
+export const STATION_LINE = ["Fire station! We're coming!", 'Trạm cứu hỏa đây! Chúng tôi tới ngay!'];
+export const KEY_WORDS = ['zero', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine'];
+/** Bấm nhầm phím: "That's five. Press one!" */
+export const wrongKeyLine = (x, want) => [`That's ${KEY_WORDS[x]}. Press ${KEY_WORDS[want]}!`, `Đó là số ${x}. Bấm số ${want} nhé!`];
 
 // Lái xe
 const colorVi = (c) => COLOR_BY_ID.get(c)?.vi ?? c;

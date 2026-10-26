@@ -3,7 +3,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   planRound, numberChoices, allGoneLine, rightNumberLine, countLine, whereLine, firstLine, wrongNumberLine,
-  GEAR, ODD_GEAR, HOUSE_COLORS, planGear, planStreet, putOnLine, gearOnLine, wrongGearLine, goToLine, wrongHouseLine, READY_LINE, DRESS_ANY_LINE, GO_LINE,
+  pickRescue, SAFETY_ITEMS, SAFETY_BY, planSafety, lookLine, safetyRightLine, safetyWrongLine, wrongKeyLine, GEAR, ODD_GEAR, HOUSE_COLORS, planGear, planStreet, putOnLine, gearOnLine, wrongGearLine, goToLine, wrongHouseLine, READY_LINE, DRESS_ANY_LINE, GO_LINE,
 } from '../../app/js/jobs/fire.js';
 
 function seeded(seed = 1) {
@@ -14,13 +14,13 @@ function seeded(seed = 1) {
   };
 }
 
-test('một lượt: 3 ca, bạn thú khác nhau; mức 1 không có ca cây, 1–3 lửa; mức 2 đúng một ca cây, 2–5 lửa + thẻ số; mức 3 ba lửa mái / cửa sổ / cửa + thứ tự gọi', () => {
+test('một lượt: 3 ca, bạn thú khác nhau; mức 1 không có ca cây, 1–3 lửa; mức 2 đúng một ca cứu (cây / trong nhà), 2–5 lửa + thẻ số; mức 3 ba lửa mái / cửa sổ / cửa + thứ tự gọi', () => {
   const rng = seeded(5);
   for (const level of [1, 2, 3]) for (let i = 0; i < 80; i++) {
     const { cases } = planRound(level, { rng });
     assert.equal(cases.length, 3);
     assert.equal(new Set(cases.map((c) => c.resident)).size, 3);
-    assert.equal(cases.filter((c) => c.kind === 'tree').length, level >= 2 ? 1 : 0);
+    assert.equal(cases.filter((c) => c.kind === 'tree' || c.kind === 'house').length, level >= 2 ? 1 : 0); // ca cứu (SPEC-fire2 FF2)
     for (const c of cases.filter((x) => x.kind === 'fire')) {
       const n = c.fires.length;
       assert.equal(new Set(c.fires.map((f) => f.spot)).size, n);
@@ -86,7 +86,7 @@ test('SPEC-fire2 FF1 — phố: 3 nhà khác màu, đúng một nhà của ca; c
     const { gear, cases } = planRound(level, { rng });
     assert.ok(gear);
     for (const c of cases) {
-      if (c.kind === 'tree') assert.equal(c.house, undefined);
+      if (c.kind === 'tree' || c.kind === 'safety') assert.equal(c.house, undefined);
       else {
         assert.ok(c.house.street.includes(c.house.color));
         assert.equal(c.house.smoke, level <= 2);
@@ -107,4 +107,57 @@ test('SPEC-fire2 FF1 — câu nói: số ít / nhiều đúng, món lạ, đổi
   const all = [READY_LINE, DRESS_ANY_LINE, GO_LINE, ...GEAR.flatMap((g) => [putOnLine(g), gearOnLine(g)]),
     ...HOUSE_COLORS.flatMap((c) => [goToLine(c), wrongHouseLine(HOUSE_COLORS.find((x) => x !== c), c)])];
   for (const [en, vi] of all) assert.ok(en && vi && !/undefined|\{/.test(en + vi), en);
+});
+
+test('SPEC-fire2 FF2 — ca cứu: mức 1 không có; mức 2–3 đúng một ca cứu (cây hoặc trong nhà), ưu tiên loại ít gặp; ca trong nhà có nhà để lái xe tới, không có lửa', () => {
+  const rng = seeded(11);
+  assert.equal(pickRescue({ tree: 3, house: 1 }, rng), 'house');
+  assert.equal(pickRescue({ tree: 0, house: 2 }, rng), 'tree');
+  const tie = new Set(Array.from({ length: 40 }, () => pickRescue({}, rng)));
+  assert.deepEqual([...tie].sort(), ['house', 'tree']);
+  for (const level of [1, 2, 3]) for (let i = 0; i < 40; i++) {
+    const { cases } = planRound(level, { rng, seen: { tree: 9 } });
+    const rescue = cases.filter((c) => c.kind === 'tree' || c.kind === 'house');
+    assert.equal(rescue.length, level >= 2 ? 1 : 0);
+    if (level >= 2) {
+      assert.equal(rescue[0].kind, 'house');
+      assert.ok(rescue[0].house.street.includes(rescue[0].house.color));
+      assert.equal(rescue[0].fires, undefined);
+    }
+  }
+});
+
+test('SPEC-fire2 FF3 — lượt: mức 1 = 2 dập lửa + An toàn; mức 2–3 = 1 dập lửa + 1 cứu + An toàn; An toàn luôn cuối, chỉ một; mức 3 có bấm 114', () => {
+  const rng = seeded(21);
+  for (const level of [1, 2, 3]) for (let i = 0; i < 60; i++) {
+    const { cases } = planRound(level, { rng });
+    assert.equal(cases.length, 3);
+    assert.equal(cases[2].kind, 'safety');
+    assert.equal(cases.filter((c) => c.kind === 'safety').length, 1);
+    assert.equal(cases[2].dial, level >= 3);
+    const kinds = cases.slice(0, 2).map((c) => c.kind).sort();
+    if (level === 1) assert.deepEqual(kinds, ['fire', 'fire']);
+    else assert.ok(kinds.includes('fire') && (kinds.includes('tree') || kinds.includes('house')), kinds.join());
+    assert.equal(new Set(cases.slice(0, 2).map((c) => c.resident)).size, 2);
+  }
+});
+
+test('SPEC-fire2 FF3 — đồ An toàn: 2 nóng + 1 an toàn, không lặp; câu gọi đúng tên đồ, không có chỗ trống', () => {
+  const rng = seeded(8);
+  for (let i = 0; i < 60; i++) {
+    const items = planSafety({ rng });
+    assert.equal(items.length, 3);
+    assert.equal(new Set(items).size, 3);
+    assert.equal(items.filter((id) => SAFETY_BY.get(id).hot).length, 2);
+  }
+  assert.equal(lookLine('candle')[0], 'Look! A candle. Can we touch it?');
+  assert.equal(lookLine('apple')[0], 'Look! An apple. Can we touch it?');
+  assert.equal(safetyRightLine('pan')[0], "That's right! The pan is hot. Don't touch!");
+  assert.equal(safetyRightLine('teddy')[0], 'Yes! You can touch the teddy!');
+  assert.equal(safetyWrongLine('tea')[0], "Oh no! The tea is hot. Don't touch!");
+  assert.equal(safetyWrongLine('ball')[0], "It's okay! You can touch the ball!");
+  assert.equal(wrongKeyLine(5, 1)[0], "That's five. Press one!");
+  for (const x of SAFETY_ITEMS) for (const [en, vi] of [lookLine(x.id), safetyRightLine(x.id), safetyWrongLine(x.id)]) {
+    assert.ok(en && vi && !/undefined/.test(en + vi), en);
+  }
 });

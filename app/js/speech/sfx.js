@@ -110,6 +110,8 @@ const SOUNDS = {
     tone(c, { freq: 622, start: 0.35, duration: 0.7, gain: 0.18 });
   },
   honk: (c) => tone(c, { freq: 240, endFreq: 200, duration: 0.35, type: 'sawtooth', gain: 0.08 }),
+  // Gõ cửa: hai tiếng cộc trầm (Cứu hỏa — cứu bạn trong nhà).
+  knock: (c) => [0, 0.18].forEach((t) => tone(c, { freq: 150, endFreq: 90, start: t, duration: 0.08, type: 'triangle', gain: 0.28 })),
   brush: (c) => [0, 0.2, 0.4, 0.6].forEach((t) => noise(c, { start: t, duration: 0.14, gain: 0.18, filter: 3000 })),
 };
 

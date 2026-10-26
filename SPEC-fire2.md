@@ -1,6 +1,6 @@
 # SPEC — 🚒 Lính cứu hỏa: nhiệm vụ mới
 
-> Phiên bản spec: **draft2** (sửa theo review, mục 12) · Ngày: 2026-10-26 · **FF1 đã làm (0.39.0)**; FF2, FF3 dự kiến 0.40.0, 0.41.0. Bổ sung cho `SPEC-jobs.md` mục 7 (dập lửa, đếm, gọi chỗ, cứu bạn trên cây — **giữ nguyên**).
+> Phiên bản spec: **draft2** (sửa theo review, mục 12) · Ngày: 2026-10-26 · **FF1 đã làm (0.39.0); FF2 + FF3 đã làm (gộp vào 0.40.0).** Bổ sung cho `SPEC-jobs.md` mục 7 (dập lửa, đếm, gọi chỗ, cứu bạn trên cây — **giữ nguyên**).
 > Đã có ở 0.38.1: chạm lính cứu hỏa / vòi để phun, tia nước bắn tới ngọn lửa, lửa nhận chạm ngay lúc Bông báo cháy.
 > Bố mẹ chọn cả 4 nhiệm vụ: **Mặc đồ trước khi đi · Lái xe tới đúng nhà · Cứu bạn thú trong nhà · An toàn với lửa**.
 
@@ -79,7 +79,8 @@ Ca kiểu D — **ca cuối mỗi lượt**, ở mọi mức:
    - Mỗi đồ có sẵn câu tiếng Anh riêng trong dữ liệu (`hot` / `safe`, tên + mạo từ), không ghép từ tên hiển thị.
 4. Kết ca: *"If you see a fire, tell a grown-up!"* (*Thấy lửa thì báo người lớn nhé!*).
 5. **Mức 3 — gọi 114:** điện thoại hiện bàn phím to 0–9; Bông: *"Grown-ups call one… one… four!"* (ba số tách rõ) → bé bấm 1 → 1 → 4 (phím cần bấm sáng lên lần lượt). Bấm nhầm phím: **không tăng** số chữ số đã bấm, phím đúng nhún (luật nhầm chung). Đủ 1-1-4: chuông đổ, *"Fire station! We're coming!"* → xong ca. Ra nền giữa lúc bấm: quay lại đúng số chữ số đã bấm, **không tự hoàn tất** cuộc gọi.
-   - Phụ đề tiếng Việt ghi rõ: *"114 là số cứu hỏa — chỉ người lớn gọi khi có cháy thật."* Không có nút gọi thật (chỉ là hình trong trò chơi).
+   - Dưới bàn phím ghi rõ: *"Trò chơi — chỉ người lớn gọi 114 khi có cháy thật"* (khi làm: để ở điện thoại thay vì phụ đề — phụ đề dài bị cắt). Không có nút gọi thật (chỉ là hình trong trò chơi).
+   - Mỗi phím đúng: Bông đọc số (*"One!"*); bấm nhầm: *"That's five. Press one!"*.
 - Đồ được chọn ngẫu nhiên mỗi lượt; không lặp đồ trong một lượt.
 
 ## 7. Hình và âm thanh
@@ -101,8 +102,8 @@ Ca kiểu D — **ca cuối mỗi lượt**, ở mọi mức:
 | Mốc | Nội dung | Nghiệm thu |
 |---|---|---|
 | **FF1** (0.39.0) | Mặc đồ + Lái xe tới đúng nhà; Bông mặc đồ cầm vòi | Unit (kế hoạch lượt theo mức, chọn nhà / đồ) + UI mục 10 |
-| FF2 (0.40.0) | Ca cứu bạn thú trong nhà | Gõ cửa → mở cửa → bạn thú ra; ra nền giữa ca chơi tiếp đúng bước |
-| FF3 (0.41.0) | Ca An toàn + gọi 114 (mức 3) | 3 đồ đúng / nhầm, bàn phím 1-1-4 |
+| FF2 (0.40.0, đã làm) | Ca cứu bạn thú trong nhà | Gõ cửa → mở cửa → bạn thú ra; ra nền giữa ca chơi tiếp đúng bước |
+| FF3 (0.40.0, đã làm) | Ca An toàn + gọi 114 (mức 3) | 3 đồ đúng / nhầm, bàn phím 1-1-4 |
 
 ## 10. Kiểm thử
 - **Unit:** kế hoạch lượt theo mức (bảng mục 2: số ca từng loại, ca An toàn cuối, mỗi lượt đúng 1 ca cứu ở mức 2–3); phố có 3 nhà khác màu, đúng 1 nhà của ca; đồ An toàn 2 nóng + 1 an toàn, không lặp; câu nói không có chỗ trống.
@@ -144,3 +145,8 @@ Ca kiểu D — **ca cuối mỗi lượt**, ở mọi mức:
 | P2-7 Số ít / nhiều, câu lưu trong dữ liệu | Đã có: *"Those are the boots"*, câu từng món trong `GEAR_INFO`; đồ An toàn khai câu riêng; 114 đọc tách *"one… one… four"* |
 | P2-8 Tiến độ màu | Dùng hàm ghi tiến độ có sẵn, chỉ đúng ngay lần đầu, không ghi lặp (mục 4) |
 | Hồi quy FF1 | Đã có test: mặc đồ 3 mức, món lạ, phố 3 nhà / khói / còi, nhầm nhà, ghi màu, ra nền khi mặc đồ / ở phố, kích thước 5 màn hình |
+
+**Ghi chú khi làm FF2 + FF3 (0.40.0):**
+- Ca cứu trong nhà: bạn thú ló ở cửa sổ phải (chạm được → cửa nhún); cửa là nút phủ đúng chỗ cửa vẽ, mở ra thấy khoảng tối; `seen.tree` / `seen.house` cộng khi xong lượt.
+- Ca An toàn: nhầm thì Bông nói câu đúng ngay (*"Oh no! The candle is hot. Don't touch!"*) và nút đúng nhún liền (không đợi nhầm lần 2) — vì câu đã nói đáp án; bé chạm nút đúng để đi tiếp.
+- Ca An toàn không có bạn thú, không lái xe; Bông lính cứu hỏa ẩn trong ca này.

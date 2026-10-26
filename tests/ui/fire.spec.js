@@ -5,7 +5,7 @@ import { fakeSpeech, startApp } from './helpers.js';
 const spoken = (page) => page.evaluate(() => window.__spoken.slice());
 const saidSince = async (page, n, re) => (await spoken(page)).slice(n).some((t) => re.test(t));
 const play = (page) => page.locator('.fr-play');
-const ACTIVE = /spray|count|tree/;
+const ACTIVE = /spray|count|tree|knock|open|safety|dial/;
 const setVisible = (page, v) => page.evaluate((state) => {
   Object.defineProperty(document, 'visibilityState', { value: state, configurable: true });
   document.dispatchEvent(new Event('visibilitychange'));
@@ -39,9 +39,35 @@ async function arrive(page) {
   const color = await page.locator('.fr-street').getAttribute('data-color');
   await page.locator(`.fr-home[data-color="${color}"]`).click();
 }
+/** Ca An toàn: trả lời đúng từng đồ, mức 3 bấm 1-1-4. */
+async function safetyCase(page) {
+  for (let i = 0; i < 20; i++) {
+    await expect(play(page)).toHaveAttribute('data-state', /safety|dial|busy|done|enter/, { timeout: 15000 });
+    const st = await play(page).getAttribute('data-state');
+    if (st === 'done' || (await page.locator('.prize-sticker').isVisible())) return;
+    if (st === 'safety') {
+      const hot = await page.locator('.fr-safety').getAttribute('data-hot');
+      const n = await page.locator('.fr-yn.right').count();
+      await page.locator(`.fr-yn[data-answer="${hot === 'true' ? 'no' : 'yes'}"]`).click();
+      await expect(page.locator('.fr-yn.right')).toHaveCount(n + 1, { timeout: 15000 }).catch(() => {});
+    } else if (st === 'dial') {
+      const next = await page.locator('.fr-safety').getAttribute('data-next');
+      if (next) await page.locator(`.fr-key[data-n="${next}"]`).click();
+    }
+    await page.waitForTimeout(200);
+  }
+}
+/** Ca cứu trong nhà: gõ cửa rồi mở cửa. */
+async function rescueHouse(page) {
+  if ((await play(page).getAttribute('data-state')) === 'knock') {
+    await page.locator('.fr-door').click();
+    await expect(play(page)).toHaveAttribute('data-state', 'open', { timeout: 15000 });
+  }
+  await page.locator('.fr-door').click();
+}
 /** Đầu ca: (lái xe tới nhà nếu đang ở phố) rồi chờ tới bước làm việc. */
 async function ready(page) {
-  await expect(play(page)).toHaveAttribute('data-state', /drive|spray|count|tree/, { timeout: 15000 });
+  await expect(play(page)).toHaveAttribute('data-state', /drive|spray|count|tree|knock|open|safety|dial/, { timeout: 15000 });
   if ((await play(page).getAttribute('data-state')) === 'drive') await arrive(page);
   await expect(play(page)).toHaveAttribute('data-state', ACTIVE, { timeout: 15000 });
 }
@@ -54,11 +80,19 @@ async function openFire(page, settings) {
 /** Làm xong ca đang mở: (lái xe tới nhà,) dập lửa (theo thứ tự gọi nếu có), chọn đúng số, hoặc dựng thang. */
 async function doCase(page, i) {
   await expect(page.locator('.jb-count')).toHaveText(`${i + 1}/3`, { timeout: 15000 });
-  await expect(play(page)).toHaveAttribute('data-state', /drive|spray|count|tree/, { timeout: 15000 });
+  await expect(play(page)).toHaveAttribute('data-state', /drive|spray|count|tree|knock|open|safety|dial/, { timeout: 15000 });
   if ((await play(page).getAttribute('data-state')) === 'drive') await arrive(page);
   await expect(play(page)).toHaveAttribute('data-state', ACTIVE, { timeout: 15000 });
+  if ((await page.locator('.fr-scene').getAttribute('data-kind')) === 'safety') {
+    await safetyCase(page);
+    return;
+  }
   if ((await page.locator('.fr-scene').getAttribute('data-kind')) === 'tree') {
     await page.locator('.jb-tray .dr-item').click();
+    return;
+  }
+  if ((await page.locator('.fr-scene').getAttribute('data-kind')) === 'house') {
+    await rescueHouse(page);
     return;
   }
   const n = await page.locator('.fr-fire').count();
@@ -104,12 +138,16 @@ test('3 ca → Hoan hô + sticker; đếm lượt', async ({ page }) => {
 });
 
 test('mức 2: hết lửa hỏi "How many fires?" — 3 thẻ số, chọn nhầm → đếm lại, chọn đúng → "Yes! N fires!"; có một ca cứu bạn trên cây bằng thang', async ({ page }) => {
-  await openFire(page, { level: 2, rounds: 0, lock: 2, seen: {} });
+  await openFire(page, { level: 2, rounds: 0, lock: 2, seen: { house: 9 } });
   let sawTree = false;
   let checkedWrong = false;
   for (let i = 0; i < 3; i++) {
     await expect(page.locator('.jb-count')).toHaveText(`${i + 1}/3`, { timeout: 15000 });
     await ready(page);
+    if ((await page.locator('.fr-scene').getAttribute('data-kind')) === 'safety') {
+      await doCase(page, i);
+      continue;
+    }
     if ((await page.locator('.fr-scene').getAttribute('data-kind')) === 'tree') {
       sawTree = true;
       const n = (await spoken(page)).length;
@@ -270,7 +308,7 @@ test('FF1 mức 2: Bông gọi từng món — mặc nhầm thứ tự → "… 
   await dressUp(page);
   let colored = null;
   for (let i = 0; i < 3; i++) {
-    await expect(play(page)).toHaveAttribute('data-state', /drive|tree/, { timeout: 15000 });
+    await expect(play(page)).toHaveAttribute('data-state', /drive|tree|safety/, { timeout: 15000 });
     if (!colored && (await play(page).getAttribute('data-state')) === 'drive') colored = await page.locator('.fr-street').getAttribute('data-color');
     await doCase(page, i);
   }
@@ -316,4 +354,116 @@ test('FF1: ra nền giữa lúc mặc đồ rồi quay lại → giữ món đã
   await page.locator('.resume-overlay .start-btn').click();
   await expect(play(page)).toHaveAttribute('data-state', 'drive', { timeout: 15000 });
   await expect(page.locator('.fr-street')).toHaveAttribute('data-color', color);
+});
+
+// ---------- SPEC-fire2 FF2: cứu bạn thú trong nhà ----------
+test('FF2: mức 2 ít gặp ca trong nhà → ca cứu là trong nhà; lái xe tới nhà, "Help! The door is stuck!"; chạm cửa sổ → cửa nhún, không tính nhầm; gõ cửa → "Knock, knock!"; ra nền rồi quay lại vẫn ở bước mở cửa; mở cửa → "I\'m safe!"; hết lượt ghi seen.house', async ({ page }) => {
+  await openFire(page, { level: 2, rounds: 0, lock: 2, seen: { tree: 5 } });
+  let saw = false;
+  for (let i = 0; i < 3; i++) {
+    await expect(page.locator('.jb-count')).toHaveText(`${i + 1}/3`, { timeout: 15000 });
+    await ready(page);
+    if ((await page.locator('.fr-scene').getAttribute('data-kind')) !== 'house') {
+      expect(['fire', 'safety']).toContain(await page.locator('.fr-scene').getAttribute('data-kind'));
+      await doCase(page, i);
+      continue;
+    }
+    saw = true;
+    await expect.poll(() => spoken(page)).toContain('Help! The door is stuck!');
+    await expect(play(page)).toHaveAttribute('data-state', 'knock');
+    await expect(page.locator('.fr-house rect').nth(1)).toHaveAttribute('fill', /#/);
+    const n = (await spoken(page)).length;
+    await page.locator('.fr-peek').click();
+    await expect(page.locator('.fr-door')).toHaveClass(/nudge/);
+    await expect(play(page)).toHaveAttribute('data-state', 'knock');
+    await expect(async () => {
+      await page.locator('.fr-door').click();
+      expect(await saidSince(page, n, /^Knock, knock!$/)).toBe(true);
+    }).toPass({ timeout: 15000 });
+    await expect(play(page)).toHaveAttribute('data-state', 'open');
+    await setVisible(page, 'hidden');
+    await setVisible(page, 'visible');
+    await page.locator('.resume-overlay .start-btn').click();
+    await expect(play(page)).toHaveAttribute('data-state', 'open', { timeout: 15000 });
+    await page.locator('.fr-door').click();
+    await expect.poll(() => spoken(page)).toContain("I'm safe! Thank you, firefighter!");
+  }
+  expect(saw).toBe(true);
+  await expect(page.locator('.prize-sticker')).toBeVisible({ timeout: 15000 });
+  expect((await page.evaluate(() => window.kidEnglish.settings.fireGame)).seen).toMatchObject({ tree: 5, house: 1 });
+});
+
+// ---------- SPEC-fire2 FF3: An toàn với lửa ----------
+test('FF3 mức 1: lượt = 2 ca dập lửa + ca An toàn cuối; "Some things are hot…"; 3 đồ (2 nóng + 1 an toàn); nhầm → câu nhầm gọi tên đồ + nút đúng nhún; kết "tell a grown-up"; không có điện thoại → sticker', async ({ page }) => {
+  await openFire(page, { level: 1, rounds: 0, lock: 1, seen: {} });
+  for (let i = 0; i < 2; i++) {
+    await expect(page.locator('.jb-count')).toHaveText(`${i + 1}/3`, { timeout: 15000 });
+    await ready(page);
+    expect(await page.locator('.fr-scene').getAttribute('data-kind')).toBe('fire');
+    await doCase(page, i);
+  }
+  await expect(page.locator('.jb-count')).toHaveText('3/3', { timeout: 15000 });
+  await expect(play(page)).toHaveAttribute('data-state', 'safety', { timeout: 15000 });
+  expect(await page.locator('.fr-scene').getAttribute('data-kind')).toBe('safety');
+  expect(await spoken(page)).toContain("Some things are hot. Let's be safe!");
+  const hots = [];
+  for (let k = 0; k < 3; k++) {
+    await expect(play(page)).toHaveAttribute('data-state', 'safety', { timeout: 15000 });
+    await expect(page.locator('.fr-yn.right')).toHaveCount(0);
+    const hot = (await page.locator('.fr-safety').getAttribute('data-hot')) === 'true';
+    const name = await page.locator('.fr-thing').getAttribute('aria-label');
+    hots.push(hot);
+    await expect.poll(() => spoken(page)).toContainEqual(expect.stringMatching(/^Look! An? .+\. Can we touch it\?$/));
+    if (k === 0) {
+      const n = (await spoken(page)).length;
+      await expect(async () => {
+        await page.locator(`.fr-yn[data-answer="${hot ? 'yes' : 'no'}"]`).click();
+        expect(await saidSince(page, n, hot ? new RegExp(`^Oh no! The ${name} is hot\\. Don't touch!$`) : new RegExp(`^It's okay! You can touch the ${name}!$`))).toBe(true);
+      }).toPass({ timeout: 15000 });
+      await expect(page.locator(`.fr-yn[data-answer="${hot ? 'no' : 'yes'}"]`)).toHaveClass(/nudge/);
+      await expect(play(page)).toHaveAttribute('data-state', 'safety');
+    }
+    const n = (await spoken(page)).length;
+    await page.locator(`.fr-yn[data-answer="${hot ? 'no' : 'yes'}"]`).click();
+    await expect.poll(() => saidSince(page, n, hot ? new RegExp(`^That's right! The ${name} is hot\\. Don't touch!$`) : new RegExp(`^Yes! You can touch the ${name}!$`))).toBe(true);
+  }
+  expect(hots.filter(Boolean)).toHaveLength(2);
+  await expect.poll(() => spoken(page)).toContain('If you see a fire, tell a grown-up!');
+  await expect(page.locator('.fr-phone')).toHaveCount(0);
+  await expect(page.locator('.prize-sticker')).toBeVisible({ timeout: 15000 });
+});
+
+test('FF3 mức 3: sau 3 đồ là điện thoại 114 — phím cần bấm sáng; bấm nhầm → "That\'s five. Press one!", không tăng số; ra nền sau "11" quay lại vẫn "11"; bấm 4 → "Fire station! We\'re coming!" → sticker', async ({ page }) => {
+  await openFire(page, { level: 3, rounds: 0, lock: 3, seen: {} });
+  for (let i = 0; i < 2; i++) await doCase(page, i);
+  await expect(page.locator('.jb-count')).toHaveText('3/3', { timeout: 15000 });
+  for (let k = 0; k < 3; k++) {
+    await expect(play(page)).toHaveAttribute('data-state', 'safety', { timeout: 15000 });
+    await expect(page.locator('.fr-yn.right')).toHaveCount(0);
+    const hot = (await page.locator('.fr-safety').getAttribute('data-hot')) === 'true';
+    await page.locator(`.fr-yn[data-answer="${hot ? 'no' : 'yes'}"]`).click();
+    await expect(page.locator('.fr-yn.right')).toHaveCount(1, { timeout: 15000 }).catch(() => {});
+  }
+  await expect(play(page)).toHaveAttribute('data-state', 'dial', { timeout: 15000 });
+  await expect.poll(() => spoken(page)).toContain('Grown-ups call one… one… four!');
+  await expect(page.locator('.fr-key.lit')).toHaveAttribute('data-n', '1');
+  const n = (await spoken(page)).length;
+  await expect(async () => {
+    await page.locator('.fr-key[data-n="5"]').click();
+    expect(await saidSince(page, n, /^That's five\. Press one!$/)).toBe(true);
+  }).toPass({ timeout: 15000 });
+  await expect(page.locator('.fr-display')).toHaveText('');
+  await page.locator('.fr-key[data-n="1"]').click();
+  await expect(page.locator('.fr-display')).toHaveText('1');
+  await page.locator('.fr-key[data-n="1"]').click();
+  await expect(page.locator('.fr-display')).toHaveText('11');
+  await setVisible(page, 'hidden');
+  await setVisible(page, 'visible');
+  await page.locator('.resume-overlay .start-btn').click();
+  await expect(play(page)).toHaveAttribute('data-state', 'dial', { timeout: 15000 });
+  await expect(page.locator('.fr-display')).toHaveText('11');
+  await expect(page.locator('.fr-key.lit')).toHaveAttribute('data-n', '4');
+  await page.locator('.fr-key[data-n="4"]').click();
+  await expect.poll(() => spoken(page)).toContain("Fire station! We're coming!");
+  await expect(page.locator('.prize-sticker')).toBeVisible({ timeout: 15000 });
 });

@@ -2679,6 +2679,49 @@ img.dr-admin-face { width: 100%; height: 100%; object-fit: contain; }
 /* Emoji xe cứu hỏa quay đầu sang trái: lật lại để xe chạy sang phải. */
 .fr-truck span { display: inline-block; transform: scaleX(-1); }
 .fr-truck.honk span { animation: fr-honk 0.4s; }
+/* Ca cứu trong nhà (SPEC-fire2 mục 5): cửa là nút phủ đúng chỗ cửa vẽ, mở ra thấy khoảng tối; bạn thú ló ở cửa sổ phải. */
+.fr-doorway { position: absolute; left: 41%; top: 70%; width: 18%; height: 26%; background: #3d2c5e; border-radius: 2px; }
+.fr-door {
+  position: absolute; left: 41%; top: 70%; width: 18%; height: 26%; padding: 0; border: 2.5px solid #3d2c5e; border-radius: 2px;
+  background: #8d5a3b; cursor: pointer; touch-action: manipulation; pointer-events: auto; transform-origin: 0 50%; transition: transform 0.45s ease-in-out;
+}
+.fr-knob { position: absolute; right: 14%; top: 50%; width: 16%; aspect-ratio: 1; border-radius: 50%; background: #ffd43b; }
+.fr-door.knock { animation: fr-knock 0.35s; }
+@keyframes fr-knock { 25% { transform: translateX(-3px); } 50% { transform: translateX(3px); } 75% { transform: translateX(-2px); } }
+.fr-door.nudge { animation: hint-hop 0.5s ease-in-out 3; filter: drop-shadow(0 0 8px #ffd43b); }
+.fr-door.open { transform: perspective(300px) rotateY(-72deg); pointer-events: none; }
+.fr-peek {
+  position: absolute; left: 61%; top: 48%; width: 18%; height: 16%; padding: 0; border: 0; background: #a5d8ff; overflow: hidden;
+  cursor: pointer; touch-action: manipulation; pointer-events: auto;
+}
+.fr-peek .dr-svg { width: 100%; height: auto; display: block; animation: fr-peek 1s ease-in-out infinite alternate; }
+@keyframes fr-peek { to { transform: translateY(6%); } }
+/* Ca An toàn (SPEC-fire2 mục 6): đồ to giữa màn + 👍 / 👎; mức 3 điện thoại đồ chơi bấm 114. */
+.fr-safety { position: absolute; inset: 0; z-index: 2; display: grid; place-items: center; align-content: center; gap: 4%; padding: 3%; }
+.fr-safety[hidden] { display: none; }
+.fr-thing { font-family: var(--emoji); font-size: clamp(80px, 24vmin, 210px); line-height: 1; filter: drop-shadow(0 6px 10px rgba(61, 44, 94, 0.2)); }
+.fr-thing.hot { animation: fr-hot 0.9s; }
+@keyframes fr-hot { 30%, 70% { filter: drop-shadow(0 0 18px #ff6b6b) drop-shadow(0 0 6px #ff8787); } }
+.fr-yns { display: flex; gap: 24px; }
+.fr-yn {
+  display: grid; justify-items: center; gap: 2px; min-width: clamp(96px, 16vmin, 140px); padding: 10px 16px; border: 0; border-radius: 24px;
+  background: #fff; box-shadow: var(--shadow); color: var(--ink); font-weight: 900; font-size: clamp(18px, 3vmin, 26px); cursor: pointer; touch-action: manipulation;
+}
+.fr-yn span { font-family: var(--emoji); font-size: clamp(40px, 8vmin, 64px); line-height: 1; }
+.fr-yn.shake { animation: as-shake 0.4s; }
+.fr-yn.nudge { animation: hint-hop 0.5s ease-in-out 3; outline: 5px solid var(--yellow); }
+.fr-yn.right { outline: 6px solid #63d2a8; }
+.fr-phone { display: grid; grid-template-rows: auto minmax(0, 1fr) auto; gap: 8px; width: min(76%, 320px); height: min(100%, 440px); padding: 14px; border-radius: 28px; background: #3d2c5e; }
+.fr-display { min-height: 1.3em; border-radius: 12px; background: #e7f5ff; color: var(--ink); text-align: center; font-weight: 900; font-size: clamp(24px, 5vmin, 40px); letter-spacing: 0.2em; }
+.fr-keys { display: grid; grid-template-columns: repeat(3, 1fr); grid-template-rows: repeat(4, minmax(0, 1fr)); gap: 8px; min-height: 0; }
+.fr-keys .fr-key:last-child { grid-column: 2; }
+.fr-key { min-height: 0; border: 0; border-radius: 14px; background: #fff; color: var(--ink); font-weight: 900; font-size: clamp(20px, 4vmin, 32px); cursor: pointer; touch-action: manipulation; }
+.fr-key.lit { background: #ffd43b; box-shadow: 0 0 0 4px #fff3bf; }
+.fr-key.shake { animation: as-shake 0.4s; }
+.fr-key.nudge { animation: hint-hop 0.5s ease-in-out 3; }
+.fr-key.pressed { animation: fr-press 0.2s; }
+@keyframes fr-press { 50% { transform: scale(0.9); } }
+.fr-phone-note { margin: 0; color: #fff; font-size: 12px; text-align: center; opacity: 0.85; }
 @keyframes fr-honk { 30% { transform: scaleX(-1) translateY(-6px) rotate(4deg); } }
 .fr-hose.spraying { animation: fr-recoil 0.35s ease-out; }
 @keyframes fr-recoil { 30% { transform: rotate(-9deg) translateX(-6px) scale(1.06); } 70% { transform: rotate(3deg); } }
@@ -2720,7 +2763,7 @@ img.dr-admin-face { width: 100%; height: 100%; object-fit: contain; }
 }
 @media (prefers-reduced-motion: reduce) {
   .pl-asker.enter, .pl-asker.hop, .pl-asker.talking .dr-svg, .pl-item.nudge, .pl-item.shake, .pl-bush.nudge,
-  .fr-hose.spraying, .fr-jet, .fr-splash, .ff-dress.spin, .fr-home.nudge, .fr-home.shake, .fr-smoke span, .fr-truck.honk span,
+  .fr-thing.hot, .fr-yn.shake, .fr-yn.nudge, .fr-key.shake, .fr-key.nudge, .fr-key.pressed, .fr-door.knock, .fr-door.nudge, .fr-peek .dr-svg, .fr-hose.spraying, .fr-jet, .fr-splash, .ff-dress.spin, .fr-home.nudge, .fr-home.shake, .fr-smoke span, .fr-truck.honk span,
   .fr-scene.enter, .fr-fire, .fr-resident.enter, .fr-resident.hop, .fr-resident.talking .dr-svg, .fr-number.nudge, .fr-number.shake { animation: none; }
   .pl-asker.leave, .fr-resident.leave { animation: dr-fade 0.3s forwards; }
   .pl-bush, .fr-climber, .fr-ladder { transition: none; }
