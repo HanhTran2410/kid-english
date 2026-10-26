@@ -11,9 +11,9 @@ import { collectItems } from '../../app/js/mix.js';
 const lessons = builtInTalkLessons();
 const by = (id) => lessons.find((l) => l.builtin === id);
 
-test('5 bài hội thoại có sẵn hợp lệ: đủ 6 kiểu lượt, 6–8 lượt mỗi bài, mã lượt không trùng, mọi câu đọc có tiếng Việt', () => {
-  assert.deepEqual(lessons.map((l) => l.title), ['Hello & Goodbye', 'About me', 'How are you?', 'I like…', 'My family']);
-  assert.equal(new Set(lessons.map((l) => l.builtin)).size, 5);
+test('13 bài hội thoại có sẵn hợp lệ (5 bài đầu + 8 bài chủ đề mới): đủ 6 kiểu lượt, 6–8 lượt mỗi bài, mã lượt không trùng, mọi câu đọc có tiếng Việt', () => {
+  assert.deepEqual(lessons.map((l) => l.title), ['Hello & Goodbye', 'About me', 'How are you?', 'I like…', 'My family', 'Mealtime', 'Bath time', 'Bedtime', 'At the park', 'Weather', 'My toys', 'Hide and seek', 'Please & thank you']);
+  assert.equal(new Set(lessons.map((l) => l.builtin)).size, 13);
   const types = new Set(lessons.flatMap((l) => l.turns.map((t) => t.type)));
   assert.deepEqual([...types].sort(), [...TURN_TYPES].sort());
   for (const l of lessons) {

@@ -6,12 +6,12 @@ const spoken = (page) => page.evaluate(() => window.__spoken);
 const setProfile = (page, profile) => page.evaluate((p) => window.kidEnglish.setSetting('childProfile', p), profile);
 const progressOf = (page, key) => page.evaluate(async (k) => (await window.kidEnglish.db.get('progress', k)) ?? null, key);
 
-test('nút đổi thành "Nói chuyện với Bông": 5 bài hội thoại + thẻ Ôn từ đã học (màn Học cùng Bông cũ); không có nút thứ 9', async ({ page }) => {
+test('nút đổi thành "Nói chuyện với Bông": 13 bài hội thoại (5 bài đầu + 8 bài chủ đề, SPEC-talk-topics) + thẻ Ôn từ đã học (màn Học cùng Bông cũ); không có nút thứ 9', async ({ page }) => {
   await fakeSpeech(page);
   await startApp(page);
   await expect(page.locator('.home-grid .home-btn')).toHaveCount(8);
   await page.getByRole('button', { name: 'Nói chuyện với Bông' }).click();
-  await expect(page.locator('.lesson-card')).toHaveCount(6);
+  await expect(page.locator('.lesson-card')).toHaveCount(14);
   await expect(page.locator('.lesson-card').first()).toHaveAttribute('aria-label', 'Hello & Goodbye');
   await expect(page.locator('.lesson-card').last()).toHaveAttribute('aria-label', 'Ôn từ đã học');
   await page.getByRole('button', { name: 'Ôn từ đã học' }).click();
@@ -21,7 +21,7 @@ test('nút đổi thành "Nói chuyện với Bông": 5 bài hội thoại + th�
   // Mở app lại không sinh bản sao bài hội thoại.
   await page.goto('/?fast&nosw');
   await page.getByRole('button', { name: 'Bắt đầu' }).click();
-  expect(await page.evaluate(async () => (await window.kidEnglish.db.getAll('lessons')).filter((l) => l.kind === 'talk').length)).toBe(5);
+  expect(await page.evaluate(async () => (await window.kidEnglish.db.getAll('lessons')).filter((l) => l.kind === 'talk').length)).toBe(13);
 });
 
 test('About me có hồ sơ (Na, 3 tuổi): hỏi tên → "Nice to meet you, Na!", tuổi đọc bằng chữ, đổi vai; bong bóng "Bé đã nói!"; sao tối đa 1 lần/lượt/ngày', async ({ page }) => {

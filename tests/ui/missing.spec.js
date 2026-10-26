@@ -45,7 +45,11 @@ test('mức 1: một bóng trắng, khay một đồ; "Oh no!… What\'s missing
   await expect.poll(() => spoken(page)).toContain("What's missing?");
   const [key] = await holes(page);
   // Bóng là chính hình đồ vật (cùng emoji / ảnh), phủ trắng.
-  expect(await page.locator(`${holeSel(key)} > *`).evaluate((el) => getComputedStyle(el).filter)).toContain('invert(1)');
+  // Tranh nền tuyết (data-ghost="dark") dùng bóng xám đậm thay vì trắng.
+  const dark = (await page.locator('.ms-scene').getAttribute('data-ghost')) === 'dark';
+  const filter = await page.locator(`${holeSel(key)} > *`).evaluate((el) => getComputedStyle(el).filter);
+  expect(filter).toContain('brightness(0)');
+  if (!dark) expect(filter).toContain('invert(1)');
   const name = await piece(page, key).getAttribute('aria-label');
   await drag(page, key, holeSel(key));
   await waitState(page, 'done');

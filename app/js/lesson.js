@@ -355,7 +355,8 @@ export function groupByTopic(lessons) {
   const groups = new Map();
   for (const l of lessons) {
     const key = topicOf(l);
-    if (!groups.has(key)) groups.set(key, { topic: key, emoji: l.emoji, lessons: [] });
+    // `topicEmoji`: emoji riêng cho tab chủ đề (vd. bài hội thoại 🏠 Every day); không có thì lấy emoji bài đầu.
+    if (!groups.has(key)) groups.set(key, { topic: key, emoji: l.topicEmoji ?? l.emoji, lessons: [] });
     groups.get(key).lessons.push(l);
   }
   return [...groups.values()];

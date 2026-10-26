@@ -255,6 +255,9 @@ export async function runTalkTurn(ctx, turn) {
     // Bông "nhớ" hồ sơ: bé chọn đúng màu / món thích → "I know! You like red!"
     if (turn.rememberReply && chosen.id === turn.favorite) {
       await bongSays(ctx, turn.rememberReply, turn.rememberReplyVi, { mood: 'surprise' });
+    } else if (turn.type === 'choice' && turn.reply) {
+      // Lượt có câu đáp chung (vd. bài Lễ phép: "Good asking! You said please!") thay câu đáp riêng của món trong kho.
+      await bongSays(ctx, turn.reply, turn.replyVi, { mood: turn.mood });
     } else if (chosen.reply) {
       await bongSays(ctx, chosen.reply, chosen.replyVi, { mood: chosen.mood ?? turn.mood });
     }
