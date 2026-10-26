@@ -10,7 +10,8 @@ import { SOUND_BY_ID } from '../animal-sounds.js';
 import { playSoundFile } from './animal-sounds.js';
 import { cleanJobState, afterJobRound } from '../jobs/levels.js';
 import { JOBS_BG_IMAGES } from '../jobs/backgrounds.js';
-import { jobScreen, saveSnap, takeSnap, clearSnap, restartAnim, center, wait, WRONG_LOCK_MS, MAX_NUDGES } from '../jobs/kit.js';
+import { jobScreen, saveSnap, takeSnap, clearSnap, restartAnim, center, wait, reduceMotion, WRONG_LOCK_MS, MAX_NUDGES } from '../jobs/kit.js';
+import { scaled } from '../timing.js';
 import {
   MAX_LEVEL, planRound, countLine, allGoneLine, rightNumberLine, wrongNumberLine, whereLine, firstLine,
   ALARM_LINE, TAP_LINE, THANKS_LINE, HOW_MANY_LINE, TREE_LINE, LADDER_LINE, DOWN_LINE,
@@ -20,6 +21,8 @@ const JOB = 'fire';
 const ENTER_MS = 650;
 const LEAVE_MS = 600;
 const OUT_MS = 450; // ngọn lửa nhỏ dần rồi tắt
+const JET_MS = 280; // tia nước vươn từ vòi tới ngọn lửa
+const SPLASH_MS = 500;
 const ACTIVE = ['spray', 'count', 'tree'];
 /** Chỗ ngọn lửa trên ngôi nhà (phần trăm của khung nhà). */
 const SPOT_XY = { roof: [50, 24], window: [30, 56], window2: [70, 56], door: [50, 84], chimney: [76, 12] };
@@ -65,7 +68,8 @@ export function fireScreen(app, params = {}) {
 
   const scene = h('div.fr-scene');
   const residentEl = h('div.fr-resident');
-  const hose = h('div.fr-hose', { text: '🧑‍🚒', 'aria-hidden': 'true' });
+  // Lính cứu hỏa cầm vòi: chạm được — phun vào ngọn lửa cần dập (như chạm thẳng ngọn lửa), luôn có phản hồi.
+  const hose = h('button.fr-hose', { type: 'button', 'aria-label': 'Vòi phun nước', text: '🧑‍🚒', onclick: () => tapHose() });
   const choices = h('div.fr-choices');
   const kit = jobScreen(app, {
     job: JOB, background: { lessonId: JOBS_BG_IMAGES, word: JOB }, className: 'fr-play', stageClass: 'fr-stage', title: '🚒 Firefighter', helperLabel: 'Bông cứu hỏa', cap: 'fire',
@@ -190,11 +194,52 @@ export function fireScreen(app, params = {}) {
       await wait(ENTER_MS);
       if (e !== kit.epoch) return;
     }
-    await talk([B(ALARM_LINE), ...(caseIdx === 0 && !resume ? [B(TAP_LINE)] : []), ...(targetFire() ? [B(whereLine(spotOf(targetFire())))] : [])]);
-    if (e !== kit.epoch) return;
+    // Lửa nhận chạm ngay từ lúc Bông báo cháy (bé hay chạm sớm — trước đây chạm lúc Bông đang nói bị bỏ qua).
     setState('spray');
     snap();
+    await talk([B(ALARM_LINE), ...(caseIdx === 0 && !resume ? [B(TAP_LINE)] : []), ...(targetFire() ? [B(whereLine(spotOf(targetFire())))] : [])]);
+    if (e !== kit.epoch || state !== 'spray') return;
     kit.armNudge();
+  }
+
+  /** Tia nước từ vòi tới ngọn lửa + nước bắn tung ở ngọn lửa; lính cứu hỏa giật nhẹ như đang cầm vòi. */
+  async function shootWater(el) {
+    restartAnim(hose, 'spraying');
+    play('whoosh');
+    const st = stage.getBoundingClientRect();
+    const hb = hose.getBoundingClientRect();
+    const from = { x: hb.left + hb.width * 0.85 - st.left, y: hb.top + hb.height * 0.5 - st.top };
+    const c = center(el.getBoundingClientRect());
+    const to = { x: c.x - st.left, y: c.y - st.top };
+    const len = Math.hypot(to.x - from.x, to.y - from.y);
+    const angle = (Math.atan2(to.y - from.y, to.x - from.x) * 180) / Math.PI;
+    const jet = h('div.fr-jet', { 'aria-hidden': 'true', style: { left: `${from.x}px`, top: `${from.y}px`, width: `${len}px`, transform: `rotate(${angle}deg)` } });
+    stage.append(jet);
+    const ms = reduceMotion() ? 0 : scaled(JET_MS);
+    if (ms) await jet.animate([{ clipPath: 'inset(0 100% 0 0)' }, { clipPath: 'inset(0 0 0 0)' }], { duration: ms, easing: 'ease-out' }).finished.catch(() => {});
+    const splash = h('div.fr-splash', { 'aria-hidden': 'true', text: '💦', style: { left: `${to.x}px`, top: `${to.y}px` } });
+    stage.append(splash);
+    setTimeout(() => {
+      jet.remove();
+      splash.remove();
+    }, scaled(SPLASH_MS));
+  }
+
+  /** Chạm lính cứu hỏa / vòi: phun vào ngọn lửa cần dập (mức 3: ngọn Bông gọi); ca cây: nhắc dùng thang. */
+  function tapHose() {
+    if (state === 'spray') {
+      const id = targetFire() ?? cur().fires.find((f) => !out.has(f.id))?.id;
+      if (id) spray(id);
+      return;
+    }
+    restartAnim(hose, 'spraying');
+    play('tap');
+    if (state === 'tree') {
+      kit.clearNudge();
+      nudgeWanted();
+      const k = stepKey();
+      talk([B(LADDER_LINE)]).then(() => k === stepKey() && kit.armNudge());
+    }
   }
 
   /** Chạm một ngọn lửa: tắt (mỗi ngọn một lần, Bông đếm). Mức 3: chỉ ngọn Bông đang gọi. */
@@ -228,9 +273,7 @@ export function fireScreen(app, params = {}) {
     else snap();
     kit.clearNudge();
     const el = scene.querySelector(`.fr-fire[data-id="${id}"]`);
-    const ghost = await kit.flyTo(h('span.fr-water', { text: '💦' }), center(hose.getBoundingClientRect()), center(el.getBoundingClientRect()));
-    kit.removeGhost(ghost);
-    play('whoosh');
+    await shootWater(el);
     el.classList.add('out');
     if (e !== kit.epoch) return;
     if (!all) {

@@ -40,7 +40,7 @@ async function doCase(page, i) {
 
 test('mức 1: chạm từng ngọn lửa → Bông đếm; JOBS-07 — hết lửa câu đúng số ít / nhiều; chạm đúp một ngọn chỉ đếm một lần; bạn thú cảm ơn → ca 2', async ({ page }) => {
   await openFire(page);
-  expect(await spoken(page)).toContain("A little fire! Let's put it out!");
+  await expect.poll(() => spoken(page)).toContain("A little fire! Let's put it out!");
   const n = await page.locator('.fr-fire').count();
   expect(n >= 1 && n <= 3).toBe(true);
   const before = (await spoken(page)).length;
@@ -107,7 +107,7 @@ test('mức 3: Bông gọi chỗ lửa; chạm ngọn khác → "The fire … fi
     await expect(page.locator('.jb-count')).toHaveText(`${i + 1}/3`, { timeout: 15000 });
     await expect(play(page)).toHaveAttribute('data-state', ACTIVE, { timeout: 15000 });
     if ((await page.locator('.fr-scene').getAttribute('data-kind')) === 'fire') {
-      expect((await spoken(page)).some((t) => /^The fire is (on the roof|in the window|by the door)!$/.test(t))).toBe(true);
+      await expect.poll(async () => (await spoken(page)).some((t) => /^The fire is (on the roof|in the window|by the door)!$/.test(t))).toBe(true);
       const want = await page.locator('.fr-scene').getAttribute('data-target');
       const n = (await spoken(page)).length;
       // Chạm khi Bông đang nói thì không tính — chạm lại tới khi Bông nhắc.
@@ -121,3 +121,62 @@ test('mức 3: Bông gọi chỗ lửa; chạm ngọn khác → "The fire … fi
   }
   await expect(page.locator('.prize-sticker')).toBeVisible({ timeout: 15000 });
 });
+
+test('chạm lính cứu hỏa (vòi): lính cứu hỏa giật, tia nước bắn tới ngọn lửa và lửa tắt, Bông đếm; mức 3 phun đúng ngọn Bông gọi', async ({ page }) => {
+  await openFire(page, { level: 3, rounds: 0, lock: 3, seen: {} });
+  await expect(page.locator('.jb-count')).toHaveText('1/3', { timeout: 15000 });
+  if ((await page.locator('.fr-scene').getAttribute('data-kind')) !== 'fire') return; // ca cây: phần khác đã kiểm
+  const want = await page.locator('.fr-scene').getAttribute('data-target');
+  const before = (await spoken(page)).length;
+  // Tia nước chỉ hiện thoáng qua (chế độ chạy nhanh): ghi lại lúc nó được thêm vào.
+  await page.evaluate(() => {
+    window.__jets = 0;
+    new MutationObserver((list) => list.forEach((m) => m.addedNodes.forEach((n) => { if (n.classList?.contains('fr-jet')) window.__jets += 1; })))
+      .observe(document.querySelector('.fr-stage'), { childList: true });
+  });
+  await page.getByRole('button', { name: 'Vòi phun nước' }).click();
+  await expect(page.locator('.fr-hose')).toHaveClass(/spraying/);
+  await expect.poll(() => page.evaluate(() => window.__jets)).toBe(1);
+  await expect(page.locator(`.fr-fire[data-id="${want}"]`)).toHaveClass(/out/, { timeout: 15000 });
+  await expect.poll(() => saidSince(page, before, /^One!$/)).toBe(true);
+  expect(await saidSince(page, before, /first!$/)).toBe(false);
+});
+
+test('chạm ngọn lửa ngay lúc Bông đang báo cháy: lửa vẫn tắt (không bị bỏ qua)', async ({ page }) => {
+  await fakeSpeech(page);
+  // Câu báo cháy nói lâu (3 giây) như giọng thật — bé chạm trong lúc Bông còn đang nói.
+  await page.addInitScript(() => {
+    const synth = window.speechSynthesis;
+    const speak = synth.speak.bind(synth);
+    synth.speak = (u) => {
+      if (!/little fire/.test(u.text)) return speak(u);
+      window.__spoken.push(u.text);
+      setTimeout(() => u.onend?.(), 3000);
+    };
+  });
+  await startApp(page);
+  await page.getByRole('button', { name: 'Trò chơi' }).click();
+  await page.getByRole('button', { name: 'Đóng vai' }).click();
+  await page.getByRole('button', { name: 'Lính cứu hỏa' }).click();
+  await expect.poll(() => spoken(page)).toContain("A little fire! Let's put it out!");
+  await page.locator('.fr-fire').first().click();
+  await expect(page.locator('.fr-fire.out, .jb-count:text("2/3")').first()).toBeVisible({ timeout: 2500 });
+});
+
+for (const [w, hgt] of [[390, 760], [844, 390], [1024, 600], [1280, 720], [768, 1024]]) {
+  test(`bạn thú không che ngọn lửa (${w}×${hgt}): điểm giữa mọi ngọn lửa bấm trúng chính ngọn lửa đó`, async ({ page }) => {
+    await page.setViewportSize({ width: w, height: hgt });
+    await openFire(page, { level: 2, rounds: 0, lock: 2, seen: {} });
+    for (let i = 0; i < 3; i++) {
+      await expect(page.locator('.jb-count')).toHaveText(`${i + 1}/3`, { timeout: 15000 });
+      if ((await page.locator('.fr-scene').getAttribute('data-kind')) === 'fire') {
+        const hits = await page.locator('.fr-fire').evaluateAll((els) => els.map((el) => {
+          const r = el.getBoundingClientRect();
+          return [el.dataset.spot, document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2)?.closest('.fr-fire') === el];
+        }));
+        expect(hits.filter(([, ok]) => !ok)).toEqual([]);
+      }
+      await doCase(page, i);
+    }
+  });
+}

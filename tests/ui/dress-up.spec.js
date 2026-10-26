@@ -58,7 +58,7 @@ test('mặc đồ: chọn bé gái → chạm áo phông, kéo quần bò, thay 
   await cloth(page, 'boots').scrollIntoViewIfNeeded();
   await cloth(page, 'boots').click();
   await expect.poll(() => worn(page)).toEqual(['boots', 'dress']);
-  await expect.poll(() => lastSpoken(page)).toMatch(/^(I'm wearing boots!|Put on your|It's|Let's)/);
+  await expect.poll(() => lastSpoken(page)).toMatch(/^(Yay! )?(I'm wearing boots!|Put on your|It's|Let's)/);
 
   // Kéo váy ra khỏi người → cởi.
   const box = await page.locator('.du-piece[data-item="dress"]').boundingBox();

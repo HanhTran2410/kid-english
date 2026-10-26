@@ -2622,7 +2622,9 @@ img.dr-admin-face { width: 100%; height: 100%; object-fit: contain; }
 .jb-jobs .jb-job-fire { background: #ffe3e3; }
 .jb-cap-fire::after { content: '▲'; font-size: 13px; font-weight: 900; line-height: 1; color: #e03131; }
 .fr-stage { background: linear-gradient(#e7f5ff 0 66%, #b2f2bb 66%); }
-.fr-scene { position: absolute; left: 50%; bottom: 6%; height: 80%; aspect-ratio: 1; transform: translateX(-42%); }
+/* Nhà + lửa nằm trên bạn thú: bạn thú không che ngọn lửa (chạm trượt → "lửa không tắt"). */
+.fr-scene { position: absolute; left: 50%; bottom: 6%; height: 80%; aspect-ratio: 1; transform: translateX(-42%); z-index: 2; pointer-events: none; }
+.fr-scene .fr-fire { pointer-events: auto; }
 .fr-scene.enter { animation: dr-enter 0.65s ease-out; }
 .fr-scene.leave { animation: dr-fade 0.6s forwards; }
 .fr-house, .fr-tree { position: absolute; inset: 0; }
@@ -2636,8 +2638,26 @@ img.dr-admin-face { width: 100%; height: 100%; object-fit: contain; }
 .fr-fire.nudge { outline: 4px solid var(--yellow); border-radius: 50%; }
 @keyframes fr-flicker { from { transform: translate(-50%, -60%) scale(1, 1); } to { transform: translate(-50%, -60%) scale(1.06, 0.94); } }
 @keyframes fr-out { to { transform: translate(-50%, -60%) scale(0.1); opacity: 0; } }
-.fr-water { font-family: var(--emoji); font-size: 48px; }
-.fr-hose { position: absolute; left: 3%; bottom: 4%; font-family: var(--emoji); font-size: clamp(60px, 12vmin, 110px); line-height: 1; pointer-events: none; }
+.fr-hose {
+  position: absolute; left: 3%; bottom: 4%; z-index: 3; padding: 0; border: 0; background: none; cursor: pointer; touch-action: manipulation;
+  font-family: var(--emoji); font-size: clamp(60px, 12vmin, 110px); line-height: 1; transform-origin: 30% 100%;
+}
+.fr-hose.spraying { animation: fr-recoil 0.35s ease-out; }
+@keyframes fr-recoil { 30% { transform: rotate(-9deg) translateX(-6px) scale(1.06); } 70% { transform: rotate(3deg); } }
+/* Tia nước: dải xanh có vệt chảy, vươn từ vòi tới ngọn lửa rồi mờ đi. */
+.fr-jet {
+  position: absolute; z-index: 4; height: clamp(9px, 1.6vmin, 15px); margin-top: calc(clamp(9px, 1.6vmin, 15px) / -2); border-radius: 999px;
+  transform-origin: 0 50%; pointer-events: none; box-shadow: 0 0 8px rgba(77, 171, 247, 0.8);
+  background: repeating-linear-gradient(90deg, #339af0 0 16px, #a5d8ff 16px 26px); background-size: 52px 100%;
+  animation: fr-flow 0.25s linear infinite, fr-jet-fade 0.3s 0.25s ease-in forwards;
+}
+@keyframes fr-flow { to { background-position: 52px 0; } }
+@keyframes fr-jet-fade { to { opacity: 0; } }
+.fr-splash {
+  position: absolute; z-index: 4; transform: translate(-50%, -50%); pointer-events: none;
+  font-family: var(--emoji); font-size: clamp(36px, 7vmin, 64px); animation: fr-splash 0.5s ease-out forwards;
+}
+@keyframes fr-splash { from { transform: translate(-50%, -50%) scale(0.4); opacity: 1; } to { transform: translate(-50%, -70%) scale(1.5); opacity: 0; } }
 .fr-resident { position: absolute; right: 3%; bottom: 4%; height: 46%; aspect-ratio: 240 / 300; }
 .fr-resident .dr-svg { width: 100%; height: 100%; display: block; }
 .fr-resident.enter { animation: dr-enter 0.65s ease-out; }
@@ -2662,6 +2682,7 @@ img.dr-admin-face { width: 100%; height: 100%; object-fit: contain; }
 }
 @media (prefers-reduced-motion: reduce) {
   .pl-asker.enter, .pl-asker.hop, .pl-asker.talking .dr-svg, .pl-item.nudge, .pl-item.shake, .pl-bush.nudge,
+  .fr-hose.spraying, .fr-jet, .fr-splash,
   .fr-scene.enter, .fr-fire, .fr-resident.enter, .fr-resident.hop, .fr-resident.talking .dr-svg, .fr-number.nudge, .fr-number.shake { animation: none; }
   .pl-asker.leave, .fr-resident.leave { animation: dr-fade 0.3s forwards; }
   .pl-bush, .fr-climber, .fr-ladder { transition: none; }
