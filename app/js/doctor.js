@@ -480,3 +480,29 @@ export const wrongBlocksLine = (x) => [`That's ${NUM_WORDS[x]}. Let's count agai
 export const tallerLine = (tall, short) => [`${tall} is taller! ${short} is shorter!`, `${tall} cao hơn! ${short} thấp hơn!`];
 /** Mức 3 nhầm: "That's Kitty. Kitty is shorter. Who is taller?" */
 export const wrongTallerLine = (name) => [`That's ${name}. ${name} is shorter. Who is taller?`, `Đó là ${name}. ${name} thấp hơn. Bạn nào cao hơn?`];
+
+// ---------- SPEC-art ART1: hình rửa tay (ảnh lưới 6 ô bố mẹ thêm, chưa có thì hình vẽ sẵn) ----------
+export const WASH_IMAGES = 'doctor:wash';
+/** 6 ô của ảnh lưới rửa tay, theo thứ tự ô (trái → phải, trên → dưới). */
+export const WASH_FRAMES = ['dirty', 'soapy', 'rinse', 'clean', 'gloves', 'ready'];
+export const WASH_FRAME_VI = { dirty: 'tay bẩn', soapy: 'tay đầy bọt', rinse: 'tay dưới vòi nước', clean: 'tay sạch, lấp lánh', gloves: 'tay đeo găng', ready: 'tay đeo găng giơ ngón cái' };
+export const WASH_GRID_PROMPT = [
+  'A 3x2 grid of six square pictures (3 columns, 2 rows) on a plain white background, separated by thin white gaps.',
+  'All six pictures show the SAME pair of small child hands from the front, same size and same position, above the SAME white sink with a tap:',
+  '1) hands with a few small mud spots;',
+  '2) hands covered in white soap foam;',
+  '3) hands under running water from the tap, foam washing away;',
+  '4) clean dry hands with small sparkles;',
+  '5) hands wearing light-blue medical gloves;',
+  '6) gloved hands giving a thumbs-up.',
+  'Soft cartoon style for a toddler game, thick soft outlines, pastel colours, no text, no faces.',
+].join('\n');
+const WASH_FRAME_OF = { soap: 'soapy', rinse: 'rinse', towel: 'clean', gloves: 'gloves' };
+/**
+ * Hình rửa tay theo món VỪA dùng (mức 1 dùng thứ tự tùy ý — hình luôn khớp việc bé vừa làm);
+ * dùng đủ món: mức 2–3 → 'ready' (đeo găng, ngón cái), mức 1 → 'clean'.
+ */
+export function washFrame(washed, level) {
+  if (washFor(level).every((id) => washed.includes(id))) return level >= 2 ? 'ready' : 'clean';
+  return WASH_FRAME_OF[washed[washed.length - 1]] ?? 'dirty';
+}

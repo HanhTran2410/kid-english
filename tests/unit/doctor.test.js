@@ -6,7 +6,7 @@ import {
   regionAt, stepsFor, casesFor, trayFor, pickCases, stepPrompt, wrongItemLine, doneLine, yesTouchLine, wrongTouchLine, askLine,
   cleanDoctorState, afterDoctorRound, afterHealed,
   planCheckup, planDoctorRound, tallLine, rightBlocksLine, wrongBlocksLine, tallerLine, wrongTallerLine, blockCountLine,
-  washFor, nextWash, washFirstLine, WASH_BY, planSticker, matchesSticker, stickerId, stickerWantLine, stickerLoveLine, stickerWrongLine,
+  washFor, nextWash, washFirstLine, WASH_BY, washFrame, WASH_FRAMES, planSticker, matchesSticker, stickerId, stickerWantLine, stickerLoveLine, stickerWrongLine,
 } from '../../app/js/doctor.js';
 
 /** rng cố định để test lặp lại được. */
@@ -240,4 +240,16 @@ test('SPEC-doctor2 DR2 — câu nói: số ít / nhiều đúng, tên thật', (
   assert.equal(tallerLine('Teddy', 'Kitty')[0], 'Teddy is taller! Kitty is shorter!');
   assert.equal(wrongTallerLine('Kitty')[0], "That's Kitty. Kitty is shorter. Who is taller?");
   assert.equal(blockCountLine(2)[0], 'Two!');
+});
+
+test('SPEC-art ART1 — hình rửa tay theo món vừa dùng; xong: mức 1 "clean", mức 2–3 "ready"; 6 ô đúng thứ tự', () => {
+  assert.deepEqual(WASH_FRAMES, ['dirty', 'soapy', 'rinse', 'clean', 'gloves', 'ready']);
+  assert.equal(washFrame([], 1), 'dirty');
+  assert.equal(washFrame(['soap'], 1), 'soapy');
+  assert.equal(washFrame(['towel'], 1), 'clean');
+  assert.equal(washFrame(['towel', 'soap'], 1), 'soapy');
+  assert.equal(washFrame(['soap', 'rinse', 'towel'], 1), 'clean');
+  assert.equal(washFrame(['soap', 'rinse'], 2), 'rinse');
+  assert.equal(washFrame(['soap', 'rinse', 'towel'], 2), 'clean');
+  assert.equal(washFrame(['soap', 'rinse', 'towel', 'gloves'], 2), 'ready');
 });

@@ -2452,15 +2452,41 @@ details > summary { cursor: pointer; font-weight: 800; padding: 6px 0; }
 @keyframes dr-zzz { from { transform: translate(-20%, -60%) scale(0.6); opacity: 0; } 30% { opacity: 1; } to { transform: translate(20%, -180%) scale(1.3); opacity: 0; } }
 @media (prefers-reduced-motion: reduce) { .dr-bug, .dr-zzz, .dr-fly.use-thermometer::after { animation: none; } .dr-fly.use-thermometer::after { height: 64%; } }
 /* SPEC-doctor2 DR1: rửa tay đầu lượt (bồn + hai bàn tay; lớp bọt / nước / khô / găng), sticker tặng bạn thú. */
-.dr-wash { position: absolute; inset: 4% 8%; z-index: 2; display: grid; place-items: center; }
+.dr-wash { position: absolute; inset: 3% 8%; z-index: 2; display: grid; grid-template: minmax(0, 1fr) / minmax(0, 1fr); }
 .dr-wash[hidden], .dr-patient[hidden], .dr-bed[hidden] { display: none; }
+.dr-wash-art, .dr-wash-photo { grid-area: 1 / 1; width: 100%; height: 100%; min-height: 0; }
 .dr-wash-svg { width: 100%; height: 100%; display: block; }
-.dr-skin { fill: #ffd8b1; transition: fill 0.3s; }
-.dr-wash.gloves .dr-skin { fill: #74c0fc; }
-.dr-stream, .dr-bubbles, .dr-dry { opacity: 0; transition: opacity 0.3s; }
-.dr-wash.soap .dr-bubbles, .dr-wash.water .dr-stream, .dr-wash.dry .dr-dry { opacity: 1; }
-.dr-wash.rub .dr-hands { animation: dr-rub 0.25s ease-in-out 3; }
+.dr-wash.photo .dr-wash-art { display: none; }
+.dr-wash-photo { position: relative; }
+.dr-wash:not(.photo) .dr-wash-photo { display: none; }
+/* Ảnh lưới rửa tay: ô mới chuyển mờ dần đè lên ô cũ. */
+.dr-wash-img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; animation: dr-fade-in 0.4s ease-out; }
+@keyframes dr-fade-in { from { opacity: 0; } }
+.dr-skin { fill: #ffd6b0; transition: fill 0.3s; }
+.dr-wash.f-gloves .dr-skin, .dr-wash.f-ready .dr-skin { fill: #a5d8ff; }
+.dr-dirt, .dr-foam, .dr-water, .dr-shine, .dr-thumb { opacity: 0; transition: opacity 0.4s; }
+.dr-wash.f-dirty .dr-dirt, .dr-wash.f-soapy .dr-foam, .dr-wash.f-rinse .dr-water,
+.dr-wash.f-clean .dr-shine, .dr-wash.f-ready .dr-shine, .dr-wash.f-ready .dr-thumb { opacity: 1; }
+.dr-stream { animation: dr-stream 0.35s linear infinite; }
+@keyframes dr-stream { 50% { opacity: 0.75; transform: scaleX(0.85); transform-origin: 150px 0; } }
+.dr-wash.rub .dr-hands, .dr-wash.photo.rub .dr-wash-photo { animation: dr-rub 0.25s ease-in-out 3; }
 @keyframes dr-rub { 50% { transform: translateX(6px); } }
+.dr-wash.pop { animation: pop 0.4s ease-in-out; }
+/* Hiệu ứng: bọt bay lên rồi vỡ, giọt nước rơi, lấp lánh, pháo giấy. */
+.dr-fx { position: absolute; inset: 0; pointer-events: none; overflow: hidden; }
+.fx-bubble { position: absolute; aspect-ratio: 1; border-radius: 50%; border: 2px solid rgba(116, 192, 252, 0.9); background: radial-gradient(circle at 30% 30%, #fff, rgba(231, 245, 255, 0.6)); animation: fx-bubble 1.4s ease-out forwards; }
+@keyframes fx-bubble { to { transform: translateY(-110px) scale(1.2); opacity: 0; } }
+.fx-drop { position: absolute; top: 30%; width: 8px; height: 12px; border-radius: 50% 50% 50% 50% / 60% 60% 40% 40%; background: #4dabf7; animation: fx-drop 0.7s ease-in forwards; }
+@keyframes fx-drop { to { transform: translateY(160px); opacity: 0.2; } }
+.fx-spark { position: absolute; font-family: var(--emoji); font-size: 26px; animation: fx-spark 1s ease-out forwards; }
+@keyframes fx-spark { 0% { transform: scale(0.2); opacity: 0; } 40% { transform: scale(1.2); opacity: 1; } 100% { transform: scale(0.8); opacity: 0; } }
+.fx-confetti { position: absolute; top: -4%; width: 10px; height: 14px; border-radius: 3px; animation: fx-confetti 1.5s ease-in forwards; }
+@keyframes fx-confetti { to { transform: translateY(320px) rotate(540deg); opacity: 0.3; } }
+/* Góc bố mẹ: xem trước 6 ô ảnh lưới rửa tay. */
+.dr-wash-admin { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.dr-wash-admin figure { margin: 0; text-align: center; font-size: 13px; }
+.dr-wash-admin img, .dr-wash-missing { width: 100%; aspect-ratio: 1; object-fit: contain; border-radius: 10px; background: #f8f9fa; display: grid; place-items: center; }
+@media (prefers-reduced-motion: reduce) { .dr-wash.rub .dr-hands, .dr-wash.photo.rub .dr-wash-photo, .dr-stream, .dr-wash-img, .dr-wash.pop { animation: none; } }
 .dr-svg-face svg { width: 100%; height: 100%; display: block; }
 @media (prefers-reduced-motion: reduce) { .dr-wash.rub .dr-hands { animation: none; } }
 /* SPEC-doctor2 DR2: ca đo chiều cao — thước khối màu (đếm từ dưới lên) cạnh bạn thú; mức 3 hai cặp. */

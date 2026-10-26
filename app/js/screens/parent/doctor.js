@@ -12,10 +12,10 @@ import { HIDE_ITEM_IMAGES } from '../../hide-seek.js';
 import { MISSING_ITEM_IMAGES } from '../../missing.js';
 import { SOUNDS_IMAGES } from '../../animal-sounds.js';
 import { applyBackup, BackupError } from '../../backup.js';
-import { TOOLS, TREATS, DOCTOR_ITEM_IMAGES, DOCTOR_BG_IMAGES, BG_KEY, BACKGROUND_PROMPT } from '../../doctor.js';
+import { TOOLS, TREATS, DOCTOR_ITEM_IMAGES, DOCTOR_BG_IMAGES, BG_KEY, BACKGROUND_PROMPT, WASH_IMAGES, WASH_FRAMES, WASH_FRAME_VI, WASH_GRID_PROMPT } from '../../doctor.js';
 import { loadDoctorImages, itemFace } from '../doctor.js';
 import { parentLayout, goParent, section, notice } from './common.js';
-import { pendingGridSections, imageErrorMessage } from './lessons.js';
+import { pendingGridSections, gridSection, imageErrorMessage } from './lessons.js';
 import { mediaShareSection } from './media-share.js';
 import { lessonImagesFor } from './feed.js';
 
@@ -105,6 +105,7 @@ export function doctorAdminView(app) {
         promptNote: `\n${ITEM_PROMPT_NOTE}`,
         process: (tile) => cutOutSticker(tile.blob), onSaved: reload, previewClass: 'checker',
       }),
+      washSection(),
       backgroundSection(),
       shareSection(),
     );
@@ -221,12 +222,34 @@ export function doctorAdminView(app) {
       input);
   }
 
+  /** 🧼 Rửa tay (SPEC-art ART1): một ảnh lưới 3 × 2 — 6 ô cùng một đôi tay; đủ 6 ô thì trò chơi dùng ảnh. */
+  function washSection() {
+    const have = WASH_FRAMES.filter((f) => images.wash.has(f));
+    const all = have.length === WASH_FRAMES.length;
+    return h('div', {},
+      section(`🧼 Rửa tay — ${all ? 'đang dùng ảnh' : have.length ? `có ${have.length}/6 ô (cần đủ 6 ô, đang dùng hình vẽ sẵn)` : 'đang dùng hình vẽ sẵn'}`,
+        h('p.muted', { text: 'Một ảnh lưới 6 ô: tay bẩn → đầy bọt → dưới vòi nước → sạch → đeo găng → giơ ngón cái. Vẽ một lần cả 6 ô để đôi tay giống nhau. Trò chơi chuyển ảnh theo từng bước, có bọt bay, nước chảy, lấp lánh.' }),
+        have.length ? h('div.dr-wash-admin', {}, ...WASH_FRAMES.map((f) => h('figure', {},
+          images.wash.has(f) ? h('img', { src: images.wash.get(f), alt: WASH_FRAME_VI[f] }) : h('div.dr-wash-missing', { text: '—' }),
+          h('figcaption', { text: WASH_FRAME_VI[f] })))) : null,
+        have.length ? h('div.actions', {}, h('button.btn.danger', {
+          type: 'button', text: 'Dùng hình vẽ sẵn',
+          onclick: async () => {
+            for (const f of WASH_FRAMES) await removeWordImage(app.db, WASH_IMAGES, f);
+            reload();
+          },
+        })) : null),
+      gridSection(app, { id: WASH_IMAGES, words: WASH_FRAMES.map((f) => ({ en: f })) }, urls, '🧼 Ảnh lưới rửa tay', {
+        prompt: WASH_GRID_PROMPT, shape: { cols: 3, rows: 2 }, onSaved: reload,
+      }));
+  }
+
   function shareSection() {
     return mediaShareSection(app, {
       what: 'ảnh Bác sĩ nhí',
       intro: 'Gửi ảnh đồ và ảnh nền phòng khám sang máy khác (ảnh nằm trong file). Trên máy kia: Góc bố mẹ → Ảnh Bác sĩ nhí → "Nhập từ file" (hoặc Quản lý bài → "Nhập bài từ file").',
-      canMake: images.item.size > 0 || Boolean(images.bg),
-      backup: { lessonIds: [DOCTOR_ITEM_IMAGES, DOCTOR_BG_IMAGES], settingsKeys: [], filename: `bac-si-nhi-${dayKey()}.zip` },
+      canMake: images.item.size > 0 || Boolean(images.bg) || images.wash.size > 0,
+      backup: { lessonIds: [DOCTOR_ITEM_IMAGES, DOCTOR_BG_IMAGES, WASH_IMAGES], settingsKeys: [], filename: `bac-si-nhi-${dayKey()}.zip` },
       accept: async (payload) => {
         const got = await acceptDoctorPayload(app, payload);
         if (!got.images) throw new BackupError('File này không có ảnh Bác sĩ nhí.');

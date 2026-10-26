@@ -9,15 +9,16 @@ import { mediaBlob } from '../db.js';
 import { play } from '../speech/sfx.js';
 import { markPracticed } from '../player/track.js';
 import { numberKey } from '../numbers.js';
+import { scaled } from '../timing.js';
 import { patientSvg, faceSvg, glowSvg } from '../patients.js';
 import {
-  jobScreen, saveSnap, takeSnap, clearSnap, restartAnim, center, wait, WRONG_LOCK_MS, MAX_NUDGES,
+  jobScreen, saveSnap, takeSnap, clearSnap, restartAnim, center, wait, reduceMotion, WRONG_LOCK_MS, MAX_NUDGES,
 } from '../jobs/kit.js';
 import {
   CASE_BY_ID, PATIENT_BY_ID, ITEM_BY_ID, REGIONS, regionAt, regionPoint, stepsFor, trayFor,
   cleanDoctorState, afterDoctorRound, afterHealed, stepPrompt, wrongItemLine, doneLine, betterLine,
   DOCTOR_ITEM_IMAGES, DOCTOR_BG_IMAGES, BG_KEY, COME_IN_LINE, HELLO_DOCTOR_LINE, GOOD_JOB_LINE, BYE_LINE, yesTouchLine, wrongTouchLine,
-  WASH_BY, washFor, nextWash, WASH_START_LINE, WASH_DONE_LINE, washFirstLine,
+  WASH_BY, washFor, nextWash, WASH_START_LINE, WASH_DONE_LINE, washFirstLine, WASH_IMAGES, WASH_FRAMES, washFrame,
   STICKER_COLORS, planSticker, stickerId, matchesSticker, STICKER_ASK_LINE, stickerWantLine, stickerLoveLine, stickerWrongLine,
   planDoctorRound, CHECKUP_HELLO_LINE, MEASURE_LINE, FROM_BOTTOM_LINE, GROWING_LINE, HOW_MANY_BLOCKS_LINE, TALLER_Q_LINE,
   blockCountLine, tallLine, rightBlocksLine, wrongBlocksLine, tallerLine, wrongTallerLine,
@@ -51,21 +52,40 @@ function stickerShape(st, size = 0) {
 /** Khăn (không có emoji khăn): khăn gấp sọc. */
 const TOWEL_SVG = `<svg viewBox="0 0 40 40"><rect x="6" y="8" width="28" height="26" rx="4" fill="#a5d8ff" stroke="${INK}" stroke-width="2.5"/><path d="M6 15 H34 M6 27 H34" stroke="#fff" stroke-width="3"/></svg>`;
 /** Bồn rửa tay + hai bàn tay: lớp bọt / nước / khô / găng bật theo món đã dùng. */
-const HAND = `<rect x="0" y="30" width="44" height="52" rx="18"/><rect x="2" y="6" width="9" height="34" rx="4.5"/><rect x="12.5" y="0" width="9" height="38" rx="4.5"/><rect x="23" y="2" width="9" height="36" rx="4.5"/><rect x="33.5" y="10" width="9" height="30" rx="4.5"/><ellipse cx="48" cy="54" rx="8" ry="14" transform="rotate(-25 48 54)"/>`;
-const WASH_SVG = `<svg class="dr-wash-svg" viewBox="0 0 300 230" aria-hidden="true">
-  <rect x="140" y="6" width="14" height="30" rx="4" fill="#adb5bd" stroke="${INK}" stroke-width="2.5"/>
-  <rect x="140" y="30" width="38" height="12" rx="5" fill="#adb5bd" stroke="${INK}" stroke-width="2.5"/>
-  <rect class="dr-stream" x="166" y="42" width="10" height="140" rx="5" fill="#74c0fc"/>
+/** Bàn tay (ngón cái bên trái, lòng bàn tay hướng ra): ngón dài ngắn tự nhiên, cổ tay. Vẽ 2 lớp — lớp viền rồi lớp màu
+ *  đè lên — để viền chỉ còn ở mép ngoài và khe ngón (trông liền một bàn tay, không như ghép khối). */
+const HAND_SHAPES = `<rect x="12" y="20" width="11" height="44" rx="5.5"/><rect x="24.5" y="10" width="11" height="52" rx="5.5"/>
+  <rect x="37" y="16" width="11" height="46" rx="5.5"/><rect x="49.5" y="30" width="10" height="34" rx="5"/>
+  <rect x="11" y="50" width="49" height="46" rx="18"/><rect x="-3" y="56" width="13" height="36" rx="6.5" transform="rotate(-20 3 74)"/>
+  <rect x="17" y="88" width="36" height="24" rx="8"/>`;
+const HAND = `<g class="dr-skin" stroke="${INK}" stroke-width="5" stroke-linejoin="round">${HAND_SHAPES}</g>
+  <g class="dr-skin">${HAND_SHAPES}</g>
+  <ellipse cx="35" cy="74" rx="14" ry="11" fill="#fff" opacity="0.28"/>
+  <rect x="13" y="104" width="44" height="22" rx="6" fill="#fff" stroke="${INK}" stroke-width="3"/>`;
+const DOT = (x, y, r) => `<circle cx="${x}" cy="${y}" r="${r}"/>`;
+const SPARK = (x, y, k = 1) => `<path transform="translate(${x} ${y}) scale(${k})" d="M0 -12 L3 -3 L12 0 L3 3 L0 12 L-3 3 L-12 0 L-3 -3 Z"/>`;
+/** Bồn rửa + đôi tay; các lớp bẩn / bọt / nước / lấp lánh / ngón cái bật theo hình đang hiện (class f-…). */
+const WASH_SVG = `<svg class="dr-wash-svg" viewBox="0 0 300 240" aria-hidden="true">
+  <rect x="128" y="4" width="44" height="12" rx="6" fill="#ced4da" stroke="${INK}" stroke-width="3"/>
+  <rect x="164" y="0" width="26" height="8" rx="4" fill="#ced4da" stroke="${INK}" stroke-width="2.5"/>
+  <path d="M143 14 V30 Q143 46 150 46 Q157 46 157 30 V14 Z" fill="#ced4da" stroke="${INK}" stroke-width="3" stroke-linejoin="round"/>
+  <g class="dr-water"><rect class="dr-stream" x="145.5" y="46" width="9" height="150" rx="4.5" fill="#74c0fc"/>
+    <g fill="#a5d8ff">${DOT(138, 196, 4)}${DOT(162, 194, 3.5)}${DOT(130, 188, 3)}${DOT(170, 186, 3)}</g></g>
   <g class="dr-hands">
-    <g class="dr-skin" transform="translate(96 84)" stroke="${INK}" stroke-width="2.5">${HAND}</g>
-    <g class="dr-skin" transform="translate(250 84) scale(-1 1)" stroke="${INK}" stroke-width="2.5">${HAND}</g>
+    <g transform="translate(130 62) scale(-1 1)">${HAND}</g>
+    <g transform="translate(170 62)">${HAND}</g>
   </g>
-  <g class="dr-bubbles" fill="#fff" stroke="#74c0fc" stroke-width="2">
-    <circle cx="108" cy="110" r="9"/><circle cx="126" cy="140" r="7"/><circle cx="150" cy="124" r="11"/><circle cx="196" cy="108" r="8"/>
-    <circle cx="214" cy="142" r="10"/><circle cx="172" cy="150" r="6"/><circle cx="236" cy="118" r="6"/>
+  <g class="dr-dirt" fill="#a0785a">${DOT(96, 132, 5)}${DOT(110, 112, 4)}${DOT(86, 150, 4.5)}${DOT(102, 92, 3.5)}${DOT(190, 128, 5)}${DOT(204, 150, 4)}${DOT(216, 114, 4.5)}${DOT(198, 96, 3.5)}</g>
+  <g class="dr-foam" fill="#fff" stroke="#a5d8ff" stroke-width="2">
+    ${DOT(88, 120, 13)}${DOT(104, 136, 12)}${DOT(112, 112, 10)}${DOT(84, 146, 10)}${DOT(98, 94, 9)}
+    ${DOT(212, 120, 13)}${DOT(196, 136, 12)}${DOT(188, 112, 10)}${DOT(216, 146, 10)}${DOT(202, 94, 9)}
+    ${DOT(132, 72, 6)}${DOT(168, 66, 5)}${DOT(150, 84, 7)}
   </g>
-  <text class="dr-dry" x="150" y="76" text-anchor="middle" font-size="30">✨</text>
-  <path d="M36 178 H264 Q258 226 150 226 Q42 226 36 178 Z" fill="#e9ecef" stroke="${INK}" stroke-width="3"/>
+  <g class="dr-shine" fill="#ffd43b" stroke="#f59f00" stroke-width="1.5">${SPARK(72, 82)}${SPARK(228, 88)}${SPARK(150, 78, 0.8)}${SPARK(98, 176, 0.7)}${SPARK(204, 172, 0.7)}</g>
+  <text class="dr-thumb" x="256" y="70" text-anchor="middle" font-size="40">👍</text>
+  <rect x="36" y="196" width="228" height="12" rx="6" fill="#f8f9fa" stroke="${INK}" stroke-width="3"/>
+  <path d="M44 208 H256 Q250 236 150 236 Q50 236 44 208 Z" fill="#e9ecef" stroke="${INK}" stroke-width="3"/>
+  <ellipse cx="150" cy="222" rx="10" ry="3.5" fill="#adb5bd"/>
 </svg>`;
 /** Đồ bay tới vùng nào; null = chỗ đau của ca (vùng của bước chạm). */
 const ITEM_TARGET = {
@@ -81,15 +101,17 @@ export async function loadDoctorImages(app) {
   const urls = [];
   const item = new Map();
   let bg = null;
-  for (const [lessonId, isBg] of [[DOCTOR_ITEM_IMAGES, false], [DOCTOR_BG_IMAGES, true]]) {
+  const wash = new Map(); // ảnh lưới rửa tay (SPEC-art ART1)
+  for (const [lessonId, kind] of [[DOCTOR_ITEM_IMAGES, 'item'], [DOCTOR_BG_IMAGES, 'bg'], [WASH_IMAGES, 'wash']]) {
     for (const img of await app.db.getAllByIndex('images', 'lessonId', lessonId).catch(() => [])) {
       const url = URL.createObjectURL(mediaBlob(img));
       urls.push(url);
-      if (!isBg) item.set(img.word, url);
+      if (kind === 'item') item.set(img.word, url);
+      else if (kind === 'wash') wash.set(img.word, url);
       else if (img.word === BG_KEY) bg = url;
     }
   }
-  return { item, bg, revoke: () => urls.forEach((u) => URL.revokeObjectURL(u)) };
+  return { item, bg, wash, revoke: () => urls.forEach((u) => URL.revokeObjectURL(u)) };
 }
 
 /** Hình một đồ: ảnh bố mẹ thêm, chưa có / hỏng thì emoji. */
@@ -128,7 +150,9 @@ export function doctorScreen(app, params = {}) {
   const P = (line) => ({ who: 'patient', line });
   const B = (line) => ({ who: 'bong', line });
   const patientEl = h('div.dr-patient');
-  const washEl = h('div.dr-wash', { hidden: true, html: WASH_SVG });
+  const washPhoto = h('div.dr-wash-photo');
+  const washFx = h('div.dr-fx', { 'aria-hidden': 'true' });
+  const washEl = h('div.dr-wash', { hidden: true }, h('div.dr-wash-art', { html: WASH_SVG }), washPhoto, washFx);
   const measureEl = h('div.dr-measure', { hidden: true });
   const isCheckup = () => cases[caseIdx]?.id === 'checkup';
   const sticker = () => {
@@ -778,12 +802,36 @@ export function doctorScreen(app, params = {}) {
   }
 
   // ---------- Rửa tay đầu lượt (SPEC-doctor2 mục 3) ----------
+  /** Đủ 6 ô ảnh lưới rửa tay thì dùng ảnh; thiếu ô nào thì cả cảnh dùng hình vẽ sẵn (không trộn kiểu). */
+  const washPhotos = () => WASH_FRAMES.every((f) => images?.wash?.has(f));
+  /** Hiện hình của bước rửa tay (theo món vừa dùng); ảnh thì chuyển mờ dần sang ô mới. */
   function renderWash() {
-    const has = (id) => washed.includes(id);
-    washEl.classList.toggle('soap', has('soap') && !has('rinse'));
-    washEl.classList.toggle('water', has('rinse') && !has('towel'));
-    washEl.classList.toggle('dry', has('towel'));
-    washEl.classList.toggle('gloves', has('gloves'));
+    const frame = washFrame(washed, level);
+    washEl.dataset.frame = frame; // cho test
+    for (const f of WASH_FRAMES) washEl.classList.toggle(`f-${f}`, f === frame);
+    const photo = washPhotos();
+    washEl.classList.toggle('photo', photo);
+    if (!photo || washPhoto.lastElementChild?.dataset.frame === frame) return;
+    const img = h('img.dr-wash-img', { src: images.wash.get(frame), alt: '', dataset: { frame } });
+    washPhoto.append(img);
+    setTimeout(() => { while (washPhoto.children.length > 1) washPhoto.firstElementChild.remove(); }, scaled(450));
+  }
+  /** Hiệu ứng khi dùng món: bọt bay lên, nước bắn, lấp lánh, găng bật, pháo giấy khi xong. */
+  function washEffect(kind) {
+    if (reduceMotion()) return;
+    const burst = (cls, n, style, text = '') => {
+      for (let i = 0; i < n; i++) {
+        const el = h(`span.${cls}`, { text, style: style(i) });
+        washFx.append(el);
+        setTimeout(() => el.remove(), scaled(1700));
+      }
+    };
+    const rnd = (a, b) => `${a + Math.random() * (b - a)}%`;
+    if (kind === 'soap') burst('fx-bubble', 9, (i) => ({ left: rnd(28, 70), top: rnd(40, 66), width: `${12 + Math.random() * 18}px`, animationDelay: `${i * 0.07}s` }));
+    else if (kind === 'rinse') burst('fx-drop', 10, (i) => ({ left: rnd(45, 55), animationDelay: `${i * 0.06}s` }));
+    else if (kind === 'towel' || kind === 'gloves') burst('fx-spark', 6, (i) => ({ left: rnd(22, 78), top: rnd(20, 70), animationDelay: `${i * 0.09}s` }), '✨');
+    else if (kind === 'done') burst('fx-confetti', 16, (i) => ({ left: rnd(8, 92), background: ['#ff8787', '#ffd43b', '#8ce99a', '#74c0fc', '#b197fc'][i % 5], animationDelay: `${Math.random() * 0.35}s` }));
+    if (kind === 'gloves') restartAnim(washEl, 'pop');
   }
   async function startWash() {
     const e = kit.epoch;
@@ -833,6 +881,7 @@ export function doctorScreen(app, params = {}) {
     play(id === 'rinse' ? 'whoosh' : 'pop');
     renderWash();
     restartAnim(washEl, 'rub');
+    washEffect(id);
     if (!all) {
       const k = stepKey();
       await talk([B(WASH_BY.get(id).line)]);
@@ -842,6 +891,7 @@ export function doctorScreen(app, params = {}) {
     await Promise.all([talk([B(WASH_BY.get(id).line)]), wait(WASH_MS)]);
     if (e !== kit.epoch) return;
     play('sparkle');
+    washEffect('done');
     await talk([B(WASH_DONE_LINE)]);
     if (e !== kit.epoch) return;
     caseIdx = 0;

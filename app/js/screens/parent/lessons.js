@@ -344,10 +344,11 @@ export function lessonDetailView(app, { lessonId }) {
  * Dùng lại cho ảnh sticker của Dán tranh (SPEC-scenes mục 10): `promptNote` thêm vào cuối prompt, `process` xử lý
  * từng ô sau khi cắt (bỏ nền trắng), `onSaved` thay cho việc quay lại trang bài.
  */
-export function gridSection(app, lesson, urls, title = null, { promptNote = '', process = null, onSaved = null, previewClass = '' } = {}) {
+export function gridSection(app, lesson, urls, title = null, { promptNote = '', process = null, onSaved = null, previewClass = '', prompt: fixedPrompt = null, shape = null } = {}) {
   const words = lesson.words.map((w) => w.en);
-  const expected = gridShape(words.length);
-  const prompt = buildGridImagePrompt(lesson.words, expected) + promptNote;
+  // `shape` / `prompt`: ảnh lưới cảnh có prompt và kiểu lưới riêng (SPEC-art: rửa tay, chú lính cứu hỏa 3 × 2).
+  const expected = shape ?? gridShape(words.length);
+  const prompt = (fixedPrompt ?? buildGridImagePrompt(lesson.words, expected)) + promptNote;
   const input = h('input', { type: 'file', accept: 'image/*', hidden: true });
   const previewBox = h('div.grid-preview');
   const SKIP = '';

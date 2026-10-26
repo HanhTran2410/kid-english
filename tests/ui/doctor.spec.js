@@ -365,7 +365,8 @@ test('D2 mức 3: chơi hết lượt với 11 ca (sốt: nhiệt kế; ho: khô
     await expect(page.locator('.dr-count')).toHaveText(`${i + 1}/3`, { timeout: 15000 });
     const state = await play(page).getAttribute('data-state');
     const id = state === 'measure' ? 'checkup' : await page.locator('.dr-patient').getAttribute('data-case');
-    if (id === 'cough') expect(['check', 'enter']).toContain(state);
+    // Ca ho không có bước chạm chỗ đau.
+    if (id === 'cough') expect(state).not.toBe('touch');
     ids.push((await healAt(page, 3)).id);
   }
   // Ca ít gặp nhất (sốt, ho) luôn được chọn.
@@ -452,7 +453,7 @@ test('DR1 mức 2: rửa tay đúng thứ tự — sai thứ tự → "Soap firs
     await expect(page.locator(`.dr-item[data-item="${id}"]`)).toHaveCount(0, { timeout: 15000 });
   }
   await expect.poll(() => spoken(page)).toContain('Gloves on! Ready!');
-  await expect(page.locator('.dr-wash')).toHaveClass(/gloves/);
+  await expect(page.locator('.dr-wash')).toHaveAttribute('data-frame', 'ready');
   await healAtNoSticker(page, 2);
   await expect(play(page)).toHaveAttribute('data-state', 'sticker', { timeout: 15000 });
   const want = await page.locator('.dr-patient').getAttribute('data-want');
@@ -608,4 +609,89 @@ test('DR2 mức 3: hai bạn khác chiều cao, đo lần lượt; ra nền gi�
   await expect.poll(() => spoken(page)).toContain(`${names[tall]} is taller! ${names[1 - tall]} is shorter!`);
   await giveSticker(page);
   await expect(page.locator('.dr-count')).toHaveText('2/3', { timeout: 15000 });
+});
+
+// ---------- SPEC-art ART1: hình rửa tay (hình vẽ sẵn mới / ảnh lưới 6 ô) ----------
+const WASH_FRAMES = ['dirty', 'soapy', 'rinse', 'clean', 'gloves', 'ready'];
+
+test('ART1 hình vẽ sẵn: hình đổi theo món vừa dùng (bẩn → bọt → nước → sạch → găng → xong), có hiệu ứng bọt / giọt nước / lấp lánh / pháo giấy', async ({ page }) => {
+  await enterDoctor(page, { level: 2, rounds: 0, lock: 2, seen: {} });
+  // Hiệu ứng chỉ chạy khi máy không bật "giảm chuyển động" (cấu hình test mặc định bật) — bật sau khi đã vào màn
+  // rửa tay (màn hình chính có nút nhún liên tục, bấm sẽ phải chờ).
+  await page.emulateMedia({ reducedMotion: 'no-preference' });
+  await expect(page.locator('.dr-wash')).toHaveAttribute('data-frame', 'dirty');
+  await expect(page.locator('.dr-wash')).not.toHaveClass(/photo/);
+  // Ghi lại hiệu ứng (chỉ hiện thoáng qua ở chế độ chạy nhanh).
+  await page.evaluate(() => {
+    window.__fx = new Set();
+    new MutationObserver((list) => list.forEach((m) => m.addedNodes.forEach((n) => n.className && window.__fx.add(n.className))))
+      .observe(document.querySelector('.dr-fx'), { childList: true });
+  });
+  for (const [id, frame] of [['soap', 'soapy'], ['rinse', 'rinse'], ['towel', 'clean'], ['gloves', 'ready']]) {
+    // Có chuyển động thì món trong khay nhún liên tục: bấm không chờ "đứng yên".
+    await page.locator(`.dr-item[data-item="${id}"]`).click({ force: true });
+    await expect(page.locator('.dr-wash')).toHaveAttribute('data-frame', frame, { timeout: 15000 });
+  }
+  await expect.poll(() => page.evaluate(() => [...window.__fx].sort())).toEqual(['fx-bubble', 'fx-confetti', 'fx-drop', 'fx-spark']);
+});
+
+test('ART1 ảnh lưới: đủ 6 ô → màn rửa tay dùng ảnh, chuyển đúng ô theo bước; thiếu một ô → về hình vẽ sẵn', async ({ page }) => {
+  await fakeSpeech(page);
+  await pinNewCase(page);
+  await startApp(page);
+  for (const f of WASH_FRAMES) await addImage(page, 'doctor:wash', f);
+  await page.evaluate(() => window.kidEnglish.setSetting('doctorGame', { level: 1, rounds: 0, lock: 1, seen: {} }));
+  await page.getByRole('button', { name: 'Trò chơi' }).click();
+  await page.getByRole('button', { name: 'Đóng vai' }).click();
+  await page.getByRole('button', { name: 'Bác sĩ nhí' }).click();
+  await expect(play(page)).toHaveAttribute('data-state', 'wash', { timeout: 15000 });
+  await expect(page.locator('.dr-wash')).toHaveClass(/photo/);
+  await expect(page.locator('.dr-wash-img').last()).toHaveAttribute('data-frame', 'dirty');
+  await page.locator('.dr-item[data-item="soap"]').click();
+  await expect(page.locator('.dr-wash-img').last()).toHaveAttribute('data-frame', 'soapy', { timeout: 15000 });
+  await page.locator('.dr-item[data-item="towel"]').click();
+  await expect(page.locator('.dr-wash-img').last()).toHaveAttribute('data-frame', 'clean', { timeout: 15000 });
+  // Xóa một ô → lượt sau dùng hình vẽ sẵn (không trộn ảnh với hình vẽ).
+  await page.evaluate(async () => (await import('/js/db.js')).removeWordImage(window.kidEnglish.db, 'doctor:wash', 'rinse'));
+  await page.goto('/?fast&nosw');
+  await page.getByRole('button', { name: 'Bắt đầu' }).click();
+  await page.getByRole('button', { name: 'Trò chơi' }).click();
+  await page.getByRole('button', { name: 'Đóng vai' }).click();
+  await page.getByRole('button', { name: 'Bác sĩ nhí' }).click();
+  await expect(play(page)).toHaveAttribute('data-state', 'wash', { timeout: 15000 });
+  await expect(page.locator('.dr-wash')).not.toHaveClass(/photo/);
+});
+
+test('ART1 Góc bố mẹ → Ảnh Bác sĩ nhí: mục Rửa tay có prompt lưới 3 × 2; chọn ảnh lưới → cắt 6 ô gán đúng mã → lưu; "Dùng hình vẽ sẵn" xóa ảnh', async ({ page }) => {
+  await fakeSpeech(page);
+  await startApp(page);
+  const png = await page.evaluate(() => {
+    const c = document.createElement('canvas');
+    c.width = 600;
+    c.height = 400;
+    const g = c.getContext('2d');
+    ['#e03131', '#f08c00', '#2f9e44', '#1c7ed6', '#7048e8', '#c2255c'].forEach((col, i) => {
+      g.fillStyle = col;
+      g.fillRect((i % 3) * 200 + 10, Math.floor(i / 3) * 200 + 10, 180, 180);
+    });
+    return c.toDataURL('image/png').split(',')[1];
+  });
+  const { openParent } = await import('./helpers.js');
+  await openParent(page);
+  await page.getByRole('button', { name: /Ảnh Bác sĩ nhí/ }).click();
+  await expect(page.getByText(/🧼 Rửa tay — đang dùng hình vẽ sẵn/)).toBeVisible();
+  await page.evaluate(() => { navigator.clipboard.writeText = (t) => { window.__copied = t; return Promise.resolve(); }; });
+  const grid = page.locator('section').filter({ hasText: '🧼 Ảnh lưới rửa tay' });
+  await grid.getByRole('button', { name: 'Copy prompt ảnh lưới' }).click();
+  await expect.poll(() => page.evaluate(() => window.__copied ?? '')).toContain('3x2 grid of six square pictures');
+  await grid.locator('input[type=file]').setInputFiles({ name: 'wash.png', mimeType: 'image/png', buffer: Buffer.from(png, 'base64') });
+  await expect(grid.locator('.grid-cell')).toHaveCount(6, { timeout: 15000 });
+  await expect(grid.locator('.grid-cell select').first()).toHaveValue('dirty');
+  await expect(grid.locator('.grid-cell select').last()).toHaveValue('ready');
+  await grid.getByRole('button', { name: 'Lưu các ảnh này' }).click();
+  await expect.poll(() => page.evaluate(async () => (await window.kidEnglish.db.getAllByIndex('images', 'lessonId', 'doctor:wash')).map((i) => i.word).sort()))
+    .toEqual([...WASH_FRAMES].sort());
+  await expect(page.getByText(/🧼 Rửa tay — đang dùng ảnh/)).toBeVisible({ timeout: 15000 });
+  await page.getByRole('button', { name: 'Dùng hình vẽ sẵn' }).first().click();
+  await expect.poll(() => page.evaluate(async () => (await window.kidEnglish.db.getAllByIndex('images', 'lessonId', 'doctor:wash')).length)).toBe(0);
 });

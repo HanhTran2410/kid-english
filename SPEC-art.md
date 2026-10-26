@@ -1,6 +1,6 @@
 # SPEC — 🎨 Hình đẹp hơn: Rửa tay (Bác sĩ nhí) và Mặc đồ (Lính cứu hỏa)
 
-> Phiên bản spec: **draft1** · Ngày: 2026-10-26 · **Chưa làm**. Bổ sung cho `SPEC-doctor2.md` mục 3 (rửa tay) và `SPEC-fire2.md` mục 3 (mặc đồ). **Cách chơi, câu nói, luật không đổi** — chỉ đổi hình và hiệu ứng.
+> Phiên bản spec: **draft1** · Ngày: 2026-10-26 · **ART1 đã làm (0.44.0)**; ART2 chưa làm. Bổ sung cho `SPEC-doctor2.md` mục 3 (rửa tay) và `SPEC-fire2.md` mục 3 (mặc đồ). **Cách chơi, câu nói, luật không đổi** — chỉ đổi hình và hiệu ứng.
 > Lý do: bố mẹ thấy hình vẽ hiện tại xấu — bàn tay rửa tay không giống thật; Bông mặc đồ lính cứu hỏa lệch, không cân đối.
 > Bố mẹ chọn: **ảnh bố mẹ thêm (nhờ AI vẽ theo prompt của app) + hiệu ứng ghép ảnh**; nhân vật mặc đồ là **chú lính cứu hỏa** (không phải Bông).
 
@@ -34,7 +34,7 @@
 | Dùng khăn | `clean` | **lấp lánh** ✨ quanh tay (3–5 tia) |
 | Dùng 🧤 (mức 2–3) | `gloves` | găng "bật" vào (phóng nhẹ), viền sáng xanh |
 | Xong | `ready` (mức 1: `clean` + 👍 vẽ) | **pháo giấy nhỏ** + *"Clean hands!"* |
-- Mức 1 dùng thứ tự tùy bé: hình theo **trạng thái đã có** (đã có bọt chưa rửa → `soapy`; đã rửa → `rinse`; đã lau → `clean`); dùng khăn trước khi rửa → vẫn `clean` (trò chơi không bắt lỗi ở mức 1).
+- Hình theo **món vừa dùng** (xà phòng → `soapy`, nước → `rinse`, khăn → `clean`, găng → `gloves`); dùng đủ món: mức 2–3 → `ready`, mức 1 → `clean`. Mức 1 dùng thứ tự tùy bé nên hình luôn khớp việc bé vừa làm (đổi khi code: trước ghi "theo trạng thái đã có").
 - Ra nền quay lại: hiện hình của trạng thái hiện tại, không chạy lại hiệu ứng.
 
 ## 3. 🧑‍🚒 Mặc đồ (Lính cứu hỏa) — chú lính cứu hỏa thay Bông
@@ -83,7 +83,12 @@
 - **UI:** thêm ảnh lưới (ảnh thử 6 màu) → màn rửa tay / mặc đồ dùng đúng ô theo từng bước; xóa ảnh → về hình vẽ sẵn; hiệu ứng có xuất hiện (bọt / nước / lấp lánh); mặc đủ → ảnh `full`; ca dập lửa dùng `spray`, tia nước vẫn bắn tới lửa; ra nền quay lại đúng hình; chia sẻ / sao lưu có ảnh mới; **test cũ rửa tay / mặc đồ vẫn qua** (luật không đổi).
 - **Thử tay:** bố mẹ nhờ AI vẽ theo prompt, xem 6 ô có khớp nhau không; nếu AI vẽ lệch nhiều thì chỉnh prompt.
 
-## 8. Cần bố mẹ chốt
-1. Ảnh lưới **6 ô cho mỗi cảnh** (đề xuất) — hay tách thành từng ảnh riêng?
-2. Làm **ART1 (rửa tay) trước rồi ART2 (mặc đồ)** — hay ngược lại?
-3. Trong lúc chờ: tiếp tục **DR3 (khám mắt)** rồi mới làm ART1–ART2, hay **làm ART trước** (đề xuất: làm ART trước vì bé đang chơi thấy hình xấu)?
+## 8. Đã chốt (2026-10-26)
+1. Mỗi cảnh **một ảnh lưới 3 × 2 = 6 ô**.
+2. **ART1 (rửa tay) trước**, rồi ART2 (mặc đồ).
+3. Làm ART **trước** DR3 (khám mắt).
+
+## 9. Ghi chú khi làm ART1 (0.44.0)
+- Hình vẽ sẵn mới: hai bàn tay có cổ tay + ống tay áo bác sĩ, vẽ 2 lớp (viền rồi màu) để viền chỉ ở mép ngoài và khe ngón; ngón cái hướng vào trong; vòi nước + bồn sứ. Lớp bẩn / bọt / dòng nước (chảy động) / lấp lánh / 👍 bật theo hình; găng đổi màu tay xanh.
+- Ảnh lưới: Góc bố mẹ → Ảnh Bác sĩ nhí → "🧼 Ảnh lưới rửa tay" (prompt + kiểu lưới 3 × 2 cố định), xem trước 6 ô, "Dùng hình vẽ sẵn" xóa cả 6; đi kèm chia sẻ "Ảnh Bác sĩ nhí". Ảnh chuyển mờ dần sang ô mới (~0,4 giây).
+- Hiệu ứng (tắt khi máy bật "giảm chuyển động"): bọt bay lên, giọt nước rơi, ✨ lấp lánh (khăn, găng), găng bật, pháo giấy khi xong.
