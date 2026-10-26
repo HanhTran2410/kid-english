@@ -2463,6 +2463,27 @@ details > summary { cursor: pointer; font-weight: 800; padding: 6px 0; }
 @keyframes dr-rub { 50% { transform: translateX(6px); } }
 .dr-svg-face svg { width: 100%; height: 100%; display: block; }
 @media (prefers-reduced-motion: reduce) { .dr-wash.rub .dr-hands { animation: none; } }
+/* SPEC-doctor2 DR2: ca đo chiều cao — thước khối màu (đếm từ dưới lên) cạnh bạn thú; mức 3 hai cặp. */
+.dr-measure { position: absolute; inset: 3% 4% 2%; z-index: 2; display: flex; justify-content: center; align-items: flex-end; gap: 8%; container-type: size; }
+.dr-measure[hidden] { display: none; }
+.dr-measure.enter { animation: dr-enter 0.65s ease-out; }
+.dr-measure.hop .dr-measure-pet { animation: dr-hop 0.5s ease-in-out 2; }
+.dr-measure-pair { display: flex; align-items: flex-end; gap: 2cqh; height: 100%; }
+.dr-blocks { display: flex; flex-direction: column-reverse; gap: 1cqh; }
+.dr-block {
+  width: 16cqh; height: 16cqh; padding: 0; border: 3px solid #3d2c5e; border-radius: 10px; cursor: pointer; touch-action: manipulation;
+  color: transparent; font-weight: 900; font-size: 9cqh; line-height: 1;
+}
+.dr-block:nth-child(1) { background: #ff8787; } .dr-block:nth-child(2) { background: #ffd43b; } .dr-block:nth-child(3) { background: #8ce99a; }
+.dr-block:nth-child(4) { background: #74c0fc; } .dr-block:nth-child(5) { background: #b197fc; }
+.dr-block.lit { color: #3d2c5e; box-shadow: 0 0 0 4px #fff3bf, 0 0 12px #ffd43b; }
+.dr-block.next { animation: dr-blink 0.7s ease-in-out infinite alternate; }
+@keyframes dr-blink { to { filter: brightness(1.25) drop-shadow(0 0 8px #ffd43b); } }
+.dr-block.nudge, .dr-measure-pet.nudge { animation: hint-hop 0.5s ease-in-out 3; }
+.dr-measure-pet { height: calc(var(--n) * 17cqh); aspect-ratio: 240 / 300; padding: 0; border: 0; background: none; cursor: pointer; touch-action: manipulation; }
+.dr-measure-pet svg { width: 100%; height: 100%; display: block; }
+.dr-num-face { font-family: inherit; font-weight: 900; color: var(--ink); }
+@media (prefers-reduced-motion: reduce) { .dr-block.next, .dr-block.nudge, .dr-measure-pet.nudge, .dr-measure.enter, .dr-measure.hop .dr-measure-pet { animation: none; } }
 @keyframes dr-brush { 50% { transform: translateX(22px); } }
 @keyframes dr-wiggle { 25% { transform: rotate(-14deg); } 75% { transform: rotate(14deg); } }
 @keyframes dr-gulp { 60% { transform: scale(1) rotate(-30deg); opacity: 1; } 100% { transform: scale(0.3) rotate(-30deg); opacity: 0; } }

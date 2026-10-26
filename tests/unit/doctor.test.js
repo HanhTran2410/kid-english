@@ -5,6 +5,7 @@ import {
   CASES, CASE_BY_ID, TOOLS, TREATS, ITEM_BY_ID, REGIONS, SPOTS, PATIENTS, TRAY_SIZE, PLAYABLE_LEVEL,
   regionAt, stepsFor, casesFor, trayFor, pickCases, stepPrompt, wrongItemLine, doneLine, yesTouchLine, wrongTouchLine, askLine,
   cleanDoctorState, afterDoctorRound, afterHealed,
+  planCheckup, planDoctorRound, tallLine, rightBlocksLine, wrongBlocksLine, tallerLine, wrongTallerLine, blockCountLine,
   washFor, nextWash, washFirstLine, WASH_BY, planSticker, matchesSticker, stickerId, stickerWantLine, stickerLoveLine, stickerWrongLine,
 } from '../../app/js/doctor.js';
 
@@ -200,4 +201,43 @@ test('SPEC-doctor2 DR1 — sticker: mức 1 ba cái khác nhau, cái nào cũng 
   assert.equal(stickerWantLine({ color: 'yellow', shape: 'star' })[0], 'A yellow star, please!');
   assert.equal(stickerLoveLine({ color: 'red', shape: 'heart' })[0], 'A red heart! I love it!');
   assert.equal(stickerWrongLine({ color: 'green', shape: 'heart' }, { color: 'blue' })[0], "That's a green heart. A blue one, please!");
+});
+
+test('SPEC-doctor2 DR2 — lượt: 2 ca bệnh + 1 ca đo, bạn thú khác nhau, mỗi ca có sticker; chiều cao theo mức, mức 2 thẻ số đúng một, mức 3 hai bạn khác chiều cao; seen giữ mã ca mới', () => {
+  const rng = seeded(41);
+  for (const level of [1, 2, 3]) for (let i = 0; i < 80; i++) {
+    const cases = planDoctorRound(level, { rng });
+    assert.equal(cases.length, 3);
+    const extra = cases.filter((c) => c.id === 'checkup');
+    assert.equal(extra.length, 1);
+    assert.ok(cases.every((c) => c.sticker && c.sticker.set.length >= 3));
+    const pets = cases.flatMap((c) => [c.patient, c.patient2].filter(Boolean));
+    assert.equal(new Set(pets).size, pets.length);
+    const { heights, choices } = extra[0];
+    if (level === 1) assert.ok(heights.length === 1 && heights[0] >= 1 && heights[0] <= 3);
+    if (level === 2) {
+      assert.ok(heights[0] >= 2 && heights[0] <= 5);
+      assert.equal(choices.length, 3);
+      assert.equal(new Set(choices).size, 3);
+      assert.equal(choices.filter((x) => x === heights[0]).length, 1);
+    }
+    if (level === 3) {
+      assert.equal(heights.length, 2);
+      assert.notEqual(heights[0], heights[1]);
+      assert.ok(heights.every((x) => x >= 2 && x <= 5));
+      assert.ok(extra[0].patient2);
+    }
+  }
+  assert.deepEqual(cleanDoctorState({ seen: { checkup: 2, eyes: 1, nope: 3 } }).seen, { checkup: 2, eyes: 1 });
+  assert.equal(planCheckup(1, ['teddy'], { rng }).patient, 'teddy');
+});
+
+test('SPEC-doctor2 DR2 — câu nói: số ít / nhiều đúng, tên thật', () => {
+  assert.equal(tallLine(1)[0], "You're one block tall!");
+  assert.equal(tallLine(3)[0], "You're three blocks tall!");
+  assert.equal(rightBlocksLine(4)[0], 'Yes! Four blocks!');
+  assert.equal(wrongBlocksLine(2)[0], "That's two. Let's count again!");
+  assert.equal(tallerLine('Teddy', 'Kitty')[0], 'Teddy is taller! Kitty is shorter!');
+  assert.equal(wrongTallerLine('Kitty')[0], "That's Kitty. Kitty is shorter. Who is taller?");
+  assert.equal(blockCountLine(2)[0], 'Two!');
 });

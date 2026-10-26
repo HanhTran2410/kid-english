@@ -1,6 +1,6 @@
 # SPEC — 🩺 Bác sĩ nhí: nhiệm vụ mới
 
-> Phiên bản spec: **draft2** (sửa theo review, mục 12) · Ngày: 2026-10-26 · **DR1 đã làm (0.42.0)**; DR2, DR3 chưa làm (D2 — bật mức 2–3 của trò Bác sĩ — xong ở 0.41.0). Bổ sung cho `SPEC-doctor.md` (11 ca bệnh, 3 loại bước chạm / khám / chữa, luật nhầm, mức, ảnh — **giữ nguyên**).
+> Phiên bản spec: **draft2** (sửa theo review, mục 12) · Ngày: 2026-10-26 · **DR1 (0.42.0), DR2 (0.43.0) đã làm**; DR3 chưa làm (D2 — bật mức 2–3 của trò Bác sĩ — xong ở 0.41.0). Bổ sung cho `SPEC-doctor.md` (11 ca bệnh, 3 loại bước chạm / khám / chữa, luật nhầm, mức, ảnh — **giữ nguyên**).
 > Cùng hướng với Cứu hỏa (`SPEC-fire2.md`): thêm việc **trước khi khám**, **ca kiểu mới** xen với ca bệnh, và việc nhỏ **sau khi chữa**.
 
 ## 1. Mục tiêu
@@ -109,7 +109,7 @@ Sau khi bạn thú khỏe lại (*"I feel better! Thank you, doctor!"*), trướ
 | Mốc | Nội dung | Nghiệm thu |
 |---|---|---|
 | **DR1** ✅ (0.42.0) | Rửa tay (+ găng từ mức 2) + Tặng sticker cho bạn thú | Unit + UI mục 10 (phần DR1) |
-| DR2 | Ca Đo chiều cao (đếm, thẻ số, so cao / thấp) | Unit + UI mục 10 (phần DR2) |
+| DR2 ✅ (0.43.0) | Ca Đo chiều cao (đếm, thẻ số, so cao / thấp) | Unit + UI mục 10 (phần DR2) |
 | DR3 | Ca Khám mắt (bảng hình từ bài đã học + bộ mặc định, kính) | Unit + UI mục 10 (phần DR3) |
 
 ## 10. Kiểm thử
@@ -169,3 +169,10 @@ Sau khi bạn thú khỏe lại (*"I feel better! Thank you, doctor!"*), trướ
 - Ca khỏi bệnh: bản lưu chuyển sang bước `sticker` của **cùng ca** (trước đây nhảy sang ca sau); dán xong mới lưu là ca sau.
 - Sticker dán lên bụng bạn thú (lớp `dr-applied`, ở lại tới khi ra về).
 - Ghi chú rửa tay cho bố mẹ ở Góc bố mẹ → Ảnh Bác sĩ nhí.
+
+## 14. Ghi chú khi làm DR2 (0.43.0)
+- Lượt = 2 ca bệnh (chọn như cũ) + ca **đo chiều cao** ở vị trí ngẫu nhiên (`planDoctorRound`); tới DR3 thì ca mới ở mức 2–3 chọn giữa đo chiều cao / khám mắt theo `seen`. Hiện mức 2–3 luôn là đo chiều cao.
+- Màn đo: thước là chồng khối màu (đỏ, vàng, xanh lá, xanh dương, tím từ dưới lên), bạn thú đứng cạnh, cao đúng bằng số khối; khối đếm rồi sáng và hiện số. Mức 3 hai cặp thước + bạn thú.
+- Đo xong bạn thú lên giường nhận sticker như ca bệnh; `seen.checkup` ghi một lần.
+- Chạm khối ở thước của bạn chưa tới lượt (mức 3) xử lý như chạm bỏ khối.
+- Test UI cố định chỗ ca mới bằng `window.__kidTest.doctorNewAt` (chỉ test đặt; bình thường ngẫu nhiên).

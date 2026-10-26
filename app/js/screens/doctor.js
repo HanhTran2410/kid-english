@@ -8,16 +8,19 @@ import { h } from '../ui.js';
 import { mediaBlob } from '../db.js';
 import { play } from '../speech/sfx.js';
 import { markPracticed } from '../player/track.js';
+import { numberKey } from '../numbers.js';
 import { patientSvg, faceSvg, glowSvg } from '../patients.js';
 import {
   jobScreen, saveSnap, takeSnap, clearSnap, restartAnim, center, wait, WRONG_LOCK_MS, MAX_NUDGES,
 } from '../jobs/kit.js';
 import {
-  CASE_BY_ID, PATIENT_BY_ID, ITEM_BY_ID, REGIONS, regionAt, regionPoint, stepsFor, trayFor, pickCases,
+  CASE_BY_ID, PATIENT_BY_ID, ITEM_BY_ID, REGIONS, regionAt, regionPoint, stepsFor, trayFor,
   cleanDoctorState, afterDoctorRound, afterHealed, stepPrompt, wrongItemLine, doneLine, betterLine,
   DOCTOR_ITEM_IMAGES, DOCTOR_BG_IMAGES, BG_KEY, COME_IN_LINE, HELLO_DOCTOR_LINE, GOOD_JOB_LINE, BYE_LINE, yesTouchLine, wrongTouchLine,
   WASH_BY, washFor, nextWash, WASH_START_LINE, WASH_DONE_LINE, washFirstLine,
   STICKER_COLORS, planSticker, stickerId, matchesSticker, STICKER_ASK_LINE, stickerWantLine, stickerLoveLine, stickerWrongLine,
+  planDoctorRound, CHECKUP_HELLO_LINE, MEASURE_LINE, FROM_BOTTOM_LINE, GROWING_LINE, HOW_MANY_BLOCKS_LINE, TALLER_Q_LINE,
+  blockCountLine, tallLine, rightBlocksLine, wrongBlocksLine, tallerLine, wrongTallerLine,
 } from '../doctor.js';
 
 const JOB = 'doctor';
@@ -27,7 +30,9 @@ const ENTER_MS = 650;
 const LEAVE_MS = 600;
 const STEP_STATES = ['touch', 'check', 'treat'];
 /** Bước chờ bé thao tác (nhắc 10 giây, khay sáng): bước khám chữa + rửa tay + tặng sticker (SPEC-doctor2). */
-const ACTIVE = [...STEP_STATES, 'wash', 'sticker'];
+/** Ca đo chiều cao (SPEC-doctor2 DR2): đếm khối, chọn số (mức 2), ai cao hơn (mức 3). */
+const MEASURE_STATES = ['measure', 'howmany', 'taller'];
+const ACTIVE = [...STEP_STATES, 'wash', 'sticker', ...MEASURE_STATES];
 const WASH_MS = 700; // hoạt ảnh rửa tay, không chặn thao tác tiếp
 const INK = '#3d2c5e';
 const COLOR_HEX = new Map(STICKER_COLORS.map((c) => [c.id, c.hex]));
@@ -113,6 +118,8 @@ export function doctorScreen(app, params = {}) {
   let recorded = new Set();
   let washed = []; // món rửa tay đã dùng (đầu lượt)
   let washDone = false;
+  let mWho = 0; // ca đo: bạn thứ mấy đang được đo (mức 3 có hai bạn)
+  let mCount = 0; // số khối đã đếm của bạn đang đo
 
   const curCase = () => CASE_BY_ID.get(cases[caseIdx]?.id);
   const curPatient = () => PATIENT_BY_ID.get(cases[caseIdx]?.patient);
@@ -122,6 +129,8 @@ export function doctorScreen(app, params = {}) {
   const B = (line) => ({ who: 'bong', line });
   const patientEl = h('div.dr-patient');
   const washEl = h('div.dr-wash', { hidden: true, html: WASH_SVG });
+  const measureEl = h('div.dr-measure', { hidden: true });
+  const isCheckup = () => cases[caseIdx]?.id === 'checkup';
   const sticker = () => {
     const c = cases[caseIdx];
     if (c && !c.sticker) c.sticker = planSticker(level); // bản lưu cũ chưa có bộ sticker
@@ -132,8 +141,8 @@ export function doctorScreen(app, params = {}) {
   const kit = jobScreen(app, {
     job: JOB, className: 'dr-play', stageClass: 'dr-stage', title: '🩺 Doctor', helperLabel: 'Bông y tá', cap: 'nurse',
     resetLabel: 'Khám lại', trayLabel: 'Đồ của bác sĩ',
-    icon: (who) => (who === 'patient' ? curPatient()?.emoji ?? '' : '🐰'),
-    pitch: (who) => (who === 'patient' ? curPatient()?.pitch : undefined),
+    icon: (who) => (who === 'patient' ? curPatient()?.emoji ?? '' : who === 'patient2' ? PATIENT_BY_ID.get(cases[caseIdx]?.patient2)?.emoji ?? '' : '🐰'),
+    pitch: (who) => (who === 'patient' ? curPatient()?.pitch : who === 'patient2' ? PATIENT_BY_ID.get(cases[caseIdx]?.patient2)?.pitch : undefined),
     onTalk: (who) => patientEl.classList.toggle('talking', who === 'patient'),
     onReset: () => restart(),
     onHelper: () => repeatPrompt(),
@@ -148,6 +157,11 @@ export function doctorScreen(app, params = {}) {
           kit.talk(promptLines()).then(rearm);
           return;
         }
+        if (MEASURE_STATES.includes(state)) {
+          nudgeMeasure();
+          kit.talk(measurePrompt()).then(rearm);
+          return;
+        }
         const step = curStep();
         if (step.type === 'touch') setGlow(step.target);
         else restartAnim(kit.trayItem(step.item), 'nudge');
@@ -157,11 +171,11 @@ export function doctorScreen(app, params = {}) {
     },
     tray: {
       face: (id) => trayFace(id),
-      label: (id) => (WASH_BY.has(id) ? WASH_BY.get(id).name : stickerById(id) ? `${stickerById(id).color} ${stickerById(id).shape}` : ITEM_BY_ID.get(id).name),
+      label: (id) => (WASH_BY.has(id) ? WASH_BY.get(id).name : stickerById(id) ? `${stickerById(id).color} ${stickerById(id).shape}` : id.startsWith('n-') ? id.slice(2) : ITEM_BY_ID.get(id).name),
       canGive: () => ACTIVE.includes(state),
       // Rửa tay / tặng sticker: thả ở đâu cũng được (đồ tự tới tay / tự dán lên bạn thú).
-      dropOk: (x, y) => state === 'wash' || state === 'sticker' || Boolean(regionAtScreen(x, y)),
-      give: (id, from) => (state === 'wash' ? useWash(id, from) : state === 'sticker' ? giveSticker(id, from) : give(id, from)),
+      dropOk: (x, y) => state === 'wash' || state === 'sticker' || state === 'howmany' || Boolean(regionAtScreen(x, y)),
+      give: (id, from) => (state === 'wash' ? useWash(id, from) : state === 'sticker' ? giveSticker(id, from) : state === 'howmany' ? pickBlocks(id) : give(id, from)),
     },
   });
   const { stage, count, talk } = kit;
@@ -169,8 +183,8 @@ export function doctorScreen(app, params = {}) {
   kit.sayBox.classList.add('dr-say');
   kit.trayEl.classList.add('dr-tray');
   const bed = h('div.dr-bed', { 'aria-hidden': 'true' });
-  stage.append(bed, patientEl, washEl);
-  const stepKey = () => `${kit.epoch}:${caseIdx}:${stepIdx}:${washed.length}:${state}`;
+  stage.append(bed, patientEl, washEl, measureEl);
+  const stepKey = () => `${kit.epoch}:${caseIdx}:${stepIdx}:${washed.length}:${mWho}:${mCount}:${state}`;
   /** Hình trong khay: đồ rửa tay (emoji / khăn vẽ), sticker (SVG), đồ khám chữa (ảnh bố mẹ thêm hoặc emoji). */
   function trayFace(id) {
     if (WASH_BY.has(id)) {
@@ -178,6 +192,7 @@ export function doctorScreen(app, params = {}) {
     }
     const st = stickerById(id);
     if (st) return h('span.dr-item-face.dr-svg-face', { 'aria-hidden': 'true', html: stickerShape(st) });
+    if (id.startsWith('n-')) return h('span.dr-item-face.dr-num-face', { 'aria-hidden': 'true', text: id.slice(2) });
     return itemFace(ITEM_BY_ID.get(id), images);
   }
   /** Món cần đưa (để nhắc / nhún): món rửa tay tiếp theo, sticker khớp yêu cầu. */
@@ -201,9 +216,9 @@ export function doctorScreen(app, params = {}) {
   function renderPatient() {
     const c = curCase();
     const p = curPatient();
-    patientEl.innerHTML = patientSvg(p.id, { mood: c.face === 'sleepy' ? 'sleepy' : 'sad', sign: c.sign, title: p.name });
+    patientEl.innerHTML = patientSvg(p.id, { mood: !c ? 'happy' : c.face === 'sleepy' ? 'sleepy' : 'sad', sign: c?.sign ?? null, title: p.name });
     patientEl.dataset.patient = p.id;
-    patientEl.dataset.case = c.id;
+    patientEl.dataset.case = cases[caseIdx].id;
     count.textContent = `${caseIdx + 1}/${cases.length}`;
   }
   const setMood = (mood) => {
@@ -241,7 +256,7 @@ export function doctorScreen(app, params = {}) {
   const targetOf = (id) => ITEM_TARGET[id] ?? curCase().steps.find((s) => s.type === 'touch')?.target ?? 'tummy';
 
   // ---------- Lưu để chơi tiếp, tiến độ ----------
-  const snap = () => saveSnap(JOB, { level, cases, caseIdx, stepIdx, wrongs, nudges, tray, recorded: [...recorded], washed: [...washed], washDone, phase: state });
+  const snap = () => saveSnap(JOB, { level, cases, caseIdx, stepIdx, wrongs, nudges, tray, recorded: [...recorded], washed: [...washed], washDone, mWho, mCount, phase: state });
   const saveProgress = () => app.setSetting('doctorGame', progress).catch(() => {});
 
   /**
@@ -272,6 +287,11 @@ export function doctorScreen(app, params = {}) {
     nudges = resume?.nudges ?? 0;
     tray = [];
     washEl.hidden = true;
+    if (isCheckup() && resume?.phase !== 'sticker') {
+      startCheckup(resume);
+      return;
+    }
+    measureEl.hidden = true;
     bed.hidden = false;
     patientEl.hidden = false;
     setState('enter');
@@ -461,6 +481,218 @@ export function doctorScreen(app, params = {}) {
     startSticker();
   }
 
+  // ---------- Ca đo chiều cao (SPEC-doctor2 mục 5, DR2) ----------
+  const nameOf = (pid) => PATIENT_BY_ID.get(pid)?.name ?? pid;
+  const blockEl = (w, i) => measureEl.querySelector(`.dr-block[data-who="${w}"][data-i="${i}"]`);
+  const tallerIdx = () => (cases[caseIdx].heights[0] > cases[caseIdx].heights[1] ? 0 : 1);
+  /** Vẽ thước khối + bạn thú; khối đã đếm sáng (có số), mức 1 khối cần chạm tiếp nhấp nháy. */
+  function renderMeasure() {
+    const c = cases[caseIdx];
+    const pids = [c.patient, c.patient2].filter(Boolean);
+    measureEl.replaceChildren(...pids.map((pid, w) => {
+      const n = c.heights[w];
+      const counted = w < mWho ? n : w === mWho ? mCount : 0;
+      const blocks = Array.from({ length: n }, (_, i) => h('button.dr-block', {
+        type: 'button', 'aria-label': `Block ${i + 1}`, dataset: { who: String(w), i: String(i) }, text: String(i + 1),
+        onclick: () => tapBlock(w, i),
+      }));
+      blocks.forEach((b, i) => {
+        b.classList.toggle('lit', i < counted);
+        b.classList.toggle('next', level <= 1 && w === mWho && i === counted && state === 'measure');
+      });
+      const pet = h('button.dr-measure-pet', {
+        type: 'button', 'aria-label': nameOf(pid), dataset: { who: String(w), patient: pid }, style: { '--n': String(n) },
+        html: patientSvg(pid, { mood: 'happy', title: nameOf(pid) }), onclick: () => tapPet(w),
+      });
+      return h('div.dr-measure-pair', {}, h('div.dr-blocks', {}, ...blocks), pet);
+    }));
+    measureEl.dataset.heights = c.heights.join(','); // cho test
+  }
+  function measurePrompt() {
+    if (state === 'howmany') return [B(HOW_MANY_BLOCKS_LINE)];
+    if (state === 'taller') return [B(TALLER_Q_LINE)];
+    return [B(MEASURE_LINE)];
+  }
+  function nudgeMeasure() {
+    const c = cases[caseIdx];
+    if (state === 'howmany') restartAnim(kit.trayItem(`n-${c.heights[0]}`), 'nudge');
+    else if (state === 'taller') restartAnim(measureEl.querySelector(`.dr-measure-pet[data-who="${tallerIdx()}"]`), 'nudge');
+    else restartAnim(blockEl(mWho, mCount), 'nudge');
+  }
+  async function startCheckup(resume = null) {
+    const e = kit.epoch;
+    mWho = resume?.mWho ?? 0;
+    mCount = resume?.mCount ?? 0;
+    bed.hidden = true;
+    patientEl.hidden = true;
+    measureEl.hidden = false;
+    count.textContent = `${caseIdx + 1}/${cases.length}`;
+    tray = [];
+    renderTray();
+    if (resume?.phase === 'howmany') {
+      renderMeasure();
+      startHowMany();
+      return;
+    }
+    if (resume?.phase === 'taller') {
+      renderMeasure();
+      startTaller();
+      return;
+    }
+    // Nhận chạm khối ngay từ lúc vào ca.
+    setState('measure');
+    renderMeasure();
+    snap();
+    if (!resume) {
+      restartAnim(measureEl, 'enter');
+      play('doorbell');
+    }
+    await talk([...(resume ? [] : [B(COME_IN_LINE), P(CHECKUP_HELLO_LINE)]), B(MEASURE_LINE)]);
+    if (e === kit.epoch && state === 'measure') kit.armNudge();
+  }
+  async function tapBlock(w, i) {
+    if (state !== 'measure') return;
+    const e = kit.epoch;
+    const c = cases[caseIdx];
+    if (w !== mWho || i !== mCount) {
+      // Không phải khối tiếp theo: không tăng số đếm; khối cần chạm nhún. Mức 1 không tính nhầm.
+      if (level >= 2) {
+        if (!countWrong(`b:${w}:${i}`)) return;
+      } else play('boing');
+      restartAnim(blockEl(mWho, mCount), 'nudge');
+      const k = stepKey();
+      await talk([B(FROM_BOTTOM_LINE)]);
+      if (k === stepKey()) kit.armNudge();
+      return;
+    }
+    mCount += 1;
+    wrongs = 0;
+    nudges = 0;
+    const n = c.heights[mWho];
+    const doneOne = mCount >= n;
+    if (doneOne) setState('busy');
+    snap();
+    kit.clearNudge();
+    play('ding');
+    renderMeasure();
+    if (!doneOne) {
+      const k = stepKey();
+      await talk([B(blockCountLine(mCount))]);
+      if (k === stepKey()) kit.armNudge();
+      return;
+    }
+    await talk([B(blockCountLine(mCount)), B(tallLine(n))]);
+    if (e !== kit.epoch) return;
+    if (level === 2) {
+      startHowMany();
+      return;
+    }
+    if (level >= 3 && mWho === 0) {
+      // Mức 3: đo bạn thứ hai.
+      mWho = 1;
+      mCount = 0;
+      setState('measure');
+      renderMeasure();
+      snap();
+      await talk([{ who: 'patient2', line: CHECKUP_HELLO_LINE }, B(MEASURE_LINE)]);
+      if (e === kit.epoch && state === 'measure') kit.armNudge();
+      return;
+    }
+    if (level >= 3) startTaller();
+    else finishCheckup();
+  }
+  /** Mức 2: "How many blocks?" — 3 thẻ số (sinh sẵn), đúng một thẻ. */
+  async function startHowMany() {
+    const e = kit.epoch;
+    tray = cases[caseIdx].choices.map((n) => `n-${n}`);
+    renderTray();
+    setState('howmany');
+    snap();
+    await talk([B(HOW_MANY_BLOCKS_LINE)]);
+    if (e === kit.epoch && state === 'howmany') kit.armNudge();
+  }
+  async function pickBlocks(id) {
+    if (state !== 'howmany') return;
+    const e = kit.epoch;
+    const n = cases[caseIdx].heights[0];
+    const x = Number(id.slice(2));
+    if (x !== n) {
+      if (!countWrong(`n:${x}`)) return;
+      restartAnim(kit.trayItem(id), 'shake');
+      if (wrongs >= 2) restartAnim(kit.trayItem(`n-${n}`), 'nudge');
+      const k = stepKey();
+      await talk([B(wrongBlocksLine(x))]);
+      if (k === stepKey()) kit.armNudge();
+      return;
+    }
+    setState('busy');
+    kit.clearNudge();
+    if (wrongs === 0 && !recorded.has(`num:${caseIdx}`)) {
+      recorded.add(`num:${caseIdx}`);
+      markPracticed(app, numberKey(n), '🔢');
+    }
+    wrongs = 0;
+    snap();
+    play('ding');
+    kit.trayItem(id)?.classList.add('hint');
+    await talk([B(rightBlocksLine(n))]);
+    if (e !== kit.epoch) return;
+    finishCheckup();
+  }
+  /** Mức 3: "Who is taller?" — chạm bạn cao hơn. */
+  async function startTaller() {
+    const e = kit.epoch;
+    tray = [];
+    renderTray();
+    setState('taller');
+    snap();
+    await talk([B(TALLER_Q_LINE)]);
+    if (e === kit.epoch && state === 'taller') kit.armNudge();
+  }
+  async function tapPet(w) {
+    if (state !== 'taller') return;
+    const e = kit.epoch;
+    const c = cases[caseIdx];
+    const pids = [c.patient, c.patient2];
+    const t = tallerIdx();
+    if (w !== t) {
+      if (!countWrong(`p:${w}`)) return;
+      if (wrongs >= 2) restartAnim(measureEl.querySelector(`.dr-measure-pet[data-who="${t}"]`), 'nudge');
+      const k = stepKey();
+      await talk([B(wrongTallerLine(nameOf(pids[w])))]);
+      if (k === stepKey()) kit.armNudge();
+      return;
+    }
+    setState('busy');
+    kit.clearNudge();
+    wrongs = 0;
+    snap();
+    play('ding');
+    await talk([B(tallerLine(nameOf(pids[t]), nameOf(pids[1 - t])))]);
+    if (e !== kit.epoch) return;
+    finishCheckup();
+  }
+  /** Đo xong: ghi `seen` (một lần), bạn thú vui, rồi lên giường nhận sticker như ca bệnh. */
+  async function finishCheckup() {
+    const e = kit.epoch;
+    setState('busy');
+    if (!recorded.has(`seen:${caseIdx}`)) {
+      recorded.add(`seen:${caseIdx}`);
+      progress = afterHealed(progress, 'checkup');
+      saveProgress();
+    }
+    saveSnap(JOB, { level, cases, caseIdx, stepIdx: 0, wrongs: 0, nudges: 0, tray: [], recorded: [...recorded], washed: [...washed], washDone, mWho, mCount, phase: 'sticker' });
+    play('sparkle');
+    restartAnim(measureEl, 'hop');
+    await talk([P(GROWING_LINE), B(GOOD_JOB_LINE)]);
+    if (e !== kit.epoch) return;
+    measureEl.hidden = true;
+    bed.hidden = false;
+    patientEl.hidden = false;
+    renderPatient();
+    startSticker();
+  }
+
   // ---------- Tặng sticker cho bạn thú (SPEC-doctor2 mục 4) ----------
   async function startSticker() {
     const e = kit.epoch;
@@ -557,6 +789,7 @@ export function doctorScreen(app, params = {}) {
     const e = kit.epoch;
     bed.hidden = true;
     patientEl.hidden = true;
+    measureEl.hidden = true;
     washEl.hidden = false;
     count.textContent = `1/${cases.length}`;
     renderWash();
@@ -622,6 +855,11 @@ export function doctorScreen(app, params = {}) {
       talk(promptLines()).then(() => k === stepKey() && kit.armNudge());
       return;
     }
+    if (MEASURE_STATES.includes(state)) {
+      const k = stepKey();
+      talk(measurePrompt()).then(() => k === stepKey() && kit.armNudge());
+      return;
+    }
     if (!STEP_STATES.includes(state)) return;
     const { who, line } = stepPrompt(curStep(), level);
     const k = stepKey();
@@ -666,7 +904,7 @@ export function doctorScreen(app, params = {}) {
       } else startCase(s);
     } else {
       // Bộ sticker của từng ca sinh sẵn cùng kế hoạch lượt (ra nền không bốc lại).
-      cases = pickCases(level, { seen: progress.seen }).map((c) => ({ ...c, sticker: planSticker(level) }));
+      cases = planDoctorRound(level, { seen: progress.seen });
       caseIdx = 0;
       startWash();
     }

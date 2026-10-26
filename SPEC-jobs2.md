@@ -206,11 +206,11 @@ Từ mới: *stop, go, wait, red light, green light, look left, look right, cros
 **D. Hồi quy:** test cũ của nghề qua ở cả 3 mức; mỗi lượt đúng một ca cũ bị thay; mức / khóa mức / tiến độ không đổi; nghề khác dùng chung `jobs/kit.js`, `matchesSticker` vẫn qua.
 **E. Thử tay với bé:** đo thời lượng lượt; việc nào bé chán / khó → báo bố mẹ, đổi ở bản sau (không tự đổi thiết kế khi code).
 
-## 9. Cần bố mẹ chốt (đề xuất theo review)
-1. **Làm cả 4 nghề**, từng mốc một, thử với bé sau mỗi mốc — *đề xuất: có*.
-2. **Giữ "Giúp bạn qua đường" (PL2a)** với kịch bản an toàn ở 5.2 (dừng, nhìn trái, nhìn phải, chờ đèn xanh, nhìn lại, qua cùng nhau) + ghi chú cho bố mẹ — *đề xuất: giữ*.
-3. **Đổi "Teacher says" thành "Classroom actions"** (không chơi luật Simon-says) — *đề xuất: đổi* (đã sửa trong spec).
-4. **Thứ tự mốc** như mục 7: PL1 → SH1 → TE1 → PO1 → SH2 → TE2 → PL2a → PL2b.
+## 9. Đã chốt (2026-10-26)
+1. **Làm cả 4 nghề**, từng mốc một, thử với bé sau mỗi mốc.
+2. **Giữ "Giúp bạn qua đường" (PL2a)** với kịch bản an toàn ở 5.2 + ghi chú cho bố mẹ.
+3. **"Classroom actions"** thay "Teacher says".
+4. **Thứ tự:** sau Bác sĩ DR2–DR3 → PL1 → SH1 → TE1 → PO1 → SH2 → TE2 → PL2a → PL2b.
 
 ## 10. Trả lời review (draft2)
 | Điểm review | Xử lý |

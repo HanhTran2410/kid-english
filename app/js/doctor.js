@@ -318,7 +318,7 @@ export function cleanDoctorState(saved, { maxLevel = PLAYABLE_LEVEL } = {}) {
   const lock = ok(s.lock) ? s.lock : null;
   const seen = {};
   if (s.seen && typeof s.seen === 'object') {
-    for (const [id, n] of Object.entries(s.seen)) if (CASE_BY_ID.has(id) && Number.isInteger(n) && n > 0) seen[id] = n;
+    for (const [id, n] of Object.entries(s.seen)) if ((CASE_BY_ID.has(id) || NEW_CASE_IDS.includes(id)) && Number.isInteger(n) && n > 0) seen[id] = n;
   }
   return {
     level: lock ?? (ok(s.level) ? s.level : 1),
@@ -417,3 +417,66 @@ export const stickerWrongLine = (st, want) => {
   const [en, vi] = stickerWantLine(want);
   return [`That's a ${stickerName(st)}. ${en}`, `Đó là ${stickerNameVi(st)}. ${vi}`];
 };
+
+// ---------- SPEC-doctor2 DR2: ca Đo chiều cao (thay 1 ca bệnh) ----------
+/** Mã ca kiểu mới (không có trong CASES — không có bước chạm / khám / chữa). */
+export const NEW_CASE_IDS = ['checkup', 'eyes'];
+const NUM_WORDS = ['zero', 'one', 'two', 'three', 'four', 'five'];
+const NUM_VI = ['không', 'một', 'hai', 'ba', 'bốn', 'năm'];
+const between = (lo, hi, rng) => lo + Math.floor(rng() * (hi - lo + 1));
+
+/**
+ * Ca đo chiều cao (sinh sẵn): mức 1: một bạn 1–3 khối; mức 2: một bạn 2–5 khối + 3 thẻ số (đúng một thẻ);
+ * mức 3: hai bạn, chiều cao khác nhau trong 2–5 ("Who is taller?").
+ */
+export function planCheckup(level, patients, { rng = Math.random } = {}) {
+  if (level >= 3) {
+    const a = between(2, 5, rng);
+    let b = between(2, 4, rng);
+    if (b >= a) b += 1;
+    return { id: 'checkup', patient: patients[0], patient2: patients[1], heights: [a, b] };
+  }
+  const n = level <= 1 ? between(1, 3, rng) : between(2, 5, rng);
+  const c = { id: 'checkup', patient: patients[0], heights: [n] };
+  if (level === 2) {
+    const others = shuffleList([1, 2, 3, 4, 5].filter((x) => x !== n), rng).slice(0, 2);
+    c.choices = shuffleList([n, ...others], rng);
+  }
+  return c;
+}
+
+/**
+ * Kế hoạch một lượt (SPEC-doctor2 mục 2): 2 ca bệnh (chọn như cũ, ưu tiên ít gặp) + 1 ca mới ở vị trí ngẫu nhiên;
+ * mỗi ca có bộ sticker sinh sẵn; bạn thú khác nhau (ca đo mức 3 có hai bạn).
+ */
+export function planDoctorRound(level, { seen = {}, rng = Math.random } = {}) {
+  const ill = pickCases(level, { seen, rng, n: CASES_PER_ROUND - 1 });
+  const used = new Set(ill.map((c) => c.patient));
+  const free = shuffleList(PATIENTS.map((p) => p.id).filter((id) => !used.has(id)), rng);
+  const extra = planCheckup(level, free, { rng });
+  const cases = [...ill];
+  // Chỉ test UI đặt `window.__kidTest.doctorNewAt` để cố định chỗ ca mới; bình thường ngẫu nhiên.
+  const pinned = globalThis.__kidTest?.doctorNewAt;
+  cases.splice(Number.isInteger(pinned) ? pinned : Math.floor(rng() * (cases.length + 1)), 0, extra);
+  return cases.map((c) => ({ ...c, sticker: planSticker(level, { rng }) }));
+}
+
+const blocks = (n) => (n === 1 ? 'block' : 'blocks');
+export const CHECKUP_HELLO_LINE = ['Hello, doctor! Am I growing?', 'Chào bác sĩ! Tớ có cao lên không?'];
+export const MEASURE_LINE = ["Let's measure! Count the blocks!", 'Mình đo nào! Đếm các khối nhé!'];
+export const FROM_BOTTOM_LINE = ['From the bottom! One…', 'Đếm từ dưới lên nhé! Một…'];
+export const GROWING_LINE = ["I'm growing!", 'Tớ cao lên rồi!'];
+export const HOW_MANY_BLOCKS_LINE = ['How many blocks?', 'Mấy khối nhỉ?'];
+export const TALLER_Q_LINE = ['Who is taller?', 'Bạn nào cao hơn?'];
+/** Đếm khối: "One!" */
+export const blockCountLine = (n) => [`${capital(NUM_WORDS[n])}!`, `${capital(NUM_VI[n])}!`];
+/** "You're three blocks tall!" / "You're one block tall!" */
+export const tallLine = (n) => [`You're ${NUM_WORDS[n]} ${blocks(n)} tall!`, `Bạn cao ${NUM_VI[n]} khối!`];
+/** Mức 2 đúng: "Yes! Three blocks!" */
+export const rightBlocksLine = (n) => [`Yes! ${capital(NUM_WORDS[n])} ${blocks(n)}!`, `Đúng rồi! ${capital(NUM_VI[n])} khối!`];
+/** Mức 2 nhầm: "That's four. Let's count again!" */
+export const wrongBlocksLine = (x) => [`That's ${NUM_WORDS[x]}. Let's count again!`, `Đó là số ${NUM_VI[x]}. Mình đếm lại nhé!`];
+/** Mức 3: "Teddy is taller! Kitty is shorter!" (tên theo dữ liệu thật). */
+export const tallerLine = (tall, short) => [`${tall} is taller! ${short} is shorter!`, `${tall} cao hơn! ${short} thấp hơn!`];
+/** Mức 3 nhầm: "That's Kitty. Kitty is shorter. Who is taller?" */
+export const wrongTallerLine = (name) => [`That's ${name}. ${name} is shorter. Who is taller?`, `Đó là ${name}. ${name} thấp hơn. Bạn nào cao hơn?`];

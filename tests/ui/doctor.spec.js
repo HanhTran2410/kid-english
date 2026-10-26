@@ -35,8 +35,29 @@ async function giveSticker(page) {
   await page.locator(want ? `.dr-item[data-item^="st-${want}"]` : '.dr-item[data-item^="st-"]').first().click();
 }
 
+/** Ca mới (đo chiều cao) ở vị trí `at` của lượt (mặc định cuối — ca 1, 2 là ca bệnh như test cũ). */
+const pinNewCase = (page, at = 2) => page.addInitScript((n) => { window.__kidTest = { doctorNewAt: n }; }, at);
+
+/** Ca đo chiều cao: đếm hết khối (từ dưới lên), mức 2 chọn đúng thẻ số, mức 3 chạm bạn cao hơn. */
+async function doCheckup(page) {
+  await expect(play(page)).toHaveAttribute('data-state', 'measure', { timeout: 15000 });
+  const heights = (await page.locator('.dr-measure').getAttribute('data-heights')).split(',').map(Number);
+  for (const [w, n] of heights.entries()) {
+    for (let i = 0; i < n; i++) {
+      await expect(play(page)).toHaveAttribute('data-state', 'measure', { timeout: 15000 });
+      await page.locator(`.dr-block[data-who="${w}"][data-i="${i}"]`).click();
+      await expect(page.locator(`.dr-block[data-who="${w}"][data-i="${i}"]`)).toHaveClass(/lit/, { timeout: 15000 });
+    }
+  }
+  await expect(play(page)).toHaveAttribute('data-state', /howmany|taller|sticker/, { timeout: 15000 });
+  const st = await play(page).getAttribute('data-state');
+  if (st === 'howmany') await page.locator(`.dr-item[data-item="n-${heights[0]}"]`).click();
+  if (st === 'taller') await page.locator(`.dr-measure-pet[data-who="${heights[0] > heights[1] ? 0 : 1}"]`).click();
+}
+
 async function openDoctor(page) {
   await fakeSpeech(page);
+  await pinNewCase(page);
   await startApp(page);
   await page.getByRole('button', { name: 'Trò chơi' }).click();
   await page.getByRole('button', { name: 'Đóng vai' }).click();
@@ -47,7 +68,12 @@ async function openDoctor(page) {
 
 /** Khám xong ca đang mở (chạm đúng chỗ, chạm đúng đồ), chờ sang ca sau / hoan hô. */
 async function healCurrent(page) {
-  await expect(play(page)).toHaveAttribute('data-state', 'touch', { timeout: 15000 });
+  await expect(play(page)).toHaveAttribute('data-state', /touch|measure/, { timeout: 15000 });
+  if ((await play(page).getAttribute('data-state')) === 'measure') {
+    await doCheckup(page);
+    await giveSticker(page);
+    return { id: 'checkup' };
+  }
   const c = await currentCase(page);
   await spot(page, c.target).click();
   await expect(play(page)).toHaveAttribute('data-state', 'treat', { timeout: 15000 });
@@ -190,6 +216,7 @@ test('giọng đọc lỗi: phụ đề vẫn hiện, chơi hết lượt đư�
   await page.addInitScript(() => {
     // Giọng đọc báo lỗi ngay mỗi câu.
     window.addEventListener('DOMContentLoaded', () => {
+      window.__kidTest = { doctorNewAt: 2 };
       window.speechSynthesis.speak = (u) => {
         window.__spoken.push(u.text);
         setTimeout(() => u.onerror?.({ error: 'synthesis-failed' }), 5);
@@ -247,6 +274,7 @@ test('Góc bố mẹ → Ảnh Bác sĩ nhí: dùng lại ảnh có sẵn (ảnh
 
 test('trò chơi dùng ảnh đồ bố mẹ thêm (khay) và ảnh nền phòng khám', async ({ page }) => {
   await fakeSpeech(page);
+  await pinNewCase(page);
   await startApp(page);
   for (const id of ['bandage', 'medicine', 'tissue', 'toothbrush', 'icepack', 'drops', 'water', 'blanket']) await addImage(page, 'doctor:items', id);
   await addImage(page, 'doctor:bg', 'room');
@@ -265,7 +293,12 @@ test('trò chơi dùng ảnh đồ bố mẹ thêm (khay) và ảnh nền phòng
 // ---------- D2: mức 2–3 (bước khám, 11 ca), giọng bạn thú, Cài đặt ----------
 /** Khám xong ca đang mở ở `level`: làm lần lượt mọi bước (chạm / khám / chữa) theo dữ liệu ca. */
 async function healAt(page, level) {
-  await expect(play(page)).toHaveAttribute('data-state', /touch|check|treat/, { timeout: 15000 });
+  await expect(play(page)).toHaveAttribute('data-state', /touch|check|treat|measure/, { timeout: 15000 });
+  if ((await play(page).getAttribute('data-state')) === 'measure') {
+    await doCheckup(page);
+    await giveSticker(page);
+    return { id: 'checkup', steps: [] };
+  }
   const id = await page.locator('.dr-patient').getAttribute('data-case');
   const steps = await page.evaluate(async ([caseId, lv]) => {
     const m = await import('/js/doctor.js');
@@ -283,6 +316,7 @@ async function healAt(page, level) {
 
 test('D2 mức 2: có bước khám (Bông gọi tên dụng cụ, khay 3 món), đồ chữa không gọi tên ("How can we help?"); bạn thú nói giọng khác Bông; ca tai thấy bọ; 3 ca → sticker', async ({ page }) => {
   await fakeSpeech(page);
+  await pinNewCase(page);
   await startApp(page);
   // Ưu tiên ca có bước khám (tummy, tooth, ear-bug): các ca khác coi như đã gặp nhiều.
   await page.evaluate(() => window.kidEnglish.setSetting('doctorGame', {
@@ -318,6 +352,7 @@ test('D2 mức 2: có bước khám (Bông gọi tên dụng cụ, khay 3 món),
 
 test('D2 mức 3: chơi hết lượt với 11 ca (sốt: nhiệt kế; ho: không chạm), khay chữa 4 món; Cài đặt có "Mức chơi Bác sĩ nhí" khóa được mức', async ({ page }) => {
   await fakeSpeech(page);
+  await pinNewCase(page);
   await startApp(page);
   const others = ['cut-hand', 'cut-foot', 'tummy', 'runny-nose', 'tooth', 'ear-bug', 'eye', 'bump', 'sleepy'];
   await page.evaluate((o) => window.kidEnglish.setSetting('doctorGame', { level: 3, rounds: 0, lock: 3, seen: Object.fromEntries(o.map((id) => [id, 9])) }), others);
@@ -328,8 +363,8 @@ test('D2 mức 3: chơi hết lượt với 11 ca (sốt: nhiệt kế; ho: khô
   const ids = [];
   for (let i = 0; i < 3; i++) {
     await expect(page.locator('.dr-count')).toHaveText(`${i + 1}/3`, { timeout: 15000 });
-    const id = await page.locator('.dr-patient').getAttribute('data-case');
     const state = await play(page).getAttribute('data-state');
+    const id = state === 'measure' ? 'checkup' : await page.locator('.dr-patient').getAttribute('data-case');
     if (id === 'cough') expect(['check', 'enter']).toContain(state);
     ids.push((await healAt(page, 3)).id);
   }
@@ -358,8 +393,9 @@ const setVisibility = (page, v) => page.evaluate((s) => {
   Object.defineProperty(document, 'visibilityState', { value: s, configurable: true });
   document.dispatchEvent(new Event('visibilitychange'));
 }, v);
-async function enterDoctor(page, settings) {
+async function enterDoctor(page, settings, newAt = 2) {
   await fakeSpeech(page);
+  await pinNewCase(page, newAt);
   await startApp(page);
   await page.evaluate((s) => window.kidEnglish.setSetting('doctorGame', s), settings);
   await page.getByRole('button', { name: 'Trò chơi' }).click();
@@ -479,3 +515,97 @@ async function healAtNoSticker(page, level) {
     if (k < steps.length - 1) await expect(play(page)).toHaveAttribute('data-state', steps[k + 1].type, { timeout: 15000 });
   }
 }
+
+// ---------- SPEC-doctor2 DR2: ca Đo chiều cao ----------
+test('DR2 mức 1: ca đo — "Am I growing?", khối cần chạm nhấp nháy; chạm bỏ khối → "From the bottom!", không đếm, không tính nhầm; đếm xong "You\'re N blocks tall!" → "I\'m growing!" → sticker → ca sau', async ({ page }) => {
+  await enterDoctor(page, { level: 1, rounds: 0, lock: 1, seen: {} }, 0);
+  await washUp(page);
+  await expect(play(page)).toHaveAttribute('data-state', 'measure', { timeout: 15000 });
+  await expect(page.locator('.dr-count')).toHaveText('1/3');
+  await expect.poll(() => spoken(page)).toContain('Hello, doctor! Am I growing?');
+  const n = Number(await page.locator('.dr-measure').getAttribute('data-heights'));
+  expect(n >= 1 && n <= 3).toBe(true);
+  await expect(page.locator('.dr-block[data-i="0"]')).toHaveClass(/next/);
+  if (n >= 2) {
+    const k = (await spoken(page)).length;
+    await expect(async () => {
+      await page.locator('.dr-block[data-i="1"]').click();
+      expect(await saidSince(page, k, /^From the bottom! One…$/)).toBe(true);
+    }).toPass({ timeout: 15000 });
+    await expect(page.locator('.dr-block.lit')).toHaveCount(0);
+  }
+  for (let i = 0; i < n; i++) {
+    await page.locator(`.dr-block[data-i="${i}"]`).click();
+    await expect(page.locator('.dr-block.lit')).toHaveCount(i + 1, { timeout: 15000 });
+  }
+  const word = ['', 'one block', 'two blocks', 'three blocks'][n];
+  await expect.poll(() => spoken(page)).toContain(`You're ${word} tall!`);
+  await expect.poll(() => spoken(page)).toContain("I'm growing!");
+  await giveSticker(page);
+  await expect(page.locator('.dr-count')).toHaveText('2/3', { timeout: 15000 });
+  expect((await page.evaluate(() => window.kidEnglish.settings.doctorGame)).seen.checkup).toBe(1);
+});
+
+test('DR2 mức 2: đếm 2–5 khối rồi "How many blocks?" — thẻ số sai → "That\'s x. Let\'s count again!"; đúng → "Yes! N blocks!"; đã nhầm thì không ghi số "đã gặp"', async ({ page }) => {
+  await enterDoctor(page, { level: 2, rounds: 0, lock: 2, seen: {} }, 0);
+  await washUp(page);
+  await expect(play(page)).toHaveAttribute('data-state', 'measure', { timeout: 15000 });
+  const n = Number(await page.locator('.dr-measure').getAttribute('data-heights'));
+  expect(n >= 2 && n <= 5).toBe(true);
+  await expect(page.locator('.dr-block.next')).toHaveCount(0);
+  for (let i = 0; i < n; i++) {
+    await page.locator(`.dr-block[data-i="${i}"]`).click();
+    await expect(page.locator('.dr-block.lit')).toHaveCount(i + 1, { timeout: 15000 });
+  }
+  await expect(play(page)).toHaveAttribute('data-state', 'howmany', { timeout: 15000 });
+  await expect(page.locator('.dr-tray .dr-item')).toHaveCount(3);
+  const wrong = await page.locator(`.dr-tray .dr-item:not([data-item="n-${n}"])`).first().getAttribute('data-item');
+  const x = Number(wrong.slice(2));
+  const words = ['zero', 'one', 'two', 'three', 'four', 'five'];
+  const k = (await spoken(page)).length;
+  await expect(async () => {
+    await page.locator(`.dr-item[data-item="${wrong}"]`).click();
+    expect(await saidSince(page, k, new RegExp(`^That's ${words[x]}\\. Let's count again!$`))).toBe(true);
+  }).toPass({ timeout: 15000 });
+  await page.locator(`.dr-item[data-item="n-${n}"]`).click();
+  await expect.poll(() => spoken(page)).toContain(`Yes! ${words[n].charAt(0).toUpperCase()}${words[n].slice(1)} blocks!`);
+  await giveSticker(page);
+  await expect(page.locator('.dr-count')).toHaveText('2/3', { timeout: 15000 });
+  expect(await page.evaluate((key) => window.kidEnglish.db.get('progress', key), `number:${n}`)).toBeFalsy();
+});
+
+test('DR2 mức 3: hai bạn khác chiều cao, đo lần lượt; ra nền giữa lúc đếm → quay lại giữ khối đã đếm; "Who is taller?" — chạm bạn thấp → câu nhầm; bạn cao → "X is taller! Y is shorter!"', async ({ page }) => {
+  await enterDoctor(page, { level: 3, rounds: 0, lock: 3, seen: {} }, 0);
+  await washUp(page);
+  await expect(play(page)).toHaveAttribute('data-state', 'measure', { timeout: 15000 });
+  const [a, b] = (await page.locator('.dr-measure').getAttribute('data-heights')).split(',').map(Number);
+  expect(a).not.toBe(b);
+  await expect(page.locator('.dr-measure-pet')).toHaveCount(2);
+  await page.locator('.dr-block[data-who="0"][data-i="0"]').click();
+  await expect(page.locator('.dr-block[data-who="0"].lit')).toHaveCount(1, { timeout: 15000 });
+  await setVisibility(page, 'hidden');
+  await setVisibility(page, 'visible');
+  await page.locator('.resume-overlay .start-btn').click();
+  await expect(play(page)).toHaveAttribute('data-state', 'measure', { timeout: 15000 });
+  await expect(page.locator('.dr-block[data-who="0"].lit')).toHaveCount(1);
+  await expect(page.locator('.dr-measure')).toHaveAttribute('data-heights', `${a},${b}`);
+  for (const [w, n] of [[0, a], [1, b]]) {
+    for (let i = w === 0 ? 1 : 0; i < n; i++) {
+      await expect(play(page)).toHaveAttribute('data-state', 'measure', { timeout: 15000 });
+      await page.locator(`.dr-block[data-who="${w}"][data-i="${i}"]`).click();
+      await expect(page.locator(`.dr-block[data-who="${w}"][data-i="${i}"]`)).toHaveClass(/lit/, { timeout: 15000 });
+    }
+  }
+  await expect(play(page)).toHaveAttribute('data-state', 'taller', { timeout: 15000 });
+  const tall = a > b ? 0 : 1;
+  const names = await page.locator('.dr-measure-pet').evaluateAll((els) => els.map((e) => e.getAttribute('aria-label')));
+  const k = (await spoken(page)).length;
+  await expect(async () => {
+    await page.locator(`.dr-measure-pet[data-who="${1 - tall}"]`).click();
+    expect(await saidSince(page, k, new RegExp(`^That's ${names[1 - tall]}\\. ${names[1 - tall]} is shorter\\. Who is taller\\?$`))).toBe(true);
+  }).toPass({ timeout: 15000 });
+  await page.locator(`.dr-measure-pet[data-who="${tall}"]`).click();
+  await expect.poll(() => spoken(page)).toContain(`${names[tall]} is taller! ${names[1 - tall]} is shorter!`);
+  await giveSticker(page);
+  await expect(page.locator('.dr-count')).toHaveText('2/3', { timeout: 15000 });
+});
