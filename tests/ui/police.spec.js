@@ -307,3 +307,48 @@ test('PL2a: ra nền ở bước bấm nút → quay lại vẫn bước bấm n
   await findOne(page, 2);
   await expect(page.locator('.prize-sticker')).toBeVisible({ timeout: 15000 });
 });
+
+// ---------- SPEC-jobs2 PL2b: tìm bạn bị lạc theo quần áo ----------
+/** Mức 3, ca 1 là tìm bạn (đèn ở ca 3, qua đường ở ca 2): mở hết bụi cây. */
+async function openFriendCase(page) {
+  await openPolice(page, { level: 3, rounds: 0, lock: 3, seen: {} }, 2, 1);
+  await expect(play(page)).toHaveAttribute('data-state', 'find', { timeout: 15000 });
+  await expect(page.locator('.pl-item[data-hat]:not([data-hat=""])')).toHaveCount(3);
+  for (const cover of await page.locator('.pl-bush:not(.moved)').evaluateAll((els) => els.map((e) => e.dataset.cover))) {
+    const bush = page.locator(`.pl-bush[data-cover="${cover}"]`);
+    await bush.click();
+    await expect(bush).toHaveClass(/moved/);
+  }
+}
+
+test('PL2b mức 3: bạn bị lạc đội mũ + đi giày — "My friend has a … hat and … shoes."; chọn đúng ngay → "There you are!", ghi đã gặp hat / shoes', async ({ page }) => {
+  await openFriendCase(page);
+  const t = await target(page);
+  const [hat, shoes] = [await t.getAttribute('data-hat'), await t.getAttribute('data-shoes')];
+  expect(await spoken(page)).toContain(`My friend has a ${hat} hat and ${shoes} shoes.`);
+  await expect(t.locator('.pl-clothes')).toHaveCount(1);
+  const n = (await spoken(page)).length;
+  await t.click();
+  await expect.poll(() => saidSince(page, n, /^There you are! Thank you, officer!$/)).toBe(true);
+  await expect.poll(() => page.evaluate(async () => (await window.kidEnglish.db.getAll('progress')).map((p) => p.word).filter((w) => w === 'hat' || w === 'shoes').sort())).toEqual(['hat', 'shoes']);
+});
+
+test('PL2b mức 3: chọn nhầm bạn → "That friend has a … hat. My friend has a … hat!" / "… shoes …" (món khác đầu tiên); nhầm rồi đúng thì không ghi quần áo', async ({ page }) => {
+  await openFriendCase(page);
+  const t = await target(page);
+  const [hat, shoes] = [await t.getAttribute('data-hat'), await t.getAttribute('data-shoes')];
+  const sameHat = page.locator(`.pl-item[data-hat="${hat}"]:not([data-id="${await t.getAttribute('data-id')}"])`);
+  const otherShoes = await sameHat.getAttribute('data-shoes');
+  let n = (await spoken(page)).length;
+  await sameHat.click();
+  await expect.poll(() => saidSince(page, n, new RegExp(`^That friend has ${otherShoes} shoes\\. My friend has ${shoes} shoes!$`))).toBe(true);
+  const sameShoes = page.locator(`.pl-item[data-shoes="${shoes}"]:not([data-id="${await t.getAttribute('data-id')}"])`);
+  const otherHat = await sameShoes.getAttribute('data-hat');
+  n = (await spoken(page)).length;
+  await page.waitForTimeout(450);
+  await sameShoes.click();
+  await expect.poll(() => saidSince(page, n, new RegExp(`^That friend has a ${otherHat} hat\\. My friend has a ${hat} hat!$`))).toBe(true);
+  await t.click();
+  await expect(page.locator('.jb-count')).toHaveText('2/3', { timeout: 15000 });
+  expect(await page.evaluate(async () => (await window.kidEnglish.db.getAll('progress')).some((p) => p.word === 'hat'))).toBe(false);
+});

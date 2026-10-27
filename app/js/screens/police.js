@@ -44,6 +44,19 @@ function toySvg(toy, color) {
 }
 const MOVE_MS = 1100; // xe chạy / dừng / bạn qua đường sau khi đổi đèn
 const LIGHT_EMOJI = { red: '🔴', yellow: '🟡', green: '🟢' };
+const CLOTHES_HEX = { red: '#fa5252', blue: '#339af0', yellow: '#fcc419', green: '#51cf66' };
+/** SPEC-jobs2 PL2b: mũ (trên đầu) + giày (hai bàn chân) vẽ thêm vào hình bạn thú (viewBox 240 × 300). */
+function dressSvg(svg, hat, shoes) {
+  if (!hat) return svg;
+  const ink = '#3d2c5e';
+  const layer = `<g class="pl-clothes">
+    <path d="M58 60 Q120 -4 182 60 Z" fill="${CLOTHES_HEX[hat]}" stroke="${ink}" stroke-width="3" stroke-linejoin="round"/>
+    <ellipse cx="120" cy="60" rx="78" ry="11" fill="${CLOTHES_HEX[hat]}" stroke="${ink}" stroke-width="3"/>
+    <ellipse cx="80" cy="284" rx="31" ry="15" fill="${CLOTHES_HEX[shoes]}" stroke="${ink}" stroke-width="3"/>
+    <ellipse cx="160" cy="284" rx="31" ry="15" fill="${CLOTHES_HEX[shoes]}" stroke="${ink}" stroke-width="3"/>
+  </g>`;
+  return svg.replace(/<\/svg>\s*$/, `${layer}</svg>`);
+}
 const WALK_LIGHT_MS = 1000; // bấm nút → đèn người đi bộ đổi xanh
 const CHECK_MS = 900; // nhìn lại mỗi bên (tự động)
 const CROSS_ACTIVE = ['look-left', 'look-right', 'press', 'go'];
@@ -140,12 +153,12 @@ export function policeScreen(app, params = {}) {
     park.replaceChildren(...c.items.map((x, i) => {
       const [left, top] = slots[i];
       const face = c.kind === 'friend'
-        ? h('span.pl-friend', { html: patientSvg(x.friend, { mood: 'happy' }) })
+        ? h('span.pl-friend', { html: dressSvg(patientSvg(x.friend, { mood: 'happy' }), x.hat, x.shoes) })
         : h('span.pl-toy-face', { html: toySvg(c.toy, x.color) });
       const label = c.kind === 'friend' ? PATIENT_BY_ID.get(x.friend).name : `${x.size ?? ''} ${x.color} ${c.toy}`.trim();
       const item = h('button.pl-item', {
         type: 'button', 'aria-label': label,
-        dataset: { id: x.id, color: x.color ?? '', size: x.size ?? '', friend: x.friend ?? '' },
+        dataset: { id: x.id, color: x.color ?? '', size: x.size ?? '', friend: x.friend ?? '', hat: x.hat ?? '', shoes: x.shoes ?? '' },
         style: { left: `${left}%`, top: `${top}%` },
         onclick: () => choose(x.id),
       }, face);
@@ -241,6 +254,12 @@ export function policeScreen(app, params = {}) {
     if (c.kind === 'toy' && !recorded.has(`${caseIdx}:color`)) {
       recorded.add(`${caseIdx}:color`);
       markPracticed(app, t.color, COLOR_EMOJI[t.color]);
+    }
+    // PL2b: quần áo (mũ, giày) khi chọn đúng bạn ngay lần đầu.
+    if (c.kind === 'friend' && t.hat && wrongs === 0 && !recorded.has(`${caseIdx}:clothes`)) {
+      recorded.add(`${caseIdx}:clothes`);
+      markPracticed(app, 'hat', '👒');
+      markPracticed(app, 'shoes', '👟');
     }
     saveSnap(JOB, { level, plan, caseIdx: caseIdx + 1, wrongs: 0, nudges: 0, revealed: [], recorded: [...recorded] });
     const el = itemEl(id);

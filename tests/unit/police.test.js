@@ -4,6 +4,7 @@ import assert from 'node:assert/strict';
 import {
   FRIEND_LOOK, planRound, makeToyCase, matches, lostLine, describeLine, foundLine, wrongLine,
   makeTrafficCase, makeItLine, lightRightLine, lightWrongLine, TRAFFIC_STEPS, CROSS_STEPS, crossStepLine,
+  makeFriendCase, CLOTHES_COLORS,
 } from '../../app/js/jobs/police.js';
 
 function seeded(seed = 1) {
@@ -99,4 +100,26 @@ test('SPEC-jobs2 PL2a — ca giúp bạn qua đường: mức 1 không có; mứ
   assert.equal(crossStepLine('look-left')[0], 'Stop! Look left!');
   assert.equal(crossStepLine('press')[0], 'Press the button. Wait for the green light!');
   assert.equal(crossStepLine('go')[0], "All clear! Let's cross together!");
+});
+
+test('SPEC-jobs2 PL2b — bạn bị lạc theo quần áo: đúng một bạn khớp cả mũ + giày, một bạn cùng mũ khác giày, một bạn cùng giày khác mũ; câu trung tính; câu nhầm nói món khác đầu tiên', () => {
+  const rng = seeded(53);
+  for (let i = 0; i < 80; i++) {
+    const c = makeFriendCase('teddy', { rng });
+    const t = c.items.find((x) => x.id === c.target);
+    assert.equal(c.items.length, 3);
+    assert.ok(c.items.every((x) => CLOTHES_COLORS.includes(x.hat) && CLOTHES_COLORS.includes(x.shoes)));
+    assert.equal(matches(c, 3).length, 1);
+    const others = c.items.filter((x) => x.id !== c.target);
+    assert.ok(others.some((x) => x.hat === t.hat && x.shoes !== t.shoes));
+    assert.ok(others.some((x) => x.shoes === t.shoes && x.hat !== t.hat));
+  }
+  const c = {
+    kind: 'friend', asker: 'teddy', target: 'f0',
+    items: [{ id: 'f0', friend: 'kitty', hat: 'red', shoes: 'blue' }, { id: 'f1', friend: 'puppy', hat: 'green', shoes: 'blue' }, { id: 'f2', friend: 'piggy', hat: 'red', shoes: 'yellow' }],
+  };
+  assert.equal(describeLine(c, 3)[0], 'My friend has a red hat and blue shoes.');
+  assert.ok(!/\b(he|she)\b/i.test(describeLine(c, 3)[0]));
+  assert.equal(wrongLine(c, 'f1', 3)[0], 'That friend has a green hat. My friend has a red hat!');
+  assert.equal(wrongLine(c, 'f2', 3)[0], 'That friend has yellow shoes. My friend has blue shoes!');
 });

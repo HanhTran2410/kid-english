@@ -64,9 +64,18 @@ export function makeToyCase(level, { rng = Math.random } = {}) {
  */
 export function makeFriendCase(asker, { rng = Math.random } = {}) {
   const friends = shuffle(PATIENTS.filter((p) => p.id !== asker), rng);
-  const items = friends.map((p, i) => ({ id: `f${i}`, friend: p.id, hidden: true }));
-  return { kind: 'friend', asker, items, target: pick(items, rng).id };
+  // SPEC-jobs2 PL2b: mỗi bạn đội mũ + đi giày (màu); bạn cần tìm khớp cả hai món, một bạn cùng mũ khác giày,
+  // một bạn cùng giày khác mũ — đúng một bạn khớp mô tả.
+  const [hat, hat2] = shuffle(CLOTHES_COLORS, rng);
+  const [shoes, shoes2] = shuffle(CLOTHES_COLORS, rng);
+  const looks = [{ hat, shoes }, { hat, shoes: shoes2 }, { hat: hat2, shoes }];
+  const targetAt = Math.floor(rng() * friends.length);
+  let other = 1;
+  const items = friends.map((p, i) => ({ id: `f${i}`, friend: p.id, hidden: true, ...(i === targetAt ? looks[0] : looks[other++]) }));
+  return { kind: 'friend', asker, items, target: items[targetAt].id };
 }
+/** Màu mũ / giày của bạn bị lạc (mức 3). */
+export const CLOTHES_COLORS = ['red', 'blue', 'yellow', 'green'];
 
 /**
  * 3 ca của một lượt, mỗi ca một bạn thú (người hỏi) khác nhau. Mức 3: đúng một ca tìm bạn bị lạc. Mọi mức: đúng một ca
@@ -116,6 +125,7 @@ export function planRound(level, { rng = Math.random } = {}) {
 /** Các đồ / bạn khớp mô tả của đồ cần tìm (để kiểm tra: luôn đúng một). */
 export function matches(c, level) {
   const t = c.items.find((x) => x.id === c.target);
+  if (c.kind === 'friend' && t.hat) return c.items.filter((x) => x.hat === t.hat && x.shoes === t.shoes);
   if (c.kind === 'friend') return c.items.filter((x) => FRIEND_LOOK[x.friend].size === FRIEND_LOOK[t.friend].size && FRIEND_LOOK[x.friend].color === FRIEND_LOOK[t.friend].color);
   return c.items.filter((x) => x.color === t.color && (level <= 1 || x.size === t.size));
 }
@@ -137,6 +147,7 @@ export function lostLine(c) {
 /** Mô tả: "It's red!" / "It's big and blue!" / "He's big and brown!" */
 export function describeLine(c, level) {
   const t = c.items.find((x) => x.id === c.target);
+  if (c.kind === 'friend' && t.hat) return friendClothesLine(t);
   if (c.kind === 'friend') {
     const [en, vi] = friendDesc(t.friend);
     return [`${FRIEND_LOOK[t.friend].he}'s ${en}!`, `Bạn ấy ${vi}!`];
@@ -153,6 +164,11 @@ export function foundLine(c) {
 export function wrongLine(c, itemId, level) {
   const x = c.items.find((i) => i.id === itemId);
   const t = c.items.find((i) => i.id === c.target);
+  if (c.kind === 'friend' && t.hat) {
+    // Nói món khác đầu tiên của bạn vừa chạm (mũ trước, rồi giày).
+    if (x.hat !== t.hat) return [`That friend has a ${x.hat} hat. My friend has a ${t.hat} hat!`, `Bạn đó đội mũ ${COLOR_VI[x.hat]}. Bạn tớ đội mũ ${COLOR_VI[t.hat]} cơ!`];
+    return [`That friend has ${x.shoes} shoes. My friend has ${t.shoes} shoes!`, `Bạn đó đi giày ${COLOR_VI[x.shoes]}. Bạn tớ đi giày ${COLOR_VI[t.shoes]} cơ!`];
+  }
   if (c.kind === 'friend') {
     const p = PATIENT_BY_ID.get(x.friend);
     const [en, vi] = friendDesc(t.friend);
@@ -222,3 +238,7 @@ export const CROSS_THANKS_LINE = ['Thank you, officer!', 'Cảm ơn chú cảnh 
 export const crossStepLine = (step) => ({
   'look-left': LOOK_LEFT_LINE, 'look-right': LOOK_RIGHT_LINE, press: PRESS_LINE, check: GREEN_AGAIN_LINE, go: ALL_CLEAR_LINE,
 }[step]);
+
+// ---------- SPEC-jobs2 PL2b: tìm bạn bị lạc theo quần áo (câu trung tính, không theo giới tính) ----------
+/** "My friend has a red hat and blue shoes." */
+export const friendClothesLine = (x) => [`My friend has a ${x.hat} hat and ${x.shoes} shoes.`, `Bạn tớ đội mũ ${COLOR_VI[x.hat]}, đi giày ${COLOR_VI[x.shoes]}.`];

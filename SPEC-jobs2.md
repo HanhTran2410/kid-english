@@ -1,6 +1,6 @@
 # SPEC — 🧑‍⚕️ Đóng vai nghề: nhiệm vụ mới cho Bán hàng, Bưu tá, Cô giáo nhí, Cảnh sát
 
-> Phiên bản spec: **draft2** (sửa theo review, mục 10) · Ngày: 2026-10-26 · **Chưa làm** (làm sau Bác sĩ DR2–DR3). Bổ sung cho `SPEC-jobs.md` mục 3–6 (cách chơi hiện có của 4 nghề — **giữ nguyên**).
+> Phiên bản spec: **draft2** (sửa theo review, mục 10) · Ngày: 2026-10-26 · **Đã làm xong** 8 mốc (0.47.0–0.54.0). Bổ sung cho `SPEC-jobs.md` mục 3–6 (cách chơi hiện có của 4 nghề — **giữ nguyên**).
 > Cùng khung với Cứu hỏa (`SPEC-fire2.md`) và Bác sĩ (`SPEC-doctor2.md`): mỗi nghề thêm **việc mở đầu lượt**, **ca kiểu mới** xen với ca cũ, và / hoặc **việc nhỏ cuối ca / cuối lượt**.
 
 ## 1. Luật chung (áp dụng cho mọi việc mới)
@@ -196,7 +196,7 @@ Từ mới: *stop, go, wait, red light, green light, look left, look right, cros
 | 5 | SH2 ✅ (0.51.0) | Bán hàng | Quầy sinh tố (2.3) |
 | 6 | TE2 ✅ (0.52.0) | Cô giáo nhí | Phát sao (4.4) |
 | 7 | PL2a ✅ (0.53.0) | Cảnh sát | Giúp bạn qua đường (5.2) |
-| 8 | PL2b | Cảnh sát | Tìm bạn theo quần áo (5.3) |
+| 8 | PL2b ✅ (0.54.0) | Cảnh sát | Tìm bạn theo quần áo (5.3) |
 - Mỗi mốc là một bản app riêng, chơi thử với bé rồi mới làm mốc sau.
 
 ## 8. Kiểm thử — mỗi mốc đủ 5 nhóm
