@@ -6,6 +6,7 @@ import { setWordImage, removeWordImage } from '../../db.js';
 import { resizeImage, cutOutSticker } from '../../image.js';
 import {
   ITEMS, SLOTS, DRESS_IMAGES, KIDS, imageKey, nameKey, isPlural, itemIcon, itemBox, setCustomItems, mergeCustomItems,
+  dollSvg, FIT_LIMITS,
 } from '../../dress-up.js';
 import { loadDressImages } from '../dress-up.js';
 import { parentLayout, goParent, section, notice, field } from './common.js';
@@ -27,18 +28,29 @@ export const CLOTHING_PROMPT_NOTE = [
   '- Pure flat white (#FFFFFF) background: no shadow, no scenery, no frame.',
 ].join('\n');
 
-/** Hình dạng ảnh nên vẽ, theo khung đặt món đồ trên người bạn nhỏ. */
-function shapeHint(item) {
+/** Ảnh đồ Mặc đồ (SPEC-dressup2 mục 2): bỏ nền trắng, cắt sát (lề 1%), cạnh dài tối đa 480px. */
+const cutDress = (blob) => cutOutSticker(blob, 480, { pad: 0.01 });
+
+/** Hình dạng ảnh nên vẽ, theo khung đặt món đồ trên người bạn nhỏ (tỉ lệ cụ thể + dáng theo chỗ mặc). */
+export function shapeHint(item) {
   const [, , w, h] = itemBox(item);
   const r = w / h;
-  if (r > 1.6) return 'a wide landscape image (about 5:2)';
-  if (r > 1.15) return 'a landscape image (about 4:3)';
-  if (r < 0.6) return 'a tall portrait image (about 1:2)';
-  if (r < 0.87) return 'a portrait image (about 3:4)';
-  return 'a square image';
+  const ratio = r >= 1 ? `about ${(r).toFixed(1)} : 1 (wider than tall)` : `about 1 : ${(1 / r).toFixed(1)} (taller than wide)`;
+  const pose = {
+    top: 'sleeves hanging straight down, collar at the very top edge',
+    outer: 'sleeves hanging straight down, collar at the very top edge',
+    dress: 'shoulders at the very top edge, skirt widening to the bottom edge',
+    bottom: 'legs straight down, waistband at the very top edge',
+    socks: 'a pair side by side, standing upright',
+    feet: 'a pair side by side, soles at the very bottom edge',
+    head: 'the brim / bottom edge at the very bottom of the image',
+  }[item.slot] ?? 'centered';
+  return `the image is ${ratio}; ${pose}; the item fills the whole image edge to edge with no empty margin; front view, flat lay`;
 }
 
-export const clothingPrompt = (item) => `One ${item.name} for a children's paper-doll dress-up game for a 3-year-old: cute simple flat vector style, bright gentle colors, ${shapeHint(item)}.${CLOTHING_PROMPT_NOTE.replace('in its cell', 'in the image').replace('its cell', 'the image')}`;
+export const clothingPrompt = (item, { toy3d = false } = {}) => `One ${item.name} for a children's paper-doll dress-up game for a 3-year-old: ${toy3d
+  ? 'soft 3D cartoon render, clay / plastic toy look, gentle studio lighting, no cast shadow on the background'
+  : 'cute simple flat vector style'}, bright gentle colors; ${shapeHint(item)}.${CLOTHING_PROMPT_NOTE.replace('in its cell', 'in the image').replace('its cell', 'the image')}`;
 
 export function dressAdminView(app) {
   const body = parentLayout(app, { title: 'Đồ Mặc đồ', back: () => goParent(app) });
@@ -52,6 +64,7 @@ export function dressAdminView(app) {
     body.append(
       notice('info', 'Đồ có sẵn là hình vẽ, bé chơi được ngay. Muốn đẹp hơn: thay ảnh từng món (Copy prompt → AI vẽ → Chọn ảnh) hoặc vẽ nhiều món một lần bằng ảnh lưới. App tự bỏ nền trắng và đặt món đồ vừa chỗ trên người bạn nhỏ. Có thể thêm đồ mới cho bé trai, bé gái hoặc cả hai, và thêm nhiều kiểu cho cùng một món (bấm "＋ Kiểu khác" ở món đó).'),
       add.el,
+      toy3dSection(app, reload),
       ...groups().map(([title, items]) => itemsSection(app, title, items, images.map, reload, add.prefill)),
       ...gridSections(app, urls, images.map, reload),
       shareSection(app, images.map.size, reload),
@@ -80,6 +93,9 @@ export async function acceptDressPayload(app, payload) {
   const before = app.settings.dressUpCustom ?? [];
   const merged = mergeCustomItems(before, incoming);
   if (merged.length !== before.length) await app.setSetting('dressUpCustom', merged);
+  // Căn chỉnh tay (SPEC-dressup2 mục 4) đi kèm ảnh: nhận theo ảnh vừa nhận (cùng `stamp` mới dùng).
+  const fits = payload.settings?.find((s) => s.key === 'dressUpFit')?.value;
+  if (fits && typeof fits === 'object') await app.setSetting('dressUpFit', { ...(app.settings.dressUpFit ?? {}), ...fits });
   setCustomItems(app.settings.dressUpCustom);
   return { images: images.length, items: merged.length - before.length };
 }
@@ -96,7 +112,7 @@ function shareSection(app, count, reload) {
       ? `Máy này có ${count} ảnh đồ và ${custom} món đã thêm. Tạo file rồi gửi sang máy kia; trên máy kia: Góc bố mẹ → Đồ Mặc đồ → "Nhập từ file" (hoặc Quản lý bài → "Nhập bài từ file" cũng được). Bộ đồ bé đang mặc không đi theo.`
       : 'Máy này chưa có ảnh đồ / đồ đã thêm nào để gửi. Máy kia gửi sang thì bấm "Nhập từ file" ở đây.',
     canMake: count > 0 || custom > 0,
-    backup: { lessonIds: [DRESS_IMAGES], settingsKeys: ['dressUpCustom'], filename: `mac-do-${dayKey()}.zip` },
+    backup: { lessonIds: [DRESS_IMAGES], settingsKeys: ['dressUpCustom', 'dressUpFit'], filename: `mac-do-${dayKey()}.zip` },
     accept: async (payload) => {
       const got = await acceptDressPayload(app, payload);
       if (!got.images && !got.items && !payload.images.some((img) => img.lessonId === DRESS_IMAGES)) {
@@ -129,7 +145,7 @@ function itemsSection(app, title, items, map, reload, prefill) {
       if (!file) return;
       try {
         const small = await resizeImage(file);
-        await setWordImage(app.db, { lessonId: DRESS_IMAGES, word: imageKey(item), ...await cutOutSticker(small.blob) });
+        await setWordImage(app.db, { lessonId: DRESS_IMAGES, word: imageKey(item), ...await cutDress(small.blob) });
         toast(`Đã lưu ảnh ${item.vi}.`);
         reload();
       } catch (err) {
@@ -145,6 +161,18 @@ function itemsSection(app, title, items, map, reload, prefill) {
         text: 'Copy prompt',
         onclick: () => copyText(clothingPrompt(item)).then((ok) => toast(ok ? 'Đã copy prompt.' : 'Không copy được.')),
       }),
+      h('button.btn.small', {
+        type: 'button',
+        text: 'Prompt 3D',
+        title: 'Prompt vẽ kiểu 3D (như đồ chơi đất nặn / nhựa)',
+        onclick: () => copyText(clothingPrompt(item, { toy3d: true })).then((ok) => toast(ok ? 'Đã copy prompt 3D.' : 'Không copy được.')),
+      }),
+      has ? h('button.btn.small', {
+        type: 'button',
+        text: 'Căn lại',
+        title: 'Xem món đồ trên người bạn nhỏ, dịch / phóng to cho vừa',
+        onclick: (e) => openFit(app, item, map, e.currentTarget.closest('.sp-admin-item'), reload),
+      }) : null,
       h('button.btn.small', { type: 'button', text: has ? 'Thay ảnh' : 'Chọn ảnh', onclick: () => input.click() }),
       has && !item.custom ? h('button.btn.small.danger', {
         type: 'button',
@@ -183,7 +211,7 @@ function gridSections(app, urls, map, reload) {
   return pendingGridSections(app, {
     id: DRESS_IMAGES, what: 'món', group: GRID_GROUP, urls, has: (w) => map.has(imageKey(named.get(w.en))),
     words: [...named.keys()].map((name) => ({ en: name })),
-    promptNote: `\n${CLOTHING_PROMPT_NOTE}`, process: (tile) => cutOutSticker(tile.blob), onSaved: reload, previewClass: 'checker',
+    promptNote: `\n${CLOTHING_PROMPT_NOTE}`, process: (tile) => cutDress(tile.blob), onSaved: reload, previewClass: 'checker',
   });
 }
 
@@ -223,7 +251,7 @@ function addSection(app, reload) {
     }
     try {
       const small = await resizeImage(file);
-      const pic = await cutOutSticker(small.blob);
+      const pic = await cutDress(small.blob);
       const item = { id: `c-${Date.now().toString(36)}`, ...d };
       await setWordImage(app.db, { lessonId: DRESS_IMAGES, word: item.id, ...pic });
       await app.setSetting('dressUpCustom', [...(app.settings.dressUpCustom ?? []), item]);
@@ -282,3 +310,71 @@ function addSection(app, reload) {
   return { el, prefill };
 }
 
+
+/** Công tắc "Hình 3D giả" (SPEC-dressup2 mục 6): mặc định bật. */
+function toy3dSection(app, reload) {
+  const on = app.settings.dressUp3d !== false;
+  const box = h('input', { type: 'checkbox', checked: on });
+  box.addEventListener('change', async () => {
+    await app.setSetting('dressUp3d', box.checked);
+    toast(box.checked ? 'Đã bật hình 3D giả.' : 'Đã tắt hình 3D giả.');
+    reload();
+  });
+  return section('✨ Hình 3D giả',
+    h('label.du-toy3d', {}, box, h('span', { text: ' Bạn nhỏ và quần áo có ánh sáng mềm + bóng đổ nhẹ, nhìn phồng như đồ chơi (không sửa ảnh gốc).' })),
+    h('div.du-fit-doll.du-toy3d-preview', { html: dollSvg('girl', 'front', [], null, { toy3d: on }) }));
+}
+
+/**
+ * "Căn lại" một món (SPEC-dressup2 mục 4): búp bê mặc món đó; dịch 4 hướng (4px), phóng to / thu nhỏ (5%), mặc định;
+ * lưu `dressUpFit[mã ảnh] = { dx, dy, scale, stamp }` — `stamp` là lúc lưu ảnh, thay ảnh thì căn chỉnh cũ không dùng.
+ */
+function openFit(app, item, map, tile, reload) {
+  tile.parentElement?.querySelector(':scope > .du-fit')?.remove();
+  const key = imageKey(item);
+  const stamp = map.stamps?.get(key) ?? 0;
+  const cur = { dx: 0, dy: 0, scale: 1, ...(map.fits?.get(key) ?? {}) };
+  const kid = item.kids?.includes('girl') ? 'girl' : 'boy';
+  const doll = h('div.du-fit-doll');
+  const info = h('span.muted');
+  const draw = () => {
+    const preview = new Map(map);
+    preview.dims = map.dims;
+    preview.fits = new Map(map.fits ?? []);
+    preview.fits.set(key, cur);
+    doll.innerHTML = dollSvg(kid, 'front', [item.id], preview, { toy3d: app.settings.dressUp3d !== false });
+    info.textContent = `Dịch ${cur.dx >= 0 ? '+' : ''}${cur.dx} / ${cur.dy >= 0 ? '+' : ''}${cur.dy} · cỡ ${Math.round(cur.scale * 100)}%`;
+  };
+  const L = FIT_LIMITS;
+  const lim = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
+  const btn = (text, label, f) => h('button.btn', { type: 'button', text, 'aria-label': label, onclick: () => { f(); draw(); } });
+  const panel = h('div.du-fit', { dataset: { item: item.id } },
+    doll,
+    h('div', {},
+      h('div.du-fit-pad', {},
+        btn('➖', 'Thu nhỏ', () => { cur.scale = lim(Math.round((cur.scale - L.zoom) * 100) / 100, L.min, L.max); }),
+        btn('⬆️', 'Lên', () => { cur.dy = lim(cur.dy - L.step, -L.move, L.move); }),
+        btn('➕', 'Phóng to', () => { cur.scale = lim(Math.round((cur.scale + L.zoom) * 100) / 100, L.min, L.max); }),
+        btn('⬅️', 'Sang trái', () => { cur.dx = lim(cur.dx - L.step, -L.move, L.move); }),
+        btn('↺', 'Mặc định', () => { Object.assign(cur, { dx: 0, dy: 0, scale: 1 }); }),
+        btn('➡️', 'Sang phải', () => { cur.dx = lim(cur.dx + L.step, -L.move, L.move); }),
+        h('span'),
+        btn('⬇️', 'Xuống', () => { cur.dy = lim(cur.dy + L.step, -L.move, L.move); }),
+        h('span')),
+      h('p', {}, info),
+      h('div.actions', {},
+        h('button.btn.primary', {
+          type: 'button', text: 'Lưu',
+          onclick: async () => {
+            const all = { ...(app.settings.dressUpFit ?? {}) };
+            if (cur.dx === 0 && cur.dy === 0 && cur.scale === 1) delete all[key];
+            else all[key] = { dx: cur.dx, dy: cur.dy, scale: cur.scale, stamp };
+            await app.setSetting('dressUpFit', all);
+            toast(`Đã lưu căn chỉnh ${item.vi}.`);
+            reload();
+          },
+        }),
+        h('button.btn', { type: 'button', text: 'Đóng', onclick: () => panel.remove() }))));
+  draw();
+  tile.after(panel);
+}

@@ -6,6 +6,7 @@ import {
   ITEMS, ITEM_BY_ID, SLOTS, SLOT_BY_ID, DOLL_W, DOLL_H, wear, cleanOutfit, layerOrder, itemArt, itemIcon, visibleIn, viewFor,
   wardrobeFor, setCustomItems, imageKey, itemBox, sameWord, isPlural,
   wearSentence, takeOffSentence, requestSentence, wearVi, takeOffVi, pickRequest, dollSvg,
+  placeImage, aspectGap, STRETCH_MAX, FIT_LIMITS,
 } from '../../app/js/dress-up.js';
 
 test('tủ đồ có sẵn: 26 món, mã không trùng, món nào cũng có chỗ, tên Việt, hình vẽ mặt trước, khung biểu tượng nằm trong khung bạn nhỏ', () => {
@@ -154,7 +155,7 @@ test('đồ bố mẹ thêm: nạp từ cài đặt, đúng chỗ / đúng bé, 
     assert.equal(itemArt(raincoat, 'front'), '');
     assert.match(itemIcon(raincoat), /🧥/);
     const images = new Map([[imageKey(raincoat), 'blob:raincoat']]);
-    assert.match(itemArt(raincoat, 'front', images), /<image href="blob:raincoat" x="32" y="102" width="136" height="160"/);
+    assert.match(itemArt(raincoat, 'front', images), /<image href="blob:raincoat" x="32.0" y="108.0" width="136.0" height="154.0" preserveAspectRatio="xMidYMin meet"/);
     assert.match(dollSvg('boy', 'front', ['c-1'], images), /data-item="c-1"/);
     setCustomItems([{ id: 'c-9', name: 'tutu', slot: 'bottom', kids: ['girl'] }]);
     assert.equal(ITEMS.length, 27);
@@ -169,7 +170,7 @@ test('đồ bố mẹ thêm: nạp từ cài đặt, đúng chỗ / đúng bé, 
 test('ảnh bố mẹ thay cho món có sẵn: đặt vừa khung món đó; kính không hiện khi quay lưng; ba lô: quai ở trước, ảnh ở sau; ô đổi tay', () => {
   const map = (id, url) => new Map([[imageKey(ITEM_BY_ID.get(id)), url]]);
   const tshirt = ITEM_BY_ID.get('t-shirt');
-  assert.match(itemArt(tshirt, 'front', map('t-shirt', 'u1')), /<image href="u1" x="36" y="104" width="128" height="116"/);
+  assert.match(itemArt(tshirt, 'front', map('t-shirt', 'u1')), /<image href="u1" x="36.0" y="110.0" width="128.0" height="110.0"/);
   assert.match(itemArt(tshirt, 'back', map('t-shirt', 'u1')), /href="u1"/);
   assert.equal(itemArt(ITEM_BY_ID.get('glasses'), 'back', map('glasses', 'u2')), '');
   const bp = ITEM_BY_ID.get('backpack');
@@ -177,4 +178,52 @@ test('ảnh bố mẹ thay cho món có sẵn: đặt vừa khung món đó; kí
   assert.match(itemArt(bp, 'back', map('backpack', 'u3')), /href="u3"/);
   assert.match(itemArt(ITEM_BY_ID.get('umbrella'), 'back', map('umbrella', 'u4')), /scale\(-1 1\)[\s\S]*href="u4"/);
   assert.match(itemIcon(tshirt, map('t-shirt', 'u1')), /viewBox="0 0 100 100"[\s\S]*href="u1"/);
+});
+
+test('SPEC-dressup2 — đặt ảnh tự tạo: đồ mặc thân lệch tỉ lệ ≤ 40% thì kéo vừa khung, lệch hơn giữ tỉ lệ căn trên; giày / mũ căn dưới; phụ kiện căn giữa', () => {
+  assert.equal(aspectGap(1, 1), 0);
+  assert.ok(Math.abs(aspectGap(1.4, 1) - 0.4) < 1e-9);
+  assert.equal(aspectGap(1, 2), 1);
+  const shirt = ITEM_BY_ID.get('shirt');
+  const [x, y, w, h] = itemBox(shirt);
+  // D04: ảnh áo vuông (khung áo hơi ngang) → kéo vừa đúng khung, phủ cả tay.
+  assert.deepEqual(placeImage(shirt, { w: 300, h: 300 }), { x, y: y + 6, w, h: h - 6, par: 'none' }); // cổ áo dưới cằm
+  // D05: ảnh quần thấp, lệch nhiều → giữ tỉ lệ, cạp bám eo (căn trên).
+  const jeans = ITEM_BY_ID.get('jeans');
+  const [, , jw, jh] = itemBox(jeans);
+  assert.ok(aspectGap(300 / 200, jw / jh) > STRETCH_MAX);
+  assert.equal(placeImage(jeans, { w: 300, h: 200 }).par, 'xMidYMin meet');
+  assert.equal(placeImage(jeans, { w: jw * 3, h: jh * 3 }).par, 'none');
+  assert.equal(placeImage(ITEM_BY_ID.get('socks'), { w: 900, h: 100 }).par, 'xMidYMax meet');
+  assert.equal(placeImage(ITEM_BY_ID.get('sneakers') ?? ITEMS.find((i) => i.slot === 'feet'), { w: 100, h: 40 }).par, 'xMidYMax meet');
+  assert.equal(placeImage(ITEMS.find((i) => i.slot === 'head'), { w: 100, h: 60 }).par, 'xMidYMax meet');
+  assert.equal(placeImage(ITEMS.find((i) => i.slot === 'eyes'), { w: 100, h: 30 }).par, 'xMidYMid meet');
+  // Không biết kích thước ảnh (dữ liệu cũ): đồ mặc thân giữ tỉ lệ, căn trên.
+  assert.equal(placeImage(shirt).par, 'xMidYMin meet');
+});
+
+test('SPEC-dressup2 — "Căn lại": dịch / phóng to quanh tâm khung, có giới hạn; itemArt dùng đúng chỗ đặt', () => {
+  const shirt = ITEM_BY_ID.get('shirt');
+  const [x, y, w, h] = itemBox(shirt);
+  const p = placeImage(shirt, { w: 300, h: 300 }, { dx: 8, dy: -4, scale: 1.5 });
+  assert.ok(Math.abs(p.w - w * 1.5) < 1e-9 && Math.abs(p.h - (h - 6) * 1.5) < 1e-9);
+  assert.ok(Math.abs(p.x + p.w / 2 - (x + w / 2 + 8)) < 1e-9);
+  assert.ok(Math.abs(p.y + p.h / 2 - (y + 6 + (h - 6) / 2 - 4)) < 1e-9);
+  const big = placeImage(shirt, null, { dx: 999, dy: -999, scale: 9 });
+  assert.ok(Math.abs(big.w - w * FIT_LIMITS.max) < 1e-9);
+  assert.ok(Math.abs(big.x + big.w / 2 - (x + w / 2 + FIT_LIMITS.move)) < 1e-9);
+  const images = new Map([[imageKey(shirt), 'blob:shirt']]);
+  images.dims = new Map([[imageKey(shirt), { w: 300, h: 300 }]]);
+  const art = itemArt(shirt, 'front', images);
+  assert.match(art, /preserveAspectRatio="none"/);
+  assert.match(art, new RegExp(`width="${w.toFixed(1)}" height="${(h - 6).toFixed(1)}"`));
+});
+
+test('SPEC-dressup2 — 3D giả: chỉ thêm lớp / bộ lọc hiển thị khi bật; tắt thì không có bộ lọc', () => {
+  const on = dollSvg('girl', 'front', ['shirt'], null, { toy3d: true });
+  const off = dollSvg('girl', 'front', ['shirt'], null);
+  assert.match(on, /class="du-svg du-3d"/);
+  assert.match(on, /<filter id="du-toy3d"/);
+  assert.doesNotMatch(off, /du-toy3d|du-3d/);
+  assert.match(off, /class="du-ground"/);
 });

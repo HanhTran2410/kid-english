@@ -331,10 +331,10 @@ export function whiteBackgroundAlpha(rgba, width, height, { hard = 238, soft = 2
 }
 
 /**
- * Sticker từ một ô ảnh lưới: bỏ nền trắng (thành trong suốt), cắt sát hình (chừa 4%), xuất PNG.
+ * Sticker từ một ô ảnh lưới: bỏ nền trắng (thành trong suốt), cắt sát hình (chừa `pad`, mặc định 4%), xuất PNG.
  * Ô không còn gì (ô trống) thì báo lỗi.
  */
-export async function cutOutSticker(blob, max = 320) {
+export async function cutOutSticker(blob, max = 320, { pad: padRatio = 0.04 } = {}) {
   const { source, w0, h0 } = await decode(blob);
   const scale = Math.min(1, max / Math.max(w0, h0));
   const width = Math.max(1, Math.round(w0 * scale));
@@ -364,7 +364,7 @@ export async function cutOutSticker(blob, max = 320) {
   }
   if (x1 < 0) throw new ImageError('Ô này không có hình.');
   ctx.putImageData(img, 0, 0);
-  const pad = Math.round(Math.max(x1 - x0, y1 - y0) * 0.04);
+  const pad = Math.round(Math.max(x1 - x0, y1 - y0) * padRatio);
   const sx = Math.max(0, x0 - pad);
   const sy = Math.max(0, y0 - pad);
   const sw = Math.min(width, x1 + pad + 1) - sx;

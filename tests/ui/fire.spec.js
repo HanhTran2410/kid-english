@@ -580,3 +580,19 @@ test('ART2 Góc bố mẹ → Ảnh Đóng vai: mục chú lính cứu hỏa có
   await page.locator('section').filter({ hasText: 'Chú lính cứu hỏa (mặc đồ)' }).getByRole('button', { name: 'Dùng hình vẽ sẵn' }).click();
   await expect.poll(() => page.evaluate(async () => (await window.kidEnglish.db.getAllByIndex('images', 'lessonId', 'jobs:fire-gear')).length)).toBe(0);
 });
+
+test.describe('điện thoại 360×640', () => {
+  test.use({ viewport: { width: 360, height: 640 } });
+  test('màn chọn nhà: cả 3 nhà nằm gọn trong khung (không bị cắt)', async ({ page }) => {
+    await enterFire(page);
+    await dressUp(page);
+    await expect(play(page)).toHaveAttribute('data-state', 'drive', { timeout: 15000 });
+    const stage = await page.locator('.jb-stage').boundingBox();
+    const homes = await page.locator('.fr-home').evaluateAll((els) => els.map((e) => { const r = e.getBoundingClientRect(); return [r.left, r.right]; }));
+    expect(homes.length).toBeGreaterThanOrEqual(3);
+    for (const [l, r] of homes) {
+      expect(l).toBeGreaterThanOrEqual(stage.x - 1);
+      expect(r).toBeLessThanOrEqual(stage.x + stage.width + 1);
+    }
+  });
+});

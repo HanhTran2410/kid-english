@@ -26,10 +26,19 @@ export async function loadDressImages(app) {
   setCustomItems(app.settings.dressUpCustom);
   const urls = [];
   const map = new Map();
+  // SPEC-dressup2: kích thước ảnh (để đặt vừa khung) + căn chỉnh tay còn hợp lệ (cùng ảnh: `stamp` = lúc lưu ảnh).
+  map.dims = new Map();
+  map.fits = new Map();
+  map.stamps = new Map();
+  const saved = app.settings.dressUpFit ?? {};
   for (const img of await app.db.getAllByIndex('images', 'lessonId', DRESS_IMAGES).catch(() => [])) {
     const url = URL.createObjectURL(mediaBlob(img));
     urls.push(url);
     map.set(img.word, url);
+    if (img.width && img.height) map.dims.set(img.word, { w: img.width, h: img.height });
+    map.stamps.set(img.word, img.createdAt ?? 0);
+    const fit = saved[img.word];
+    if (fit && fit.stamp === (img.createdAt ?? 0)) map.fits.set(img.word, fit);
   }
   return { map, revoke: () => urls.forEach((u) => URL.revokeObjectURL(u)) };
 }
@@ -67,7 +76,7 @@ export function dressUpChooser(app) {
     images = loaded;
     for (const el of kids.querySelectorAll('.du-kid-doll')) {
       const { kid } = el.dataset;
-      el.innerHTML = dollSvg(kid, 'front', cleanOutfit(state.outfits[kid], kid), images.map);
+      el.innerHTML = dollSvg(kid, 'front', cleanOutfit(state.outfits[kid], kid), images.map, { toy3d: app.settings.dressUp3d !== false });
     }
   });
   app.speaker.speak('Who do you want to dress?').catch(() => {});
@@ -194,7 +203,7 @@ export function dressUpScreen(app, params = {}) {
 
   /** Vẽ lại bạn nhỏ; `pop`: món vừa mặc nảy lên. */
   function renderDoll(pop = null) {
-    art.innerHTML = dollSvg(kid, view, outfit, images?.map);
+    art.innerHTML = dollSvg(kid, view, outfit, images?.map, { toy3d: app.settings.dressUp3d !== false });
     doll.dataset.view = view;
     doll.setAttribute('data-worn', outfit.join(' '));
     if (pop) art.querySelector(`[data-item="${pop}"]`)?.classList.add('pop-in');

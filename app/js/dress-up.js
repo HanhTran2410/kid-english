@@ -300,17 +300,63 @@ function builtinArt(item, view) {
   return art.back ?? art.front;
 }
 
+// ---------- SPEC-dressup2: đặt ảnh tự tạo vừa khít người ----------
+/** Đồ mặc thân: kéo vừa khung khi tỉ lệ ảnh gần tỉ lệ khung. */
+export const FIT_SLOTS = new Set(['top', 'outer', 'dress', 'bottom', 'socks']);
+/** Độ lệch tỉ lệ tối đa còn kéo vừa khung (0,4 = một chiều dài hơn 40%). */
+export const STRETCH_MAX = 0.4;
+const NECK_SLOTS = new Set(['top', 'outer', 'dress']);
+const NECK_DROP = 6;
+/** Giới hạn "Căn lại" (Góc bố mẹ). */
+export const FIT_LIMITS = { move: 40, step: 4, min: 0.6, max: 1.6, zoom: 0.05 };
+const clamp = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
+/** Độ lệch tỉ lệ giữa ảnh (`ri` = rộng / cao) và khung (`rb`): 0 = cùng tỉ lệ. */
+export const aspectGap = (ri, rb) => Math.max(ri / rb, rb / ri) - 1;
+
 /**
- * Hình món đồ ở mặt trước / sau (chuỗi SVG, có thể rỗng). `images`: Map khóa ảnh → URL ảnh bố mẹ thay;
- * ảnh đặt vừa khung của món (giữ tỉ lệ). Ba lô: mặt trước vẫn là quai, ảnh ở mặt sau; đồ cầm tay đổi tay khi quay lưng.
+ * Chỗ đặt ảnh món đồ trên người (khung 200 × 400): khung của món (+ căn chỉnh tay `fit`), cách giữ tỉ lệ theo nhóm:
+ * đồ mặc thân lệch ≤ 40% → kéo vừa đúng khung, lệch hơn → giữ tỉ lệ, căn trên (tất: căn dưới); giày, mũ: căn dưới;
+ * phụ kiện khác: căn giữa. `dims` = { w, h } của ảnh (không có thì giữ tỉ lệ).
+ * @returns {{ x: number, y: number, w: number, h: number, par: string }}
+ */
+export function placeImage(item, dims = null, fit = null) {
+  let [x, y, w, h] = itemBox(item);
+  // Ảnh áo / áo khoác / váy: cổ áo là mép trên ảnh → hạ xuống dưới cằm (không đè lên mặt).
+  if (NECK_SLOTS.has(item.slot)) {
+    y += NECK_DROP;
+    h -= NECK_DROP;
+  }
+  if (fit) {
+    const s = clamp(Number(fit.scale) || 1, FIT_LIMITS.min, FIT_LIMITS.max);
+    const cx = x + w / 2 + clamp(Number(fit.dx) || 0, -FIT_LIMITS.move, FIT_LIMITS.move);
+    const cy = y + h / 2 + clamp(Number(fit.dy) || 0, -FIT_LIMITS.move, FIT_LIMITS.move);
+    w *= s;
+    h *= s;
+    x = cx - w / 2;
+    y = cy - h / 2;
+  }
+  const slot = item.slot;
+  let par = 'xMidYMid meet';
+  if (FIT_SLOTS.has(slot)) {
+    const near = dims?.w > 0 && dims?.h > 0 && aspectGap(dims.w / dims.h, w / h) <= STRETCH_MAX;
+    par = near ? 'none' : slot === 'socks' ? 'xMidYMax meet' : 'xMidYMin meet';
+  } else if (slot === 'feet' || slot === 'head') par = 'xMidYMax meet';
+  return { x, y, w, h, par };
+}
+
+/**
+ * Hình món đồ ở mặt trước / sau (chuỗi SVG, có thể rỗng). `images`: Map khóa ảnh → URL ảnh bố mẹ thay (kèm
+ * `images.dims` kích thước ảnh, `images.fits` căn chỉnh tay); ảnh đặt theo `placeImage`. Ba lô: mặt trước vẫn là quai,
+ * ảnh ở mặt sau; đồ cầm tay đổi tay khi quay lưng.
  */
 export function itemArt(item, view, images = null) {
-  const url = images?.get(imageKey(item));
+  const key = imageKey(item);
+  const url = images?.get(key);
   if (!url) return item.art ? builtinArt(item, view) : '';
   if (!visibleIn(item, view)) return item.slot === 'back' && item.art ? item.art.front : '';
   if (item.slot === 'back' && view === 'front') return item.art?.front ?? '';
-  const [x, y, w, h] = itemBox(item);
-  const img = `<image href="${url}" x="${x}" y="${y}" width="${w}" height="${h}" preserveAspectRatio="xMidYMid meet"/>`;
+  const p = placeImage(item, images.dims?.get(key), images.fits?.get(key));
+  const img = `<image href="${url}" x="${p.x.toFixed(1)}" y="${p.y.toFixed(1)}" width="${p.w.toFixed(1)}" height="${p.h.toFixed(1)}" preserveAspectRatio="${p.par}"/>`;
   return item.slot === 'hand' && view === 'back' ? mirror(img) : img;
 }
 
@@ -432,6 +478,20 @@ ${girl ? `<path d="M56 74 Q54 150 72 158 L128 158 Q146 150 144 74 Z" fill="${HAI
     : '<path d="M84 104 Q100 112 116 104 L116 98 L84 98 Z" fill="#5a381c"/>'}`;
 }
 
+/**
+ * "3D giả" (SPEC-dressup2 mục 6): lớp sáng mềm từ trên trái (như ánh đèn) + bóng đổ nhẹ — bộ lọc hiển thị, không sửa ảnh.
+ * Áp cho thân búp bê và từng món đồ khi khung có lớp `du-3d`.
+ */
+const TOY3D_DEFS = `<defs><filter id="du-toy3d" x="-15%" y="-10%" width="130%" height="125%" color-interpolation-filters="sRGB">
+  <feGaussianBlur in="SourceAlpha" stdDeviation="4" result="soft"/>
+  <feSpecularLighting in="soft" surfaceScale="4" specularConstant="0.55" specularExponent="16" lighting-color="#ffffff" result="spec">
+    <fePointLight x="30" y="10" z="160"/>
+  </feSpecularLighting>
+  <feComposite in="spec" in2="SourceAlpha" operator="in" result="shine"/>
+  <feComposite in="SourceGraphic" in2="shine" operator="arithmetic" k1="0" k2="1" k3="0.35" k4="0" result="lit"/>
+  <feDropShadow in="lit" dx="0" dy="2" stdDeviation="1.6" flood-color="#2b1d3a" flood-opacity="0.2"/>
+</filter></defs>`;
+
 /** Sau lưng, tóc nằm trên lớp này trở đi (ba lô, khăn, kính, mũ, ô vẽ đè lên tóc). */
 const ABOVE_HAIR = SLOTS.findIndex((s) => s.id === 'back');
 
@@ -440,7 +500,7 @@ const ABOVE_HAIR = SLOTS.findIndex((s) => s.id === 'back');
  * @param {'boy'|'girl'} kid
  * @param {'front'|'back'} view
  */
-export function dollSvg(kid, view = 'front', outfit = [], images = null) {
+export function dollSvg(kid, view = 'front', outfit = [], images = null, { toy3d = false } = {}) {
   const piece = (id) => {
     const art = itemArt(ITEM_BY_ID.get(id), view, images);
     return art ? `<g class="du-piece" data-item="${id}">${art}</g>` : '';
@@ -449,5 +509,5 @@ export function dollSvg(kid, view = 'front', outfit = [], images = null) {
   const ordered = layerOrder(outfit);
   const below = ordered.filter((id) => view === 'front' || layer(id) < ABOVE_HAIR).map(piece).join('');
   const above = view === 'back' ? backHair(kid) + ordered.filter((id) => layer(id) >= ABOVE_HAIR).map(piece).join('') : '';
-  return `<svg viewBox="0 0 ${DOLL_W} ${DOLL_H}" aria-hidden="true">${bodySvg(kid, view)}${below}${above}</svg>`;
+  return `<svg class="du-svg${toy3d ? ' du-3d' : ''}" viewBox="0 0 ${DOLL_W} ${DOLL_H}" aria-hidden="true">${toy3d ? TOY3D_DEFS : ''}<ellipse class="du-ground" cx="100" cy="364" rx="58" ry="7"/><g class="du-body">${bodySvg(kid, view)}</g>${below}${above}</svg>`;
 }

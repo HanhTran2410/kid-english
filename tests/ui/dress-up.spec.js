@@ -298,3 +298,134 @@ test('chia sẻ đồ Mặc đồ: tạo file (ảnh đồ + đồ đã thêm) �
   await openDressUp(page, 'Bé gái');
   await expect(cloth(page, 'c-flower')).toHaveCount(1);
 });
+
+// ---------- SPEC-dressup2: ảnh tự tạo vừa khít người, "Căn lại", 3D giả ----------
+/** PNG thử: nền trắng, hình chữ nhật viền đậm (`fill`) ở giữa có lề rộng; `w × h` ảnh. */
+async function marginImage(page, { w = 300, h = 300, fill = '#4dabf7' } = {}) {
+  const bytes = await page.evaluate(async ([W, H, F]) => {
+    const c = document.createElement('canvas');
+    c.width = W;
+    c.height = H;
+    const g = c.getContext('2d');
+    g.fillStyle = '#fff';
+    g.fillRect(0, 0, W, H);
+    g.fillStyle = F;
+    g.strokeStyle = '#3d2c5e';
+    g.lineWidth = 8;
+    g.fillRect(W * 0.2, H * 0.2, W * 0.6, H * 0.6);
+    g.strokeRect(W * 0.2, H * 0.2, W * 0.6, H * 0.6);
+    const blob = await new Promise((r) => c.toBlob(r, 'image/png'));
+    return Array.from(new Uint8Array(await blob.arrayBuffer()));
+  }, [w, h, fill]);
+  return { name: 'cloth.png', mimeType: 'image/png', buffer: Buffer.from(bytes) };
+}
+const storedImage = (page, key) => page.evaluate(async (k) => {
+  const img = (await window.kidEnglish.db.getAllByIndex('images', 'lessonId', 'dress:items')).find((r) => r.word === k);
+  if (!img) return null;
+  const bmp = await createImageBitmap(new Blob([img.data], { type: img.mimeType }));
+  const c = document.createElement('canvas');
+  c.width = bmp.width;
+  c.height = bmp.height;
+  const g = c.getContext('2d');
+  g.drawImage(bmp, 0, 0);
+  const center = g.getImageData(Math.floor(bmp.width / 2), Math.floor(bmp.height / 2), 1, 1).data;
+  return { w: img.width, h: img.height, stamp: img.createdAt, centerAlpha: center[3], centerRGB: [center[0], center[1], center[2]] };
+}, key);
+/** Về màn chính (mở lại app). */
+async function toHome(page) {
+  await page.goto('/?nosw');
+  await page.getByRole('button', { name: 'Bắt đầu' }).click();
+}
+async function openDressAdmin(page) {
+  const { openParent } = await import('./helpers.js');
+  await openParent(page);
+  await page.getByRole('button', { name: /Đồ Mặc đồ/ }).click();
+  await expect(page.getByRole('heading', { name: /Đồ riêng bé gái/ })).toBeVisible();
+}
+async function pickFor(page, id, file) {
+  const before = (await storedImage(page, id))?.stamp ?? null;
+  const tile = page.locator(`.sp-admin-item[data-item="${id}"]`);
+  const chooser = page.waitForEvent('filechooser');
+  await tile.getByRole('button', { name: /Chọn ảnh|Thay ảnh/ }).click();
+  await (await chooser).setFiles(file);
+  // Chờ ảnh mới lưu xong (thay ảnh: dấu thời gian đổi).
+  await expect.poll(async () => (await storedImage(page, id))?.stamp ?? null, { timeout: 15000 }).not.toBe(before);
+  await expect(page.locator(`.sp-admin-item[data-item="${id}"] image`)).toHaveCount(1, { timeout: 15000 });
+}
+
+test('SPEC-dressup2 D01 + D04: áo trắng viền đậm trên nền trắng không bị mất (cắt sát lề); ảnh áo vuông mặc vào kéo vừa đúng khung áo (che hết tay)', async ({ page }) => {
+  await fakeSpeech(page);
+  await startApp(page);
+  await openDressAdmin(page);
+  await pickFor(page, 'shirt', await marginImage(page, { fill: '#ffffff' }));
+  const img = await storedImage(page, 'shirt');
+  expect(img.centerAlpha).toBe(255); // thân áo trắng vẫn còn
+  expect(img.centerRGB).toEqual([255, 255, 255]);
+  expect(Math.abs(img.w - img.h)).toBeLessThan(6); // cắt sát quanh hình vuông (lề 1%)
+  expect(img.w).toBeLessThan(200);
+  await toHome(page);
+  await openDressUp(page, 'Bé gái');
+  await cloth(page, 'shirt').click();
+  const el = page.locator('.du-art [data-item="shirt"] image');
+  await expect(el).toHaveAttribute('preserveAspectRatio', 'none');
+  const box = await page.evaluate(async () => (await import('/js/dress-up.js')).itemBox((await import('/js/dress-up.js')).ITEM_BY_ID.get('shirt')));
+  await expect(el).toHaveAttribute('width', box[2].toFixed(1));
+  await expect(el).toHaveAttribute('height', (box[3] - 6).toFixed(1)); // cổ áo hạ dưới cằm
+});
+
+test('SPEC-dressup2 D06 + D09: "Căn lại" ở Góc bố mẹ (phóng to, dịch xuống) → lưu → trò chơi đặt y như xem trước; thay ảnh mới → về mặc định', async ({ page }) => {
+  await fakeSpeech(page);
+  await startApp(page);
+  await openDressAdmin(page);
+  await pickFor(page, 'jeans', await marginImage(page, { w: 200, h: 380 }));
+  const tile = page.locator('.sp-admin-item[data-item="jeans"]');
+  await tile.getByRole('button', { name: 'Căn lại' }).click();
+  const panel = page.locator('.du-fit[data-item="jeans"]');
+  await expect(panel.locator('svg image')).toHaveCount(1);
+  const before = Number(await panel.locator('svg image').getAttribute('width'));
+  await panel.getByRole('button', { name: 'Phóng to' }).click();
+  await panel.getByRole('button', { name: 'Phóng to' }).click();
+  await panel.getByRole('button', { name: 'Xuống' }).click();
+  const after = Number(await panel.locator('svg image').getAttribute('width'));
+  expect(after).toBeCloseTo(before * 1.1, 0);
+  const previewY = await panel.locator('svg image').getAttribute('y');
+  await panel.getByRole('button', { name: 'Lưu' }).click();
+  await expect.poll(() => page.evaluate(() => window.kidEnglish.settings.dressUpFit?.jeans)).toMatchObject({ dx: 0, dy: 4, scale: 1.1 });
+  expect((await page.evaluate(() => window.kidEnglish.settings.dressUpFit.jeans)).stamp).toBe((await storedImage(page, 'jeans')).stamp);
+  // Trò chơi: cùng chỗ đặt.
+  await toHome(page);
+  await openDressUp(page, 'Bé gái');
+  await cloth(page, 'jeans').scrollIntoViewIfNeeded();
+  await cloth(page, 'jeans').click();
+  const game = page.locator('.du-art [data-item="jeans"] image');
+  await expect(game).toHaveAttribute('y', previewY);
+  await expect(game).toHaveAttribute('width', after.toFixed(1));
+  // Thay ảnh mới → căn chỉnh cũ không dùng nữa.
+  await toHome(page);
+  await openDressAdmin(page);
+  await pickFor(page, 'jeans', await marginImage(page, { w: 200, h: 380, fill: '#ff8787' }));
+  await toHome(page);
+  await openDressUp(page, 'Bé gái');
+  const box = await page.evaluate(async () => (await import('/js/dress-up.js')).itemBox((await import('/js/dress-up.js')).ITEM_BY_ID.get('jeans')));
+  await expect(page.locator('.du-art [data-item="jeans"] image')).toHaveAttribute('width', box[2].toFixed(1));
+});
+
+test('SPEC-dressup2 D07: "Hình 3D giả" mặc định bật; tắt / bật nhiều lần chỉ đổi lớp hiển thị (không cộng dồn)', async ({ page }) => {
+  await fakeSpeech(page);
+  await startApp(page);
+  await openDressUp(page, 'Bé gái');
+  await expect(page.locator('.du-art svg.du-3d')).toHaveCount(1);
+  await expect(page.locator('.du-art svg filter#du-toy3d')).toHaveCount(1);
+  await toHome(page);
+  await openDressAdmin(page);
+  const box = page.locator('.du-toy3d input');
+  for (let i = 0; i < 3; i++) {
+    await box.click();
+    await expect(page.getByRole('heading', { name: /Đồ riêng bé gái/ })).toBeVisible();
+  }
+  expect(await page.evaluate(() => window.kidEnglish.settings.dressUp3d)).toBe(false);
+  await toHome(page);
+  await openDressUp(page, 'Bé gái');
+  await expect(page.locator('.du-art svg.du-3d')).toHaveCount(0);
+  await expect(page.locator('.du-art svg filter')).toHaveCount(0);
+});

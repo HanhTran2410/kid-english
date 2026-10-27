@@ -2927,7 +2927,7 @@ img.dr-admin-face { width: 100%; height: 100%; object-fit: contain; }
 .fr-play .jb-tray.off { display: none; }
 .fr-street[hidden] { display: none; }
 .fr-homes { display: flex; justify-content: space-evenly; align-items: flex-end; gap: 2%; padding: 4% 3% 0; min-height: 0; }
-.fr-home { position: relative; height: min(100%, 34vmin); max-width: 30%; aspect-ratio: 1; padding: 0; border: 0; background: none; cursor: pointer; touch-action: manipulation; }
+.fr-home { position: relative; flex: 0 1 auto; width: min(30%, 34vmin); max-height: 100%; aspect-ratio: 1; padding: 0; border: 0; background: none; cursor: pointer; touch-action: manipulation; }
 .fr-home svg { width: 100%; height: 100%; display: block; pointer-events: none; }
 .fr-home.shake { animation: as-shake 0.4s; }
 .fr-home.nudge { animation: hint-hop 0.5s ease-in-out 3; filter: drop-shadow(0 0 10px #ffd43b); }
@@ -3217,3 +3217,18 @@ img.dr-admin-face { width: 100%; height: 100%; object-fit: contain; }
 
 /* Cứu hỏa: ca đưa thang — chú lính cứu hỏa không cầm vòi. */
 .fr-hose.no-hose .ff-nozzle, .fr-hose.no-hose .ff-tip { display: none; }
+
+/* SPEC-dressup2: "3D giả" — sáng mềm + bóng đổ nhẹ cho búp bê và từng món đồ; bóng dưới chân. Tắt: không có gì. */
+.du-ground { fill: transparent; }
+.du-svg.du-3d .du-ground { fill: rgba(43, 29, 58, 0.14); }
+.du-svg.du-3d .du-body, .du-svg.du-3d .du-piece { filter: url(#du-toy3d); }
+.du-fit { display: grid; grid-template-columns: minmax(0, 220px) minmax(0, 1fr); gap: 12px; align-items: center; margin-top: 10px; padding: 10px; border-radius: 14px; background: #f8f9fa; }
+.du-fit-doll { width: 100%; aspect-ratio: 1 / 2; }
+.du-fit-doll svg { width: 100%; height: 100%; display: block; }
+.du-fit-pad { display: grid; grid-template-columns: repeat(3, 52px); gap: 6px; justify-content: start; }
+.du-fit-pad .btn { min-width: 0; padding: 8px 0; font-size: 20px; }
+@media (max-width: 600px) { .du-fit { grid-template-columns: 1fr; } .du-fit-doll { width: 60%; margin: 0 auto; } }
+
+.du-toy3d { display: flex; gap: 8px; align-items: flex-start; }
+.du-toy3d-preview { width: 110px; margin-top: 8px; }
+.sp-admin-items > .du-fit { grid-column: 1 / -1; }
