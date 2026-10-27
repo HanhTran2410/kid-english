@@ -2806,6 +2806,14 @@ img.dr-admin-face { width: 100%; height: 100%; object-fit: contain; }
 .tc-card.shake { animation: dr-shake 0.45s; }
 .tc-card.nudge { animation: hint-hop 0.5s ease-in-out 3; outline: 5px solid var(--yellow); }
 @media (max-width: 600px) { .tc-class { left: 3%; right: 3%; } .tc-picture.tc-cards { gap: 5px; } }
+/* SPEC-jobs2 TE2: hộp sao + sao trong vở từng bạn. */
+.tc-starbox { display: grid; place-items: center; width: 100%; height: 100%; border: 0; background: transparent; font-family: var(--emoji); font-size: clamp(72px, 18vmin, 150px); line-height: 1; cursor: pointer; touch-action: manipulation; }
+.tc-starbox.nudge { animation: hint-hop 0.5s ease-in-out 3; }
+.tc-starbox.hop { animation: dr-hop 0.35s ease-in-out; }
+.tc-star-fly { font-family: var(--emoji); font-size: 44px; line-height: 1; }
+.tc-pupil-stars { position: absolute; left: 50%; bottom: -2%; transform: translateX(-50%); padding: 0 4px; border-radius: 10px; background: rgba(255, 255, 255, 0.85); font-family: var(--emoji); font-size: clamp(14px, 3vmin, 24px); white-space: nowrap; }
+.tc-pupil-stars:empty { display: none; }
+@media (prefers-reduced-motion: reduce) { .tc-starbox.nudge, .tc-starbox.hop { animation: none; } }
 @media (prefers-reduced-motion: reduce) {
   .tc-class.enter, .tc-pupil .tc-pupil-body, .tc-pupil .tc-pupil-fx, .tc-bell.nudge, .tc-bell.ring, .tc-card.shake, .tc-card.nudge { animation: none !important; }
 }

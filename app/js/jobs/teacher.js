@@ -181,7 +181,7 @@ export function planLesson(level, { known = new Set(), rng = Math.random } = {})
   const pinned = globalThis.__kidTest?.teacherActionsAt;
   const to = Number.isInteger(pinned) && pinned >= 0 && pinned <= items.length ? pinned : at;
   items.splice(to, 0, makeActionsItem(level, pupils, { rng }));
-  return { pupils, roll, items };
+  return { pupils, roll, items, stars: planStars(level, pupils, { rng }) };
 }
 
 export const BELL_LINE = ['Ring the bell, teacher!', 'Cô giáo rung chuông nào!'];
@@ -200,3 +200,24 @@ export const cmdLine = (a) => [a.cmd, `${a.vi.charAt(0).toUpperCase()}${a.vi.sli
 /** Thẻ sai: "That's clap. We want to jump!" */
 export const wrongActionLine = (tapped, want) => [`That's ${tapped.short}. We want to ${want.we}!`, `Đó là ${tapped.vi}. Tụi tớ muốn ${want.vi}!`];
 export const ACTIONS_DONE_LINE = ['That was fun!', 'Vui quá!'];
+
+// ---------- SPEC-jobs2 TE2: phát sao cuối buổi (mức 2–3) + chào tạm biệt ----------
+const STAR_NUM = ['zero', 'one', 'two', 'three'];
+const STAR_NUM_VI = ['không', 'một', 'hai', 'ba'];
+const capitalize = (s) => s.charAt(0).toUpperCase() + s.slice(1);
+/** Sinh sẵn: 2 bạn khác nhau trong lớp; mức 2 mỗi bạn 1–2 sao, mức 3 2–3 sao; mức 1 không phát sao. */
+export function planStars(level, pupils, { rng = Math.random } = {}) {
+  if (level < 2) return [];
+  const [lo, hi] = level >= 3 ? [2, 3] : [1, 2];
+  return shuffle(pupils, rng).slice(0, 2).map((pupil) => ({ pupil, n: lo + Math.floor(rng() * (hi - lo + 1)) }));
+}
+const starsWord = (n) => `${STAR_NUM[n]} ${n === 1 ? 'star' : 'stars'}`;
+/** "Two stars for Kitty!" */
+export const starsForLine = (n, name) => [`${capitalize(starsWord(n))} for ${name}!`, `${capitalize(STAR_NUM_VI[n])} ngôi sao cho ${name}!`];
+/** Bông đếm: "One!", "Two!" */
+export const starCountLine = (n) => [`${capitalize(STAR_NUM[n])}!`, `${capitalize(STAR_NUM_VI[n])}!`];
+export const STAR_THANKS_LINE = ['Thank you, teacher!', 'Cảm ơn cô giáo ạ!'];
+/** Chạm thừa khi đã đủ: "I have two stars! Thank you!" */
+export const haveStarsLine = (n) => [`I have ${starsWord(n)}! Thank you!`, `Tớ có ${STAR_NUM_VI[n]} ngôi sao rồi! Cảm ơn cô!`];
+export const GOODBYE_CLASS_LINE = ['Goodbye, class!', 'Tạm biệt cả lớp!'];
+export const GOODBYE_TEACHER_LINE = ['Goodbye, teacher!', 'Chúng em chào cô ạ!'];

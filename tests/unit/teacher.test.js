@@ -4,6 +4,7 @@ import assert from 'node:assert/strict';
 import {
   NOUNS, NOUN_BY_EN, planRound, wrongClaim, sayWhat, claimLine, fixLine, practiceWord, QUESTIONS_PER_ROUND,
   planLesson, CLASS_IDS, ACTIONS, ACTION_BY_ID, whereLine, notMeLine, canWeLine, cmdLine, wrongActionLine,
+  planStars, starsForLine, haveStarsLine, starCountLine,
 } from '../../app/js/jobs/teacher.js';
 
 function seeded(seed = 1) {
@@ -101,4 +102,24 @@ test('SPEC-jobs2 TE1 — câu điểm danh / hành động', () => {
   assert.equal(cmdLine(ACTION_BY_ID.get('stand-up'))[0], 'Stand up!');
   assert.equal(wrongActionLine(ACTION_BY_ID.get('clap'), ACTION_BY_ID.get('jump'))[0], "That's clap. We want to jump!");
   assert.equal(ACTIONS.length, 5);
+});
+
+test('SPEC-jobs2 TE2 — phát sao: mức 1 không có; mức 2–3 hai bạn khác nhau trong lớp; mức 2 1–2 sao, mức 3 2–3 sao', () => {
+  const rng = seeded(37);
+  for (const level of [1, 2, 3]) for (let i = 0; i < 60; i++) {
+    const { pupils, stars } = planLesson(level, { rng });
+    if (level < 2) {
+      assert.deepEqual(stars, []);
+      continue;
+    }
+    assert.equal(stars.length, 2);
+    assert.notEqual(stars[0].pupil, stars[1].pupil);
+    assert.ok(stars.every((s) => pupils.includes(s.pupil)));
+    assert.ok(stars.every((s) => (level >= 3 ? s.n >= 2 && s.n <= 3 : s.n >= 1 && s.n <= 2)));
+  }
+  assert.deepEqual(planStars(1, ['teddy', 'kitty']), []);
+  assert.equal(starsForLine(2, 'Kitty')[0], 'Two stars for Kitty!');
+  assert.equal(starsForLine(1, 'Teddy')[0], 'One star for Teddy!');
+  assert.equal(starCountLine(3)[0], 'Three!');
+  assert.equal(haveStarsLine(2)[0], 'I have two stars! Thank you!');
 });

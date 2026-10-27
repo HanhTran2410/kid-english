@@ -13,18 +13,19 @@ import { patientSvg } from '../patients.js';
 import { PATIENT_BY_ID } from '../doctor.js';
 import { cleanJobState, afterJobRound } from '../jobs/levels.js';
 import { JOBS_BG_IMAGES } from '../jobs/backgrounds.js';
-import { jobScreen, saveSnap, takeSnap, clearSnap, restartAnim, wait, WRONG_LOCK_MS, MAX_NUDGES } from '../jobs/kit.js';
+import { jobScreen, saveSnap, takeSnap, clearSnap, restartAnim, center, wait, WRONG_LOCK_MS, MAX_NUDGES } from '../jobs/kit.js';
 import {
   MAX_LEVEL, NOUN_BY_EN, COUNTABLES, planLesson, claimLine, fixLine, practiceWord,
   YAY_LINE, OOPS_LINE, SURE_LINE, START_LINE, ASK_LINE, END_LINE,
   ACTION_BY_ID, ACTION_STEPS, BELL_LINE, MORNING_LINE, CLASS_MORNING_LINE, whereLine, HERE_LINE, notMeLine, ALL_HERE_LINE,
   WHAT_DO_LINE, canWeLine, cmdLine, wrongActionLine, ACTIONS_DONE_LINE,
+  starsForLine, starCountLine, STAR_THANKS_LINE, haveStarsLine, GOODBYE_CLASS_LINE, GOODBYE_TEACHER_LINE,
 } from '../jobs/teacher.js';
 
 const JOB = 'teacher';
 const SAY_BACK_MS = 2000; // "Oops! What is it?": chờ bé nói tên
 const ACT_MS = 1600; // cả lớp làm theo lệnh (bé làm theo nếu muốn)
-const ACTIVE = ['judge', 'bell', 'roll', 'act'];
+const ACTIVE = ['judge', 'bell', 'roll', 'act', 'stars'];
 const COLOR_HEX = { red: '#ff6b6b', blue: '#4dabf7', yellow: '#ffd43b', green: '#51cf66', pink: '#f783ac', orange: '#ff922b' };
 
 /** Đồ tô màu của mức 3 (viewBox 100 × 100). */
@@ -52,6 +53,9 @@ export function teacherScreen(app, params = {}) {
   let rang = false; // đã rung chuông chào lớp
   let actIdx = 0; // ca hành động: lệnh thứ mấy
   let usedCards = []; // mức 1: thẻ đã chạm
+  let starIdx = 0; // phát sao: bạn thứ mấy
+  let given = 0; // số sao đã phát cho bạn đó
+  let extraTap = false; // chạm hộp sao khi bạn đã đủ sao
   let idx = 0;
   let wrongs = 0;
   let nudges = 0;
@@ -69,6 +73,7 @@ export function teacherScreen(app, params = {}) {
   const pupilName = (id) => PATIENT_BY_ID.get(id)?.name ?? id;
   const rollWant = () => klass?.roll[rollIdx];
   const actWant = () => (q()?.asks ? ACTION_BY_ID.get(q().asks[actIdx]) : null);
+  const starTurn = () => klass?.stars?.[starIdx];
 
   const picture = h('div.tc-picture');
   const board = h('div.tc-board', {}, picture);
@@ -97,6 +102,7 @@ export function teacherScreen(app, params = {}) {
         nudges += 1;
         snap();
         if (state === 'bell') restartAnim(picture.querySelector('.tc-bell'), 'nudge');
+        else if (state === 'stars') restartAnim(picture.querySelector('.tc-starbox'), 'nudge');
         else if (state === 'roll') restartAnim(pupilEl(rollWant()), 'nudge');
         else if (state === 'act') {
           const want = actWant();
@@ -109,7 +115,7 @@ export function teacherScreen(app, params = {}) {
   });
   const { stage, count, talk } = kit;
   stage.append(board, student, notebook, answers, classEl);
-  const stepKey = () => `${kit.epoch}:${phase}:${rollIdx}:${idx}:${actIdx}:${state}`;
+  const stepKey = () => `${kit.epoch}:${phase}:${rollIdx}:${idx}:${actIdx}:${starIdx}:${given}:${state}`;
   const pupilEl = (id) => classEl.querySelector(`.tc-pupil[data-pupil="${id}"]`);
   const cardEl = (id) => picture.querySelector(`.tc-card[data-action="${id}"]`);
 
@@ -118,12 +124,13 @@ export function teacherScreen(app, params = {}) {
     kit.setState(s, false);
     answers.classList.toggle('locked', s !== 'judge');
   }
-  const snap = () => saveSnap(JOB, { level, plan, klass, phase, rollIdx, rang, idx, actIdx, usedCards, wrongs, nudges, recorded: [...recorded] });
+  const snap = () => saveSnap(JOB, { level, plan, klass, phase, rollIdx, rang, idx, actIdx, usedCards, starIdx, given, wrongs, nudges, recorded: [...recorded] });
 
   /** Câu hỏi / yêu cầu của bước đang chờ bé (nhắc, chạm Bông). */
   function promptLines() {
     if (state === 'bell') return [B(BELL_LINE)];
     if (state === 'roll') return [B(whereLine(pupilName(rollWant())))];
+    if (state === 'stars') return [B(starsForLine(starTurn().n, pupilName(starTurn().pupil)))];
     if (state === 'act') {
       const want = actWant();
       return want ? [P(q().askers[actIdx], canWeLine(want))] : [B(WHAT_DO_LINE)];
@@ -136,7 +143,8 @@ export function teacherScreen(app, params = {}) {
     classEl.replaceChildren(...klass.pupils.map((id) => {
       const p = PATIENT_BY_ID.get(id);
       const el = h('button.tc-pupil', { type: 'button', 'aria-label': p.name, dataset: { pupil: id }, onclick: () => tapPupil(id) },
-        h('span.tc-pupil-body', { html: patientSvg(id, { mood: 'happy', title: p.name }) }), h('span.tc-pupil-fx', { 'aria-hidden': 'true' }));
+        h('span.tc-pupil-body', { html: patientSvg(id, { mood: 'happy', title: p.name }) }), h('span.tc-pupil-fx', { 'aria-hidden': 'true' }),
+        h('span.tc-pupil-stars', { 'aria-hidden': 'true' }));
       return el;
     }));
     markHere();
@@ -196,10 +204,10 @@ export function teacherScreen(app, params = {}) {
   }
   /** Bố cục theo bước: điểm danh / hành động — lớp hiện, ✅ ❌ ẩn; chấm hình — ngược lại. */
   function layout() {
-    const showClass = phase === 'roll' || isActions();
+    const showClass = phase === 'roll' || phase === 'stars' || isActions();
     classEl.hidden = !showClass;
     answers.hidden = showClass;
-    notebook.hidden = phase === 'roll';
+    notebook.hidden = phase === 'roll' || phase === 'stars';
   }
 
   // ---------- Chuông + điểm danh (SPEC-jobs2 mục 4.2) ----------
@@ -378,8 +386,102 @@ export function teacherScreen(app, params = {}) {
     if (idx >= plan.length) {
       await talk([B(END_LINE)]);
       if (e !== kit.epoch) return;
-      finishRound();
+      if (klass.stars?.length) startStars();
+      else goodbye();
     } else ask();
+  }
+
+  // ---------- Phát sao cuối buổi (SPEC-jobs2 mục 4.4) ----------
+  function renderPupilStars() {
+    const got = new Map();
+    (klass.stars ?? []).forEach((t, i) => got.set(t.pupil, i < starIdx ? t.n : i === starIdx ? given : 0));
+    for (const el of classEl.children) {
+      const n = got.get(el.dataset.pupil) ?? 0;
+      el.querySelector('.tc-pupil-stars').textContent = '⭐'.repeat(n);
+      el.dataset.stars = String(n);
+    }
+  }
+  async function startStars(resume = false) {
+    const e = kit.epoch;
+    phase = 'stars';
+    if (!resume) {
+      starIdx = 0;
+      given = 0;
+    }
+    layout();
+    renderPupilStars();
+    if (starIdx >= klass.stars.length) {
+      goodbye();
+      return;
+    }
+    const t = starTurn();
+    picture.classList.remove('tc-cards');
+    picture.dataset.kind = 'stars';
+    picture.dataset.word = `${t.pupil}:${t.n}`; // cho test
+    picture.replaceChildren(h('button.tc-starbox', { type: 'button', 'aria-label': 'Hộp sao', text: '⭐', onclick: () => tapStarBox() }));
+    for (const el of classEl.children) el.classList.toggle('called', el.dataset.pupil === t.pupil);
+    setState('stars');
+    snap();
+    await talk([B(starsForLine(t.n, pupilName(t.pupil)))]);
+    if (e === kit.epoch && state === 'stars') kit.armNudge();
+  }
+  /** Mỗi chạm hộp sao: một sao bay vào vở bạn, Bông đếm; đủ → bạn cảm ơn → bạn sau. Chạm thừa: bạn nói đã đủ (không nhầm). */
+  async function tapStarBox() {
+    const t = starTurn();
+    if (state === 'stars-full') {
+      // Chạm thừa: bạn nhún ngay; câu "I have two stars!" nói sau lời cảm ơn (không bị câu đếm đè mất).
+      extraTap = true;
+      restartAnim(pupilEl(t.pupil), 'hop');
+      return;
+    }
+    if (state !== 'stars') return;
+    const e = kit.epoch;
+    kit.clearNudge();
+    given += 1;
+    nudges = 0;
+    const n = given;
+    const full = given >= t.n;
+    if (full) {
+      setState('stars-full');
+      extraTap = false;
+    }
+    // Đủ sao: lưu sẵn bạn sau (ra nền không phát lại).
+    if (full) saveSnap(JOB, { level, plan, klass, phase, rollIdx, rang, idx, actIdx, usedCards, starIdx: starIdx + 1, given: 0, wrongs, nudges, recorded: [...recorded] });
+    else snap();
+    play('pop');
+    const box = picture.querySelector('.tc-starbox');
+    restartAnim(box, 'hop');
+    const ghost = await kit.flyTo(h('span.tc-star-fly', { text: '⭐' }), center(box.getBoundingClientRect()), center(pupilEl(t.pupil).getBoundingClientRect()));
+    kit.removeGhost(ghost);
+    if (e !== kit.epoch) return;
+    renderPupilStars();
+    restartAnim(pupilEl(t.pupil), 'hop');
+    await talk([B(starCountLine(n))]);
+    if (e !== kit.epoch || !full || n !== given) {
+      if (e === kit.epoch && !full) kit.armNudge();
+      return;
+    }
+    play('cheer');
+    await talk([P(t.pupil, STAR_THANKS_LINE)]);
+    if (e !== kit.epoch) return;
+    if (extraTap) {
+      extraTap = false;
+      await talk([P(t.pupil, haveStarsLine(t.n))]);
+      if (e !== kit.epoch) return;
+    }
+    starIdx += 1;
+    given = 0;
+    startStars(true);
+  }
+  async function goodbye() {
+    const e = kit.epoch;
+    setState('busy');
+    phase = 'quiz';
+    classEl.hidden = false;
+    for (const el of classEl.children) el.classList.remove('called');
+    await talk([T(GOODBYE_CLASS_LINE), { who: 'class', line: GOODBYE_TEACHER_LINE }]);
+    if (e !== kit.epoch) return;
+    finishRound();
   }
 
   // ---------- Classroom actions (SPEC-jobs2 mục 4.3) ----------
@@ -477,6 +579,10 @@ export function teacherScreen(app, params = {}) {
     if (state === 'done' || !plan) return;
     kit.cancelAll();
     student.classList.remove('hand', 'oops');
+    if (phase === 'stars') {
+      startStars();
+      return;
+    }
     if (phase === 'roll') {
       rollIdx = 0;
       rang = false;
@@ -523,6 +629,8 @@ export function teacherScreen(app, params = {}) {
       idx = s.idx;
       actIdx = s.actIdx ?? 0;
       usedCards = s.usedCards ?? [];
+      starIdx = s.starIdx ?? 0;
+      given = s.given ?? 0;
       wrongs = s.wrongs ?? 0;
       nudges = s.nudges ?? 0;
       recorded = new Set(s.recorded ?? []);
@@ -531,12 +639,13 @@ export function teacherScreen(app, params = {}) {
       for (const rec of await app.db.getAll('progress').catch(() => [])) if ((rec.practiceCount ?? 0) > 0) known.add(rec.word);
       const lesson = planLesson(level, { known });
       plan = lesson.items;
-      klass = { pupils: lesson.pupils, roll: lesson.roll };
+      klass = { pupils: lesson.pupils, roll: lesson.roll, stars: lesson.stars };
     }
     await loadImages();
     if (kit.signal.aborted) return;
     renderClass();
-    if (idx >= plan.length) {
+    if (phase === 'stars') startStars(true);
+    else if (idx >= plan.length) {
       count.textContent = `${plan.length}/${plan.length}`;
       renderNotebook();
       finishRound();

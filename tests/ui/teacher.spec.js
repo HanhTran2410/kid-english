@@ -41,6 +41,18 @@ async function doActions(page) {
     await page.locator(want ? `.tc-card[data-action="${want}"]` : '.tc-card:not(.used)').first().click();
   }
 }
+/** SPEC-jobs2 TE2: phát đủ sao cho từng bạn (đọc `data-word` "bạn:số sao" của bảng). */
+async function doStars(page) {
+  for (let k = 0; k < 2; k++) {
+    await expect(play(page)).toHaveAttribute('data-state', 'stars', { timeout: 15000 });
+    const [pupil, n] = (await page.locator('.tc-picture').getAttribute('data-word')).split(':');
+    for (let i = 0; i < Number(n); i++) {
+      await expect(play(page)).toHaveAttribute('data-state', 'stars', { timeout: 15000 });
+      await page.locator('.tc-starbox').click();
+      await expect(page.locator(`.tc-pupil[data-pupil="${pupil}"]`)).toHaveAttribute('data-stars', String(i + 1), { timeout: 15000 });
+    }
+  }
+}
 async function judgeRight(page, i) {
   await expect(page.locator('.jb-count')).toHaveText(`${i + 1}/5`, { timeout: 15000 });
   await expect(play(page)).toHaveAttribute('data-state', /judge|act/, { timeout: 15000 });
@@ -87,6 +99,9 @@ test('5 hình → Hoan hô + sticker; đếm lượt; 2–3 câu Bông nói sai'
   }
   expect(wrong >= 2 && wrong <= 3).toBe(true);
   await expect.poll(async () => (await spoken(page)).includes('Thank you, teacher! I learned a lot!'), { timeout: 15000 }).toBe(true);
+  // SPEC-jobs2 TE2: chào tạm biệt lớp (mức 1 không phát sao).
+  await expect.poll(() => spoken(page)).toContain('Goodbye, class!');
+  await expect.poll(() => spoken(page)).toContain('Goodbye, teacher!');
   await expect(page.locator('.prize-sticker')).toBeVisible({ timeout: 15000 });
   expect((await page.evaluate(() => window.kidEnglish.settings.teacherGame)).rounds).toBe(1);
 });
@@ -123,6 +138,7 @@ test('mức 3: đồ tô màu / nhiều con, câu "It\'s a red ball!" / "I see t
     await judgeRight(page, i);
   }
   expect((await spoken(page)).some((t) => /^I know! (It's a (red|blue|yellow|green|pink|orange) (ball|balloon|star)|I see (one|two|three) \w+)!$/.test(t))).toBe(true);
+  await doStars(page);
   await expect(page.locator('.prize-sticker')).toBeVisible({ timeout: 15000 });
 });
 
@@ -279,4 +295,74 @@ test('TE1 mức 2: 5 thẻ; bạn xin "Can we …, teacher?"; thẻ sai → "Tha
   await expect(page.locator('.tc-card.used')).toHaveCount(2);
   await page.locator(`.tc-card[data-action="${want3}"]`).click();
   await expect(page.locator('.tc-star[data-done="true"]')).toHaveCount(1, { timeout: 15000 });
+});
+
+// ---------- SPEC-jobs2 TE2: phát sao cuối buổi ----------
+test('TE2 mức 2: hết 5 việc → "… star(s) for …!" → chạm hộp sao, sao bay vào vở bạn, Bông đếm; chạm thừa → "I have … Thank you!" (không thêm sao); 2 bạn → "Goodbye, class!" → "Goodbye, teacher!" → sticker', async ({ page }) => {
+  await openTeacher(page, { level: 2, rounds: 0, lock: 2, seen: {} });
+  for (let i = 0; i < 5; i++) await judgeRight(page, i);
+  await expect(play(page)).toHaveAttribute('data-state', 'stars', { timeout: 15000 });
+  await expect(page.locator('.tc-class')).toBeVisible();
+  await expect(page.locator('.tc-answers')).toBeHidden();
+  const [pupil, n] = (await page.locator('.tc-picture').getAttribute('data-word')).split(':');
+  const name = await nameOf(page, pupil);
+  const word = ['zero', 'One', 'Two', 'Three'][Number(n)];
+  await expect.poll(() => spoken(page)).toContain(`${word} ${n === '1' ? 'star' : 'stars'} for ${name}!`);
+  let k = (await spoken(page)).length;
+  for (let i = 0; i < Number(n) - 1; i++) {
+    await expect(play(page)).toHaveAttribute('data-state', 'stars', { timeout: 15000 });
+    await page.locator('.tc-starbox').click();
+    await expect(page.locator(`.tc-pupil[data-pupil="${pupil}"]`)).toHaveAttribute('data-stars', String(i + 1), { timeout: 15000 });
+  }
+  // Sao cuối và chạm thừa liền nhau (cùng một bước, như bé chạm hai lần thật nhanh) → bạn nói đã đủ, không thêm sao.
+  await expect(play(page)).toHaveAttribute('data-state', 'stars', { timeout: 15000 });
+  await page.evaluate(() => {
+    const box = document.querySelector('.tc-starbox');
+    box.click();
+    box.click();
+  });
+  await expect.poll(() => saidSince(page, k, /^One!$/)).toBe(true);
+  await expect.poll(() => saidSince(page, k, new RegExp(`^I have ${word.toLowerCase()} stars?! Thank you!$`))).toBe(true);
+  await expect(page.locator(`.tc-pupil[data-pupil="${pupil}"]`)).toHaveAttribute('data-stars', n);
+  await expect.poll(() => spoken(page)).toContain('Thank you, teacher!');
+  await doStars2(page, pupil);
+  await expect.poll(() => spoken(page)).toContain('Goodbye, class!');
+  await expect.poll(() => spoken(page)).toContain('Goodbye, teacher!');
+  await expect(page.locator('.prize-sticker')).toBeVisible({ timeout: 15000 });
+});
+
+/** Bạn thứ hai (sau khi bạn đầu đã đủ sao). */
+async function doStars2(page, first) {
+  await expect.poll(async () => (await play(page).getAttribute('data-state')) === 'stars'
+    && !(await page.locator('.tc-picture').getAttribute('data-word')).startsWith(`${first}:`), { timeout: 15000 }).toBe(true);
+  const [pupil, n] = (await page.locator('.tc-picture').getAttribute('data-word')).split(':');
+  for (let i = 0; i < Number(n); i++) {
+    await expect(play(page)).toHaveAttribute('data-state', 'stars', { timeout: 15000 });
+    await page.locator('.tc-starbox').click();
+    await expect(page.locator(`.tc-pupil[data-pupil="${pupil}"]`)).toHaveAttribute('data-stars', String(i + 1), { timeout: 15000 });
+  }
+}
+
+test('TE2 mức 3: 2–3 sao mỗi bạn; ra nền sau sao đầu → quay lại cùng bạn, vẫn còn sao đã phát', async ({ page }) => {
+  await openTeacher(page, { level: 3, rounds: 0, lock: 3, seen: {} });
+  for (let i = 0; i < 5; i++) await judgeRight(page, i);
+  await expect(play(page)).toHaveAttribute('data-state', 'stars', { timeout: 15000 });
+  const [pupil, n] = (await page.locator('.tc-picture').getAttribute('data-word')).split(':');
+  expect(Number(n)).toBeGreaterThanOrEqual(2);
+  await page.locator('.tc-starbox').click();
+  await expect(page.locator(`.tc-pupil[data-pupil="${pupil}"]`)).toHaveAttribute('data-stars', '1', { timeout: 15000 });
+  await expect(play(page)).toHaveAttribute('data-state', 'stars', { timeout: 15000 });
+  await setVisible(page, 'hidden');
+  await setVisible(page, 'visible');
+  await page.locator('.resume-overlay .start-btn').click();
+  await expect(play(page)).toHaveAttribute('data-state', 'stars', { timeout: 15000 });
+  await expect(page.locator('.tc-picture')).toHaveAttribute('data-word', `${pupil}:${n}`);
+  await expect(page.locator(`.tc-pupil[data-pupil="${pupil}"]`)).toHaveAttribute('data-stars', '1');
+  for (let i = 1; i < Number(n); i++) {
+    await expect(play(page)).toHaveAttribute('data-state', 'stars', { timeout: 15000 });
+    await page.locator('.tc-starbox').click();
+    await expect(page.locator(`.tc-pupil[data-pupil="${pupil}"]`)).toHaveAttribute('data-stars', String(i + 1), { timeout: 15000 });
+  }
+  await doStars2(page, pupil);
+  await expect(page.locator('.prize-sticker')).toBeVisible({ timeout: 15000 });
 });
