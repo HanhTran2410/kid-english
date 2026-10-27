@@ -172,7 +172,7 @@ const practice = (page, word) => page.evaluate(async (w) => (await window.kidEng
 test('JOBS-02: mức 2 khách mua nhiều cái — đưa cái đầu chưa xong bước (vẫn gọi tiếp), đủ số mới "Here you are!"', async ({ page }) => {
   await openShop(page, { level: 2, rounds: 0, lock: 2, seen: {} });
   // Kế hoạch ngẫu nhiên: mở lại tới khi khách đầu mua ≥ 2 cái.
-  for (let i = 0; i < 15 && (await order(page))[0].count < 2; i++) {
+  for (let i = 0; i < 40 && (await order(page))[0].count < 2; i++) {
     await page.getByRole('button', { name: 'Chọn nghề' }).click();
     await page.getByRole('button', { name: 'Bán hàng' }).click();
     await toOrder(page);

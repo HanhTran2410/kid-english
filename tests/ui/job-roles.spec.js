@@ -13,7 +13,7 @@ async function slowSpeech(page, ms = 400) {
       window.__spoken.push(u.text);
       // Đợi kit gắn lớp xong (cùng nhịp) rồi chụp trạng thái các vai.
       setTimeout(() => {
-        const name = (el) => el.dataset.pupil ?? el.dataset.customer ?? el.dataset.patient ?? [...el.classList].find((c) => /^(jb-host|tc-desk|tc-student|sh-customer|dr-patient)$/.test(c));
+        const name = (el) => el.dataset.pupil ?? el.dataset.customer ?? el.dataset.patient ?? [...el.classList].find((c) => /^(jb-host|tc-desk|tc-student|sh-customer|dr-patient|pl-asker|pl-walker|pl-car)$/.test(c));
         window.__roles.push({
           text: u.text,
           speaking: [...document.querySelectorAll('.jb-role.speaking')].map(name),
@@ -105,6 +105,51 @@ test.describe('màn ngang 1180×820', () => {
     const all = await page.evaluate(() => window.__roles);
     expect(all.every((r) => r.quiet.every((q) => q === 'jb-host'))).toBe(true);
   });
+
+  /** Vào Cảnh sát ở mức `level`, cố định chỗ ca đèn / ca qua đường. */
+  async function openPoliceAt(page, level, trafficAt, crossAt) {
+    await page.addInitScript(([t, c]) => { window.__kidTest = { policeTrafficAt: t, policeCrossAt: c }; }, [trafficAt, crossAt]);
+    await startApp(page);
+    await page.evaluate((l) => window.kidEnglish.setSetting('policeGame', { level: l, rounds: 0, lock: l, seen: {} }), level);
+    await page.getByRole('button', { name: 'Trò chơi' }).click();
+    await page.getByRole('button', { name: 'Đóng vai' }).click();
+    await page.getByRole('button', { name: 'Cảnh sát giúp bạn' }).click();
+  }
+
+  test('ROLE-01 Cảnh sát: chú cảnh sát (vẽ sẵn) bên trái nói "Hello! Can I help you?" → chú sáng, bạn thú mờ; bạn thú kể mất đồ → bạn thú sáng; phụ đề câu chú hiện 👮', async ({ page }) => {
+    await slowSpeech(page, 200);
+    await openPoliceAt(page, 1, 2, undefined);
+    await expect(page.locator('.jb-host[data-host="police"] svg.jb-police')).toHaveCount(1);
+    await expect(page.locator('.pl-stage')).toHaveAttribute('data-scene', 'park');
+    await expect.poll(() => rolesAt(page, 'Hello! Can I help you?'), { timeout: 15000 }).toMatchObject({ speaking: ['jb-host'], quiet: ['pl-asker'], side: 'left' });
+    await expect.poll(async () => (await page.evaluate(() => window.__roles)).find((r) => /^Oh no! I lost my/.test(r.text)), { timeout: 15000 })
+      .toMatchObject({ speaking: ['pl-asker'], quiet: ['jb-host'] });
+    await expect(page.locator('.pl-play')).toHaveAttribute('data-state', 'find', { timeout: 15000 });
+    // Chú cảnh sát, bạn thú, đồ không chồng lên nhau.
+    const box = (sel) => page.locator(sel).first().boundingBox();
+    const host = await box('.jb-host');
+    const asker = await box('.pl-asker');
+    expect(host.x + host.width).toBeLessThanOrEqual(asker.x + asker.width * 0.15);
+    for (const item of await page.locator('.pl-item').all()) {
+      const b = await item.boundingBox();
+      expect(b.x).toBeGreaterThanOrEqual(asker.x + asker.width * 0.85);
+    }
+    if (process.env.SHOT_DIR) await page.screenshot({ path: `${process.env.SHOT_DIR}/police-park.png` });
+  });
+
+  test('ROLE-01 Cảnh sát qua đường: bạn thú nhờ → bạn thú sáng, chú mờ; chú nói "Stop! Look left!" → chú sáng, bạn thú (bé cần chạm) không mờ; chú lên góc trên', async ({ page }) => {
+    await slowSpeech(page, 200);
+    await openPoliceAt(page, 2, 2, 0);
+    await expect(page.locator('.pl-stage')).toHaveAttribute('data-scene', 'road', { timeout: 15000 });
+    await expect.poll(() => rolesAt(page, 'Can you help me cross the road?'), { timeout: 15000 }).toMatchObject({ speaking: ['pl-walker'] });
+    expect((await rolesAt(page, 'Can you help me cross the road?')).quiet).toContain('jb-host');
+    await expect.poll(() => rolesAt(page, 'Stop! Look left!'), { timeout: 15000 }).toMatchObject({ speaking: ['jb-host'] });
+    expect((await rolesAt(page, 'Stop! Look left!')).quiet).not.toContain('pl-walker');
+    const host = await page.locator('.jb-host').boundingBox();
+    const road = await page.locator('.pl-road').boundingBox();
+    expect(host.y + host.height).toBeLessThanOrEqual(road.y);
+    if (process.env.SHOT_DIR) await page.screenshot({ path: `${process.env.SHOT_DIR}/police-road.png` });
+  });
 });
 
 test.describe('màn dọc 390×760', () => {
@@ -160,6 +205,7 @@ test('Góc bố mẹ → Ảnh Đóng vai: chọn ảnh cô bán hàng → trò 
   await expect(shopBox.locator('svg.jb-seller')).toHaveCount(1);
   await expect(page.locator('.jb-admin-person[data-person="teacher"] svg.jb-teacher')).toHaveCount(1);
   await expect(page.locator('.jb-admin-person[data-person="student"] svg.jb-student')).toHaveCount(1);
+  await expect(page.locator('.jb-admin-person[data-person="police"] svg.jb-police')).toHaveCount(1);
   const bytes = await pngBlob(page);
   await shopBox.locator('input[type=file]').setInputFiles({ name: 'seller.png', mimeType: 'image/png', buffer: Buffer.from(bytes) });
   await expect(page.locator('.jb-admin-person[data-person="shop"] img.jb-person-preview')).toHaveCount(1, { timeout: 15000 });
@@ -193,4 +239,42 @@ test('Góc bố mẹ → Ảnh Bác sĩ nhí có ô "Chú bác sĩ"; ảnh bố 
   await page.getByRole('button', { name: 'Đóng vai' }).click();
   await page.getByRole('button', { name: 'Bác sĩ nhí' }).click();
   await expect(page.locator('.jb-host img.jb-host-img')).toHaveCount(1, { timeout: 15000 });
+});
+
+test('Góc bố mẹ → Ảnh Đóng vai: ảnh chú cảnh sát bố mẹ thêm thay hình vẽ trong trò Cảnh sát', async ({ page }) => {
+  await fakeSpeech(page);
+  await startApp(page);
+  const { openParent } = await import('./helpers.js');
+  await openParent(page);
+  await page.getByRole('button', { name: /Ảnh Đóng vai/ }).click();
+  const box = page.locator('.jb-admin-person[data-person="police"]');
+  await box.locator('input[type=file]').setInputFiles({ name: 'police.png', mimeType: 'image/png', buffer: Buffer.from(await pngBlob(page)) });
+  await expect(page.locator('.jb-admin-person[data-person="police"] img.jb-person-preview')).toHaveCount(1, { timeout: 15000 });
+  await page.goto('/?nosw');
+  await page.getByRole('button', { name: 'Bắt đầu' }).click();
+  await page.getByRole('button', { name: 'Trò chơi' }).click();
+  await page.getByRole('button', { name: 'Đóng vai' }).click();
+  await page.getByRole('button', { name: 'Cảnh sát giúp bạn' }).click();
+  await expect(page.locator('.jb-host img.jb-host-img')).toHaveCount(1, { timeout: 15000 });
+});
+
+test.describe('Cảnh sát màn dọc 390×760', () => {
+  test.use({ viewport: { width: 390, height: 760 } });
+  test('chú cảnh sát góc dưới trái, không đè bạn thú / đồ', async ({ page }) => {
+    await fakeSpeech(page);
+    await page.addInitScript(() => { window.__kidTest = { policeTrafficAt: 2 }; });
+    await startApp(page);
+    await page.getByRole('button', { name: 'Trò chơi' }).click();
+    await page.getByRole('button', { name: 'Đóng vai' }).click();
+    await page.getByRole('button', { name: 'Cảnh sát giúp bạn' }).click();
+    await expect(page.locator('.pl-play')).toHaveAttribute('data-state', 'find', { timeout: 15000 });
+    const host = await page.locator('.jb-host').boundingBox();
+    const asker = await page.locator('.pl-asker').boundingBox();
+    expect(host.x + host.width).toBeLessThanOrEqual(asker.x + asker.width * 0.2);
+    for (const item of await page.locator('.pl-item').all()) {
+      const b = await item.boundingBox();
+      expect(b.y + b.height <= host.y || b.x >= host.x + host.width).toBe(true);
+    }
+    if (process.env.SHOT_DIR) await page.screenshot({ path: `${process.env.SHOT_DIR}/police-portrait.png` });
+  });
 });

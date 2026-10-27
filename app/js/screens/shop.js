@@ -75,7 +75,8 @@ export function shopScreen(app, params = {}) {
   const bagEl = h('button.sh-bag', { type: 'button', 'aria-label': 'Túi giấy', hidden: true, onclick: () => tapBag() }, h('span', { html: BAG_SVG }));
   // Đồ trên quầy: món bé đưa đặt lên quầy → chạm túi thì bay vào túi → đưa túi cho khách.
   const goodsEl = h('div.sh-goods', { 'aria-label': 'Đồ trên quầy' });
-  const counter = h('div.sh-counter', {}, goodsEl, coinsEl, bagEl, till);
+  // Thùng tiền đầu trái quầy, đồ bé đưa nằm đầu phải (gần khách).
+  const counter = h('div.sh-counter', {}, till, coinsEl, bagEl, goodsEl);
   const basketsEl = h('div.sh-baskets', { hidden: true });
   // SPEC-jobs2 SH2: máy xay (cối có quả đã bỏ vào + nút) và ly sinh tố.
   const jar = h('div.sh-jar');
@@ -364,10 +365,11 @@ export function shopScreen(app, params = {}) {
     goodsEl.replaceChildren(...(show ? order().flatMap((o) => Array.from({ length: got[o.id] ?? 0 },
       () => h('span.sh-good', { dataset: { food: o.id } }, foodFace(foodById(o.id), images, 'sh-good-face')))) : []));
   }
-  /** Chỗ món bay tới trên quầy: sau món cuối đang nằm (chưa có thì giữa khay). */
+  /** Chỗ món bay tới trên quầy: sau món cuối đang nằm (chưa có thì giữa khay). Khay ở đầu phải quầy nên thêm món
+   *  thì cả hàng dịch sang trái nửa ô: món mới nằm sau món cuối nửa ô. */
   function goodsSpot() {
     const r = (goodsEl.lastElementChild ?? goodsEl).getBoundingClientRect();
-    return goodsEl.lastElementChild ? { x: r.right + r.width / 2 + 4, y: r.top + r.height / 2 } : center(r);
+    return goodsEl.lastElementChild ? { x: r.right - r.width / 2 + (r.width + 6) / 2, y: r.top + r.height / 2 } : center(r);
   }
 
   // ---------- Quầy sinh tố (SPEC-jobs2 mục 2.3) ----------

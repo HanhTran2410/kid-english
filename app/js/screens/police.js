@@ -10,6 +10,7 @@ import { patientSvg } from '../patients.js';
 import { PATIENT_BY_ID } from '../doctor.js';
 import { cleanJobState, afterJobRound } from '../jobs/levels.js';
 import { JOBS_BG_IMAGES } from '../jobs/backgrounds.js';
+import { POLICE_SVG, loadPersonImage } from '../jobs/people.js';
 import { jobScreen, saveSnap, takeSnap, clearSnap, restartAnim, center, wait, WRONG_LOCK_MS, MAX_NUDGES } from '../jobs/kit.js';
 import {
   MAX_LEVEL, planRound, lostLine, describeLine, foundLine, wrongLine, HELLO_LINE, LOOK_LINE, BUSH_LINE,
@@ -22,9 +23,9 @@ const ENTER_MS = 650;
 const LEAVE_MS = 600;
 const COLOR_HEX = { red: '#ff6b6b', blue: '#4dabf7', yellow: '#ffd43b', green: '#51cf66', pink: '#f783ac', orange: '#ff922b' };
 const COLOR_EMOJI = { red: '🔴', blue: '🔵', yellow: '🟡', green: '🟢', pink: '🩷', orange: '🟠' };
-/** Chỗ đặt đồ trong công viên (phần trăm của sân khấu, phía phải bạn thú). */
-const SLOTS = [[46, 30], [76, 26], [52, 66], [82, 64]];
-const SLOTS_3 = [[48, 36], [78, 30], [64, 70]];
+/** Chỗ đặt đồ trong công viên (phần trăm của sân khấu, phía phải bạn thú; chú cảnh sát đứng bên trái bạn thú). */
+const SLOTS = [[57, 30], [84, 26], [61, 68], [86, 64]];
+const SLOTS_3 = [[58, 34], [85, 30], [72, 70]];
 /** Màn dọc (điện thoại): đồ ở nửa trên, bạn thú đứng giữa phía dưới. */
 const SLOTS_PORTRAIT = [[27, 16], [73, 16], [27, 44], [73, 44]];
 const SLOTS_PORTRAIT_3 = [[27, 18], [73, 18], [50, 44]];
@@ -85,7 +86,14 @@ export function policeScreen(app, params = {}) {
   const kit = jobScreen(app, {
     job: JOB, background: { lessonId: JOBS_BG_IMAGES, word: JOB }, className: 'pl-play', stageClass: 'pl-stage', title: '👮 Police', helperLabel: 'Bông cảnh sát', cap: 'police',
     resetLabel: 'Tìm lại',
-    icon: (who) => (who === 'asker' ? asker()?.emoji ?? '' : who === 'car' ? '🚗' : '🐰'),
+    // SPEC-roles mục 9: chú cảnh sát đứng bên trái nói câu của Bông (phụ đề 👮); bạn thú / xe nói thì sáng, ai nói người đó sáng.
+    host: { svg: POLICE_SVG, label: 'police' },
+    roles: {
+      of: (who) => (who === 'bong' ? kit.host : who === 'asker' ? [askerEl, walker] : who === 'car' ? car : null),
+      all: () => [kit.host, askerEl, walker, car].filter((el) => !el.closest('[hidden]')), // cảnh nào chỉ vai cảnh đó
+      dim: (el) => el !== walker, // lúc giúp qua đường bé chạm bạn thú: không làm mờ
+    },
+    icon: (who) => (who === 'asker' ? asker()?.emoji ?? '' : who === 'car' ? '🚗' : '👮'),
     onTalk: (who) => askerEl.classList.toggle('talking', who === 'asker'),
     onReset: () => restart(),
     onHelper: () => repeatPrompt(),
@@ -193,6 +201,8 @@ export function policeScreen(app, params = {}) {
   // ---------- Ca ----------
   async function startCase(resume = null) {
     const e = kit.epoch;
+    // Cảnh đường (đèn / qua đường): chú cảnh sát lên góc trên trái, nhường chỗ cho đường và xe.
+    stage.dataset.scene = cur().kind === 'traffic' || cur().kind === 'cross' ? 'road' : 'park';
     wrongs = resume?.wrongs ?? 0;
     nudges = resume?.nudges ?? 0;
     revealed = new Set(resume?.revealed ?? []);
@@ -568,6 +578,16 @@ export function policeScreen(app, params = {}) {
     const k = stepKey();
     talk([A(describeLine(cur(), level))]).then(() => k === stepKey() && kit.armNudge());
   }
+
+  // Ảnh chú cảnh sát bố mẹ thêm (nếu có) thay hình vẽ sẵn.
+  loadPersonImage(app, 'police').then((url) => {
+    if (!url) return;
+    if (kit.signal.aborted) URL.revokeObjectURL(url);
+    else {
+      kit.setHostImage(url);
+      kit.onCleanup(() => URL.revokeObjectURL(url));
+    }
+  });
 
   const s = takeSnap(JOB, { level, continueDirectly: params.continueDirectly });
   if (s) {

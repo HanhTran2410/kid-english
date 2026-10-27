@@ -1,6 +1,6 @@
 # SPEC — Đóng vai: hai bên rõ ràng, ai nói người đó sáng lên
 
-> Phiên bản spec: **draft2** (sửa theo review, mục 8) · Ngày: 2026-10-27 · **Đã làm (0.55.0, mục 9: 0.56.0)**. Áp dụng cho **Bán hàng, Bác sĩ nhí, Cô giáo nhí**; Bưu tá, Cảnh sát, Cứu hỏa làm sau khi cơ chế chung chạy ổn.
+> Phiên bản spec: **draft2** (sửa theo review, mục 8) · Ngày: 2026-10-27 · **Đã làm (0.55.0, mục 9: 0.56.0, Cảnh sát: 0.58.0)**. Áp dụng cho **Bán hàng, Bác sĩ nhí, Cô giáo nhí, Cảnh sát**; Bưu tá, Cứu hỏa làm sau khi cơ chế chung chạy ổn.
 > Lý do: hiện tại Bông không đứng trên sân khấu (chỉ có nút tròn nhỏ ở góc), phụ đề luôn ở giữa phía trên → bé khó biết **ai đang nói, tới lượt ai**.
 > Không đổi: luật chơi, câu nói, giọng (0.54.1), tiến độ, dữ liệu lưu, nút Bông ở góc (chạm để nghe lại).
 
@@ -85,6 +85,8 @@ Không phóng to, không nhún, không chuyển động lặp, không nhấp nh�
 | 🩺 Bác sĩ nhí | chú bác sĩ | áo blouse trắng, ống nghe | 👨‍⚕️ |
 | 👩‍🏫 Cô giáo nhí | cô giáo (bàn cô giáo — bé đóng vai) | tóc dài, kính, áo len tím | 👩‍🏫 |
 | 👩‍🏫 Cô giáo nhí | bạn học sinh (vai học trò kiêm lớp trưởng, trước là Bông) | tóc ngắn, áo trắng, khăn quàng đỏ | 🧒 |
-- Bố mẹ thay bằng ảnh riêng: Góc bố mẹ → **Ảnh Đóng vai** (cô bán hàng, cô giáo, bạn học sinh — kho `jobs:people`) / **Ảnh Bác sĩ nhí** (chú bác sĩ — `doctor:bg`, mã `doctor`). Có prompt nhờ AI vẽ (nền trắng, app tự bỏ nền), "Dùng hình vẽ sẵn" để quay về. **Ảnh chỉ lưu trên máy** (và khi bố mẹ chia sẻ file sang máy khác), không đưa lên GitHub; khuyên dùng hình vẽ, không dùng ảnh chụp người thật.
+| 👮 Cảnh sát (0.58.0) | chú cảnh sát (nói câu của Bông) | mũ kê-pi xanh sao vàng, áo xanh, phù hiệu, còi | 👮 |
+- Bố mẹ thay bằng ảnh riêng: Góc bố mẹ → **Ảnh Đóng vai** (cô bán hàng, cô giáo, bạn học sinh, chú cảnh sát — kho `jobs:people`) / **Ảnh Bác sĩ nhí** (chú bác sĩ — `doctor:bg`, mã `doctor`). Có prompt nhờ AI vẽ (nền trắng, app tự bỏ nền), "Dùng hình vẽ sẵn" để quay về. **Ảnh chỉ lưu trên máy** (và khi bố mẹ chia sẻ file sang máy khác), không đưa lên GitHub; khuyên dùng hình vẽ, không dùng ảnh chụp người thật.
 - Giọng không đổi (câu của vai bên trái vẫn giọng chính). Nút Bông ở góc giữ nguyên (chạm để nghe lại).
 - Bố cục Bán hàng (màn ngang): quầy chỉ nửa trái, cô bán hàng sau quầy, khách đứng trên sàn bên phải, bong bóng món trên đầu khách, máy xay trên đầu quầy. Bưu tá — cảnh tới nhà: nhà đứng trọn trên cỏ, hộp ở bậc cửa, 👍 / 👎 cạnh nhà. Cứu hỏa — ca đưa thang: cây to có cành, thang vẽ dựng từ đất lên cành, chú lính cứu hỏa (không cầm vòi) đứng cạnh, bạn thú trèo xuống đứng dưới gốc.
+- Cảnh sát (0.58.0): công viên — chú cảnh sát bên trái, bạn thú mất đồ đứng cạnh chú, đồ ở nửa phải; cảnh đường (đèn / qua đường) — chú lên góc trên trái (màn dọc: giữa trên), nhường chỗ cho đường và xe. Ai nói người đó sáng: chú ↔ bạn thú (công viên) / bạn thú qua đường ↔ xe ("Can I go?"); vai đang ẩn không bị mờ; lúc giúp qua đường bạn thú (bé cần chạm) không mờ.

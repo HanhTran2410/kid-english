@@ -3243,3 +3243,12 @@ img.dr-admin-face { width: 100%; height: 100%; object-fit: contain; }
 .sh-good.pop { animation: pop 0.35s ease-out; }
 @media (max-width: 600px) { .sh-goods { min-width: 40px; } .sh-good { width: 40px; } }
 @media (prefers-reduced-motion: reduce) { .sh-good.pop { animation: none; } }
+
+/* Cảnh sát (SPEC-roles mục 9): chú cảnh sát đứng bên trái, bạn thú cạnh chú, đồ ở nửa phải; cảnh đường: chú lên góc trên trái. */
+.pl-play .jb-host { z-index: 3; width: min(19%, 190px); }
+.pl-stage[data-scene="road"] .jb-host { top: 3%; bottom: auto; width: min(13%, 130px); }
+@media (min-width: 601px) { .pl-play .pl-asker { left: 22%; } }
+@media (max-width: 600px) {
+  .pl-play .jb-host { top: auto; bottom: 3%; left: 2%; width: 26%; }
+  .pl-stage[data-scene="road"] .jb-host { top: 3%; bottom: auto; left: 50%; translate: -50% 0; width: 20%; }
+}
