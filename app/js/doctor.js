@@ -22,6 +22,14 @@ export const LEAST_SEEN_PER_ROUND = 2;
 export const DOCTOR_ITEM_IMAGES = 'doctor:items';
 export const DOCTOR_BG_IMAGES = 'doctor:bg';
 export const BG_KEY = 'room';
+/** Ảnh chú bác sĩ đứng bên trái màn chơi (SPEC-roles mục 9): cùng nhóm ảnh với ảnh nền, mã DOCTOR_KEY. */
+export const DOCTOR_KEY = 'doctor';
+export const DOCTOR_PROMPT = [
+  'A friendly cartoon male doctor for a children\'s game, upper body (head to waist), facing the viewer, smiling kindly,',
+  'short dark hair, white doctor coat over light blue scrubs, a stethoscope around his neck, waving one hand.',
+  'Cute children\'s picture-book style, simple flat shapes, thick soft dark outlines, bright pastel colors.',
+  'Pure flat white (#FFFFFF) background, no shadow, no scenery, no frame, no text, no logo. One person only, centered, filling most of the square image.',
+].join(' ');
 export const BACKGROUND_PROMPT = [
   "A cheerful children's doctor's examination room for a toddler game, seen from the front.",
   'An empty, soft examination bed in the lower middle of the picture; keep the middle of the picture clear (a toy animal patient will sit on the bed).',

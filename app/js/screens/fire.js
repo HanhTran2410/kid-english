@@ -54,12 +54,22 @@ const FLAME_SVG = `<svg viewBox="0 0 60 80" aria-hidden="true">
   <path d="M30 4 C36 22 54 30 52 52 C50 70 38 78 30 78 C20 78 8 70 8 52 C8 38 18 34 20 20 C26 30 28 22 30 4 Z" fill="#ff922b" stroke="#e8590c" stroke-width="3"/>
   <path d="M30 34 C34 44 42 48 40 60 C39 68 34 72 30 72 C24 72 20 68 20 60 C20 52 26 48 30 34 Z" fill="#ffd43b"/>
 </svg>`;
-const TREE_SVG = `<svg viewBox="0 0 100 120" aria-hidden="true">
-  <rect x="42" y="56" width="16" height="62" rx="4" fill="#a9744a" stroke="#3d2c5e" stroke-width="3"/>
-  <path d="M58 64 L78 50" stroke="#a9744a" stroke-width="7" stroke-linecap="round"/>
-  <circle cx="50" cy="36" r="32" fill="#51cf66" stroke="#2b8a3e" stroke-width="3"/>
-  <circle cx="26" cy="50" r="16" fill="#51cf66" stroke="#2b8a3e" stroke-width="3"/>
-  <circle cx="76" cy="46" r="18" fill="#51cf66" stroke="#2b8a3e" stroke-width="3"/>
+// Cây (viewBox 100 × 100): thân bên phải, một cành dài sang trái (bạn thú ngồi trên cành), tán lá phía trên.
+const TREE_SVG = `<svg viewBox="0 0 100 100" aria-hidden="true">
+  <ellipse cx="62" cy="97" rx="22" ry="3" fill="#8ce99a"/>
+  <path d="M56 98 L58 40 L68 40 L70 98 Z" fill="#a9744a" stroke="#3d2c5e" stroke-width="2" stroke-linejoin="round"/>
+  <path d="M59 50 Q44 44 22 47" fill="none" stroke="#3d2c5e" stroke-width="7" stroke-linecap="round"/>
+  <path d="M59 50 Q44 44 22 47" fill="none" stroke="#a9744a" stroke-width="4.5" stroke-linecap="round"/>
+  <circle cx="64" cy="24" r="22" fill="#51cf66" stroke="#2b8a3e" stroke-width="2"/>
+  <circle cx="42" cy="30" r="14" fill="#51cf66" stroke="#2b8a3e" stroke-width="2"/>
+  <circle cx="84" cy="32" r="13" fill="#51cf66" stroke="#2b8a3e" stroke-width="2"/>
+  <circle cx="70" cy="16" r="3" fill="#ff6b6b"/><circle cx="50" cy="26" r="3" fill="#ff6b6b"/><circle cx="82" cy="30" r="3" fill="#ff6b6b"/>
+</svg>`;
+/** Thang (cùng khung 100 × 100 với cây): dựng từ mặt đất lên tới cành bạn thú đang ngồi. */
+const LADDER_SVG = `<svg viewBox="0 0 100 100" aria-hidden="true">
+  <path d="M10 98 L22 48 M22 98 L34 48" stroke="#3d2c5e" stroke-width="4.5" stroke-linecap="round"/>
+  <path d="M10 98 L22 48 M22 98 L34 48" stroke="#e03131" stroke-width="2.5" stroke-linecap="round"/>
+  ${[0, 1, 2, 3, 4, 5].map((i) => { const t = 0.1 + i * 0.16; const y = 98 - 50 * t; const x = 10 + 12 * t; return `<path d="M${x.toFixed(1)} ${y.toFixed(1)} H${(x + 12).toFixed(1)}" stroke="#868e96" stroke-width="2.5" stroke-linecap="round"/>`; }).join('')}
 </svg>`;
 
 // ---------- Chú lính cứu hỏa (SPEC-art ART2): thân + từng món đồ là một lớp (mặc món nào hiện lớp đó) ----------
@@ -417,6 +427,14 @@ export function fireScreen(app, params = {}) {
     startCase(null, { arrived: true });
   }
 
+  /** Hình chú lính cứu hỏa: cầm vòi (dập lửa) hay không (đưa thang); ảnh lưới thì đổi ô "cầm vòi" ↔ "mặc đủ đồ". */
+  function setHoseFigure(withHose) {
+    hose.classList.toggle('no-hose', !withHose);
+    hose.setAttribute('aria-label', withHose ? 'Vòi phun nước' : 'Chú lính cứu hỏa');
+    const img = hose.querySelector('img.ff-spray');
+    if (img && gearPhotos) img.src = gearPhotos.get(withHose ? 'spray' : 'full');
+  }
+
   // ---------- Vẽ ca ----------
   function renderCase() {
     const c = cur();
@@ -426,9 +444,11 @@ export function fireScreen(app, params = {}) {
     street.hidden = true;
     safetyEl.hidden = true;
     hose.hidden = false;
+    // Ca đưa thang (cứu bạn trên cây): chú lính cứu hỏa không cầm vòi (vòi chỉ dùng khi dập lửa).
+    setHoseFigure(c.kind !== 'tree');
     scene.dataset.kind = c.kind;
     if (c.kind === 'tree') {
-      scene.replaceChildren(h('div.fr-tree', { html: TREE_SVG }), h('div.fr-ladder', { text: '🪜', 'aria-hidden': 'true' }),
+      scene.replaceChildren(h('div.fr-tree', { html: TREE_SVG }), h('div.fr-ladder', { html: LADDER_SVG, 'aria-hidden': 'true' }),
         h('div.fr-climber', { html: patientSvg(r.id, { mood: 'sad', title: r.name }) }));
       residentEl.replaceChildren();
       residentEl.hidden = true;

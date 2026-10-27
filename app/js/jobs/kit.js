@@ -89,8 +89,18 @@ export function jobScreen(app, opts) {
   const count = h('span.ms-count.jb-count');
   const stage = h(`div.jb-stage.${opts.stageClass ?? 'jb-stage-plain'}`);
   // SPEC-roles: Bông đứng trên sân khấu (bên trái) với huy hiệu nghề.
-  const host = opts.host ? h('div.jb-host', { 'aria-hidden': 'true' }, h('span.jb-host-body', { html: bongSvg({ mood: 'happy' }) }),
+  const host = opts.host ? h('div.jb-host', { 'aria-hidden': 'true', dataset: { host: opts.host.label ?? 'bong' } },
+    h('span.jb-host-body', { html: opts.host.svg ?? bongSvg({ mood: 'happy' }) }),
     h('span.jb-host-badge', { text: opts.host.badge ?? '' })) : null;
+  /** Thay hình người đứng bên trái bằng ảnh (bố mẹ thêm); ảnh hỏng thì giữ hình vẽ sẵn. */
+  function setHostImage(url) {
+    if (!host || !url) return;
+    const body = host.querySelector('.jb-host-body');
+    const old = [...body.childNodes];
+    const img = h('img.jb-host-img', { src: url, alt: '', draggable: false });
+    img.addEventListener('error', () => body.replaceChildren(...old), { once: true });
+    body.replaceChildren(img);
+  }
   if (host) stage.append(host);
   const sayBox = h('div.ms-say.jb-say');
   const trayEl = h('div.jb-tray.off', { 'aria-label': opts.trayLabel ?? 'Khay đồ' });
@@ -379,7 +389,7 @@ export function jobScreen(app, opts) {
   }
 
   return {
-    signal, stage, sayBox, trayEl, count, bunny, helper, host, setSpeaker,
+    signal, stage, sayBox, trayEl, count, bunny, helper, host, setSpeaker, setHostImage,
     get epoch() { return epoch; },
     get talking() { return talking; },
     get pressing() { return Boolean(press); },

@@ -84,18 +84,18 @@ test.describe('màn ngang 1180×820', () => {
     expect(where.quiet).toEqual(['tc-desk']); // các bạn không mờ lúc điểm danh
   });
 
-  test('ROLE-01 Bác sĩ nhí: Bông bác sĩ (huy hiệu 🩺) bên trái; bệnh nhân nói thì bệnh nhân sáng, Bông mờ; bệnh nhân không bao giờ bị mờ', async ({ page }) => {
+  test('ROLE-01 Bác sĩ nhí: chú bác sĩ (vẽ sẵn) bên trái; bệnh nhân nói thì bệnh nhân sáng, Bông mờ; bệnh nhân không bao giờ bị mờ', async ({ page }) => {
     await slowSpeech(page, 200);
+    await page.addInitScript(() => { window.__kidTest = { doctorNewAt: 2 }; }); // ca đầu là ca bệnh ("Hello, doctor!")
     await openJob(page, 'Bác sĩ nhí');
-    await expect(page.locator('.jb-host .jb-host-badge')).toHaveText('🩺');
-    // Rửa tay: chạm món đúng theo thứ tự cho tới khi bệnh nhân vào.
-    for (let g = 0; g < 40 && !(await page.evaluate(() => window.__spoken.includes('Hello, doctor!'))); g++) {
-      if ((await page.locator('.dr-play').getAttribute('data-state')) === 'wash') {
-        const want = await page.locator('.dr-wash').getAttribute('data-want').catch(() => null);
-        const item = want ? page.locator(`.jb-tray .dr-item[data-item="${want}"]`) : page.locator('.jb-tray .dr-item').first();
-        await item.click({ timeout: 1000 }).catch(() => {});
-      }
-      await page.waitForTimeout(250);
+    await expect(page.locator('.jb-host[data-host="doctor"] svg.dr-doctor')).toHaveCount(1);
+    // Rửa tay đúng thứ tự (xà phòng → nước → khăn) cho tới khi bệnh nhân vào.
+    await expect(page.locator('.dr-play')).toHaveAttribute('data-state', 'wash', { timeout: 15000 });
+    for (const id of ['soap', 'rinse', 'towel', 'gloves']) {
+      const item = page.locator(`.dr-item[data-item="${id}"]`);
+      if (!(await item.count())) continue;
+      await item.click();
+      await expect(item).toHaveCount(0, { timeout: 15000 });
     }
     await expect.poll(() => rolesAt(page, 'Hello, doctor!'), { timeout: 15000 }).toBeTruthy();
     const hello = await rolesAt(page, 'Hello, doctor!');
@@ -122,4 +122,75 @@ test('ROLE-11: trò chưa khai báo vai (Bưu tá) chạy như cũ — không c�
   await expect.poll(() => page.evaluate(() => window.__spoken.length)).toBeGreaterThan(0);
   await expect(page.locator('.jb-role')).toHaveCount(0);
   await expect(page.locator('.jb-host')).toHaveCount(0);
+});
+
+// ---------- SPEC-roles mục 9: người bên trái (cô bán hàng, chú bác sĩ, cô giáo) — vẽ sẵn, bố mẹ thay ảnh được ----------
+const pngBlob = (page) => page.evaluate(async () => {
+  const c = document.createElement('canvas');
+  c.width = 120;
+  c.height = 120;
+  const g = c.getContext('2d');
+  g.fillStyle = '#fff';
+  g.fillRect(0, 0, 120, 120);
+  g.fillStyle = '#e64980';
+  g.fillRect(30, 20, 60, 90);
+  const blob = await new Promise((r) => c.toBlob(r, 'image/png'));
+  return Array.from(new Uint8Array(await blob.arrayBuffer()));
+});
+
+test('vẽ sẵn: Bán hàng có cô bán hàng, Cô giáo nhí có cô giáo ở bàn, phụ đề câu cô bán hàng hiện 👩', async ({ page }) => {
+  await fakeSpeech(page);
+  await openJob(page, 'Bán hàng');
+  await expect(page.locator('.jb-host[data-host="seller"] svg.jb-seller')).toHaveCount(1);
+  await expect(page.locator('.jb-say .sp-caption[data-who="bong"] .jb-who')).toHaveText('👩', { timeout: 15000 });
+  await page.getByRole('button', { name: 'Chọn nghề' }).click();
+  await page.getByRole('button', { name: 'Cô giáo nhí' }).click();
+  await expect(page.locator('.tc-desk svg.jb-teacher')).toHaveCount(1);
+  await expect(page.locator('.tc-student svg.jb-student')).toHaveCount(1); // vai học trò: bạn học sinh (không còn Bông)
+  await expect(page.locator('.jb-say .sp-caption[data-who="bong"] .jb-who')).toHaveText('🧒', { timeout: 15000 });
+});
+
+test('Góc bố mẹ → Ảnh Đóng vai: chọn ảnh cô bán hàng → trò Bán hàng dùng ảnh; "Dùng hình vẽ sẵn" quay về hình vẽ', async ({ page }) => {
+  await fakeSpeech(page);
+  await startApp(page);
+  const { openParent } = await import('./helpers.js');
+  await openParent(page);
+  await page.getByRole('button', { name: /Ảnh Đóng vai/ }).click();
+  const shopBox = page.locator('.jb-admin-person[data-person="shop"]');
+  await expect(shopBox.locator('svg.jb-seller')).toHaveCount(1);
+  await expect(page.locator('.jb-admin-person[data-person="teacher"] svg.jb-teacher')).toHaveCount(1);
+  await expect(page.locator('.jb-admin-person[data-person="student"] svg.jb-student')).toHaveCount(1);
+  const bytes = await pngBlob(page);
+  await shopBox.locator('input[type=file]').setInputFiles({ name: 'seller.png', mimeType: 'image/png', buffer: Buffer.from(bytes) });
+  await expect(page.locator('.jb-admin-person[data-person="shop"] img.jb-person-preview')).toHaveCount(1, { timeout: 15000 });
+  await page.locator('.child-top .sp-back, .parent-top button').first().click().catch(() => {});
+  await page.goto('/?nosw');
+  await page.getByRole('button', { name: 'Bắt đầu' }).click();
+  await page.getByRole('button', { name: 'Trò chơi' }).click();
+  await page.getByRole('button', { name: 'Đóng vai' }).click();
+  await page.getByRole('button', { name: 'Bán hàng' }).click();
+  await expect(page.locator('.jb-host img.jb-host-img')).toHaveCount(1, { timeout: 15000 });
+  // Quay về hình vẽ sẵn.
+  await page.evaluate(async () => (await import('/js/db.js')).removeWordImage(window.kidEnglish.db, 'jobs:people', 'shop'));
+  await page.getByRole('button', { name: 'Chọn nghề' }).click();
+  await page.getByRole('button', { name: 'Bán hàng' }).click();
+  await expect(page.locator('.jb-host svg.jb-seller')).toHaveCount(1, { timeout: 15000 });
+});
+
+test('Góc bố mẹ → Ảnh Bác sĩ nhí có ô "Chú bác sĩ"; ảnh bố mẹ thêm thay hình chú bác sĩ trong trò chơi', async ({ page }) => {
+  await fakeSpeech(page);
+  await startApp(page);
+  const { openParent } = await import('./helpers.js');
+  await openParent(page);
+  await page.getByRole('button', { name: /Ảnh Bác sĩ nhí/ }).click();
+  const box = page.locator('.jb-admin-person[data-person="doctor"]');
+  await expect(box.locator('svg.dr-doctor')).toHaveCount(1);
+  await box.locator('input[type=file]').setInputFiles({ name: 'doctor.png', mimeType: 'image/png', buffer: Buffer.from(await pngBlob(page)) });
+  await expect(page.locator('.jb-admin-person[data-person="doctor"] img.jb-person-preview')).toHaveCount(1, { timeout: 15000 });
+  await page.goto('/?nosw');
+  await page.getByRole('button', { name: 'Bắt đầu' }).click();
+  await page.getByRole('button', { name: 'Trò chơi' }).click();
+  await page.getByRole('button', { name: 'Đóng vai' }).click();
+  await page.getByRole('button', { name: 'Bác sĩ nhí' }).click();
+  await expect(page.locator('.jb-host img.jb-host-img')).toHaveCount(1, { timeout: 15000 });
 });

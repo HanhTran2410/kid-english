@@ -14,6 +14,7 @@ import { allFoods } from '../feed.js';
 import { loadFeedImages, foodFace } from './feed.js';
 import { cleanJobState, afterJobRound } from '../jobs/levels.js';
 import { JOBS_BG_IMAGES } from '../jobs/backgrounds.js';
+import { SELLER_SVG, loadPersonImage } from '../jobs/people.js';
 import { jobScreen, saveSnap, takeSnap, clearSnap, restartAnim, center, wait, WRONG_LOCK_MS, MAX_NUDGES } from '../jobs/kit.js';
 import {
   MAX_LEVEL, FOOD_LESSON_WORDS, planRound, coinsFor, remaining, orderDone, orderLine, wrongLine, enoughLine, countLine, coinLine,
@@ -84,13 +85,14 @@ export function shopScreen(app, params = {}) {
     job: JOB, background: { lessonId: JOBS_BG_IMAGES, word: JOB }, className: 'sh-play', stageClass: 'sh-stage', title: '🛒 Shop', helperLabel: 'Bông bán hàng', cap: 'shop',
     resetLabel: 'Bán lại', trayLabel: 'Kệ hàng',
     // SPEC-roles: Bông bán hàng đứng bên trái sau quầy, khách bên phải; ai nói người đó sáng.
-    host: { badge: '🛒' },
+    host: { svg: SELLER_SVG, label: 'seller' },
     roles: {
       of: (who) => (who === 'bong' ? kit.host : who === 'customer' ? customerEl : null),
       all: () => [kit.host, customerEl],
       dim: (el) => !(el === customerEl && state === 'give'), // lúc đưa túi bé phải chạm khách
     },
-    icon: (who) => (who === 'customer' ? customer()?.emoji ?? '' : '🐰'),
+    // Câu của Bông do cô bán hàng bên trái nói (SPEC-roles mục 9): phụ đề hiện 👩.
+    icon: (who) => (who === 'customer' ? customer()?.emoji ?? '' : '👩'),
     onTalk: (who) => customerEl.classList.toggle('talking', who === 'customer'),
     onReset: () => restart(),
     onHelper: () => repeatPrompt(),
@@ -730,6 +732,15 @@ export function shopScreen(app, params = {}) {
     startStock();
   });
 
+  // Ảnh cô bán hàng bố mẹ thêm (nếu có) thay hình vẽ sẵn.
+  loadPersonImage(app, 'shop').then((url) => {
+    if (!url) return;
+    if (kit.signal.aborted) URL.revokeObjectURL(url);
+    else {
+      kit.setHostImage(url);
+      kit.onCleanup(() => URL.revokeObjectURL(url));
+    }
+  });
   kit.onCleanup(() => images?.revoke());
   return kit.cleanup;
 }

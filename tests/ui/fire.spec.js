@@ -150,12 +150,16 @@ test('mức 2: hết lửa hỏi "How many fires?" — 3 thẻ số, chọn nh�
     }
     if ((await page.locator('.fr-scene').getAttribute('data-kind')) === 'tree') {
       sawTree = true;
+      // Đưa thang: chú lính cứu hỏa không cầm vòi.
+      await expect(page.locator('.fr-hose')).toHaveClass(/no-hose/);
+      await expect(page.locator('.fr-hose .ff-nozzle')).toBeHidden();
       const n = (await spoken(page)).length;
       await page.locator('.jb-tray .dr-item').click();
       await expect.poll(() => saidSince(page, n, /^Thank you! I am down!$/), { timeout: 15000 }).toBe(true);
       continue;
     }
     const n = await page.locator('.fr-fire').count();
+    if (n) await expect(page.locator('.fr-hose .ff-nozzle')).toBeVisible(); // dập lửa: cầm vòi
     for (let k = 0; k < n; k++) {
       await page.locator('.fr-fire:not(.out)').first().click();
       await expect(page.locator('.fr-fire.out')).toHaveCount(k + 1, { timeout: 15000 });

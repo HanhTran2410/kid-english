@@ -8,11 +8,11 @@ import { h } from '../ui.js';
 import { latestImageForWord, mediaBlob } from '../db.js';
 import { play } from '../speech/sfx.js';
 import { markPracticed } from '../player/track.js';
-import { bongSvg } from '../bong.js';
 import { patientSvg } from '../patients.js';
 import { PATIENT_BY_ID } from '../doctor.js';
 import { cleanJobState, afterJobRound } from '../jobs/levels.js';
 import { JOBS_BG_IMAGES } from '../jobs/backgrounds.js';
+import { TEACHER_SVG, STUDENT_SVG, loadPersonImage } from '../jobs/people.js';
 import { jobScreen, saveSnap, takeSnap, clearSnap, restartAnim, center, wait, WRONG_LOCK_MS, MAX_NUDGES } from '../jobs/kit.js';
 import {
   MAX_LEVEL, NOUN_BY_EN, COUNTABLES, planLesson, claimLine, fixLine, practiceWord,
@@ -77,19 +77,37 @@ export function teacherScreen(app, params = {}) {
 
   const picture = h('div.tc-picture');
   const board = h('div.tc-board', {}, picture);
-  const student = h('div.tc-student', { html: bongSvg({ mood: 'happy' }), 'aria-hidden': 'true' });
+  // SPEC-roles mục 9: vai học trò (kiêm lớp trưởng) là một bạn học sinh vẽ sẵn (khăn quàng đỏ); bố mẹ thay ảnh được.
+  const studentFace = h('span.tc-student-face', { html: STUDENT_SVG });
+  const student = h('div.tc-student', { 'aria-hidden': 'true' }, studentFace);
+  loadPersonImage(app, 'student').then((url) => {
+    if (!url) return;
+    const img = h('img.tc-student-img', { src: url, alt: '', draggable: false });
+    img.addEventListener('error', () => { studentFace.innerHTML = STUDENT_SVG; }, { once: true });
+    studentFace.replaceChildren(img);
+    urls.push(url);
+  });
   const notebook = h('div.tc-notebook', { 'aria-label': 'Vở của Bông' });
   const yesBtn = h('button.tc-answer.tc-yes', { type: 'button', 'aria-label': 'Đúng', text: '✅', onclick: () => judge(true) });
   const noBtn = h('button.tc-answer.tc-no', { type: 'button', 'aria-label': 'Sai', text: '❌', onclick: () => judge(false) });
   const answers = h('div.tc-answers', {}, yesBtn, noBtn);
   const classEl = h('div.tc-class', { hidden: true });
   // SPEC-roles: bàn cô giáo (bé đóng vai cô giáo, máy đọc giùm) bên trái; lớp học + Bông bên phải.
-  const desk = h('div.tc-desk', { 'aria-hidden': 'true' }, h('span.tc-desk-face', { text: '👩‍🏫' }), h('span.tc-desk-top', { text: 'Teacher' }));
+  const deskFace = h('span.tc-desk-face', { html: TEACHER_SVG });
+  const desk = h('div.tc-desk', { 'aria-hidden': 'true' }, deskFace, h('span.tc-desk-top', { text: 'Teacher' }));
+  // Ảnh cô giáo bố mẹ thêm (nếu có) thay hình vẽ sẵn (SPEC-roles mục 9).
+  loadPersonImage(app, 'teacher').then((url) => {
+    if (!url) return;
+    const img = h('img.tc-desk-img', { src: url, alt: '', draggable: false });
+    img.addEventListener('error', () => { deskFace.innerHTML = TEACHER_SVG; }, { once: true });
+    deskFace.replaceChildren(img);
+    urls.push(url);
+  });
 
   const kit = jobScreen(app, {
     job: JOB, background: { lessonId: JOBS_BG_IMAGES, word: JOB }, className: 'tc-play', stageClass: 'tc-stage', title: '👩‍🏫 Teacher', helperLabel: 'Bông học trò', cap: 'teacher',
     resetLabel: 'Học lại',
-    icon: (who) => (who === 'teacher' ? '👩‍🏫' : who === 'class' ? '🏫' : who.startsWith('p:') ? PATIENT_BY_ID.get(who.slice(2))?.emoji ?? '' : '🐰'),
+    icon: (who) => (who === 'teacher' ? '👩‍🏫' : who === 'class' ? '🏫' : who.startsWith('p:') ? PATIENT_BY_ID.get(who.slice(2))?.emoji ?? '' : '🧒'),
     pitch: (who) => (who.startsWith('p:') ? PATIENT_BY_ID.get(who.slice(2))?.pitch : who === 'class' ? 1.3 : undefined),
     onTalk: (who) => {
       student.classList.toggle('talking', who === 'bong');

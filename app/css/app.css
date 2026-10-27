@@ -2725,12 +2725,22 @@ img.dr-admin-face { width: 100%; height: 100%; object-fit: contain; }
 .ps-thumbs { position: absolute; right: 4%; top: 6%; display: flex; gap: 16px; }
 .ps-thumb { width: clamp(76px, 13vmin, 110px); aspect-ratio: 1; border-radius: 26px; border: 0; background: #fff; box-shadow: var(--shadow); font-family: var(--emoji); font-size: clamp(40px, 7vmin, 60px); cursor: pointer; touch-action: manipulation; }
 .ps-thumb.nudge { animation: hint-hop 0.5s ease-in-out 3; outline: 5px solid var(--yellow); }
+/* Cảnh tới nhà (màn ngang): ngôi nhà đứng trọn trên bãi cỏ (không bị khung cắt), hộp quà ở bậc cửa cạnh bạn thú,
+   đồ trong hộp nhảy lên ngay trên hộp, 👍 / 👎 cạnh nhà. */
+.ps-front { left: 12%; bottom: 9%; width: 38%; height: 72%; border-bottom: 4px solid #3d2c5e; border-radius: 12px; }
+.ps-front::after { content: ''; position: absolute; left: 22%; bottom: -10%; width: 56%; height: 10%; border-radius: 0 0 14px 14px; background: #ced4da; border: 3px solid #3d2c5e; border-top: 0; }
+.ps-visitor, .ps-big-door { left: 30%; width: 40%; height: 64%; }
+.ps-box { left: 52%; right: auto; bottom: 3%; width: min(15%, 150px); }
+.ps-box-body { font-size: clamp(70px, 15vmin, 140px); }
+.ps-item { left: 52%; right: auto; bottom: 34%; width: min(15%, 150px); }
+.ps-thumbs { left: 70%; right: auto; top: 30%; }
 @media (max-width: 600px) {
   .ps-desk { flex-direction: column; gap: 3%; }
   .ps-envelope { flex: 0 1 auto; width: 58%; }
-  .ps-front { width: 54%; height: 70%; }
-  .ps-box { width: 36%; right: 4%; }
-  .ps-item { right: 6%; width: 34%; }
+  .ps-front { left: 5%; width: 58%; height: 60%; bottom: 12%; }
+  .ps-box { left: 64%; width: 32%; bottom: 4%; }
+  .ps-item { left: 64%; width: 32%; bottom: 30%; }
+  .ps-thumbs { left: auto; right: 4%; top: 6%; }
 }
 @media (prefers-reduced-motion: reduce) {
   .ps-desk.enter, .ps-visit.enter, .ps-envelope.hop, .ps-big-door.nudge, .ps-big-door.knock, .ps-box.nudge, .ps-item.pop-out, .ps-thumb.nudge { animation: none; }
@@ -2762,7 +2772,8 @@ img.dr-admin-face { width: 100%; height: 100%; object-fit: contain; }
 .tc-picture.pop { animation: pop 0.4s ease-in-out; }
 .tc-picture.nudge { animation: hint-hop 0.5s ease-in-out 2; }
 .tc-student { position: absolute; left: 3%; bottom: 4%; width: min(24%, 190px); aspect-ratio: 1; transform-origin: 50% 90%; }
-.tc-student svg { width: 100%; height: 100%; }
+.tc-student svg, .tc-student-img { width: 100%; height: 100%; display: block; object-fit: contain; }
+.tc-student-face { display: block; width: 100%; height: 100%; }
 .tc-student::after { content: '✋'; position: absolute; right: -4%; top: -14%; font-family: var(--emoji); font-size: clamp(30px, 6vmin, 54px); opacity: 0; transition: opacity 150ms; }
 .tc-student.hand::after { opacity: 1; }
 .tc-student.oops::after { content: '❓'; opacity: 1; }
@@ -3008,11 +3019,17 @@ img.dr-admin-face { width: 100%; height: 100%; object-fit: contain; }
 .fr-number.right { outline: 6px solid #63d2a8; }
 .fr-number.nudge { animation: hint-hop 0.5s ease-in-out 3; outline: 5px solid var(--yellow); }
 .fr-number.shake { animation: as-shake 0.4s; }
-.fr-ladder { position: absolute; left: 62%; top: 34%; font-family: var(--emoji); font-size: clamp(70px, 16vmin, 140px); opacity: 0; transform: rotate(-20deg); transition: opacity 250ms; pointer-events: none; }
-.fr-climber { position: absolute; left: 60%; top: 14%; width: 30%; aspect-ratio: 240 / 300; transition: top 0.8s ease-in-out, left 0.8s ease-in-out; }
+/* Ca đưa thang: cây to có cành, bạn thú ngồi trên cành; thang (hình vẽ) dựng từ đất lên cành; bạn trèo xuống chân thang. */
+.fr-ladder { position: absolute; inset: 0; opacity: 0; transform: translateY(8%); transition: opacity 250ms, transform 300ms ease-out; pointer-events: none; }
+.fr-ladder svg { width: 100%; height: 100%; display: block; }
+.fr-climber { position: absolute; left: 16%; top: 17%; width: 24%; aspect-ratio: 240 / 300; transition: top 0.8s ease-in-out, left 0.8s ease-in-out; }
 .fr-climber .dr-svg { width: 100%; height: 100%; display: block; }
-.fr-scene.laddered .fr-ladder { opacity: 1; }
-.fr-scene.down .fr-climber { top: 66%; left: 70%; }
+.fr-scene.laddered .fr-ladder { opacity: 1; transform: none; }
+.fr-scene.down .fr-climber { top: 70%; left: 28%; }
+@media (min-width: 601px) {
+  .fr-scene[data-kind="tree"] { transform: translateX(-20%); }
+  .fr-hose.no-hose { left: 30%; width: clamp(110px, 24vmin, 220px); }
+}
 @media (max-width: 600px) {
   .fr-scene { height: 62%; bottom: 18%; transform: translateX(-50%); }
   .fr-resident { height: 30%; }
@@ -3144,7 +3161,8 @@ img.dr-admin-face { width: 100%; height: 100%; object-fit: contain; }
 /* ---------- SPEC-roles: hai bên rõ ràng, ai nói người đó sáng lên ---------- */
 .jb-host { position: absolute; left: 2%; bottom: 3%; width: min(17%, 170px); aspect-ratio: 1; z-index: 2; pointer-events: none; }
 .jb-host-body { display: block; width: 100%; height: 100%; transform-origin: 50% 90%; }
-.jb-host-body svg { width: 100%; height: 100%; display: block; }
+.jb-host-body svg, .jb-host-img { width: 100%; height: 100%; display: block; object-fit: contain; }
+.jb-host-badge:empty { display: none; }
 .jb-host-badge { position: absolute; left: 50%; bottom: 10%; transform: translateX(-50%); display: grid; place-items: center; width: 34%; aspect-ratio: 1; border-radius: 50%; background: #fff; box-shadow: var(--shadow); font-family: var(--emoji); font-size: clamp(16px, 3vmin, 28px); line-height: 1; }
 .jb-role { transition: scale 0.2s, opacity 0.2s, filter 0.2s; }
 .jb-role.speaking { scale: 1.06; opacity: 1; z-index: 3; filter: drop-shadow(0 0 4px #ffd43b) drop-shadow(0 0 12px rgba(255, 212, 59, 0.9)); }
@@ -3166,23 +3184,36 @@ img.dr-admin-face { width: 100%; height: 100%; object-fit: contain; }
   .jb-role.speaking { scale: none; }
   .jb-host.speaking .jb-host-body { animation: none; }
 }
-/* Bán hàng: khách sang bên phải, máy xay giữa Bông và khách. */
-.sh-play .sh-customer { left: 30%; }
-.sh-play .jb-host { bottom: 22%; z-index: 0; width: min(20%, 230px); } /* Bông đứng sau quầy như khách */
-.sh-play .sh-blender { left: 21%; }
-.sh-play .sh-cup { left: calc(21% + min(20%, 150px) + 12px); }
-@media (max-width: 600px) { .sh-play .sh-customer { left: 0; } .sh-play .sh-blender { left: 4%; } .sh-play .sh-cup { left: 33%; } }
+/* Bán hàng (màn ngang): quầy chỉ nửa trái, cô bán hàng đứng sau quầy; khách đứng trên sàn bên phải, bong bóng món trên
+   đầu khách; máy xay + ly sinh tố đặt trên đầu quầy phía khách. Màn dọc giữ bố cục dọc (quầy ngang dưới, khách giữa). */
+@media (min-width: 601px) {
+  .sh-play .sh-counter { right: auto; width: 54%; height: 30%; padding: 0 3%; }
+  .sh-play .jb-host { left: 12%; bottom: 25%; width: min(24%, 230px); z-index: 1; }
+  .sh-play .sh-customer { left: 60%; right: 2%; bottom: 4%; height: 62%; }
+  .sh-play .sh-wish { left: 79%; right: auto; top: 13%; transform: translateX(-50%); }
+  .sh-play .sh-blender { left: 42%; bottom: 30%; width: min(13%, 130px); z-index: 3; }
+  .sh-play .sh-cup { left: calc(42% + min(13%, 130px) + 10px); bottom: 30%; width: min(6%, 56px); z-index: 3; }
+}
+@media (max-width: 600px) { .sh-play .sh-blender { left: 4%; } .sh-play .sh-cup { left: 33%; } }
 /* Cô giáo nhí: bàn cô giáo bên trái, Bông (học trò) bên phải, vở của Bông lên góc trên phải. */
 .tc-desk { position: absolute; left: 3%; bottom: 4%; width: min(19%, 170px); display: grid; justify-items: center; pointer-events: none; }
-.tc-desk-face { font-family: var(--emoji); font-size: clamp(56px, 12vmin, 110px); line-height: 1; }
+.tc-desk-face { display: block; width: 86%; aspect-ratio: 1; }
+.tc-desk-face svg, .tc-desk-img { width: 100%; height: 100%; display: block; object-fit: contain; }
 .tc-desk-top { width: 100%; margin-top: -6px; padding: 6px 0 14px; border-radius: 10px 10px 4px 4px; background: #a9744a; border: 4px solid #7a5230; color: #fff; text-align: center; font-weight: 900; font-size: clamp(14px, 2.6vmin, 22px); }
 .tc-stage .tc-student { left: auto; right: 3%; }
 .tc-stage .tc-notebook { bottom: auto; top: 5%; }
 @media (max-width: 600px) {
   /* Màn dọc: bàn cô giáo (trái) và Bông (phải) ngay dưới bảng, không đè lên hàng các bạn. */
   .tc-desk { top: 47%; bottom: auto; width: 20%; }
-  .tc-desk-face { font-size: 38px; }
+  .tc-desk-face { width: 80%; }
   .tc-desk-top { padding: 3px 0 6px; font-size: 12px; }
   .tc-stage .tc-student { top: 45%; bottom: auto; width: 22%; }
   .tc-stage .tc-notebook { top: 54%; right: auto; left: 50%; transform: translateX(-50%); }
 }
+
+/* Góc bố mẹ: ảnh người đứng bên trái màn Đóng vai (SPEC-roles mục 9). */
+.jb-person-preview { display: block; width: 160px; height: 160px; object-fit: contain; border-radius: 14px; background: #f8f9fa; }
+.jb-person-preview svg { width: 100%; height: 100%; display: block; }
+
+/* Cứu hỏa: ca đưa thang — chú lính cứu hỏa không cầm vòi. */
+.fr-hose.no-hose .ff-nozzle, .fr-hose.no-hose .ff-tip { display: none; }

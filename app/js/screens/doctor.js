@@ -19,7 +19,7 @@ import {
 import {
   CASE_BY_ID, PATIENT_BY_ID, ITEM_BY_ID, REGIONS, regionAt, regionPoint, stepsFor, trayFor,
   cleanDoctorState, afterDoctorRound, afterHealed, stepPrompt, wrongItemLine, doneLine, betterLine,
-  DOCTOR_ITEM_IMAGES, DOCTOR_BG_IMAGES, BG_KEY, COME_IN_LINE, HELLO_DOCTOR_LINE, GOOD_JOB_LINE, BYE_LINE, yesTouchLine, wrongTouchLine,
+  DOCTOR_ITEM_IMAGES, DOCTOR_BG_IMAGES, BG_KEY, DOCTOR_KEY, COME_IN_LINE, HELLO_DOCTOR_LINE, GOOD_JOB_LINE, BYE_LINE, yesTouchLine, wrongTouchLine,
   WASH_BY, washFor, nextWash, WASH_START_LINE, WASH_DONE_LINE, washFirstLine, WASH_IMAGES, WASH_FRAMES, washFrame,
   STICKER_COLORS, planSticker, stickerId, matchesSticker, STICKER_ASK_LINE, stickerWantLine, stickerLoveLine, stickerWrongLine,
   planDoctorRound, CHECKUP_HELLO_LINE, MEASURE_LINE, FROM_BOTTOM_LINE, GROWING_LINE, HOW_MANY_BLOCKS_LINE, TALLER_Q_LINE,
@@ -104,6 +104,7 @@ export async function loadDoctorImages(app) {
   const urls = [];
   const item = new Map();
   let bg = null;
+  let doctor = null; // ảnh chú bác sĩ bố mẹ thêm (SPEC-roles mục 9)
   const wash = new Map(); // ảnh lưới rửa tay (SPEC-art ART1)
   for (const [lessonId, kind] of [[DOCTOR_ITEM_IMAGES, 'item'], [DOCTOR_BG_IMAGES, 'bg'], [WASH_IMAGES, 'wash']]) {
     for (const img of await app.db.getAllByIndex('images', 'lessonId', lessonId).catch(() => [])) {
@@ -112,10 +113,35 @@ export async function loadDoctorImages(app) {
       if (kind === 'item') item.set(img.word, url);
       else if (kind === 'wash') wash.set(img.word, url);
       else if (img.word === BG_KEY) bg = url;
+      else if (img.word === DOCTOR_KEY) doctor = url;
     }
   }
-  return { item, bg, wash, revoke: () => urls.forEach((u) => URL.revokeObjectURL(u)) };
+  return { item, bg, doctor, wash, revoke: () => urls.forEach((u) => URL.revokeObjectURL(u)) };
 }
+
+/**
+ * Chú bác sĩ vẽ sẵn (viewBox 200 × 200, nửa người): áo blouse trắng, áo trong xanh, ống nghe, túi áo có bút.
+ * Đứng bên trái màn chơi thay Bông (SPEC-roles mục 9); bố mẹ thay được bằng ảnh riêng (Góc bố mẹ → Ảnh Bác sĩ nhí).
+ */
+export const DOCTOR_SVG = `<svg class="dr-doctor" viewBox="0 0 200 200" aria-hidden="true">
+  <path d="M26 200 C26 152 58 128 100 128 C142 128 174 152 174 200 Z" fill="#fff" stroke="#3d2c5e" stroke-width="4" stroke-linejoin="round"/>
+  <path d="M80 130 L100 168 L120 130 Z" fill="#74c0fc" stroke="#3d2c5e" stroke-width="3" stroke-linejoin="round"/>
+  <path d="M80 130 L92 200 M120 130 L108 200" stroke="#3d2c5e" stroke-width="3" fill="none"/>
+  <rect x="128" y="160" width="22" height="18" rx="3" fill="#fff" stroke="#3d2c5e" stroke-width="2.5"/>
+  <path d="M134 166 V152" stroke="#e03131" stroke-width="4" stroke-linecap="round"/>
+  <path d="M50 160 h14 M57 153 v14" stroke="#e03131" stroke-width="4" stroke-linecap="round"/>
+  <rect x="88" y="106" width="24" height="26" fill="#f5c9a0" stroke="#3d2c5e" stroke-width="3"/>
+  <circle cx="60" cy="84" r="9" fill="#f5c9a0" stroke="#3d2c5e" stroke-width="3"/>
+  <circle cx="140" cy="84" r="9" fill="#f5c9a0" stroke="#3d2c5e" stroke-width="3"/>
+  <circle cx="100" cy="80" r="40" fill="#f5c9a0" stroke="#3d2c5e" stroke-width="3"/>
+  <path d="M60 80 C56 36 144 36 140 80 C134 62 116 56 100 60 C84 56 66 62 60 80 Z" fill="#3d2c22" stroke="#3d2c5e" stroke-width="3" stroke-linejoin="round"/>
+  <circle cx="86" cy="84" r="5" fill="#3d2c5e"/><circle cx="114" cy="84" r="5" fill="#3d2c5e"/>
+  <circle cx="87.5" cy="82.5" r="1.6" fill="#fff"/><circle cx="115.5" cy="82.5" r="1.6" fill="#fff"/>
+  <circle cx="76" cy="98" r="6" fill="#ffa8a8" opacity="0.7"/><circle cx="124" cy="98" r="6" fill="#ffa8a8" opacity="0.7"/>
+  <path d="M88 101 Q100 112 112 101" fill="none" stroke="#3d2c5e" stroke-width="3.5" stroke-linecap="round"/>
+  <path d="M78 134 C68 166 84 184 100 182 C116 184 132 166 122 134" fill="none" stroke="#495057" stroke-width="5" stroke-linecap="round"/>
+  <circle cx="100" cy="184" r="8" fill="#ced4da" stroke="#3d2c5e" stroke-width="3"/>
+</svg>`;
 
 /** Hình một đồ: ảnh bố mẹ thêm, chưa có / hỏng thì emoji. */
 export function itemFace(item, images, cls = 'dr-item-face') {
@@ -172,10 +198,11 @@ export function doctorScreen(app, params = {}) {
   const kit = jobScreen(app, {
     job: JOB, className: 'dr-play', stageClass: 'dr-stage', title: '🩺 Doctor', helperLabel: 'Bông y tá', cap: 'nurse',
     resetLabel: 'Khám lại', trayLabel: 'Đồ của bác sĩ',
-    icon: (who) => (who === 'patient' ? curPatient()?.emoji ?? '' : who === 'patient2' ? PATIENT_BY_ID.get(cases[caseIdx]?.patient2)?.emoji ?? '' : '🐰'),
+    // Câu của Bông do chú bác sĩ bên trái nói (SPEC-roles mục 9): phụ đề hiện 👨‍⚕️.
+    icon: (who) => (who === 'patient' ? curPatient()?.emoji ?? '' : who === 'patient2' ? PATIENT_BY_ID.get(cases[caseIdx]?.patient2)?.emoji ?? '' : '👨‍⚕️'),
     pitch: (who) => (who === 'patient' ? curPatient()?.pitch : who === 'patient2' ? PATIENT_BY_ID.get(cases[caseIdx]?.patient2)?.pitch : undefined),
     // SPEC-roles: Bông bác sĩ đứng bên trái, bệnh nhân ở giữa / bên phải; ai nói người đó sáng.
-    host: { badge: '🩺' },
+    host: { svg: DOCTOR_SVG, label: 'doctor' },
     roles: {
       of: (who) => (who === 'bong' ? kit.host
         : who === 'patient' ? [patientEl, measureEl.querySelector('.dr-measure-pet[data-who="0"]'), eyesEl.querySelector('.dr-eyes-pet')]
@@ -1086,6 +1113,7 @@ export function doctorScreen(app, params = {}) {
   loadDoctorImages(app).catch(() => null).then((loaded) => {
     images = loaded;
     if (kit.signal.aborted) return;
+    kit.setHostImage(images?.doctor); // ảnh chú bác sĩ bố mẹ thêm (nếu có)
     if (images?.bg) {
       stage.style.backgroundImage = `url("${images.bg}")`;
       stage.classList.add('has-bg');

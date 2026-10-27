@@ -1,6 +1,6 @@
 # SPEC — Đóng vai: hai bên rõ ràng, ai nói người đó sáng lên
 
-> Phiên bản spec: **draft2** (sửa theo review, mục 8) · Ngày: 2026-10-27 · **Đã làm (0.55.0)**. Áp dụng cho **Bán hàng, Bác sĩ nhí, Cô giáo nhí**; Bưu tá, Cảnh sát, Cứu hỏa làm sau khi cơ chế chung chạy ổn.
+> Phiên bản spec: **draft2** (sửa theo review, mục 8) · Ngày: 2026-10-27 · **Đã làm (0.55.0, mục 9: 0.56.0)**. Áp dụng cho **Bán hàng, Bác sĩ nhí, Cô giáo nhí**; Bưu tá, Cảnh sát, Cứu hỏa làm sau khi cơ chế chung chạy ổn.
 > Lý do: hiện tại Bông không đứng trên sân khấu (chỉ có nút tròn nhỏ ở góc), phụ đề luôn ở giữa phía trên → bé khó biết **ai đang nói, tới lượt ai**.
 > Không đổi: luật chơi, câu nói, giọng (0.54.1), tiến độ, dữ liệu lưu, nút Bông ở góc (chạm để nghe lại).
 
@@ -77,3 +77,14 @@ Không phóng to, không nhún, không chuyển động lặp, không nhấp nh�
 - P2-6, P2-7 vai đại diện / nhóm → mục 3 (`roles(who)` trả danh sách phần tử; `teacher` → bàn cô giáo).
 - P2-8 giảm chuyển động → mục 5.
 - Kiểm thử bổ sung → mục 6 (ROLE-01…12).
+
+## 9. Người thật thay Bông ở vai nghề (0.56.0, theo yêu cầu sau khi chơi thử)
+| Trò | Bên trái / vai | Hình vẽ sẵn | Phụ đề |
+|---|---|---|---|
+| 🛒 Bán hàng | cô bán hàng (sau quầy) | tóc dài, áo vàng, tạp dề hồng | 👩 |
+| 🩺 Bác sĩ nhí | chú bác sĩ | áo blouse trắng, ống nghe | 👨‍⚕️ |
+| 👩‍🏫 Cô giáo nhí | cô giáo (bàn cô giáo — bé đóng vai) | tóc dài, kính, áo len tím | 👩‍🏫 |
+| 👩‍🏫 Cô giáo nhí | bạn học sinh (vai học trò kiêm lớp trưởng, trước là Bông) | tóc ngắn, áo trắng, khăn quàng đỏ | 🧒 |
+- Bố mẹ thay bằng ảnh riêng: Góc bố mẹ → **Ảnh Đóng vai** (cô bán hàng, cô giáo, bạn học sinh — kho `jobs:people`) / **Ảnh Bác sĩ nhí** (chú bác sĩ — `doctor:bg`, mã `doctor`). Có prompt nhờ AI vẽ (nền trắng, app tự bỏ nền), "Dùng hình vẽ sẵn" để quay về. **Ảnh chỉ lưu trên máy** (và khi bố mẹ chia sẻ file sang máy khác), không đưa lên GitHub; khuyên dùng hình vẽ, không dùng ảnh chụp người thật.
+- Giọng không đổi (câu của vai bên trái vẫn giọng chính). Nút Bông ở góc giữ nguyên (chạm để nghe lại).
+- Bố cục Bán hàng (màn ngang): quầy chỉ nửa trái, cô bán hàng sau quầy, khách đứng trên sàn bên phải, bong bóng món trên đầu khách, máy xay trên đầu quầy. Bưu tá — cảnh tới nhà: nhà đứng trọn trên cỏ, hộp ở bậc cửa, 👍 / 👎 cạnh nhà. Cứu hỏa — ca đưa thang: cây to có cành, thang vẽ dựng từ đất lên cành, chú lính cứu hỏa (không cầm vòi) đứng cạnh, bạn thú trèo xuống đứng dưới gốc.

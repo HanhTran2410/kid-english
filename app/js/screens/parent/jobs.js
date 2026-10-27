@@ -8,6 +8,7 @@ import { dayKey } from '../../text.js';
 import { applyBackup, BackupError } from '../../backup.js';
 import { JOBS_BG_IMAGES, JOB_BACKGROUNDS } from '../../jobs/backgrounds.js';
 import { FIRE_GEAR_IMAGES, FIRE_GEAR_FRAMES, FIRE_GEAR_FRAME_VI, FIRE_GEAR_PROMPT } from '../../jobs/fire.js';
+import { JOB_PEOPLE_IMAGES, JOB_PEOPLE } from '../../jobs/people.js';
 import { parentLayout, goParent, section, notice } from './common.js';
 import { imageErrorMessage, gridSection } from './lessons.js';
 import { mediaShareSection } from './media-share.js';
@@ -26,7 +27,13 @@ export function jobsAdminView(app) {
   const reload = () => goParent(app, 'jobs');
   const urls = [];
 
-  Promise.all([JOBS_BG_IMAGES, FIRE_GEAR_IMAGES].map((id) => app.db.getAllByIndex('images', 'lessonId', id).catch(() => []))).then(([rows, gearRows]) => {
+  Promise.all([JOBS_BG_IMAGES, FIRE_GEAR_IMAGES, JOB_PEOPLE_IMAGES].map((id) => app.db.getAllByIndex('images', 'lessonId', id).catch(() => []))).then(([rows, gearRows, peopleRows]) => {
+    const people = new Map();
+    for (const img of peopleRows) {
+      const url = URL.createObjectURL(mediaBlob(img));
+      urls.push(url);
+      people.set(img.word, url);
+    }
     const bg = new Map();
     for (const img of rows) {
       const url = URL.createObjectURL(mediaBlob(img));
@@ -43,6 +50,10 @@ export function jobsAdminView(app) {
       notice('info', 'Các nghề chạy ngay bằng nền vẽ sẵn. Muốn đẹp hơn thì thay ảnh nền từng nghề (copy prompt để nhờ AI vẽ). Nhà, đồ chơi, lửa, bảng… vẫn là hình vẽ của app đặt lên trên ảnh nền, vì màu / số của chúng là đáp án. Ảnh món của Bán hàng thay ở "Ảnh Cho Bông ăn"; Bác sĩ nhí có trang ảnh riêng.'),
       // SPEC-jobs2 mục 5: ca đèn giao thông của Cảnh sát là trò đóng vai giả lập.
       notice('warn', '👮 Đèn giao thông (trò Cảnh sát) là trò đóng vai giả lập, không phải hướng dẫn an toàn giao thông. Ngoài đường: dừng lại, nhìn hai phía, và luôn qua đường cùng người lớn.'),
+      ...JOB_PEOPLE.map((p) => personSection(app, {
+        title: `${p.emoji} ${p.vi} — ${people.has(p.id) ? 'đang dùng ảnh' : 'đang dùng hình vẽ sẵn'}`,
+        svg: p.svg, url: people.get(p.id), prompt: p.prompt, lessonId: JOB_PEOPLE_IMAGES, word: p.id, done: reload,
+      })),
       ...JOB_BACKGROUNDS.map((job) => jobSection(job, bg.get(job.id))),
       gearSection(gear),
       h('div.actions', {},
@@ -51,8 +62,8 @@ export function jobsAdminView(app) {
       mediaShareSection(app, {
         what: 'ảnh Đóng vai',
         intro: 'Gửi ảnh nền các nghề sang máy khác (ảnh nằm trong file). Trên máy kia: Góc bố mẹ → Ảnh Đóng vai → "Nhập từ file" (hoặc Quản lý bài → "Nhập bài từ file").',
-        canMake: bg.size > 0 || gear.size > 0,
-        backup: { lessonIds: [JOBS_BG_IMAGES, FIRE_GEAR_IMAGES], settingsKeys: [], filename: `dong-vai-${dayKey()}.zip` },
+        canMake: bg.size > 0 || gear.size > 0 || people.size > 0,
+        backup: { lessonIds: [JOBS_BG_IMAGES, FIRE_GEAR_IMAGES, JOB_PEOPLE_IMAGES], settingsKeys: [], filename: `dong-vai-${dayKey()}.zip` },
         accept: async (payload) => {
           const got = await acceptJobsPayload(app, payload);
           if (!got.images) throw new BackupError('File này không có ảnh Đóng vai.');
@@ -117,4 +128,38 @@ export function jobsAdminView(app) {
   }
 
   return () => urls.forEach((u) => URL.revokeObjectURL(u));
+}
+
+/**
+ * Ảnh người đứng bên trái màn chơi (SPEC-roles mục 9): xem hình đang dùng, copy prompt, chọn ảnh (app tự bỏ nền trắng),
+ * quay về hình vẽ sẵn. Ảnh chỉ lưu trên máy này (và khi bố mẹ chia sẻ sang máy khác), không đưa lên GitHub.
+ */
+export function personSection(app, { title, svg, url, prompt, lessonId, word, done }) {
+  const input = h('input', { type: 'file', accept: 'image/*', hidden: true });
+  input.addEventListener('change', async () => {
+    const file = input.files?.[0];
+    input.value = '';
+    if (!file) return;
+    try {
+      await setWordImage(app.db, { lessonId, word, ...await cutOutSticker(file, 512) });
+      toast('Đã lưu ảnh.');
+      done();
+    } catch (err) {
+      toast(imageErrorMessage(err), 4000);
+    }
+  });
+  return section(title, h('div.jb-admin-person', { dataset: { person: word } },
+    url ? h('img.jb-person-preview.checker', { src: url, alt: '' }) : h('div.jb-person-preview', { html: svg }),
+    h('p.muted', { text: 'Hình nửa người, nền trắng (app tự bỏ nền). Ảnh chỉ lưu trên máy này — không đưa lên mạng. Nên dùng hình vẽ (nhờ AI vẽ bằng prompt), không dùng ảnh chụp người thật.' }),
+    h('div.actions', {},
+      h('button.btn', { type: 'button', text: 'Copy prompt', onclick: () => copyText(prompt).then((ok) => toast(ok ? 'Đã copy prompt.' : 'Không copy được.')) }),
+      h('button.btn.primary', { type: 'button', text: url ? 'Thay ảnh' : 'Chọn ảnh', onclick: () => input.click() }),
+      url ? h('button.btn.danger', {
+        type: 'button', text: 'Dùng hình vẽ sẵn',
+        onclick: async () => {
+          await removeWordImage(app.db, lessonId, word);
+          done();
+        },
+      }) : null),
+    input));
 }
