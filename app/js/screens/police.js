@@ -14,6 +14,7 @@ import { jobScreen, saveSnap, takeSnap, clearSnap, restartAnim, center, wait, WR
 import {
   MAX_LEVEL, planRound, lostLine, describeLine, foundLine, wrongLine, HELLO_LINE, LOOK_LINE, BUSH_LINE,
   TRAFFIC_INTRO_LINE, CAN_GO_LINE, CHANGING_LINE, TRAFFIC_DONE_LINE, makeItLine, lightRightLine, lightWrongLine,
+  CROSS_STEPS, CROSS_ASK_LINE, NO_CARS_LINE, CROSS_THANKS_LINE, crossStepLine,
 } from '../jobs/police.js';
 
 const JOB = 'police';
@@ -43,6 +44,9 @@ function toySvg(toy, color) {
 }
 const MOVE_MS = 1100; // xe chạy / dừng / bạn qua đường sau khi đổi đèn
 const LIGHT_EMOJI = { red: '🔴', yellow: '🟡', green: '🟢' };
+const WALK_LIGHT_MS = 1000; // bấm nút → đèn người đi bộ đổi xanh
+const CHECK_MS = 900; // nhìn lại mỗi bên (tự động)
+const CROSS_ACTIVE = ['look-left', 'look-right', 'press', 'go'];
 const BUSH_SVG = `<svg viewBox="0 0 100 80" aria-hidden="true"><path d="M8 72 q-6 -26 18 -30 q2 -26 28 -24 q20 -12 32 10 q20 2 14 26 q6 14 -6 18 z" fill="#51cf66" stroke="#2b8a3e" stroke-width="4" stroke-linejoin="round"/><circle cx="36" cy="40" r="4" fill="#ff8787"/><circle cx="62" cy="34" r="4" fill="#ff8787"/></svg>`;
 
 export function policeScreen(app, params = {}) {
@@ -73,7 +77,7 @@ export function policeScreen(app, params = {}) {
     onReset: () => restart(),
     onHelper: () => repeatPrompt(),
     nudge: {
-      ready: () => (state === 'find' || state === 'ask') && nudges < MAX_NUDGES,
+      ready: () => (state === 'find' || state === 'ask' || CROSS_ACTIVE.includes(state)) && nudges < MAX_NUDGES,
       key: () => stepKey(),
       fire: (rearm) => {
         nudges += 1;
@@ -81,6 +85,11 @@ export function policeScreen(app, params = {}) {
         if (state === 'ask') {
           restartAnim(lampEl(cur().steps[tIdx].want), 'nudge');
           kit.talk(trafficPrompt()).then(rearm);
+          return;
+        }
+        if (CROSS_ACTIVE.includes(state)) {
+          restartAnim(crossTarget(), 'nudge');
+          kit.talk([B(crossStepLine(state))]).then(rearm);
           return;
         }
         nudgeTarget();
@@ -95,9 +104,19 @@ export function policeScreen(app, params = {}) {
   }));
   const car = h('div.pl-car', { 'aria-hidden': 'true' }, h('span', { text: '🚗' }));
   const walker = h('div.pl-walker', { 'aria-hidden': 'true' });
+  // SPEC-jobs2 PL2a: đèn cho người đi bộ (đỏ / xanh) + nút bấm, hai mũi tên nhìn trái / phải.
+  const walkLight = h('div.pl-walk-light', { 'aria-hidden': 'true', dataset: { on: 'red' } },
+    h('span.pl-walk-lamp.red', { text: '🚶' }), h('span.pl-walk-lamp.green', { text: '🚶' }));
+  const pressBtn = h('button.pl-press', { type: 'button', 'aria-label': 'Nút bấm đèn', onclick: () => tapPress() }, h('span', { text: '👆' }));
+  const arrows = ['left', 'right'].map((dir) => h('button.pl-arrow', {
+    type: 'button', 'aria-label': dir === 'left' ? 'Nhìn trái' : 'Nhìn phải', dataset: { dir }, onclick: () => tapArrow(dir),
+  }, h('span', { text: dir === 'left' ? '⬅️' : '➡️' })));
+  const crossKit = h('div.pl-cross-kit', { hidden: true }, h('div.pl-walk-post', {}, walkLight, pressBtn), ...arrows);
   const trafficEl = h('div.pl-traffic', { hidden: true },
-    h('div.pl-road', {}, h('div.pl-zebra')), car, walker,
+    h('div.pl-road', {}, h('div.pl-zebra')), car, walker, crossKit,
     h('div.pl-light', {}, h('div.pl-light-box', {}, ...lamps), h('div.pl-light-pole')));
+  const arrowEl = (dir) => crossKit.querySelector(`.pl-arrow[data-dir="${dir}"]`);
+  walker.addEventListener('pointerdown', () => tapWalker(), { signal: kit.signal });
   const lampEl = (color) => trafficEl.querySelector(`.pl-lamp[data-color="${color}"]`);
   stage.append(h('div.pl-tree', { 'aria-hidden': 'true' }), park, askerEl, trafficEl);
   const stepKey = () => `${kit.epoch}:${caseIdx}:${tIdx}:${state}`;
@@ -168,7 +187,12 @@ export function policeScreen(app, params = {}) {
       startTraffic(resume);
       return;
     }
+    if (cur().kind === 'cross') {
+      startCross(resume);
+      return;
+    }
     trafficEl.hidden = true;
+    crossKit.hidden = true;
     park.hidden = false;
     askerEl.hidden = false;
     setState('enter');
@@ -267,6 +291,8 @@ export function policeScreen(app, params = {}) {
     askerEl.hidden = true;
     park.hidden = true;
     trafficEl.hidden = false;
+    crossKit.hidden = true;
+    trafficEl.dataset.mode = 'traffic';
     setState('enter');
     renderTraffic();
     snap();
@@ -343,6 +369,154 @@ export function policeScreen(app, params = {}) {
     else startCase();
   }
 
+  // ---------- Giúp bạn qua đường (SPEC-jobs2 mục 5.2) — `tIdx` là bước trong CROSS_STEPS ----------
+  const crossStep = () => CROSS_STEPS[tIdx];
+  /** Thứ bé cần chạm ở bước hiện tại (để nhún khi nhắc / sau 2 lần sai). */
+  const crossTarget = () => ({ 'look-left': arrowEl('left'), 'look-right': arrowEl('right'), press: pressBtn, go: walker }[crossStep()] ?? null);
+  function renderCross() {
+    count.textContent = `${caseIdx + 1}/${plan.cases.length}`;
+    const green = tIdx >= CROSS_STEPS.indexOf('check');
+    walkLight.dataset.on = green ? 'green' : 'red';
+    pressBtn.classList.toggle('pressed', green);
+    car.classList.remove('go', 'slow');
+    walker.classList.remove('walk', 'look-left', 'look-right');
+    walker.innerHTML = patientSvg(asker().id, { mood: 'happy', title: asker().name });
+    walker.hidden = false;
+    for (const l of lamps) l.classList.remove('nudge', 'shake');
+    // Đèn cho xe: xanh khi người đi bộ chờ, đỏ khi đèn người đi bộ xanh.
+    for (const l of lamps) l.classList.toggle('on', l.dataset.color === (green ? 'red' : 'green'));
+    for (const a of arrows) a.classList.remove('lit', 'nudge', 'shake');
+    trafficEl.dataset.step = crossStep() ?? ''; // cho test
+  }
+  async function startCross(resume = null) {
+    const e = kit.epoch;
+    tIdx = resume?.tIdx ?? 0;
+    askerEl.hidden = true;
+    park.hidden = true;
+    trafficEl.hidden = false;
+    crossKit.hidden = false;
+    trafficEl.dataset.mode = 'cross';
+    setState('enter');
+    renderCross();
+    snap();
+    if (!resume) {
+      restartAnim(trafficEl, 'enter');
+      await talk([A(CROSS_ASK_LINE)]);
+      if (e !== kit.epoch) return;
+    }
+    crossNext();
+  }
+  /** Sang bước hiện tại (`tIdx`): nói câu của bước; bước "check" tự chạy rồi sang "go". */
+  async function crossNext() {
+    const e = kit.epoch;
+    const step = crossStep();
+    renderCross();
+    if (step === 'check') {
+      setState('check');
+      snap();
+      await talk([B(crossStepLine('check'))]);
+      for (const dir of ['left', 'right']) {
+        if (e !== kit.epoch) return;
+        arrowEl(dir).classList.add('lit');
+        walker.classList.remove('look-left', 'look-right');
+        walker.classList.add(`look-${dir}`);
+        await wait(CHECK_MS);
+        arrowEl(dir).classList.remove('lit');
+      }
+      if (e !== kit.epoch) return;
+      walker.classList.remove('look-left', 'look-right');
+      tIdx += 1;
+      crossNext();
+      return;
+    }
+    setState(step);
+    snap();
+    const k = stepKey();
+    await talk([B(crossStepLine(step))]);
+    if (k === stepKey()) kit.armNudge();
+  }
+  /** Làm sai thứ tự: bạn thú không đi, Bông nói lại câu của bước hiện tại (nhầm). */
+  async function crossWrong(key) {
+    const now = Date.now();
+    if (key === lastWrong.key && now - lastWrong.at < WRONG_LOCK_MS) return;
+    lastWrong = { key, at: now };
+    wrongs += 1;
+    snap();
+    kit.clearNudge();
+    play('boing');
+    restartAnim(walker, 'shake');
+    if (wrongs >= 2) restartAnim(crossTarget(), 'nudge');
+    const k = stepKey();
+    await talk([B(crossStepLine(state))]);
+    if (k === stepKey()) kit.armNudge();
+  }
+  async function tapArrow(dir) {
+    if (!CROSS_ACTIVE.includes(state)) return;
+    if (state !== `look-${dir}`) {
+      crossWrong(`a:${dir}`);
+      return;
+    }
+    const e = kit.epoch;
+    setState('busy');
+    kit.clearNudge();
+    tIdx += 1;
+    wrongs = 0;
+    nudges = 0;
+    snap();
+    play('tap');
+    arrowEl(dir).classList.add('lit');
+    walker.classList.remove('look-left', 'look-right');
+    walker.classList.add(`look-${dir}`);
+    await talk([A(NO_CARS_LINE)]);
+    if (e !== kit.epoch) return;
+    crossNext();
+  }
+  async function tapPress() {
+    if (tIdx > CROSS_STEPS.indexOf('press')) return; // đã bấm: không tính
+    if (!CROSS_ACTIVE.includes(state)) return;
+    if (state !== 'press') {
+      crossWrong('press');
+      return;
+    }
+    const e = kit.epoch;
+    setState('busy');
+    kit.clearNudge();
+    tIdx += 1;
+    wrongs = 0;
+    nudges = 0;
+    snap();
+    play('ding');
+    pressBtn.classList.add('pressed');
+    await wait(WALK_LIGHT_MS);
+    if (e !== kit.epoch) return;
+    play('pop');
+    crossNext();
+  }
+  async function tapWalker() {
+    if (!CROSS_ACTIVE.includes(state) || kit.pressing) return;
+    if (state !== 'go') {
+      crossWrong('walker');
+      return;
+    }
+    const e = kit.epoch;
+    setState('busy');
+    kit.clearNudge();
+    saveSnap(JOB, { level, plan, caseIdx: caseIdx + 1, wrongs: 0, nudges: 0, revealed: [], recorded: [...recorded], tIdx: 0 });
+    play('whoosh');
+    walker.classList.add('walk');
+    await Promise.all([talk([A(CROSS_THANKS_LINE)]), wait(MOVE_MS)]);
+    if (e !== kit.epoch) return;
+    play('sparkle');
+    setState('leave');
+    restartAnim(trafficEl, 'leave');
+    await wait(LEAVE_MS);
+    if (e !== kit.epoch) return;
+    trafficEl.classList.remove('leave');
+    caseIdx += 1;
+    if (caseIdx >= plan.cases.length) finishRound();
+    else startCase();
+  }
+
   function finishRound() {
     if (state === 'done') return;
     setState('done');
@@ -361,6 +535,11 @@ export function policeScreen(app, params = {}) {
   }
 
   function repeatPrompt() {
+    if (CROSS_ACTIVE.includes(state)) {
+      const k = stepKey();
+      talk([B(crossStepLine(state))]).then(() => k === stepKey() && kit.armNudge());
+      return;
+    }
     if (state === 'ask') {
       const k = stepKey();
       talk(trafficPrompt()).then(() => k === stepKey() && kit.armNudge());
@@ -378,7 +557,8 @@ export function policeScreen(app, params = {}) {
     recorded = new Set(s.recorded ?? []);
     if (caseIdx >= plan.cases.length) {
       caseIdx = plan.cases.length - 1;
-      renderCase();
+      if (cur().items) renderCase();
+      else count.textContent = `${plan.cases.length}/${plan.cases.length}`;
       finishRound();
     } else startCase(s);
   } else {

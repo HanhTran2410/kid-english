@@ -74,12 +74,22 @@ export function makeFriendCase(asker, { rng = Math.random } = {}) {
  */
 export function planRound(level, { rng = Math.random } = {}) {
   const askers = shuffle(PATIENTS, rng).slice(0, CASES_PER_ROUND).map((p) => p.id);
-  // Chỉ test UI đặt `window.__kidTest.policeTrafficAt` để cố định chỗ ca đèn; bình thường ngẫu nhiên.
-  const pinned = globalThis.__kidTest?.policeTrafficAt;
-  let friendAt = level >= 3 ? Math.floor(rng() * CASES_PER_ROUND) : -1;
-  if (friendAt === pinned) friendAt = (friendAt + 1) % CASES_PER_ROUND;
-  const free = [0, 1, 2].filter((i) => i !== friendAt);
-  const trafficAt = free.includes(pinned) ? pinned : free[Math.floor(rng() * free.length)];
+  // Chỉ test UI đặt `window.__kidTest.policeTrafficAt` / `policeCrossAt` để cố định chỗ ca đèn / ca qua đường.
+  const all = [0, 1, 2];
+  const pinT = globalThis.__kidTest?.policeTrafficAt;
+  const pinC = level >= 2 ? globalThis.__kidTest?.policeCrossAt : undefined;
+  const pinned = [pinT, pinC].filter((p) => all.includes(p));
+  let free = all;
+  let friendAt = -1;
+  if (level >= 3) {
+    const ok = all.filter((i) => !pinned.includes(i));
+    friendAt = ok[Math.floor(rng() * ok.length)];
+    free = free.filter((i) => i !== friendAt);
+  }
+  const trafficAt = free.includes(pinT) ? pinT : free.filter((i) => i !== pinC)[Math.floor(rng() * free.filter((i) => i !== pinC).length)];
+  free = free.filter((i) => i !== trafficAt);
+  // SPEC-jobs2 PL2a: mức 2–3 có một ca giúp bạn qua đường (thay một ca tìm đồ).
+  const crossAt = level >= 2 ? (free.includes(pinC) ? pinC : free[Math.floor(rng() * free.length)]) : -1;
   const cases = [];
   let lastToy = null;
   askers.forEach((asker, i) => {
@@ -89,6 +99,10 @@ export function planRound(level, { rng = Math.random } = {}) {
     }
     if (i === trafficAt) {
       cases.push({ asker, ...makeTrafficCase(level, { rng }) });
+      return;
+    }
+    if (i === crossAt) {
+      cases.push({ asker, kind: 'cross' });
       return;
     }
     let c = makeToyCase(level, { rng });
@@ -192,3 +206,19 @@ export function lightWrongLine(step, tapped, level) {
   if (step.crossing) return ['Wait! A friend is crossing!', 'Chờ đã! Có bạn đang qua đường!'];
   return ['The road is clear. Make it green!', 'Đường vắng rồi. Bật đèn xanh nhé!'];
 }
+
+// ---------- SPEC-jobs2 PL2a: giúp bạn qua đường (mức 2–3) ----------
+/** Thứ tự cố định: nhìn trái → nhìn phải → bấm nút chờ đèn xanh → (tự động) nhìn lại hai phía → cùng qua đường. */
+export const CROSS_STEPS = ['look-left', 'look-right', 'press', 'check', 'go'];
+export const CROSS_ASK_LINE = ['Can you help me cross the road?', 'Chú cảnh sát giúp tớ qua đường được không?'];
+export const LOOK_LEFT_LINE = ['Stop! Look left!', 'Dừng lại! Nhìn bên trái!'];
+export const LOOK_RIGHT_LINE = ['Look right!', 'Nhìn bên phải!'];
+export const NO_CARS_LINE = ['No cars!', 'Không có xe!'];
+export const PRESS_LINE = ['Press the button. Wait for the green light!', 'Con bấm nút. Chờ đèn xanh nhé!'];
+export const GREEN_AGAIN_LINE = ['Green light! Look left and right again!', 'Đèn xanh rồi! Nhìn trái, nhìn phải lần nữa nào!'];
+export const ALL_CLEAR_LINE = ["All clear! Let's cross together!", 'Không có xe! Mình cùng qua đường nào!'];
+export const CROSS_THANKS_LINE = ['Thank you, officer!', 'Cảm ơn chú cảnh sát!'];
+/** Câu của bước (nói lại khi bé làm sai thứ tự / được nhắc). */
+export const crossStepLine = (step) => ({
+  'look-left': LOOK_LEFT_LINE, 'look-right': LOOK_RIGHT_LINE, press: PRESS_LINE, check: GREEN_AGAIN_LINE, go: ALL_CLEAR_LINE,
+}[step]);

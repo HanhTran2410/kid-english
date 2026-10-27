@@ -3,7 +3,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   FRIEND_LOOK, planRound, makeToyCase, matches, lostLine, describeLine, foundLine, wrongLine,
-  makeTrafficCase, makeItLine, lightRightLine, lightWrongLine, TRAFFIC_STEPS,
+  makeTrafficCase, makeItLine, lightRightLine, lightWrongLine, TRAFFIC_STEPS, CROSS_STEPS, crossStepLine,
 } from '../../app/js/jobs/police.js';
 
 function seeded(seed = 1) {
@@ -26,7 +26,7 @@ test('một lượt: 3 ca, người hỏi khác nhau, hai ca liền nhau không 
     for (let k = 1; k < cases.length; k++) {
       if (cases[k].kind === 'toy' && cases[k - 1].kind === 'toy') assert.notEqual(cases[k].toy, cases[k - 1].toy);
     }
-    for (const c of cases.filter((x) => x.kind !== 'traffic')) {
+    for (const c of cases.filter((x) => x.kind !== 'traffic' && x.kind !== 'cross')) {
       assert.equal(matches(c, level).length, 1, `mức ${level}: ${JSON.stringify(c)}`);
       if (c.kind === 'friend') assert.ok(!c.items.some((x) => x.friend === c.asker));
     }
@@ -85,4 +85,18 @@ test('SPEC-jobs2 PL1 — ca đèn giao thông: 3 lượt; mức 1 xanh / đỏ x
   assert.equal(lightWrongLine({ want: 'red', crossing: true }, 'green', 2)[0], 'Wait! A friend is crossing!');
   assert.equal(lightWrongLine({ want: 'green', crossing: false }, 'red', 2)[0], 'The road is clear. Make it green!');
   assert.equal(lightWrongLine({ want: 'red' }, 'green', 1)[0], "That's green. Make it red!");
+});
+
+test('SPEC-jobs2 PL2a — ca giúp bạn qua đường: mức 1 không có; mức 2–3 đúng một ca; mức 3 = tìm bạn + đèn + qua đường; thứ tự bước cố định', () => {
+  const rng = seeded(19);
+  for (const level of [1, 2, 3]) for (let i = 0; i < 60; i++) {
+    const { cases } = planRound(level, { rng });
+    assert.equal(cases.filter((c) => c.kind === 'cross').length, level >= 2 ? 1 : 0);
+    assert.equal(cases.filter((c) => c.kind === 'traffic').length, 1);
+    if (level >= 3) assert.deepEqual(new Set(cases.map((c) => c.kind)), new Set(['friend', 'traffic', 'cross']));
+  }
+  assert.deepEqual(CROSS_STEPS, ['look-left', 'look-right', 'press', 'check', 'go']);
+  assert.equal(crossStepLine('look-left')[0], 'Stop! Look left!');
+  assert.equal(crossStepLine('press')[0], 'Press the button. Wait for the green light!');
+  assert.equal(crossStepLine('go')[0], "All clear! Let's cross together!");
 });
