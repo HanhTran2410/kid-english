@@ -73,7 +73,9 @@ export function shopScreen(app, params = {}) {
   const till = h('div.sh-till', { 'aria-label': 'Két tiền' }, h('span.sh-till-slot'), h('span.sh-till-count', { text: '' }));
   const coinsEl = h('div.sh-coins');
   const bagEl = h('button.sh-bag', { type: 'button', 'aria-label': 'Túi giấy', hidden: true, onclick: () => tapBag() }, h('span', { html: BAG_SVG }));
-  const counter = h('div.sh-counter', {}, coinsEl, bagEl, till);
+  // Đồ trên quầy: món bé đưa đặt lên quầy → chạm túi thì bay vào túi → đưa túi cho khách.
+  const goodsEl = h('div.sh-goods', { 'aria-label': 'Đồ trên quầy' });
+  const counter = h('div.sh-counter', {}, goodsEl, coinsEl, bagEl, till);
   const basketsEl = h('div.sh-baskets', { hidden: true });
   // SPEC-jobs2 SH2: máy xay (cối có quả đã bỏ vào + nút) và ly sinh tố.
   const jar = h('div.sh-jar');
@@ -139,7 +141,7 @@ export function shopScreen(app, params = {}) {
       canGive: () => state === 'order' || state === 'stock' || state === 'blend-add',
       dropOk: (x, y) => (state === 'stock' ? Boolean(basketAt(x, y))
         : state === 'blend-add' ? inside(blender, x, y, 0.15) || inside(customerEl, x, y, 0.1)
-          : inside(customerEl, x, y, 0.15) || inside(wish, x, y, 0.1)),
+          : inside(customerEl, x, y, 0.15) || inside(wish, x, y, 0.1) || inside(counter, x, y, 0)),
       give: (id, from) => (state === 'stock' ? stockGive(id, from) : state === 'blend-add' ? addFruit(id, from) : give(id, from)),
     },
   });
@@ -213,6 +215,7 @@ export function shopScreen(app, params = {}) {
     setState('enter');
     renderCustomer();
     renderWish();
+    renderGoods();
     renderJar();
     kit.renderTray(isSmoothie() ? cur().tray : plan.shelf);
     renderCoins();
@@ -281,11 +284,13 @@ export function shopScreen(app, params = {}) {
     wrongs = 0;
     nudges = 0;
     snap();
-    const ghost = await kit.flyTo(foodFace(food, images, 'fd-face'), from, center(customerEl.getBoundingClientRect()));
+    // Món bay ra đặt trên quầy (không đưa thẳng cho khách): đủ món thì bỏ vào túi rồi mới đưa.
+    const ghost = await kit.flyTo(foodFace(food, images, 'fd-face'), from, goodsSpot());
     kit.removeGhost(ghost);
     if (e !== kit.epoch) return;
     play('pop');
-    restartAnim(customerEl, 'hop');
+    renderGoods();
+    restartAnim(goodsEl.lastElementChild, 'pop');
     renderWish();
     if (need.count > 1) await talk([B(countLine(got[id]))]);
     if (e !== kit.epoch) return;
@@ -351,6 +356,18 @@ export function shopScreen(app, params = {}) {
       setState('busy');
       startBag();
     } else if (k === stepKey()) kit.armNudge();
+  }
+
+  /** Đồ bé đã đưa nằm trên quầy (tới lúc bỏ vào túi). Ca sinh tố: ly nằm cạnh máy xay, không ở đây. */
+  function renderGoods() {
+    const show = !isSmoothie() && ['order', 'coins', 'bag'].includes(phase);
+    goodsEl.replaceChildren(...(show ? order().flatMap((o) => Array.from({ length: got[o.id] ?? 0 },
+      () => h('span.sh-good', { dataset: { food: o.id } }, foodFace(foodById(o.id), images, 'sh-good-face')))) : []));
+  }
+  /** Chỗ món bay tới trên quầy: sau món cuối đang nằm (chưa có thì giữa khay). */
+  function goodsSpot() {
+    const r = (goodsEl.lastElementChild ?? goodsEl).getBoundingClientRect();
+    return goodsEl.lastElementChild ? { x: r.right + r.width / 2 + 4, y: r.top + r.height / 2 } : center(r);
   }
 
   // ---------- Quầy sinh tố (SPEC-jobs2 mục 2.3) ----------
@@ -481,11 +498,15 @@ export function shopScreen(app, params = {}) {
     nudges = 0;
     snap();
     const to = center(bagEl.getBoundingClientRect());
-    const faces = isSmoothie() ? [h('span.sh-cup-fly', { text: '🥤' })] : order().map((o) => foodFace(foodById(o.id), images, 'fd-face'));
+    // Đồ trên quầy (ly sinh tố: từ chỗ ly) lần lượt bay vào túi.
+    const sources = isSmoothie()
+      ? [{ face: h('span.sh-cup-fly', { text: '🥤' }), from: center((cup.hidden ? blender : cup).getBoundingClientRect()) }]
+      : [...goodsEl.children].map((el) => ({ face: el.cloneNode(true), from: center(el.getBoundingClientRect()) }));
     cup.hidden = true;
-    await Promise.all(faces.map(async (face, i) => {
+    goodsEl.replaceChildren();
+    await Promise.all(sources.map(async ({ face, from }, i) => {
       await wait(i * 150);
-      const ghost = await kit.flyTo(face, center(wish.hidden ? customerEl.getBoundingClientRect() : wish.getBoundingClientRect()), to);
+      const ghost = await kit.flyTo(face, from, to);
       kit.removeGhost(ghost);
     }));
     if (e !== kit.epoch) return;

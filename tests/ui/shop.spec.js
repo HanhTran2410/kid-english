@@ -382,3 +382,39 @@ test('SH2 mức 3: sinh tố hai quả — ly hai lớp màu; ra nền sau khi b
   expect(c1).not.toBe(c2);
   await expect(play(page)).toHaveAttribute('data-state', 'coins', { timeout: 15000 });
 });
+
+// ---------- Đồ trên quầy → túi → khách ----------
+test('đưa món: món đặt lên quầy (không bay thẳng tới khách); chạm túi → đồ trên quầy vào túi (quầy trống) → đưa túi cho khách', async ({ page }) => {
+  await openShop(page);
+  const [o] = await order(page);
+  await page.locator(`.jb-tray .dr-item[data-item="${o.id}"]`).click();
+  await expect(page.locator(`.sh-goods .sh-good[data-food="${o.id}"]`)).toHaveCount(1, { timeout: 15000 });
+  await expect(play(page)).toHaveAttribute('data-state', 'bag', { timeout: 15000 });
+  await expect(page.locator('.sh-goods .sh-good')).toHaveCount(1);
+  await page.locator('.sh-bag').click();
+  await expect(play(page)).toHaveAttribute('data-state', 'give', { timeout: 15000 });
+  await expect(page.locator('.sh-goods .sh-good')).toHaveCount(0);
+  await page.locator('.sh-customer').click();
+  await expect(page.locator('.jb-count')).toHaveText('2/3', { timeout: 15000 });
+  await expect(page.locator('.sh-goods .sh-good')).toHaveCount(0);
+});
+
+test('ảnh món trong bong bóng luôn nằm gọn trong ô (ảnh dọc to không tràn)', async ({ page }) => {
+  await fakeSpeech(page);
+  await startApp(page);
+  await page.evaluate(async () => {
+    const db = await import('/js/db.js');
+    const feed = await import('/js/feed.js');
+    const c = document.createElement('canvas'); c.width = 600; c.height = 900;
+    const g = c.getContext('2d'); g.fillStyle = '#ff922b'; g.fillRect(150, 50, 300, 800);
+    const blob = await new Promise((r) => c.toBlob(r, 'image/png'));
+    for (const f of feed.BUILTIN_FOODS.filter((x) => x.easy)) await db.setWordImage(window.kidEnglish.db, { lessonId: 'feed:food', word: f.id, blob, mimeType: 'image/png', width: 600, height: 900 });
+  });
+  await page.getByRole('button', { name: 'Trò chơi' }).click();
+  await page.getByRole('button', { name: 'Đóng vai' }).click();
+  await page.getByRole('button', { name: 'Bán hàng' }).click();
+  await toOrder(page);
+  const [item, face] = await Promise.all(['.sh-wish-item', '.sh-wish-item .sh-wish-face'].map((s) => page.locator(s).first().boundingBox()));
+  expect(face.width).toBeLessThanOrEqual(item.width + 0.5);
+  expect(face.height).toBeLessThanOrEqual(item.height + 0.5);
+});

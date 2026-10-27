@@ -421,7 +421,10 @@ test('SPEC-dressup2 D07: "Hình 3D giả" mặc định bật; tắt / bật nhi
   const box = page.locator('.du-toy3d input');
   for (let i = 0; i < 3; i++) {
     await box.click();
-    await expect(page.getByRole('heading', { name: /Đồ riêng bé gái/ })).toBeVisible();
+    // Chờ lưu xong (công tắc mở khóa lại sau khi trang vẽ lại) rồi mới bấm tiếp / rời trang.
+    await expect(box).toBeEnabled({ timeout: 15000 });
+    await expect(box).toBeChecked({ checked: i % 2 === 1 });
+    await expect.poll(() => page.evaluate(async () => (await window.kidEnglish.db.get('settings', 'dressUp3d'))?.value)).toBe(i % 2 === 1);
   }
   expect(await page.evaluate(() => window.kidEnglish.settings.dressUp3d)).toBe(false);
   await toHome(page);

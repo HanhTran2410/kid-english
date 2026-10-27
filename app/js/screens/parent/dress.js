@@ -316,6 +316,8 @@ function toy3dSection(app, reload) {
   const on = app.settings.dressUp3d !== false;
   const box = h('input', { type: 'checkbox', checked: on });
   box.addEventListener('change', async () => {
+    // Khóa trong lúc lưu: bấm liên tiếp không làm các lần lưu chồng nhau (giá trị lưu luôn khớp công tắc).
+    box.disabled = true;
     await app.setSetting('dressUp3d', box.checked);
     toast(box.checked ? 'Đã bật hình 3D giả.' : 'Đã tắt hình 3D giả.');
     reload();
