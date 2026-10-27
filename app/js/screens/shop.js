@@ -1,6 +1,8 @@
 // Trò Bán hàng (SPEC-jobs.md mục 3): khách (bạn thú) vào cửa hàng, gọi món; bé kéo / chạm món trên kệ để đưa.
 // Đủ món: Bông "Here you are!"; từ mức 2 khách trả xu, bé bỏ từng xu vào két (Bông đếm). 3 khách → sticker.
-// Trạng thái: enter → order ⇄ busy → (coins) → thanks → leave → khách sau | done.
+// SPEC-jobs2 SH1: mở đầu lượt bày kệ (món trong thùng → giỏ Fruit / Drinks / Other food); cuối mỗi ca bỏ đồ vào túi,
+// đưa túi cho khách, chào "Have a nice day!".
+// Trạng thái: stock ⇄ busy → enter → order ⇄ busy → (coins) → bag → give → thanks → leave → khách sau | done.
 // Khung chung (nói, nhắc, khay, đồ bay, lượt, ra nền) ở jobs/kit.js.
 
 import { h } from '../ui.js';
@@ -16,13 +18,16 @@ import { jobScreen, saveSnap, takeSnap, clearSnap, restartAnim, center, wait, WR
 import {
   MAX_LEVEL, FOOD_LESSON_WORDS, planRound, coinsFor, remaining, orderDone, orderLine, wrongLine, enoughLine, countLine, coinLine,
   WELCOME_LINE, HERE_YOU_ARE_LINE, MONEY_LINE, TAP_COINS_LINE, THANKS_LINE,
+  GROUP_INFO, foodGroup, groupsFor, groupLine, wrongBasketLine, stockLine, OPEN_LINE,
+  BAG_LINE, giveBagLine, NICE_DAY_LINE, YOU_TOO_LINE, BYE_LINE,
 } from '../jobs/shop.js';
 
 const JOB = 'shop';
 const ENTER_MS = 650;
 const LEAVE_MS = 600;
 const SAY_BACK_MS = 2000; // "Here you are!": chờ bé nói theo
-const ACTIVE = ['order', 'coins'];
+const ACTIVE = ['order', 'coins', 'stock', 'bag', 'give'];
+const NICE_DAY_PAUSE_MS = 1000; // "Have a nice day!" — ngắt — "You too!"
 
 export function shopScreen(app, params = {}) {
   let progress = cleanJobState(app.settings.shopGame, { maxLevel: MAX_LEVEL });
@@ -41,6 +46,9 @@ export function shopScreen(app, params = {}) {
   let wishShown = false;
   // Tiến độ đã ghi trong lượt này (mã ca:món): ra nền / 🧹 chơi lại không ghi lần hai.
   let recorded = new Set();
+  let phase = 'order'; // bước đang lưu: stock | order | coins | bag | give
+  let stocked = []; // món đã vào giỏ (bày kệ)
+  let picked = null; // mức 2–3: món đã chạm, chờ chạm giỏ
 
   const cur = () => plan?.cases[caseIdx];
   const customer = () => PATIENT_BY_ID.get(cur()?.customer);
@@ -52,7 +60,9 @@ export function shopScreen(app, params = {}) {
   const wish = h('div.sh-wish', { hidden: true, 'aria-label': 'Khách muốn mua' });
   const till = h('div.sh-till', { 'aria-label': 'Két tiền' }, h('span.sh-till-slot'), h('span.sh-till-count', { text: '' }));
   const coinsEl = h('div.sh-coins');
-  const counter = h('div.sh-counter', {}, coinsEl, till);
+  const bagEl = h('button.sh-bag', { type: 'button', 'aria-label': 'Túi giấy', hidden: true, onclick: () => tapBag() }, h('span', { text: '🛍️' }));
+  const counter = h('div.sh-counter', {}, coinsEl, bagEl, till);
+  const basketsEl = h('div.sh-baskets', { hidden: true });
 
   const kit = jobScreen(app, {
     job: JOB, background: { lessonId: JOBS_BG_IMAGES, word: JOB }, className: 'sh-play', stageClass: 'sh-stage', title: '🛒 Shop', helperLabel: 'Bông bán hàng', cap: 'shop',
@@ -72,6 +82,18 @@ export function shopScreen(app, params = {}) {
           kit.talk([B(TAP_COINS_LINE)]).then(rearm);
           return;
         }
+        if (state === 'stock') {
+          const next = picked ?? plan.stock.find((id) => !stocked.includes(id));
+          restartAnim(kit.trayItem(next), 'nudge');
+          if (level >= 2) restartAnim(basketEl(foodGroup(foodById(next))), 'nudge');
+          kit.talk([B(stockLine(level))]).then(rearm);
+          return;
+        }
+        if (state === 'bag' || state === 'give') {
+          restartAnim(state === 'bag' ? bagEl : customerEl, state === 'bag' ? 'nudge' : 'hop');
+          kit.talk([B(state === 'bag' ? BAG_LINE : giveBagLine(customer().name))]).then(rearm);
+          return;
+        }
         showWish();
         restartAnim(kit.trayItem(remaining(order(), got)[0]?.id), 'nudge');
         kit.talk([C(orderLine(order(), foodById, got))]).then(rearm);
@@ -80,14 +102,16 @@ export function shopScreen(app, params = {}) {
     tray: {
       face: (id) => foodFace(foodById(id), images, 'fd-face'),
       label: (id) => foodById(id)?.en ?? id,
-      canGive: () => state === 'order',
-      dropOk: (x, y) => inside(customerEl, x, y, 0.15) || inside(wish, x, y, 0.1),
-      give: (id, from) => give(id, from),
+      canGive: () => state === 'order' || state === 'stock',
+      dropOk: (x, y) => (state === 'stock' ? Boolean(basketAt(x, y)) : inside(customerEl, x, y, 0.15) || inside(wish, x, y, 0.1)),
+      give: (id, from) => (state === 'stock' ? stockGive(id, from) : give(id, from)),
     },
   });
   const { stage, count, talk } = kit;
-  stage.append(customerEl, wish, counter);
-  const stepKey = () => `${kit.epoch}:${caseIdx}:${state}:${remaining(order(), got).length}:${paid}`;
+  stage.append(customerEl, wish, counter, basketsEl);
+  const stepKey = () => `${kit.epoch}:${caseIdx}:${state}:${remaining(order(), got).length}:${paid}:${stocked.length}`;
+  const basketEl = (g) => basketsEl.querySelector(`.sh-basket[data-group="${g}"]`);
+  const basketAt = (x, y) => [...basketsEl.children].find((el) => inside(el, x, y, 0.08))?.dataset.group ?? null;
 
   function inside(el, x, y, grow) {
     if (!el || el.hidden) return false;
@@ -98,9 +122,9 @@ export function shopScreen(app, params = {}) {
   }
   function setState(s) {
     state = s;
-    kit.setState(s, s === 'order');
+    kit.setState(s, s === 'order' || s === 'stock');
   }
-  const snap = () => saveSnap(JOB, { level, plan, caseIdx, got, paid, wrongs, nudges, wishShown, recorded: [...recorded], phase: state === 'coins' ? 'coins' : 'order' });
+  const snap = () => saveSnap(JOB, { level, plan, caseIdx, got, paid, wrongs, nudges, wishShown, recorded: [...recorded], phase, stocked });
   const saveProgress = () => app.setSetting('shopGame', progress).catch(() => {});
 
   // ---------- Vẽ ----------
@@ -143,6 +167,11 @@ export function shopScreen(app, params = {}) {
     wrongs = resume?.wrongs ?? 0;
     nudges = resume?.nudges ?? 0;
     wishShown = resume?.wishShown ?? false;
+    phase = resume?.phase ?? 'order';
+    basketsEl.hidden = true;
+    customerEl.hidden = false;
+    counter.hidden = false;
+    bagEl.hidden = true;
     setState('enter');
     renderCustomer();
     renderWish();
@@ -150,7 +179,9 @@ export function shopScreen(app, params = {}) {
     renderCoins();
     snap();
     if (resume) {
-      if (resume.phase === 'coins' || orderDone(order(), got)) startCoins(true);
+      if (resume.phase === 'bag') startBag(true);
+      else if (resume.phase === 'give') startGive(true);
+      else if (resume.phase === 'coins' || orderDone(order(), got)) startCoins(true);
       else beginOrder(true);
       return;
     }
@@ -167,6 +198,7 @@ export function shopScreen(app, params = {}) {
   async function beginOrder() {
     const e = kit.epoch;
     setState('order');
+    phase = 'order';
     snap();
     await talk([C(orderLine(order(), foodById, got))]);
     if (e === kit.epoch) kit.armNudge();
@@ -241,10 +273,11 @@ export function shopScreen(app, params = {}) {
     const e = kit.epoch;
     const total = coinsFor(order(), level);
     if (paid >= total) {
-      thanks();
+      startBag();
       return;
     }
     setState('coins');
+    phase = 'coins';
     renderCoins();
     snap();
     await talk(resume ? [B(TAP_COINS_LINE)] : [C(MONEY_LINE), B(TAP_COINS_LINE)]);
@@ -272,17 +305,83 @@ export function shopScreen(app, params = {}) {
     if (e !== kit.epoch) return;
     if (paid >= total && state === 'coins') {
       setState('busy');
-      thanks();
+      startBag();
     } else if (k === stepKey()) kit.armNudge();
+  }
+
+  // ---------- Đưa túi, chào khách (SPEC-jobs2 mục 2.4) ----------
+  async function startBag(resume = false) {
+    const e = kit.epoch;
+    setState('bag');
+    phase = 'bag';
+    renderCoins();
+    bagEl.hidden = false;
+    bagEl.classList.remove('full', 'gone');
+    snap();
+    if (!resume) restartAnim(bagEl, 'enter');
+    await talk([B(BAG_LINE)]);
+    if (e === kit.epoch && state === 'bag') kit.armNudge();
+  }
+  /** Chạm túi: món bay vào túi (lúc đưa túi: khách nhún — không nhầm). */
+  async function tapBag() {
+    if (state === 'give') {
+      restartAnim(customerEl, 'hop');
+      return;
+    }
+    if (state !== 'bag') return;
+    const e = kit.epoch;
+    setState('busy');
+    kit.clearNudge();
+    phase = 'give';
+    nudges = 0;
+    snap();
+    const to = center(bagEl.getBoundingClientRect());
+    await Promise.all(order().map(async (o, i) => {
+      await wait(i * 150);
+      const ghost = await kit.flyTo(foodFace(foodById(o.id), images, 'fd-face'), center(wish.hidden ? customerEl.getBoundingClientRect() : wish.getBoundingClientRect()), to);
+      kit.removeGhost(ghost);
+    }));
+    if (e !== kit.epoch) return;
+    play('pop');
+    startGive();
+  }
+  async function startGive(resume = false) {
+    const e = kit.epoch;
+    setState('give');
+    phase = 'give';
+    bagEl.hidden = false;
+    bagEl.classList.add('full');
+    renderCoins();
+    if (resume) snap();
+    restartAnim(bagEl, 'hop');
+    await talk([B(giveBagLine(customer().name))]);
+    if (e === kit.epoch && state === 'give') kit.armNudge();
+  }
+  async function giveBag() {
+    const e = kit.epoch;
+    setState('busy');
+    kit.clearNudge();
+    const from = center(bagEl.getBoundingClientRect());
+    bagEl.classList.add('gone');
+    const ghost = await kit.flyTo(h('span.sh-bag-fly', { text: '🛍️' }), from, center(customerEl.getBoundingClientRect()));
+    kit.removeGhost(ghost);
+    if (e !== kit.epoch) return;
+    bagEl.hidden = true;
+    restartAnim(customerEl, 'hop');
+    thanks();
   }
 
   async function thanks() {
     const e = kit.epoch;
     setState('thanks');
     // Khách xong: lưu để chơi tiếp là khách sau.
-    saveSnap(JOB, { level, plan, caseIdx: caseIdx + 1, got: {}, paid: 0, wrongs: 0, nudges: 0, wishShown: false, recorded: [...recorded], phase: 'order' });
+    saveSnap(JOB, { level, plan, caseIdx: caseIdx + 1, got: {}, paid: 0, wrongs: 0, nudges: 0, wishShown: false, recorded: [...recorded], phase: 'order', stocked });
     play('sparkle');
-    await talk([C(THANKS_LINE)]);
+    await talk([C(THANKS_LINE), B(NICE_DAY_LINE)]);
+    if (e !== kit.epoch) return;
+    await wait(NICE_DAY_PAUSE_MS);
+    if (e !== kit.epoch) return;
+    await talk([C(YOU_TOO_LINE), C(BYE_LINE)]);
     if (e !== kit.epoch) return;
     setState('leave');
     restartAnim(customerEl, 'leave');
@@ -306,6 +405,126 @@ export function shopScreen(app, params = {}) {
   function restart() {
     if (state === 'done' || !plan) return;
     kit.cancelAll();
+    if (phase === 'stock') {
+      stocked = [];
+      startStock();
+      return;
+    }
+    caseIdx = 0;
+    startCase();
+  }
+
+  // ---------- Bày kệ (SPEC-jobs2 mục 2.2, mở đầu lượt) ----------
+  function renderBaskets() {
+    basketsEl.replaceChildren(...groupsFor(level).map((g) => h('button.sh-basket', {
+      type: 'button', 'aria-label': `${GROUP_INFO[g].en} basket`, dataset: { group: g }, onclick: () => tapBasket(g),
+    },
+    h('span.sh-basket-label', {}, h('span.sh-basket-icon', { text: GROUP_INFO[g].emoji }), h('span', { text: GROUP_INFO[g].en })),
+    h('span.sh-basket-in', {}, ...stocked.filter((id) => foodGroup(foodById(id)) === g).map((id) => foodFace(foodById(id), images, 'sh-basket-face'))))));
+  }
+  function renderCrate() {
+    kit.renderTray(plan.stock.filter((id) => !stocked.includes(id)));
+    for (const el of kit.trayEl.children) {
+      el.dataset.group = foodGroup(foodById(el.dataset.item)) ?? ''; // cho test
+      el.classList.toggle('picked', el.dataset.item === picked);
+    }
+  }
+  async function startStock(resume = null) {
+    const e = kit.epoch;
+    stocked = (resume?.stocked ?? []).filter((id) => plan.stock.includes(id));
+    wrongs = resume?.wrongs ?? 0;
+    nudges = resume?.nudges ?? 0;
+    picked = null;
+    phase = 'stock';
+    customerEl.hidden = true;
+    wish.hidden = true;
+    counter.hidden = true;
+    basketsEl.hidden = false;
+    count.textContent = '';
+    setState('stock');
+    renderBaskets();
+    renderCrate();
+    snap();
+    if (!resume) restartAnim(basketsEl, 'enter');
+    await talk([B(stockLine(level))]);
+    if (e === kit.epoch && state === 'stock') kit.armNudge();
+  }
+  /** Món trong thùng: kéo thả vào giỏ, hoặc chạm (mức 1 tự bay vào giỏ đúng; mức 2–3 chọn món rồi chạm giỏ). */
+  function stockGive(id, at) {
+    if (state !== 'stock') return;
+    const g = basketAt(at.x, at.y);
+    if (level <= 1) {
+      placeIn(id, foodGroup(foodById(id)), at);
+      return;
+    }
+    if (g) {
+      placeIn(id, g, at);
+      return;
+    }
+    picked = picked === id ? null : id;
+    renderCrate();
+  }
+  function tapBasket(g) {
+    if (state !== 'stock') return;
+    if (!picked) {
+      // Chưa chọn món: món cần xếp nhún (không nhầm).
+      restartAnim(kit.trayItem(plan.stock.find((id) => !stocked.includes(id))), 'nudge');
+      return;
+    }
+    const item = kit.trayItem(picked);
+    if (!item) return;
+    placeIn(picked, g, center(item.getBoundingClientRect()));
+  }
+  async function placeIn(id, g, from) {
+    const e = kit.epoch;
+    const food = foodById(id);
+    const want = foodGroup(food);
+    if (g !== want) {
+      const now = Date.now();
+      if (`b:${id}:${g}` === lastWrong.key && now - lastWrong.at < WRONG_LOCK_MS) return;
+      lastWrong = { key: `b:${id}:${g}`, at: now };
+      wrongs += 1;
+      snap();
+      kit.clearNudge();
+      play('boing');
+      restartAnim(basketEl(g), 'shake');
+      if (wrongs >= 2) restartAnim(basketEl(want), 'nudge');
+      const k = stepKey();
+      await talk([B(wrongBasketLine(food))]);
+      if (k === stepKey()) kit.armNudge();
+      return;
+    }
+    // Đúng: nhận NGAY (một lần) rồi mới bay + nói. "Đã gặp" món (mức 2–3, đúng ngay lần đầu, như bán hàng).
+    setState('busy');
+    kit.clearNudge();
+    if (level >= 2 && wrongs === 0 && FOOD_LESSON_WORDS.has(food.en) && !recorded.has(`stock:${id}`)) {
+      recorded.add(`stock:${id}`);
+      markPracticed(app, food.en, food.emoji);
+    }
+    stocked = [...stocked, id];
+    picked = null;
+    wrongs = 0;
+    nudges = 0;
+    const last = plan.stock.every((x) => stocked.includes(x));
+    snap();
+    renderCrate();
+    const ghost = await kit.flyTo(foodFace(food, images, 'fd-face'), from, center(basketEl(g).getBoundingClientRect()));
+    kit.removeGhost(ghost);
+    if (e !== kit.epoch) return;
+    play('pop');
+    renderBaskets();
+    restartAnim(basketEl(g), 'hop');
+    if (!last) setState('stock'); // món sau nhận ngay trong lúc Bông nói
+    const k = stepKey();
+    await talk([B(groupLine(food))]);
+    if (e !== kit.epoch) return;
+    if (!last) {
+      if (k === stepKey()) kit.armNudge();
+      return;
+    }
+    play('sparkle');
+    await talk([B(OPEN_LINE)]);
+    if (e !== kit.epoch) return;
     caseIdx = 0;
     startCase();
   }
@@ -313,12 +532,24 @@ export function shopScreen(app, params = {}) {
   function repeatPrompt() {
     if (!ACTIVE.includes(state)) return;
     const k = stepKey();
-    talk([state === 'coins' ? B(TAP_COINS_LINE) : C(orderLine(order(), foodById, got))]).then(() => k === stepKey() && kit.armNudge());
+    const line = {
+      coins: B(TAP_COINS_LINE), stock: B(stockLine(level)), bag: B(BAG_LINE), give: B(giveBagLine(customer()?.name ?? '')),
+    }[state] ?? C(orderLine(order(), foodById, got));
+    talk([line]).then(() => k === stepKey() && kit.armNudge());
   }
 
-  // Chạm khách lúc đang gọi món: khách nói lại món muốn mua.
+  // Chạm khách lúc đang gọi món: khách nói lại món muốn mua. Lúc đưa túi: túi bay tới khách; lúc bỏ túi: túi nhún.
   customerEl.addEventListener('pointerdown', () => {
-    if (kit.pressing || state !== 'order') return;
+    if (kit.pressing) return;
+    if (state === 'give') {
+      giveBag();
+      return;
+    }
+    if (state === 'bag') {
+      restartAnim(bagEl, 'nudge');
+      return;
+    }
+    if (state !== 'order') return;
     const k = stepKey();
     talk([C(orderLine(order(), foodById, got))]).then(() => k === stepKey() && kit.armNudge());
   }, { signal: kit.signal });
@@ -331,6 +562,11 @@ export function shopScreen(app, params = {}) {
       plan = s.plan;
       caseIdx = s.caseIdx;
       recorded = new Set(s.recorded ?? []);
+      stocked = s.stocked ?? [];
+      if (s.phase === 'stock' && plan.stock?.length) {
+        startStock(s);
+        return;
+      }
       if (caseIdx >= plan.cases.length) {
         caseIdx = plan.cases.length - 1;
         renderCustomer();
@@ -340,7 +576,7 @@ export function shopScreen(app, params = {}) {
     }
     plan = planRound(level, { foods });
     caseIdx = 0;
-    startCase();
+    startStock();
   });
 
   kit.onCleanup(() => images?.revoke());

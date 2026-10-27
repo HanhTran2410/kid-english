@@ -6,7 +6,7 @@ const spoken = (page) => page.evaluate(() => window.__spoken.slice());
 const saidSince = async (page, n, re) => (await spoken(page)).slice(n).some((t) => re.test(t));
 const play = (page) => page.locator('.sh-play');
 
-async function openShop(page, settings) {
+async function openShop(page, settings, { stock = true } = {}) {
   await fakeSpeech(page);
   await startApp(page);
   if (settings) await page.evaluate((s) => window.kidEnglish.setSetting('shopGame', s), settings);
@@ -16,7 +16,36 @@ async function openShop(page, settings) {
   await expect(page.locator('.jb-job')).toHaveCount(await page.evaluate(async () => (await import('/js/screens/jobs.js')).JOBS.length));
   await expect.poll(async () => (await spoken(page)).includes('What do you want to be today?')).toBe(true);
   await page.getByRole('button', { name: 'Bán hàng' }).click();
+  await expect(play(page)).toHaveAttribute('data-state', 'stock', { timeout: 15000 });
+  if (stock) await toOrder(page);
+}
+/** SPEC-jobs2 SH1: bày hết thùng hàng (chạm món; mức 2–3 rồi chạm đúng giỏ). */
+async function doStock(page) {
+  const items = page.locator('.jb-tray .dr-item');
+  const total = await items.count();
+  for (let i = 0; i < total; i++) {
+    await expect(play(page)).toHaveAttribute('data-state', 'stock', { timeout: 15000 });
+    const left = await items.count();
+    const item = items.first();
+    const g = await item.getAttribute('data-group');
+    await item.click();
+    if (await page.locator('.jb-tray .dr-item.picked').count()) await page.locator(`.sh-basket[data-group="${g}"]`).click();
+    // Món cuối: khay đổi sang kệ hàng của khách.
+    await expect.poll(async () => (await play(page).getAttribute('data-state')) !== 'stock' || (await items.count()) === left - 1, { timeout: 15000 }).toBe(true);
+  }
+}
+/** Bày kệ (nếu đang bày) rồi chờ khách gọi món. */
+async function toOrder(page) {
+  await expect(play(page)).toHaveAttribute('data-state', /stock|order/, { timeout: 15000 });
+  if ((await play(page).getAttribute('data-state')) === 'stock') await doStock(page);
   await expect(play(page)).toHaveAttribute('data-state', 'order', { timeout: 15000 });
+}
+/** SPEC-jobs2 SH1: bỏ đồ vào túi, đưa túi cho khách. */
+async function doBag(page) {
+  await expect(play(page)).toHaveAttribute('data-state', 'bag', { timeout: 15000 });
+  await page.locator('.sh-bag').click();
+  await expect(play(page)).toHaveAttribute('data-state', 'give', { timeout: 15000 });
+  await page.locator('.sh-customer').click();
 }
 /** Món khách đang gọi (bong bóng luôn có đủ món, kể cả khi đang ẩn ở mức 2–3). */
 const order = (page) => page.locator('.sh-wish-item').evaluateAll((els) => els.map((e) => ({
@@ -53,7 +82,8 @@ test('trang chọn nghề; mức 1: chào, gọi món, đưa nhầm → câu nh�
   n = (await spoken(page)).length;
   await page.locator(`.jb-tray .dr-item[data-item="${o.id}"]`).click();
   await expect.poll(() => saidSince(page, n, /^Here you are!$/)).toBe(true);
-  await expect.poll(() => saidSince(page, n, /^Thank you! Bye-bye!$/), { timeout: 15000 }).toBe(true);
+  await doBag(page);
+  await expect.poll(() => saidSince(page, n, /^Bye-bye!$/), { timeout: 15000 }).toBe(true);
   expect(await saidSince(page, n, /coin/)).toBe(false); // mức 1 không có xu
   await expect(page.locator('.jb-count')).toHaveText('2/3', { timeout: 15000 });
 });
@@ -63,6 +93,7 @@ test('3 khách → Hoan hô + sticker; đếm lượt', async ({ page }) => {
   for (let i = 0; i < 3; i++) {
     await expect(page.locator('.jb-count')).toHaveText(`${i + 1}/3`, { timeout: 15000 });
     await serve(page);
+    await doBag(page);
   }
   await expect(page.locator('.prize-sticker')).toBeVisible({ timeout: 15000 });
   // Màn hoan hô không bị cắt: hộp quà và nút ✔ nằm trọn trong màn hình.
@@ -98,7 +129,8 @@ test('mức 2: trả xu: bỏ từng xu vào két, Bông đếm, đủ xu thì c
     await page.locator('.sh-coin').first().click();
     await page.waitForTimeout(100);
   }
-  await expect.poll(async () => (await spoken(page)).includes('Thank you! Bye-bye!'), { timeout: 15000 }).toBe(true);
+  await doBag(page);
+  await expect.poll(async () => (await spoken(page)).includes('Have a nice day!'), { timeout: 15000 }).toBe(true);
   await expect(page.locator('.jb-count')).toHaveText('2/3', { timeout: 15000 });
 });
 
@@ -125,7 +157,7 @@ test('kệ dùng ảnh món Cho Bông ăn bố mẹ đã thay', async ({ page })
   await page.getByRole('button', { name: 'Trò chơi' }).click();
   await page.getByRole('button', { name: 'Đóng vai' }).click();
   await page.getByRole('button', { name: 'Bán hàng' }).click();
-  await expect(play(page)).toHaveAttribute('data-state', 'order', { timeout: 15000 });
+  await toOrder(page);
   await expect(page.locator('.jb-tray .dr-item img')).toHaveCount(3);
 });
 
@@ -142,7 +174,7 @@ test('JOBS-02: mức 2 khách mua nhiều cái — đưa cái đầu chưa xong 
   for (let i = 0; i < 15 && (await order(page))[0].count < 2; i++) {
     await page.getByRole('button', { name: 'Chọn nghề' }).click();
     await page.getByRole('button', { name: 'Bán hàng' }).click();
-    await expect(play(page)).toHaveAttribute('data-state', 'order', { timeout: 15000 });
+    await toOrder(page);
   }
   const [o] = await order(page);
   expect(o.count).toBeGreaterThanOrEqual(2);
@@ -192,9 +224,103 @@ test('JOBS-09: 🧹 ngay sau khi đưa đúng (đang bay / đang nói) — việ
   await expect(page.locator('.sh-customer')).toHaveAttribute('data-customer', customer);
   await expect(page.locator('.jb-count')).toHaveText('1/3');
   await page.waitForTimeout(500);
-  expect(await saidSince(page, n, /^(Here you are!|Thank you! Bye-bye!)$/)).toBe(false);
+  expect(await saidSince(page, n, /^(Here you are!|Put it in the bag!)$/)).toBe(false);
   const before = await practice(page, word);
   await page.locator(`.jb-tray .dr-item[data-item="${o.id}"]`).click();
-  await expect.poll(() => saidSince(page, n, /^Thank you! Bye-bye!$/), { timeout: 15000 }).toBe(true);
+  await expect.poll(() => saidSince(page, n, /^Put it in the bag!$/), { timeout: 15000 }).toBe(true);
   expect(await practice(page, word)).toBe(before);
+});
+
+// ---------- SPEC-jobs2 SH1: bày kệ + đưa túi ----------
+const groupOf = (page, id) => page.locator(`.jb-tray .dr-item[data-item="${id}"]`).getAttribute('data-group');
+
+test('SH1 mức 1: bày kệ — 3 món, 2 giỏ Fruit / Drinks; chạm món → vào đúng giỏ + "… are fruit!" / "… is a drink!", không có nhầm; đủ → "The shop is open!" → khách đầu', async ({ page }) => {
+  await openShop(page, null, { stock: false });
+  await expect(page.locator('.sh-basket')).toHaveCount(2);
+  await expect(page.locator('.jb-tray .dr-item')).toHaveCount(3);
+  await expect(page.locator('.sh-customer')).toBeHidden();
+  await expect.poll(() => spoken(page)).toContain("Let's fill the shop! Tap the food.");
+  const ids = await page.locator('.jb-tray .dr-item').evaluateAll((els) => els.map((e) => [e.dataset.item, e.dataset.group]));
+  for (const [id, g] of ids) {
+    await expect(play(page)).toHaveAttribute('data-state', 'stock', { timeout: 15000 });
+    const n = (await spoken(page)).length;
+    await page.locator(`.jb-tray .dr-item[data-item="${id}"]`).click();
+    await expect(page.locator(`.sh-basket[data-group="${g}"] .sh-basket-in > *`)).not.toHaveCount(0, { timeout: 15000 });
+    await expect.poll(() => saidSince(page, n, g === 'drink' ? /^\w+ is a drink!$/ : /^\w+ (is|are) fruit!$/)).toBe(true);
+  }
+  expect(await saidSince(page, 0, /basket\.$/)).toBe(false);
+  await expect.poll(() => spoken(page)).toContain('The shop is open!');
+  await expect(play(page)).toHaveAttribute('data-state', 'order', { timeout: 15000 });
+  await expect(page.locator('.sh-customer')).toBeVisible();
+  await expect(page.locator('.sh-baskets')).toBeHidden();
+  await expect(page.locator('.jb-count')).toHaveText('1/3');
+});
+
+test('SH1 mức 2: chạm món rồi chạm giỏ sai → "… Put it in the … basket." (nhầm); kéo món thả vào giỏ đúng được; ra nền giữa lúc bày → quay lại giữ món đã bày', async ({ page }) => {
+  await openShop(page, { level: 2, rounds: 0, lock: 2, seen: {} }, { stock: false });
+  await expect(page.locator('.sh-basket')).toHaveCount(2);
+  await expect(page.locator('.jb-tray .dr-item')).toHaveCount(4);
+  const first = await page.locator('.jb-tray .dr-item').first().getAttribute('data-item');
+  const g = await groupOf(page, first);
+  const other = g === 'fruit' ? 'drink' : 'fruit';
+  await page.locator(`.jb-tray .dr-item[data-item="${first}"]`).click();
+  await expect(page.locator(`.jb-tray .dr-item[data-item="${first}"]`)).toHaveClass(/picked/);
+  const n = (await spoken(page)).length;
+  await page.locator(`.sh-basket[data-group="${other}"]`).click();
+  await expect.poll(() => saidSince(page, n, new RegExp(`Put it in the ${g === 'fruit' ? 'fruit' : 'drinks'} basket\\.$`))).toBe(true);
+  await page.locator(`.sh-basket[data-group="${g}"]`).click();
+  await expect(page.locator('.jb-tray .dr-item')).toHaveCount(3, { timeout: 15000 });
+  // Kéo thả món thứ hai vào giỏ đúng.
+  await expect(play(page)).toHaveAttribute('data-state', 'stock', { timeout: 15000 });
+  const second = await page.locator('.jb-tray .dr-item').first().getAttribute('data-item');
+  const g2 = await groupOf(page, second);
+  const from = await page.locator(`.jb-tray .dr-item[data-item="${second}"]`).boundingBox();
+  const to = await page.locator(`.sh-basket[data-group="${g2}"]`).boundingBox();
+  await page.mouse.move(from.x + from.width / 2, from.y + from.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(to.x + to.width / 2, to.y + to.height / 2, { steps: 8 });
+  await page.mouse.up();
+  await expect(page.locator('.jb-tray .dr-item')).toHaveCount(2, { timeout: 15000 });
+  await expect(play(page)).toHaveAttribute('data-state', 'stock', { timeout: 15000 });
+  await setVisible(page, 'hidden');
+  await setVisible(page, 'visible');
+  await page.locator('.resume-overlay .start-btn').click();
+  await expect(play(page)).toHaveAttribute('data-state', 'stock', { timeout: 15000 });
+  await expect(page.locator('.jb-tray .dr-item')).toHaveCount(2);
+  await expect(page.locator('.sh-basket .sh-basket-in > *')).toHaveCount(2);
+  await toOrder(page);
+});
+
+test('SH1 mức 3: thêm giỏ "Other food" — 3 giỏ, thùng có món của cả 3 nhóm', async ({ page }) => {
+  await openShop(page, { level: 3, rounds: 0, lock: 3, seen: {} }, { stock: false });
+  await expect(page.locator('.sh-basket')).toHaveCount(3);
+  await expect(page.locator('.sh-basket[data-group="other"]')).toContainText('Other food');
+  const groups = await page.locator('.jb-tray .dr-item').evaluateAll((els) => els.map((e) => e.dataset.group));
+  expect(new Set(groups)).toEqual(new Set(['fruit', 'drink', 'other']));
+  await toOrder(page);
+});
+
+test('SH1 đưa túi: "Put it in the bag!" → chạm khách trước: túi nhún, không nhầm; chạm túi → "Give it to …!"; ra nền → vẫn bước đưa túi; chạm khách → "Thank you!" → "Have a nice day!" → "You too!" → "Bye-bye!"', async ({ page }) => {
+  await openShop(page);
+  await serve(page);
+  await expect(play(page)).toHaveAttribute('data-state', 'bag', { timeout: 15000 });
+  await expect.poll(() => spoken(page)).toContain('Put it in the bag!');
+  await expect(page.locator('.sh-bag')).toBeVisible();
+  await page.locator('.sh-customer').click();
+  await expect(page.locator('.sh-bag')).toHaveClass(/nudge/);
+  await expect(play(page)).toHaveAttribute('data-state', 'bag');
+  await page.locator('.sh-bag').click();
+  await expect(play(page)).toHaveAttribute('data-state', 'give', { timeout: 15000 });
+  const name = await page.evaluate(async (id) => (await import('/js/doctor.js')).PATIENT_BY_ID.get(id).name, await page.locator('.sh-customer').getAttribute('data-customer'));
+  await expect.poll(() => spoken(page)).toContain(`Give it to ${name}!`);
+  await setVisible(page, 'hidden');
+  await setVisible(page, 'visible');
+  await page.locator('.resume-overlay .start-btn').click();
+  await expect(play(page)).toHaveAttribute('data-state', 'give', { timeout: 15000 });
+  await expect(page.locator('.sh-bag')).toHaveClass(/full/);
+  const n = (await spoken(page)).length;
+  await page.locator('.sh-customer').click();
+  await expect.poll(async () => (await spoken(page)).slice(n).filter((t) => /^(Thank you!|Have a nice day!|You too!|Bye-bye!)$/.test(t)), { timeout: 15000 })
+    .toEqual(['Thank you!', 'Have a nice day!', 'You too!', 'Bye-bye!']);
+  await expect(page.locator('.jb-count')).toHaveText('2/3', { timeout: 15000 });
 });

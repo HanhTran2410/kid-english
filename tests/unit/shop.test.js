@@ -5,6 +5,7 @@ import { BUILTIN_FOODS, allFoods } from '../../app/js/feed.js';
 import { cleanJobState, afterJobRound, afterSeen } from '../../app/js/jobs/levels.js';
 import {
   SHELF_SIZE, makeShelf, makeOrder, planRound, coinsFor, remaining, orderDone, orderLine, wrongLine, enoughLine, coinLine, countLine,
+  STOCK_SIZE, makeStock, foodGroup, groupsFor, groupLine, wrongBasketLine, giveBagLine,
 } from '../../app/js/jobs/shop.js';
 
 function seeded(seed = 1) {
@@ -99,4 +100,36 @@ test('mức chung: dữ liệu hỏng → mức 1; đủ 3 lượt lên một m�
   assert.equal(s.level, 3);
   assert.deepEqual(afterJobRound({ level: 1, rounds: 2, lock: 1, seen: {} }), { level: 1, rounds: 0, lock: 1, seen: {} });
   assert.deepEqual(afterSeen(afterSeen(s, 'x'), 'x').seen.x, 2);
+});
+
+test('SPEC-jobs2 SH1 — thùng hàng: mức 1 3 món / mức 2–3 4 món, không trùng; mỗi giỏ của mức có ít nhất 1 món; mức 1–2 chỉ trái cây / đồ uống; mức 3 có cả đồ ăn khác', () => {
+  const rng = seeded(23);
+  for (const level of [1, 2, 3]) for (let i = 0; i < 60; i++) {
+    const stock = makeStock(level, { rng });
+    assert.equal(stock.length, STOCK_SIZE[level]);
+    assert.equal(new Set(stock).size, stock.length);
+    const groups = stock.map((id) => foodGroup(foodById(id)));
+    for (const g of groupsFor(level)) assert.ok(groups.includes(g), `mức ${level} thiếu ${g}`);
+    assert.ok(groups.every((g) => groupsFor(level).includes(g)));
+  }
+  assert.ok(planRound(2, { rng }).stock.length === 4);
+  // Món bố mẹ thêm loại đồ uống vào giỏ Drinks; đồ không ăn được không có nhóm.
+  assert.equal(foodGroup({ id: 'tea', en: 'tea', kind: 'drink', grammar: 'mass' }), 'drink');
+  // Không có đồ uống nào (danh sách lạ): vẫn đủ giỏ nhờ bộ mặc định.
+  const noDrinks = BUILTIN_FOODS.filter((f) => f.kind !== 'drink');
+  assert.ok(makeStock(2, { foods: noDrinks, rng }).some((id) => foodGroup(foodById(id)) === 'drink'));
+  assert.equal(foodGroup(foodById('sock')), null);
+  assert.equal(foodGroup(foodById('mango')), 'fruit');
+  assert.equal(foodGroup(foodById('bread')), 'other');
+});
+
+test('SPEC-jobs2 SH1 — câu bày kệ / đưa túi', () => {
+  assert.equal(groupLine(foodById('banana'))[0], 'Bananas are fruit!');
+  assert.equal(groupLine(foodById('watermelon'))[0], 'Watermelon is fruit!');
+  assert.equal(groupLine(foodById('grapes'))[0], 'Grapes are fruit!');
+  assert.equal(groupLine(foodById('milk'))[0], 'Milk is a drink!');
+  assert.equal(groupLine(foodById('bread'))[0], 'Bread is food!');
+  assert.equal(wrongBasketLine(foodById('milk'))[0], 'Milk is a drink! Put it in the drinks basket.');
+  assert.equal(wrongBasketLine(foodById('apple'))[0], 'Apples are fruit! Put it in the fruit basket.');
+  assert.equal(giveBagLine('Kitty')[0], 'Give it to Kitty!');
 });

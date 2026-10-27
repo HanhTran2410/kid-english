@@ -33,7 +33,7 @@ test('ảnh nền bố mẹ thêm hiện trong trò chơi (Bưu tá), nghề kh�
   await expect(page.locator('.ps-stage.has-bg')).toHaveCount(1, { timeout: 15000 });
   await page.getByRole('button', { name: 'Chọn nghề' }).click();
   await page.getByRole('button', { name: 'Bán hàng' }).click();
-  await expect(page.locator('.sh-play')).toHaveAttribute('data-state', /enter|order/, { timeout: 15000 });
+  await expect(page.locator('.sh-play')).toHaveAttribute('data-state', /stock|enter|order/, { timeout: 15000 });
   await expect(page.locator('.sh-stage.has-bg')).toHaveCount(0);
 });
 

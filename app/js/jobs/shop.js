@@ -62,10 +62,12 @@ export function makeOrder(shelf, level, { rng = Math.random, avoid = null } = {}
 
 /**
  * Kế hoạch một lượt: kệ hàng + 3 khách (bạn thú khác nhau) với món gọi; hai khách liền nhau không gọi cùng món đầu.
- * @returns {{ shelf: string[], cases: Array<{ customer: string, order: Array<{ id: string, count: number }> }> }}
+ * SPEC-jobs2 SH1: thêm thùng hàng `stock` (bày kệ mở đầu lượt).
+ * @returns {{ shelf: string[], cases: Array<{ customer: string, order: Array<{ id: string, count: number }> }>, stock: string[] }}
  */
 export function planRound(level, { foods = BUILTIN_FOODS, rng = Math.random } = {}) {
   const shelfFoods = makeShelf(level, { foods, rng });
+  const stock = makeStock(level, { foods, rng });
   const customers = shuffle(PATIENTS, rng);
   const cases = [];
   let last = null;
@@ -74,7 +76,7 @@ export function planRound(level, { foods = BUILTIN_FOODS, rng = Math.random } = 
     last = order[0].id;
     cases.push({ customer: customers[i % customers.length].id, order });
   }
-  return { shelf: shelfFoods.map((f) => f.id), cases };
+  return { shelf: shelfFoods.map((f) => f.id), cases, stock };
 }
 
 /** Số xu khách trả (mức 2+): số món đã mua, tối đa 3. Mức 1 không có bước trả tiền. */
@@ -96,7 +98,7 @@ export const WELCOME_LINE = ['Hello! Welcome to our shop!', 'Xin chào! Mời b�
 export const HERE_YOU_ARE_LINE = ['Here you are!', 'Của bạn đây!'];
 export const MONEY_LINE = ["Here's the money!", 'Tiền đây ạ!'];
 export const TAP_COINS_LINE = ['Put the coins in the box!', 'Con bỏ xu vào hộp nhé!'];
-export const THANKS_LINE = ['Thank you! Bye-bye!', 'Cảm ơn! Tạm biệt!'];
+export const THANKS_LINE = ['Thank you!', 'Cảm ơn bạn!'];
 export const CLOSED_LINE = ['The shop is closed! Great job!', 'Cửa hàng đóng cửa rồi! Con bán hàng giỏi quá!'];
 
 /** Khách gọi món: "Can I have a banana, please?" (đang đưa dở: phần còn thiếu, "one more apple"). */
@@ -122,3 +124,68 @@ export const countLine = (n) => [`${capital(NUMBERS[n])}!`, `${capital(NUMBERS_V
 export const coinLine = (n) => [`${capital(NUMBERS[n])} ${n === 1 ? 'coin' : 'coins'}!`, `${capital(NUMBERS_VI[n])} đồng xu!`];
 /** Câu xin một món (dùng cho bong bóng / test): "a banana", "some milk". */
 export { requestPhrase };
+
+// ---------- SPEC-jobs2 SH1: bày kệ (mở đầu lượt) + đưa túi, chào khách (cuối mỗi ca) ----------
+/** Trái cây (theo mã món của Cho Bông ăn). */
+export const FRUIT_IDS = new Set(['banana', 'apple', 'orange', 'grapes', 'strawberry', 'watermelon', 'mango', 'coconut']);
+export const GROUPS = ['fruit', 'drink', 'other'];
+export const GROUP_INFO = {
+  fruit: { emoji: '🍎', en: 'Fruit', vi: 'Trái cây', basket: 'fruit' },
+  drink: { emoji: '🥤', en: 'Drinks', vi: 'Đồ uống', basket: 'drinks' },
+  other: { emoji: '🍕', en: 'Other food', vi: 'Đồ ăn khác', basket: 'food' },
+};
+/** Số món trong thùng hàng theo mức. */
+export const STOCK_SIZE = { 1: 3, 2: 4, 3: 4 };
+/** Nhóm của món: đồ uống / trái cây / đồ ăn khác; đồ không ăn được → null. */
+export function foodGroup(f) {
+  if (!f) return null;
+  if (f.kind === 'drink') return 'drink';
+  if (f.kind !== 'food') return null;
+  return FRUIT_IDS.has(f.id) ? 'fruit' : 'other';
+}
+/** Giỏ của mức: mức 1–2 Fruit + Drinks; mức 3 thêm Other food. */
+export const groupsFor = (level) => (level >= 3 ? GROUPS : GROUPS.slice(0, 2));
+
+/**
+ * Thùng hàng (sinh sẵn): mỗi giỏ của mức có ít nhất một món, còn lại ngẫu nhiên, không trùng.
+ * Món bố mẹ thêm (đã lọc) dùng được; nhóm nào thiếu thì lấy từ danh sách món có sẵn.
+ */
+export function makeStock(level, { foods = BUILTIN_FOODS, rng = Math.random } = {}) {
+  const groups = groupsFor(level);
+  const size = STOCK_SIZE[level] ?? STOCK_SIZE[1];
+  const pools = {};
+  for (const g of groups) {
+    const own = foods.filter((f) => foodGroup(f) === g);
+    pools[g] = shuffle(own.length ? own : BUILTIN_FOODS.filter((f) => foodGroup(f) === g), rng);
+  }
+  const picks = groups.map((g) => pools[g].shift());
+  const rest = shuffle(groups.flatMap((g) => pools[g]), rng);
+  while (picks.length < size && rest.length) picks.push(rest.shift());
+  return shuffle(picks, rng).map((f) => f.id);
+}
+
+const subject = (f) => capital(f.grammar === 'count' ? f.plural : f.en);
+const isAre = (f) => (f.grammar === 'mass' ? 'is' : 'are');
+/** "Bananas are fruit!" / "Milk is a drink!" / "Bread is food!" */
+export function groupLine(f) {
+  const g = foodGroup(f);
+  if (g === 'drink') return [`${capital(f.en)} is a drink!`, `${capital(f.vi)} là đồ uống!`];
+  if (g === 'fruit') return [`${subject(f)} ${isAre(f)} fruit!`, `${capital(f.vi)} là trái cây!`];
+  return [`${subject(f)} ${isAre(f)} food!`, `${capital(f.vi)} là đồ ăn!`];
+}
+/** Giỏ sai: "Milk is a drink! Put it in the drinks basket." */
+export function wrongBasketLine(f) {
+  const g = GROUP_INFO[foodGroup(f)];
+  const [en, vi] = groupLine(f);
+  return [`${en} Put it in the ${g.basket} basket.`, `${vi} Con bỏ vào giỏ ${g.vi.toLowerCase()} nhé.`];
+}
+/** Mở đầu lượt: mức 1 chạm từng món; mức 2–3 xếp đúng giỏ. */
+export const stockLine = (level) => (level <= 1
+  ? ["Let's fill the shop! Tap the food.", 'Mình bày hàng nào! Con chạm vào từng món nhé.']
+  : ["Let's fill the shop! Put the food in the right basket.", 'Mình bày hàng nào! Con xếp từng món vào đúng giỏ nhé.']);
+export const OPEN_LINE = ['The shop is open!', 'Cửa hàng mở cửa rồi!'];
+export const BAG_LINE = ['Put it in the bag!', 'Con bỏ đồ vào túi nhé!'];
+export const giveBagLine = (name) => [`Give it to ${name}!`, `Con đưa túi cho ${name} nào!`];
+export const NICE_DAY_LINE = ['Have a nice day!', 'Chúc bạn một ngày vui vẻ!'];
+export const YOU_TOO_LINE = ['You too!', 'Bạn cũng vậy nhé!'];
+export const BYE_LINE = ['Bye-bye!', 'Tạm biệt!'];

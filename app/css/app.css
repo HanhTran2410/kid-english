@@ -2591,6 +2591,29 @@ img.dr-admin-face { width: 100%; height: 100%; object-fit: contain; }
 .sh-till-slot { position: absolute; top: 10px; width: 46px; height: 8px; border-radius: 4px; background: #1c7ed6; }
 .sh-till-count { margin-top: 14px; font-size: 26px; font-weight: 900; color: #fff; }
 .sh-till.hop { animation: dr-hop 0.4s ease-in-out; }
+/* SPEC-jobs2 SH1: bày kệ (giỏ) + túi giấy. */
+.sh-customer[hidden], .sh-counter[hidden], .sh-baskets[hidden], .sh-bag[hidden] { display: none; }
+.sh-baskets { position: absolute; left: 0; right: 0; bottom: 6%; display: flex; justify-content: center; gap: 3%; padding-inline: 3%; z-index: 2; }
+.sh-baskets.enter { animation: dr-enter 0.65s ease-out; }
+.sh-basket { flex: 1 1 0; min-width: 0; max-width: 220px; min-height: clamp(150px, 34vmin, 260px); display: grid; grid-template-rows: auto 1fr; gap: 6px; padding: 10px; border-radius: 20px 20px 46px 46px; background: repeating-linear-gradient(45deg, #e8b46a 0 10px, #d99a4a 10px 20px); border: 4px solid #b9772e; cursor: pointer; touch-action: manipulation; }
+.sh-basket-label { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 2px 6px; text-align: center; padding: 4px 6px; border-radius: 14px; background: #fff; color: var(--ink); font-weight: 900; font-size: clamp(13px, 3vmin, 22px); line-height: 1.15; }
+.sh-basket-icon { font-family: var(--emoji); }
+.sh-basket-in { display: flex; flex-wrap: wrap; align-content: flex-end; justify-content: center; gap: 4px; }
+.sh-basket-face { width: 54px; height: 54px; object-fit: contain; }
+.sh-basket-face.emoji { width: auto; height: auto; font-family: var(--emoji); font-size: 44px; line-height: 1; }
+.sh-basket.shake { animation: dr-shake 0.45s; }
+.sh-basket.hop { animation: dr-hop 0.4s ease-in-out; }
+.sh-basket.nudge { animation: hint-hop 0.5s ease-in-out 3; outline: 4px solid #fff; }
+.jb-item.picked { transform: translateY(-10px) scale(1.08); outline: 4px solid #ffd43b; }
+.sh-bag { display: grid; place-items: center; width: 100px; height: 100px; border-radius: 18px; border: 0; background: transparent; font-family: var(--emoji); font-size: 80px; line-height: 1; cursor: pointer; touch-action: manipulation; }
+.sh-bag.enter { animation: dr-enter 0.5s ease-out; }
+.sh-bag.nudge { animation: hint-hop 0.5s ease-in-out 3; }
+.sh-bag.hop { animation: dr-hop 0.4s ease-in-out; }
+.sh-bag.full span { filter: drop-shadow(0 0 8px #ffd43b); }
+.sh-bag.gone { visibility: hidden; }
+.sh-bag-fly { font-family: var(--emoji); font-size: 64px; line-height: 1; }
+@media (max-width: 600px) { .sh-basket { padding: 6px; } .sh-basket-face { width: 36px; height: 36px; } .sh-basket-face.emoji { font-size: 32px; } }
+@media (prefers-reduced-motion: reduce) { .sh-baskets.enter, .sh-basket.shake, .sh-basket.hop, .sh-basket.nudge, .sh-bag.enter, .sh-bag.nudge, .sh-bag.hop { animation: none; } }
 .sh-wish {
   position: absolute; top: 14%; right: 6%; z-index: 3; display: flex; gap: 8px; align-items: center;
   padding: 8px 12px; border-radius: 22px; background: #fff; box-shadow: var(--shadow); border: 3px solid var(--yellow);
