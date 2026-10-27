@@ -5,7 +5,9 @@
 // Phần chung với các nghề khác (nói, nhắc, khay, đồ bay, lượt, ra nền) ở jobs/kit.js (SPEC-jobs mục 2.3).
 
 import { h } from '../ui.js';
-import { mediaBlob } from '../db.js';
+import { mediaBlob, listLessons, latestImageForWord } from '../db.js';
+import { isWordLesson } from '../phrase.js';
+import { progressKey } from '../progress.js';
 import { play } from '../speech/sfx.js';
 import { markPracticed } from '../player/track.js';
 import { numberKey } from '../numbers.js';
@@ -22,6 +24,7 @@ import {
   STICKER_COLORS, planSticker, stickerId, matchesSticker, STICKER_ASK_LINE, stickerWantLine, stickerLoveLine, stickerWrongLine,
   planDoctorRound, CHECKUP_HELLO_LINE, MEASURE_LINE, FROM_BOTTOM_LINE, GROWING_LINE, HOW_MANY_BLOCKS_LINE, TALLER_Q_LINE,
   blockCountLine, tallLine, rightBlocksLine, wrongBlocksLine, tallerLine, wrongTallerLine,
+  EYES_HELLO_LINE, COVER_LINE, GLASSES_ITEM, SEE_BETTER_LINE, pointLine, seeLine, wrongEyeLine, needGlassesLine,
 } from '../doctor.js';
 
 const JOB = 'doctor';
@@ -32,7 +35,7 @@ const LEAVE_MS = 600;
 const STEP_STATES = ['touch', 'check', 'treat'];
 /** Bước chờ bé thao tác (nhắc 10 giây, khay sáng): bước khám chữa + rửa tay + tặng sticker (SPEC-doctor2). */
 /** Ca đo chiều cao (SPEC-doctor2 DR2): đếm khối, chọn số (mức 2), ai cao hơn (mức 3). */
-const MEASURE_STATES = ['measure', 'howmany', 'taller'];
+const MEASURE_STATES = ['measure', 'howmany', 'taller', 'point', 'glasses']; // + khám mắt (DR3)
 const ACTIVE = [...STEP_STATES, 'wash', 'sticker', ...MEASURE_STATES];
 const WASH_MS = 700; // hoạt ảnh rửa tay, không chặn thao tác tiếp
 const INK = '#3d2c5e';
@@ -142,6 +145,7 @@ export function doctorScreen(app, params = {}) {
   let washDone = false;
   let mWho = 0; // ca đo: bạn thứ mấy đang được đo (mức 3 có hai bạn)
   let mCount = 0; // số khối đã đếm của bạn đang đo
+  let eIdx = 0; // ca khám mắt: câu chỉ hình thứ mấy
 
   const curCase = () => CASE_BY_ID.get(cases[caseIdx]?.id);
   const curPatient = () => PATIENT_BY_ID.get(cases[caseIdx]?.patient);
@@ -154,7 +158,10 @@ export function doctorScreen(app, params = {}) {
   const washFx = h('div.dr-fx', { 'aria-hidden': 'true' });
   const washEl = h('div.dr-wash', { hidden: true }, h('div.dr-wash-art', { html: WASH_SVG }), washPhoto, washFx);
   const measureEl = h('div.dr-measure', { hidden: true });
+  const eyesEl = h('div.dr-eyes', { hidden: true });
   const isCheckup = () => cases[caseIdx]?.id === 'checkup';
+  const isEyes = () => cases[caseIdx]?.id === 'eyes';
+  const eyeUrls = [];
   const sticker = () => {
     const c = cases[caseIdx];
     if (c && !c.sticker) c.sticker = planSticker(level); // bản lưu cũ chưa có bộ sticker
@@ -195,11 +202,12 @@ export function doctorScreen(app, params = {}) {
     },
     tray: {
       face: (id) => trayFace(id),
-      label: (id) => (WASH_BY.has(id) ? WASH_BY.get(id).name : stickerById(id) ? `${stickerById(id).color} ${stickerById(id).shape}` : id.startsWith('n-') ? id.slice(2) : ITEM_BY_ID.get(id).name),
+      label: (id) => (id === 'glasses' ? 'glasses' : WASH_BY.has(id) ? WASH_BY.get(id).name : stickerById(id) ? `${stickerById(id).color} ${stickerById(id).shape}` : id.startsWith('n-') ? id.slice(2) : ITEM_BY_ID.get(id).name),
       canGive: () => ACTIVE.includes(state),
       // Rửa tay / tặng sticker: thả ở đâu cũng được (đồ tự tới tay / tự dán lên bạn thú).
-      dropOk: (x, y) => state === 'wash' || state === 'sticker' || state === 'howmany' || Boolean(regionAtScreen(x, y)),
-      give: (id, from) => (state === 'wash' ? useWash(id, from) : state === 'sticker' ? giveSticker(id, from) : state === 'howmany' ? pickBlocks(id) : give(id, from)),
+      dropOk: (x, y) => ['wash', 'sticker', 'howmany', 'glasses'].includes(state) || Boolean(regionAtScreen(x, y)),
+      give: (id, from) => (state === 'wash' ? useWash(id, from) : state === 'sticker' ? giveSticker(id, from) : state === 'howmany' ? pickBlocks(id)
+        : state === 'glasses' ? giveGlasses(id, from) : give(id, from)),
     },
   });
   const { stage, count, talk } = kit;
@@ -207,8 +215,8 @@ export function doctorScreen(app, params = {}) {
   kit.sayBox.classList.add('dr-say');
   kit.trayEl.classList.add('dr-tray');
   const bed = h('div.dr-bed', { 'aria-hidden': 'true' });
-  stage.append(bed, patientEl, washEl, measureEl);
-  const stepKey = () => `${kit.epoch}:${caseIdx}:${stepIdx}:${washed.length}:${mWho}:${mCount}:${state}`;
+  stage.append(bed, patientEl, washEl, measureEl, eyesEl);
+  const stepKey = () => `${kit.epoch}:${caseIdx}:${stepIdx}:${washed.length}:${mWho}:${mCount}:${eIdx}:${state}`;
   /** Hình trong khay: đồ rửa tay (emoji / khăn vẽ), sticker (SVG), đồ khám chữa (ảnh bố mẹ thêm hoặc emoji). */
   function trayFace(id) {
     if (WASH_BY.has(id)) {
@@ -217,6 +225,7 @@ export function doctorScreen(app, params = {}) {
     const st = stickerById(id);
     if (st) return h('span.dr-item-face.dr-svg-face', { 'aria-hidden': 'true', html: stickerShape(st) });
     if (id.startsWith('n-')) return h('span.dr-item-face.dr-num-face', { 'aria-hidden': 'true', text: id.slice(2) });
+    if (id === 'glasses') return h('span.dr-item-face', { 'aria-hidden': 'true', text: GLASSES_ITEM.emoji });
     return itemFace(ITEM_BY_ID.get(id), images);
   }
   /** Món cần đưa (để nhắc / nhún): món rửa tay tiếp theo, sticker khớp yêu cầu. */
@@ -280,7 +289,7 @@ export function doctorScreen(app, params = {}) {
   const targetOf = (id) => ITEM_TARGET[id] ?? curCase().steps.find((s) => s.type === 'touch')?.target ?? 'tummy';
 
   // ---------- Lưu để chơi tiếp, tiến độ ----------
-  const snap = () => saveSnap(JOB, { level, cases, caseIdx, stepIdx, wrongs, nudges, tray, recorded: [...recorded], washed: [...washed], washDone, mWho, mCount, phase: state });
+  const snap = () => saveSnap(JOB, { level, cases, caseIdx, stepIdx, wrongs, nudges, tray, recorded: [...recorded], washed: [...washed], washDone, mWho, mCount, eIdx, phase: state });
   const saveProgress = () => app.setSetting('doctorGame', progress).catch(() => {});
 
   /**
@@ -315,7 +324,12 @@ export function doctorScreen(app, params = {}) {
       startCheckup(resume);
       return;
     }
+    if (isEyes() && resume?.phase !== 'sticker') {
+      startEyes(resume);
+      return;
+    }
     measureEl.hidden = true;
+    eyesEl.hidden = true;
     bed.hidden = false;
     patientEl.hidden = false;
     setState('enter');
@@ -533,13 +547,17 @@ export function doctorScreen(app, params = {}) {
     measureEl.dataset.heights = c.heights.join(','); // cho test
   }
   function measurePrompt() {
+    if (state === 'point') return [B(pointLine(cases[caseIdx].asks[eIdx]))];
+    if (state === 'glasses') return [B(needGlassesLine(nameOf(cases[caseIdx].patient)))];
     if (state === 'howmany') return [B(HOW_MANY_BLOCKS_LINE)];
     if (state === 'taller') return [B(TALLER_Q_LINE)];
     return [B(MEASURE_LINE)];
   }
   function nudgeMeasure() {
     const c = cases[caseIdx];
-    if (state === 'howmany') restartAnim(kit.trayItem(`n-${c.heights[0]}`), 'nudge');
+    if (state === 'point') restartAnim(eyesEl.querySelector(`.dr-eye-pic[data-word="${c.asks[eIdx]}"]`), 'nudge');
+    else if (state === 'glasses') restartAnim(kit.trayItem('glasses'), 'nudge');
+    else if (state === 'howmany') restartAnim(kit.trayItem(`n-${c.heights[0]}`), 'nudge');
     else if (state === 'taller') restartAnim(measureEl.querySelector(`.dr-measure-pet[data-who="${tallerIdx()}"]`), 'nudge');
     else restartAnim(blockEl(mWho, mCount), 'nudge');
   }
@@ -697,24 +715,148 @@ export function doctorScreen(app, params = {}) {
     finishCheckup();
   }
   /** Đo xong: ghi `seen` (một lần), bạn thú vui, rồi lên giường nhận sticker như ca bệnh. */
-  async function finishCheckup() {
+  const finishCheckup = () => finishNewCase('checkup', measureEl, [P(GROWING_LINE), B(GOOD_JOB_LINE)]);
+  /** Ca mới xong (đo chiều cao / khám mắt): ghi `seen` một lần, lưu ở bước sticker, rồi bạn thú lên giường nhận sticker. */
+  async function finishNewCase(kind, el, lines) {
     const e = kit.epoch;
     setState('busy');
     if (!recorded.has(`seen:${caseIdx}`)) {
       recorded.add(`seen:${caseIdx}`);
-      progress = afterHealed(progress, 'checkup');
+      progress = afterHealed(progress, kind);
       saveProgress();
     }
-    saveSnap(JOB, { level, cases, caseIdx, stepIdx: 0, wrongs: 0, nudges: 0, tray: [], recorded: [...recorded], washed: [...washed], washDone, mWho, mCount, phase: 'sticker' });
+    saveSnap(JOB, { level, cases, caseIdx, stepIdx: 0, wrongs: 0, nudges: 0, tray: [], recorded: [...recorded], washed: [...washed], washDone, mWho, mCount, eIdx, phase: 'sticker' });
     play('sparkle');
-    restartAnim(measureEl, 'hop');
-    await talk([P(GROWING_LINE), B(GOOD_JOB_LINE)]);
+    restartAnim(el, 'hop');
+    await talk(lines);
     if (e !== kit.epoch) return;
-    measureEl.hidden = true;
+    el.hidden = true;
     bed.hidden = false;
     patientEl.hidden = false;
     renderPatient();
     startSticker();
+  }
+
+  // ---------- Ca khám mắt bằng bảng hình (SPEC-doctor2 mục 6, DR3) ----------
+  /** Vẽ bảng hình (ảnh từ vựng bố mẹ đã thêm nếu có, không thì emoji) + bạn thú (che mắt / đeo kính theo bước). */
+  function renderEyes({ covered = true, glasses = false } = {}) {
+    const c = cases[caseIdx];
+    const pics = c.chart.map((w) => {
+      const face = h('span.dr-eye-emoji', { text: w.emoji, 'aria-hidden': 'true' });
+      const btn = h('button.dr-eye-pic', { type: 'button', 'aria-label': w.en, dataset: { word: w.en }, onclick: () => tapEyePic(w.en) }, face);
+      latestImageForWord(app.db, w.en).then((img) => {
+        if (!img || kit.signal.aborted) return;
+        const url = URL.createObjectURL(mediaBlob(img));
+        eyeUrls.push(url);
+        const el = h('img.dr-eye-img', { src: url, alt: '', draggable: false });
+        el.addEventListener('error', () => el.replaceWith(face), { once: true });
+        face.replaceWith(el);
+      }).catch(() => {});
+      return btn;
+    });
+    const pet = h('div.dr-eyes-pet', { dataset: { patient: c.patient } },
+      h('div', { html: patientSvg(c.patient, { mood: glasses ? 'happy' : 'sad', title: nameOf(c.patient) }) }),
+      h('span.dr-eye-cover', { 'aria-hidden': 'true', hidden: !covered || glasses }),
+      h('span.dr-glasses', { text: GLASSES_ITEM.emoji, 'aria-hidden': 'true', hidden: !glasses }));
+    eyesEl.replaceChildren(h('div.dr-chart', { dataset: { count: String(c.chart.length) } }, ...pics), pet);
+    eyesEl.dataset.ask = c.asks[eIdx] ?? ''; // từ đang hỏi (cho test)
+  }
+  async function startEyes(resume = null) {
+    const e = kit.epoch;
+    eIdx = resume?.eIdx ?? 0;
+    bed.hidden = true;
+    patientEl.hidden = true;
+    measureEl.hidden = true;
+    eyesEl.hidden = false;
+    count.textContent = `${caseIdx + 1}/${cases.length}`;
+    tray = [];
+    renderTray();
+    if (resume?.phase === 'glasses' || eIdx >= cases[caseIdx].asks.length) {
+      renderEyes();
+      startGlasses();
+      return;
+    }
+    renderEyes({ covered: Boolean(resume) });
+    // Nhận chạm hình ngay từ lúc bắt đầu hỏi.
+    setState('point');
+    snap();
+    if (!resume) {
+      restartAnim(eyesEl, 'enter');
+      play('doorbell');
+      await talk([B(COME_IN_LINE), P(EYES_HELLO_LINE), B(COVER_LINE)]);
+      if (e !== kit.epoch) return;
+      eyesEl.querySelector('.dr-eye-cover').hidden = false; // bạn thú che một mắt (chỉ là hoạt ảnh)
+    }
+    await talk([B(pointLine(cases[caseIdx].asks[eIdx]))]);
+    if (e === kit.epoch && state === 'point') kit.armNudge();
+  }
+  async function tapEyePic(word) {
+    if (state !== 'point') return;
+    const e = kit.epoch;
+    const c = cases[caseIdx];
+    const want = c.asks[eIdx];
+    const btn = eyesEl.querySelector(`.dr-eye-pic[data-word="${word}"]`);
+    if (word !== want) {
+      if (!countWrong(`e:${word}`)) return;
+      restartAnim(btn, 'shake');
+      if (wrongs >= 2) restartAnim(eyesEl.querySelector(`.dr-eye-pic[data-word="${want}"]`), 'nudge');
+      const k = stepKey();
+      await talk([P(wrongEyeLine(word, want))]);
+      if (k === stepKey()) kit.armNudge();
+      return;
+    }
+    // Đúng: nhận NGAY (một lần) — ghi "đã gặp" từ đó nếu đúng ngay lần đầu.
+    if (wrongs === 0 && !recorded.has(`eye:${caseIdx}:${eIdx}`)) {
+      recorded.add(`eye:${caseIdx}:${eIdx}`);
+      markPracticed(app, progressKey(word), c.chart.find((w) => w.en === word)?.emoji ?? '');
+    }
+    eIdx += 1;
+    eyesEl.dataset.ask = c.asks[eIdx] ?? '';
+    wrongs = 0;
+    nudges = 0;
+    const done = eIdx >= c.asks.length;
+    if (done) setState('busy');
+    snap();
+    kit.clearNudge();
+    play('ding');
+    restartAnim(btn, 'pop');
+    if (!done) {
+      const k = stepKey();
+      await talk([P(seeLine(word)), B(pointLine(c.asks[eIdx]))]);
+      if (k === stepKey()) kit.armNudge();
+      return;
+    }
+    await talk([P(seeLine(word))]);
+    if (e !== kit.epoch) return;
+    startGlasses();
+  }
+  /** Bé đưa kính (một món trong khay, không có đồ nhiễu) → bạn thú đeo kính. */
+  async function startGlasses() {
+    const e = kit.epoch;
+    tray = ['glasses'];
+    renderTray();
+    setState('glasses');
+    snap();
+    await talk([B(needGlassesLine(nameOf(cases[caseIdx].patient)))]);
+    if (e === kit.epoch && state === 'glasses') kit.armNudge();
+  }
+  async function giveGlasses(id, from) {
+    if (state !== 'glasses' || id !== 'glasses') return;
+    const e = kit.epoch;
+    setState('busy');
+    kit.clearNudge();
+    tray = [];
+    const target = eyesEl.querySelector('.dr-glasses');
+    target.hidden = false;
+    const to = center(target.getBoundingClientRect());
+    target.hidden = true;
+    const ghost = await kit.flyTo(trayFace('glasses'), from, to);
+    kit.renderTray([]);
+    kit.removeGhost(ghost);
+    if (e !== kit.epoch) return;
+    play('pop');
+    renderEyes({ covered: false, glasses: true });
+    finishNewCase('eyes', eyesEl, [P(SEE_BETTER_LINE), B(GOOD_JOB_LINE)]);
   }
 
   // ---------- Tặng sticker cho bạn thú (SPEC-doctor2 mục 4) ----------
@@ -838,6 +980,7 @@ export function doctorScreen(app, params = {}) {
     bed.hidden = true;
     patientEl.hidden = true;
     measureEl.hidden = true;
+    eyesEl.hidden = true;
     washEl.hidden = false;
     count.textContent = `1/${cases.length}`;
     renderWash();
@@ -940,26 +1083,42 @@ export function doctorScreen(app, params = {}) {
     }
     const s = takeSnap(JOB, { level, continueDirectly: params.continueDirectly });
     if (s) {
-      cases = s.cases;
-      caseIdx = s.caseIdx;
-      recorded = new Set(s.recorded ?? []);
-      washed = s.washed ?? [];
-      washDone = s.washDone ?? true;
-      if (!washDone) startWash();
-      // Ra nền sau khi ca cuối đã khỏi: hoan hô + sticker luôn.
-      else if (caseIdx >= cases.length) {
-        caseIdx = cases.length - 1;
-        renderPatient();
-        finishRound();
-      } else startCase(s);
-    } else {
-      // Bộ sticker của từng ca sinh sẵn cùng kế hoạch lượt (ra nền không bốc lại).
-      cases = planDoctorRound(level, { seen: progress.seen });
-      caseIdx = 0;
-      startWash();
-    }
+      startFrom(s);
+    } else learnedWords().then((learned) => { if (!kit.signal.aborted) startNew(learned); });
   });
 
+  /** Từ bé đã học (bài từ vựng, có emoji, đã gặp) — cho bảng hình khám mắt. */
+  async function learnedWords() {
+    try {
+      const seenWords = new Set((await app.db.getAll('progress')).filter((r) => r.practiceCount > 0).map((r) => r.word));
+      return (await listLessons(app.db)).filter(isWordLesson).flatMap((l) => l.words ?? [])
+        .filter((w) => w.emoji && seenWords.has(progressKey(w.en))).map((w) => ({ en: w.en, emoji: w.emoji }));
+    } catch {
+      return [];
+    }
+  }
+  function startFrom(s) {
+    cases = s.cases;
+    caseIdx = s.caseIdx;
+    recorded = new Set(s.recorded ?? []);
+    washed = s.washed ?? [];
+    washDone = s.washDone ?? true;
+    if (!washDone) startWash();
+    // Ra nền sau khi ca cuối đã khỏi: hoan hô + sticker luôn.
+    else if (caseIdx >= cases.length) {
+      caseIdx = cases.length - 1;
+      renderPatient();
+      finishRound();
+    } else startCase(s);
+  }
+  function startNew(learned) {
+    // Bộ sticker, chiều cao, bảng hình… của từng ca sinh sẵn cùng kế hoạch lượt (ra nền không bốc lại).
+    cases = planDoctorRound(level, { seen: progress.seen, eyeWords: learned });
+    caseIdx = 0;
+    startWash();
+  }
+
   kit.onCleanup(() => images?.revoke());
+  kit.onCleanup(() => eyeUrls.forEach((u) => URL.revokeObjectURL(u)));
   return kit.cleanup;
 }

@@ -221,7 +221,7 @@ export const FIRE_GEAR_FRAME_VI = {
   plain: 'chú mặc đồ thường', full: 'chú mặc đủ đồ', helmet: 'mũ', jacket: 'áo khoác', boots: 'ủng', spray: 'chú cầm vòi phun',
 };
 export const FIRE_GEAR_PROMPT = [
-  'A 3x2 grid of six square pictures (3 columns, 2 rows) on a plain white background, separated by thin white gaps.',
+  'A 3x2 grid of EXACTLY six square pictures (3 columns, 2 rows — not 4 columns, no repeated pictures) on a plain white background, separated by thin white gaps.',
   'Soft cartoon style for a toddler game, thick soft outlines, pastel colours, no text.',
   'The SAME friendly firefighter man appears in pictures 1, 2 and 6, full body, standing straight, facing the viewer, same size and same position in the square:',
   '1) wearing a plain t-shirt, jeans and sneakers, no helmet;',
@@ -231,9 +231,12 @@ export const FIRE_GEAR_PROMPT = [
   '5) only a pair of black firefighter boots, nothing else;',
   '6) in full gear holding a fire hose nozzle in both hands, pointing to the right.',
 ].join('\n');
-/** Chỗ dán món đồ lên ảnh "plain" (phần trăm khung ô): mũ → đầu, áo → thân, ủng → chân. */
+/**
+ * Chỗ dán món đồ lên ảnh "plain" — phần trăm KHUNG ẢNH CỦA CHÚ (ảnh đã cắt sát người, kể cả hai tay), theo tỉ lệ thân
+ * hình hoạt hình đầu to: mũ trùm nửa trên đầu, áo từ cổ xuống hông (cả tay), ủng ở bắp chân + bàn chân.
+ */
 export const GEAR_ANCHOR = {
-  helmet: { left: 30, top: 2, width: 40 },
-  jacket: { left: 22, top: 24, width: 56 },
-  boots: { left: 28, top: 76, width: 44 },
+  helmet: { left: 8, top: -2, width: 84 },
+  jacket: { left: 0, top: 33, width: 100 },
+  boots: { left: 15, top: 73, width: 70 },
 };

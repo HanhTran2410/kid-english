@@ -38,6 +38,19 @@ async function giveSticker(page) {
 /** Ca mới (đo chiều cao) ở vị trí `at` của lượt (mặc định cuối — ca 1, 2 là ca bệnh như test cũ). */
 const pinNewCase = (page, at = 2) => page.addInitScript((n) => { window.__kidTest = { doctorNewAt: n }; }, at);
 
+/** Ca khám mắt: chỉ đúng hình Bông hỏi (đọc `data-ask`) tới hết câu, rồi đưa kính. */
+async function doEyes(page) {
+  for (let i = 0; i < 6; i++) {
+    await expect(play(page)).toHaveAttribute('data-state', /point|glasses/, { timeout: 15000 });
+    if ((await play(page).getAttribute('data-state')) === 'glasses') break;
+    const word = await page.locator('.dr-eyes').getAttribute('data-ask');
+    await page.locator(`.dr-eye-pic[data-word="${word}"]`).click();
+    await expect.poll(async () => (await page.locator('.dr-eyes').getAttribute('data-ask')) !== word, { timeout: 15000 }).toBe(true);
+  }
+  await expect(play(page)).toHaveAttribute('data-state', 'glasses', { timeout: 15000 });
+  await page.locator('.dr-item[data-item="glasses"]').click();
+}
+
 /** Ca đo chiều cao: đếm hết khối (từ dưới lên), mức 2 chọn đúng thẻ số, mức 3 chạm bạn cao hơn. */
 async function doCheckup(page) {
   await expect(play(page)).toHaveAttribute('data-state', 'measure', { timeout: 15000 });
@@ -293,11 +306,16 @@ test('trò chơi dùng ảnh đồ bố mẹ thêm (khay) và ảnh nền phòng
 // ---------- D2: mức 2–3 (bước khám, 11 ca), giọng bạn thú, Cài đặt ----------
 /** Khám xong ca đang mở ở `level`: làm lần lượt mọi bước (chạm / khám / chữa) theo dữ liệu ca. */
 async function healAt(page, level) {
-  await expect(play(page)).toHaveAttribute('data-state', /touch|check|treat|measure/, { timeout: 15000 });
+  await expect(play(page)).toHaveAttribute('data-state', /touch|check|treat|measure|point/, { timeout: 15000 });
   if ((await play(page).getAttribute('data-state')) === 'measure') {
     await doCheckup(page);
     await giveSticker(page);
     return { id: 'checkup', steps: [] };
+  }
+  if ((await play(page).getAttribute('data-state')) === 'point') {
+    await doEyes(page);
+    await giveSticker(page);
+    return { id: 'eyes', steps: [] };
   }
   const id = await page.locator('.dr-patient').getAttribute('data-case');
   const steps = await page.evaluate(async ([caseId, lv]) => {
@@ -549,7 +567,7 @@ test('DR2 mức 1: ca đo — "Am I growing?", khối cần chạm nhấp nháy;
 });
 
 test('DR2 mức 2: đếm 2–5 khối rồi "How many blocks?" — thẻ số sai → "That\'s x. Let\'s count again!"; đúng → "Yes! N blocks!"; đã nhầm thì không ghi số "đã gặp"', async ({ page }) => {
-  await enterDoctor(page, { level: 2, rounds: 0, lock: 2, seen: {} }, 0);
+  await enterDoctor(page, { level: 2, rounds: 0, lock: 2, seen: { eyes: 9 } }, 0);
   await washUp(page);
   await expect(play(page)).toHaveAttribute('data-state', 'measure', { timeout: 15000 });
   const n = Number(await page.locator('.dr-measure').getAttribute('data-heights'));
@@ -577,7 +595,7 @@ test('DR2 mức 2: đếm 2–5 khối rồi "How many blocks?" — thẻ số s
 });
 
 test('DR2 mức 3: hai bạn khác chiều cao, đo lần lượt; ra nền giữa lúc đếm → quay lại giữ khối đã đếm; "Who is taller?" — chạm bạn thấp → câu nhầm; bạn cao → "X is taller! Y is shorter!"', async ({ page }) => {
-  await enterDoctor(page, { level: 3, rounds: 0, lock: 3, seen: {} }, 0);
+  await enterDoctor(page, { level: 3, rounds: 0, lock: 3, seen: { eyes: 9 } }, 0);
   await washUp(page);
   await expect(play(page)).toHaveAttribute('data-state', 'measure', { timeout: 15000 });
   const [a, b] = (await page.locator('.dr-measure').getAttribute('data-heights')).split(',').map(Number);
@@ -684,7 +702,7 @@ test('ART1 Góc bố mẹ → Ảnh Bác sĩ nhí: mục Rửa tay có prompt l�
   await page.evaluate(() => { navigator.clipboard.writeText = (t) => { window.__copied = t; return Promise.resolve(); }; });
   const grid = page.locator('section').filter({ hasText: '🧼 Ảnh lưới rửa tay' });
   await grid.getByRole('button', { name: 'Copy prompt ảnh lưới' }).click();
-  await expect.poll(() => page.evaluate(() => window.__copied ?? '')).toContain('3x2 grid of six square pictures');
+  await expect.poll(() => page.evaluate(() => window.__copied ?? '')).toContain('3x2 grid of EXACTLY six square pictures');
   await grid.locator('input[type=file]').setInputFiles({ name: 'wash.png', mimeType: 'image/png', buffer: Buffer.from(png, 'base64') });
   await expect(grid.locator('.grid-cell')).toHaveCount(6, { timeout: 15000 });
   await expect(grid.locator('.grid-cell select').first()).toHaveValue('dirty');
@@ -695,4 +713,66 @@ test('ART1 Góc bố mẹ → Ảnh Bác sĩ nhí: mục Rửa tay có prompt l�
   await expect(page.getByText(/🧼 Rửa tay — đang dùng ảnh/)).toBeVisible({ timeout: 15000 });
   await page.getByRole('button', { name: 'Dùng hình vẽ sẵn' }).first().click();
   await expect.poll(() => page.evaluate(async () => (await window.kidEnglish.db.getAllByIndex('images', 'lessonId', 'doctor:wash')).length)).toBe(0);
+});
+
+// ---------- SPEC-doctor2 DR3: ca Khám mắt ----------
+test('DR3 mức 2: ca khám mắt (ít gặp hơn đo chiều cao) — bảng 3 hình có từ bé đã học, bạn thú che một mắt; chỉ nhầm → "That\'s the …. Where\'s the …?"; đúng 3 lần → đưa kính → "Wow! Now I can see better!" → sticker; seen.eyes', async ({ page }) => {
+  await fakeSpeech(page);
+  await pinNewCase(page, 0);
+  await startApp(page);
+  await page.evaluate(async () => {
+    await window.kidEnglish.setSetting('doctorGame', { level: 2, rounds: 0, lock: 2, seen: { checkup: 9 } });
+    await window.kidEnglish.db.put('progress', { word: 'cow', emoji: '🐮', mastery: 1, practiceCount: 2, lastPracticedAt: Date.now(), lastVoiceDay: null });
+  });
+  await page.getByRole('button', { name: 'Trò chơi' }).click();
+  await page.getByRole('button', { name: 'Đóng vai' }).click();
+  await page.getByRole('button', { name: 'Bác sĩ nhí' }).click();
+  await washUp(page);
+  await expect(play(page)).toHaveAttribute('data-state', 'point', { timeout: 15000 });
+  await expect(page.locator('.dr-eye-pic')).toHaveCount(3);
+  await expect(page.locator('.dr-eye-pic[data-word="cow"]')).toHaveCount(1);
+  await expect.poll(() => spoken(page)).toContain('Hello, doctor! Can you check my eyes?');
+  await expect.poll(() => spoken(page)).toContain('Cover one eye!');
+  await expect(page.locator('.dr-eye-cover')).toBeVisible();
+  const ask = () => page.locator('.dr-eyes').getAttribute('data-ask');
+  const want = await ask();
+  await expect.poll(() => spoken(page)).toContain(`Point to the ${want}!`);
+  const other = await page.locator(`.dr-eye-pic:not([data-word="${want}"])`).first().getAttribute('data-word');
+  const k = (await spoken(page)).length;
+  await expect(async () => {
+    await page.locator(`.dr-eye-pic[data-word="${other}"]`).click();
+    expect(await saidSince(page, k, new RegExp(`^That's the ${other}\\. Where's the ${want}\\?$`))).toBe(true);
+  }).toPass({ timeout: 15000 });
+  await page.locator(`.dr-eye-pic[data-word="${want}"]`).click();
+  await expect.poll(() => spoken(page)).toContain(`I see the ${want}!`);
+  await expect.poll(ask).not.toBe(want);
+  await doEyes(page);
+  await expect.poll(() => spoken(page)).toContain('Wow! Now I can see better!');
+  await giveSticker(page);
+  await expect(page.locator('.dr-count')).toHaveText('2/3', { timeout: 15000 });
+  expect((await page.evaluate(() => window.kidEnglish.settings.doctorGame)).seen.eyes).toBe(1);
+});
+
+test('DR3 mức 3: bảng 4 hình (máy mới: bộ mặc định); ra nền giữa lúc chỉ hình → quay lại cùng bảng, cùng câu hỏi thứ mấy', async ({ page }) => {
+  await enterDoctor(page, { level: 3, rounds: 0, lock: 3, seen: { checkup: 9 } }, 0);
+  await washUp(page);
+  await expect(play(page)).toHaveAttribute('data-state', 'point', { timeout: 15000 });
+  await expect(page.locator('.dr-eye-pic')).toHaveCount(4);
+  const chart = await page.locator('.dr-eye-pic').evaluateAll((els) => els.map((e) => e.dataset.word));
+  expect(chart.every((w) => ['cat', 'dog', 'fish', 'apple', 'ball', 'car'].includes(w))).toBe(true);
+  const ask = () => page.locator('.dr-eyes').getAttribute('data-ask');
+  const first = await ask();
+  await page.locator(`.dr-eye-pic[data-word="${first}"]`).click();
+  await expect.poll(ask).not.toBe(first);
+  const second = await ask();
+  await setVisibility(page, 'hidden');
+  await setVisibility(page, 'visible');
+  await page.locator('.resume-overlay .start-btn').click();
+  await expect(play(page)).toHaveAttribute('data-state', 'point', { timeout: 15000 });
+  expect(await page.locator('.dr-eye-pic').evaluateAll((els) => els.map((e) => e.dataset.word))).toEqual(chart);
+  expect(await ask()).toBe(second);
+  await expect.poll(() => spoken(page)).toContain(`Point to the ${second}!`);
+  await doEyes(page);
+  await giveSticker(page);
+  await expect(page.locator('.dr-count')).toHaveText('2/3', { timeout: 15000 });
 });

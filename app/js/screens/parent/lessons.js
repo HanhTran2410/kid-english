@@ -376,8 +376,10 @@ export function gridSection(app, lesson, urls, title = null, { promptNote = '', 
       value: shapeKey(o),
       text: `${o.cols} cột × ${o.rows} hàng${image.detected && shapeKey(o) === shapeKey(image.detected) ? ' (app đoán)' : ''}`,
     })));
-    // Lưới cảnh có kiểu cố định (`shape`): mặc định đúng kiểu đó — AI hay vẽ ô lệch, đoán đường kẻ dễ sai (vd. 1 × 2).
-    shapeSel.value = shapeKey(shape ? expected : image.detected ?? expected);
+    // Lưới cảnh có kiểu cố định (`shape`): dùng kiểu app đoán nếu đủ ô (AI có lúc vẽ 4 × 2 thay vì 3 × 2), đoán ra thiếu ô
+    // (vd. 1 × 2 vì trong ô có nhiều mảng trắng) thì dùng kiểu cố định.
+    const enough = (d) => d && d.cols * d.rows >= words.length;
+    shapeSel.value = shapeKey(shape && !enough(image.detected) ? expected : image.detected ?? expected);
     const cellsBox = h('div.grid-cells');
     let tiles = [];
     let pickers = [];
@@ -396,6 +398,8 @@ export function gridSection(app, lesson, urls, title = null, { promptNote = '', 
         return;
       }
       cellsBox.style.setProperty('--cols', String(cols));
+      // AI vẽ thừa ô (trùng hình): nhắc bố mẹ chọn đúng tên từng ô, ô trùng thì bỏ qua.
+      extraNote.hidden = cols * rows <= words.length;
       pickers = tiles.map((t, i) => {
         const sel = h('select', { 'aria-label': `Từ cho ô ${i + 1}` },
           h('option', { value: SKIP, text: '— bỏ qua —' }),
@@ -432,7 +436,9 @@ export function gridSection(app, lesson, urls, title = null, { promptNote = '', 
       }
     };
 
+    const extraNote = notice('warn', 'Ảnh có nhiều ô hơn cần dùng (AI vẽ thừa / vẽ trùng). Hãy chọn đúng tên cho từng ô; ô trùng hoặc thừa chọn "— bỏ qua —".');
     previewBox.replaceChildren(
+      extraNote,
       notice('info', 'Kiểm tra từng ô: nếu ảnh bị cắt lệch thì đổi "Kiểu lưới" cho đúng với ảnh. Mỗi ô chọn đúng từ; ô vẽ thừa thì chọn "— bỏ qua —".'),
       h('label.field', {}, h('span.field-label', { text: 'Kiểu lưới' }), shapeSel),
       cellsBox,

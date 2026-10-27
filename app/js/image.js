@@ -426,6 +426,28 @@ export function contentBox(rgba, width, height, { limit = 235, pad = 0.02 } = {}
 }
 
 /**
+ * Ô có KHUNG THẺ (AI hay vẽ mỗi ô một thẻ bo góc viền xám): khung là phần "có hình" ngoài cùng nên `contentBox` lấy cả
+ * khung. Dò lại bên trong (lùi 4% khỏi mép khung): nếu hình thật nhỏ hẳn so với vùng trong (≤ 85% diện tích) thì đó là thẻ
+ * có khung → lấy khung hình bên trong; ảnh tràn kín ô (vd. cảnh rửa tay) thì giữ khung cũ. Hàm thuần — test được.
+ */
+export function innerBox(rgba, width, height, box) {
+  if (!box) return box;
+  const m = Math.round(Math.min(box.w, box.h) * 0.04);
+  if (m < 2) return box;
+  const iw = box.w - 2 * m;
+  const ih = box.h - 2 * m;
+  if (iw < 8 || ih < 8) return box;
+  const sub = new Uint8ClampedArray(iw * ih * 4);
+  for (let y = 0; y < ih; y++) {
+    const from = ((box.y + m + y) * width + box.x + m) * 4;
+    sub.set(rgba.subarray(from, from + iw * 4), y * iw * 4);
+  }
+  const inner = contentBox(sub, iw, ih);
+  if (!inner || inner.w * inner.h > 0.85 * iw * ih) return box;
+  return { x: box.x + m + inner.x, y: box.y + m + inner.y, w: inner.w, h: inner.h };
+}
+
+/**
  * Cắt bỏ lề trắng quanh một ô ảnh lưới (AI hay vẽ ô lệch, có lề / khe trắng không đều). Không tìm được hình thì giữ nguyên.
  * @param {{ blob: Blob }} tile
  */
@@ -441,7 +463,8 @@ export async function trimWhiteMargin(tile, max = MAX_IMAGE_SIZE) {
     canvas.height = hgt;
     const ctx = canvas.getContext('2d', { willReadFrequently: true });
     ctx.drawImage(source, 0, 0, w, hgt);
-    const box = contentBox(ctx.getImageData(0, 0, w, hgt).data, w, hgt);
+    const data = ctx.getImageData(0, 0, w, hgt).data;
+    const box = innerBox(data, w, hgt, contentBox(data, w, hgt));
     if (!box || (box.w >= w - 1 && box.h >= hgt - 1)) return tile;
     return await crop(source, box.x / k, box.y / k, box.w / k, box.h / k, max);
   } finally {

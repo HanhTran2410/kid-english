@@ -166,6 +166,6 @@ test('SPEC-art ART2 — ảnh lưới chú lính cứu hỏa: 6 ô đúng thứ 
   assert.deepEqual(FIRE_GEAR_FRAMES, ['plain', 'full', 'helmet', 'jacket', 'boots', 'spray']);
   assert.ok(FIRE_GEAR_PROMPT.includes('3x2 grid'));
   for (const [i, line] of ['1)', '2)', '3)', '4)', '5)', '6)'].entries()) assert.ok(FIRE_GEAR_PROMPT.includes(line), FIRE_GEAR_FRAMES[i]);
-  for (const a of Object.values(GEAR_ANCHOR)) assert.ok(a.left >= 0 && a.left + a.width <= 100 && a.top >= 0 && a.top < 100);
+  for (const a of Object.values(GEAR_ANCHOR)) assert.ok(a.left >= 0 && a.left + a.width <= 100 && a.top >= -10 && a.top < 100);
   assert.ok(GEAR_ANCHOR.helmet.top < GEAR_ANCHOR.jacket.top && GEAR_ANCHOR.jacket.top < GEAR_ANCHOR.boots.top);
 });

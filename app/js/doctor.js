@@ -446,14 +446,15 @@ export function planCheckup(level, patients, { rng = Math.random } = {}) {
 }
 
 /**
- * Kế hoạch một lượt (SPEC-doctor2 mục 2): 2 ca bệnh (chọn như cũ, ưu tiên ít gặp) + 1 ca mới ở vị trí ngẫu nhiên;
+ * Kế hoạch một lượt (SPEC-doctor2 mục 2): 2 ca bệnh (chọn như cũ, ưu tiên ít gặp) + 1 ca mới ở vị trí ngẫu nhiên
+ * (mức 1: đo chiều cao; mức 2–3: đo chiều cao hoặc khám mắt — loại ít gặp hơn, `eyeWords`: từ bé đã học cho bảng hình);
  * mỗi ca có bộ sticker sinh sẵn; bạn thú khác nhau (ca đo mức 3 có hai bạn).
  */
-export function planDoctorRound(level, { seen = {}, rng = Math.random } = {}) {
+export function planDoctorRound(level, { seen = {}, rng = Math.random, eyeWords = [] } = {}) {
   const ill = pickCases(level, { seen, rng, n: CASES_PER_ROUND - 1 });
   const used = new Set(ill.map((c) => c.patient));
   const free = shuffleList(PATIENTS.map((p) => p.id).filter((id) => !used.has(id)), rng);
-  const extra = planCheckup(level, free, { rng });
+  const extra = level >= 2 && pickNewCase(seen, rng) === 'eyes' ? planEyes(level, free[0], { words: eyeWords, rng }) : planCheckup(level, free, { rng });
   const cases = [...ill];
   // Chỉ test UI đặt `window.__kidTest.doctorNewAt` để cố định chỗ ca mới; bình thường ngẫu nhiên.
   const pinned = globalThis.__kidTest?.doctorNewAt;
@@ -487,7 +488,7 @@ export const WASH_IMAGES = 'doctor:wash';
 export const WASH_FRAMES = ['dirty', 'soapy', 'rinse', 'clean', 'gloves', 'ready'];
 export const WASH_FRAME_VI = { dirty: 'tay bẩn', soapy: 'tay đầy bọt', rinse: 'tay dưới vòi nước', clean: 'tay sạch, lấp lánh', gloves: 'tay đeo găng', ready: 'tay đeo găng giơ ngón cái' };
 export const WASH_GRID_PROMPT = [
-  'A 3x2 grid of six square pictures (3 columns, 2 rows) on a plain white background, separated by thin white gaps.',
+  'A 3x2 grid of EXACTLY six square pictures (3 columns, 2 rows — not 4 columns, no repeated pictures) on a plain white background, separated by thin white gaps.',
   'All six pictures show the SAME pair of small child hands from the front, same size and same position, above the SAME white sink with a tap:',
   '1) hands with a few small mud spots;',
   '2) hands covered in white soap foam;',
@@ -506,3 +507,52 @@ export function washFrame(washed, level) {
   if (washFor(level).every((id) => washed.includes(id))) return level >= 2 ? 'ready' : 'clean';
   return WASH_FRAME_OF[washed[washed.length - 1]] ?? 'dirty';
 }
+
+// ---------- SPEC-doctor2 DR3: ca Khám mắt bằng bảng hình ----------
+/** Bộ hình mặc định (máy mới / chưa học đủ từ). */
+export const DEFAULT_EYE_WORDS = [
+  { en: 'cat', emoji: '🐱' }, { en: 'dog', emoji: '🐶' }, { en: 'fish', emoji: '🐟' },
+  { en: 'apple', emoji: '🍎' }, { en: 'ball', emoji: '⚽' }, { en: 'car', emoji: '🚗' },
+];
+export const EYE_ASKS = 3;
+/** Từ dùng được trên bảng hình: một từ, chỉ chữ cái, không phải số nhiều (câu "Point to the fish!"). */
+export const eyeWordOk = (en) => /^[a-z]+$/i.test(String(en ?? '')) && !/[^s]s$/i.test(en) && en.length >= 2;
+
+/** Ca mới ở mức 2–3: đo chiều cao hay khám mắt — loại bé ít gặp hơn (`seen`), bằng nhau thì ngẫu nhiên. */
+export function pickNewCase(seen = {}, rng = Math.random) {
+  const a = seen.checkup ?? 0;
+  const b = seen.eyes ?? 0;
+  if (a !== b) return a < b ? 'checkup' : 'eyes';
+  return rng() < 0.5 ? 'checkup' : 'eyes';
+}
+
+/**
+ * Ca khám mắt (sinh sẵn): bảng 3 hình (mức 2) / 4 hình (mức 3) từ `words` (từ bé đã học, có emoji), thiếu thì bù bằng bộ
+ * mặc định; không lặp từ; 3 câu hỏi là 3 hình khác nhau đều có trên bảng.
+ */
+export function planEyes(level, patient, { words = [], rng = Math.random } = {}) {
+  const n = level >= 3 ? 4 : 3;
+  const seenEn = new Set();
+  const pool = [];
+  for (const w of [...shuffleList(words.filter((w) => eyeWordOk(w.en) && w.emoji), rng), ...shuffleList(DEFAULT_EYE_WORDS, rng)]) {
+    const en = String(w.en).toLowerCase();
+    if (seenEn.has(en)) continue;
+    seenEn.add(en);
+    pool.push({ en, emoji: w.emoji });
+    if (pool.length >= n) break;
+  }
+  return { id: 'eyes', patient, chart: pool, asks: shuffleList(pool, rng).slice(0, EYE_ASKS).map((w) => w.en) };
+}
+
+export const EYES_HELLO_LINE = ['Hello, doctor! Can you check my eyes?', 'Chào bác sĩ! Bác sĩ khám mắt cho tớ nhé?'];
+export const COVER_LINE = ['Cover one eye!', 'Che một mắt lại nào!'];
+export const GLASSES_ITEM = { id: 'glasses', emoji: '👓', name: 'glasses' };
+export const SEE_BETTER_LINE = ['Wow! Now I can see better!', 'Ồ! Giờ tớ nhìn rõ hơn rồi!'];
+/** "Point to the fish!" */
+export const pointLine = (w) => [`Point to the ${w}!`, `Con chỉ vào "${w}" nhé!`];
+/** Bạn thú: "I see the fish!" */
+export const seeLine = (w) => [`I see the ${w}!`, `Tớ thấy "${w}" rồi!`];
+/** Nhầm: "That's the cat. Where's the fish?" */
+export const wrongEyeLine = (x, w) => [`That's the ${x}. Where's the ${w}?`, `Đó là "${x}". "${w}" đâu nhỉ?`];
+/** Chỉ nói về bạn thú này: "Teddy needs glasses!" */
+export const needGlassesLine = (name) => [`${name} needs glasses!`, `${name} cần đeo kính!`];

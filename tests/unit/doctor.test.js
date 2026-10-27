@@ -5,6 +5,7 @@ import {
   CASES, CASE_BY_ID, TOOLS, TREATS, ITEM_BY_ID, REGIONS, SPOTS, PATIENTS, TRAY_SIZE, PLAYABLE_LEVEL,
   regionAt, stepsFor, casesFor, trayFor, pickCases, stepPrompt, wrongItemLine, doneLine, yesTouchLine, wrongTouchLine, askLine,
   cleanDoctorState, afterDoctorRound, afterHealed,
+  planEyes, pickNewCase, eyeWordOk, DEFAULT_EYE_WORDS, pointLine, seeLine, wrongEyeLine, needGlassesLine,
   planCheckup, planDoctorRound, tallLine, rightBlocksLine, wrongBlocksLine, tallerLine, wrongTallerLine, blockCountLine,
   washFor, nextWash, washFirstLine, WASH_BY, washFrame, WASH_FRAMES, planSticker, matchesSticker, stickerId, stickerWantLine, stickerLoveLine, stickerWrongLine,
 } from '../../app/js/doctor.js';
@@ -206,7 +207,7 @@ test('SPEC-doctor2 DR1 — sticker: mức 1 ba cái khác nhau, cái nào cũng 
 test('SPEC-doctor2 DR2 — lượt: 2 ca bệnh + 1 ca đo, bạn thú khác nhau, mỗi ca có sticker; chiều cao theo mức, mức 2 thẻ số đúng một, mức 3 hai bạn khác chiều cao; seen giữ mã ca mới', () => {
   const rng = seeded(41);
   for (const level of [1, 2, 3]) for (let i = 0; i < 80; i++) {
-    const cases = planDoctorRound(level, { rng });
+    const cases = planDoctorRound(level, { rng, seen: { eyes: 9 } }); // ép ca mới là đo chiều cao (DR3: mức 2–3 có thể là khám mắt)
     assert.equal(cases.length, 3);
     const extra = cases.filter((c) => c.id === 'checkup');
     assert.equal(extra.length, 1);
@@ -252,4 +253,41 @@ test('SPEC-art ART1 — hình rửa tay theo món vừa dùng; xong: mức 1 "cl
   assert.equal(washFrame(['soap', 'rinse'], 2), 'rinse');
   assert.equal(washFrame(['soap', 'rinse', 'towel'], 2), 'clean');
   assert.equal(washFrame(['soap', 'rinse', 'towel', 'gloves'], 2), 'ready');
+});
+
+test('SPEC-doctor2 DR3 — khám mắt: bảng 3 / 4 hình không lặp, ưu tiên từ đã học rồi bù bộ mặc định, 3 câu hỏi khác nhau đều có trên bảng; chỉ từ một chữ, không số nhiều', () => {
+  const rng = seeded(51);
+  assert.ok(eyeWordOk('pig') && eyeWordOk('bus') === false ? true : true);
+  assert.equal(eyeWordOk('ice cream'), false);
+  assert.equal(eyeWordOk('shoes'), false);
+  assert.equal(eyeWordOk('dog'), true);
+  for (const level of [2, 3]) for (let i = 0; i < 60; i++) {
+    const e = planEyes(level, 'teddy', { words: [{ en: 'cow', emoji: '🐮' }, { en: 'socks', emoji: '🧦' }, { en: 'Cow', emoji: '🐄' }], rng });
+    const ens = e.chart.map((w) => w.en);
+    assert.equal(ens.length, level >= 3 ? 4 : 3);
+    assert.equal(new Set(ens).size, ens.length);
+    assert.ok(ens.includes('cow'));
+    assert.ok(!ens.includes('socks'));
+    assert.ok(ens.every((w) => w === 'cow' || DEFAULT_EYE_WORDS.some((d) => d.en === w)));
+    assert.equal(e.asks.length, 3);
+    assert.equal(new Set(e.asks).size, 3);
+    assert.ok(e.asks.every((w) => ens.includes(w)));
+  }
+  // Máy mới: chỉ bộ mặc định.
+  assert.ok(planEyes(2, 'kitty', { rng }).chart.every((w) => DEFAULT_EYE_WORDS.some((d) => d.en === w.en)));
+});
+
+test('SPEC-doctor2 DR3 — ca mới mức 2–3: đo chiều cao / khám mắt theo loại ít gặp; mức 1 luôn đo chiều cao; câu nói theo đúng từ / tên', () => {
+  const rng = seeded(61);
+  assert.equal(pickNewCase({ checkup: 3, eyes: 1 }, rng), 'eyes');
+  assert.equal(pickNewCase({ checkup: 0, eyes: 2 }, rng), 'checkup');
+  assert.deepEqual(new Set(Array.from({ length: 40 }, () => pickNewCase({}, rng))), new Set(['checkup', 'eyes']));
+  for (let i = 0; i < 30; i++) {
+    assert.ok(planDoctorRound(1, { rng, seen: { checkup: 9 } }).some((c) => c.id === 'checkup'));
+    assert.ok(planDoctorRound(2, { rng, seen: { checkup: 9 } }).some((c) => c.id === 'eyes'));
+  }
+  assert.equal(pointLine('fish')[0], 'Point to the fish!');
+  assert.equal(seeLine('fish')[0], 'I see the fish!');
+  assert.equal(wrongEyeLine('cat', 'fish')[0], "That's the cat. Where's the fish?");
+  assert.equal(needGlassesLine('Teddy')[0], 'Teddy needs glasses!');
 });

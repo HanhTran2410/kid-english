@@ -137,11 +137,19 @@ function photoDress(map) {
     const a = GEAR_ANCHOR[id];
     return h('img.ff-wear.ff-photo-part', { src: map.get(id), alt: '', dataset: { gear: id }, style: { left: `${a.left}%`, top: `${a.top}%`, width: `${a.width}%` } });
   };
-  return h('div.ff-photo', {},
-    h('img.ff-photo-base', { src: map.get('plain'), alt: '' }),
+  // Khung theo đúng tỉ lệ ảnh của chú (không phải ô vuông) → chỗ dán tính theo người.
+  const box = h('div.ff-photo');
+  const base = h('img.ff-photo-base', { src: map.get('plain'), alt: '' });
+  base.addEventListener('load', () => { if (base.naturalWidth) box.style.aspectRatio = `${base.naturalWidth} / ${base.naturalHeight}`; }, { once: true });
+  box.append(base);
+  return mount(box,
     part('jacket'), part('boots'), part('helmet'),
     h('img.ff-photo-full', { src: map.get('full'), alt: '' }));
 }
+const mount = (el, ...kids) => {
+  el.append(...kids);
+  return el;
+};
 export function fireScreen(app, params = {}) {
   let progress = cleanJobState(app.settings.fireGame, { maxLevel: MAX_LEVEL });
   const level = progress.level;
@@ -184,7 +192,7 @@ export function fireScreen(app, params = {}) {
   /** Hình một món đồ (khay / đang bay): ảnh bố mẹ thêm, chưa có thì hình vẽ; món lạ dùng emoji. */
   const gearFace = (id) => {
     if (GEAR_INFO[id]?.emoji) return h('span.dr-item-face', { text: GEAR_INFO[id].emoji, 'aria-hidden': 'true' });
-    if (gearPhotos) return h('img.dr-item-face.ff-gear-img', { src: gearPhotos.get(id), alt: '', draggable: false });
+    if (gearPhotos) return h('img.dr-item-face.dr-item-img.ff-gear-img', { src: gearPhotos.get(id), alt: '', draggable: false });
     return h('span.dr-item-face.ff-gear-face', { 'aria-hidden': 'true', html: `<svg viewBox="${GEAR_VIEW[id]}">${GEAR_PARTS[id]}</svg>` });
   };
   const safetyEl = h('div.fr-safety', { hidden: true });

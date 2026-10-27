@@ -176,3 +176,9 @@ Sau khi bạn thú khỏe lại (*"I feel better! Thank you, doctor!"*), trướ
 - Đo xong bạn thú lên giường nhận sticker như ca bệnh; `seen.checkup` ghi một lần.
 - Chạm khối ở thước của bạn chưa tới lượt (mức 3) xử lý như chạm bỏ khối.
 - Test UI cố định chỗ ca mới bằng `window.__kidTest.doctorNewAt` (chỉ test đặt; bình thường ngẫu nhiên).
+
+## 15. Ghi chú khi làm DR3 (0.46.0)
+- Mức 2–3: ca mới là đo chiều cao hoặc khám mắt theo `seen` (`pickNewCase`); mức 1 luôn đo chiều cao.
+- Bảng hình: từ trong bài từ vựng bé đã gặp (`practiceCount > 0`), một từ, chỉ chữ cái, không số nhiều (`eyeWordOk`), có emoji; thiếu thì bộ mặc định (cat, dog, fish, apple, ball, car). Ảnh: ảnh mới nhất của từ (như Ôn tập), không có thì emoji.
+- Bạn thú đứng cạnh bảng, che mắt trái bằng miếng che có cán (đặt theo tọa độ mắt của khung thân); đúng 3 câu → khay có 👓 (một món) → kính hiện lên mắt, bạn thú vui, *"Wow! Now I can see better!"* → sticker như ca bệnh; `seen.eyes`.
+- Phụ đề tiếng Việt để từ tiếng Anh trong ngoặc kép (*Con chỉ vào "fish" nhé!*).
