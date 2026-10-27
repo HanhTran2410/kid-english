@@ -131,9 +131,72 @@ export const fixLine = (shown) => {
   return [`${en}! Thank you, teacher!`, `${vi}! Cảm ơn cô giáo!`];
 };
 export const SURE_LINE = ['Hmm, are you sure? Look again!', 'Ừm, cô chắc không? Cô nhìn lại xem!'];
-export const START_LINE = ["Good morning, teacher! I'm ready!", 'Chào cô giáo! Tớ sẵn sàng rồi!'];
+export const START_LINE = ["Let's learn! I'm ready!", 'Mình học nào! Tớ sẵn sàng rồi!'];
 export const ASK_LINE = ['Is Bông right? Tap yes or no!', 'Bông nói đúng không? Con chạm đúng hay sai nhé!'];
 export const END_LINE = ['Thank you, teacher! I learned a lot!', 'Cảm ơn cô giáo! Tớ học được nhiều lắm!'];
 
 /** Từ để ghi "đã gặp" của một hình (chỉ danh từ của bài có sẵn; mức 3 không ghi). */
 export const practiceWord = (shown) => (shown.kind === 'noun' ? NOUN_BY_EN.get(shown.en) : null);
+
+// ---------- SPEC-jobs2 TE1: điểm danh (mở đầu lượt) + ca "Classroom actions" (thay 1 hình) ----------
+/** Bạn thú trong lớp (theo mã bạn thú của Bác sĩ nhí). */
+export const CLASS_IDS = ['teddy', 'kitty', 'puppy', 'piggy'];
+/**
+ * Thẻ hành động (lệnh của bài Actions + wave). `short`: tên ngắn trong câu nhầm ("That's clap."),
+ * `we`: sau "Can we …" / "We want to …", `word`: từ ghi "đã gặp".
+ */
+export const ACTIONS = [
+  { id: 'stand-up', cmd: 'Stand up!', short: 'stand up', we: 'stand up', word: 'stand up', emoji: '🧍', vi: 'đứng lên' },
+  { id: 'sit-down', cmd: 'Sit down!', short: 'sit down', we: 'sit down', word: 'sit down', emoji: '🪑', vi: 'ngồi xuống' },
+  { id: 'clap', cmd: 'Clap your hands!', short: 'clap', we: 'clap our hands', word: 'clap your hands', emoji: '👏', vi: 'vỗ tay' },
+  { id: 'jump', cmd: 'Jump!', short: 'jump', we: 'jump', word: 'jump', emoji: '🦘', vi: 'nhảy lên' },
+  { id: 'wave', cmd: 'Wave!', short: 'wave', we: 'wave', word: 'wave', emoji: '👋', vi: 'vẫy tay' },
+];
+export const ACTION_BY_ID = new Map(ACTIONS.map((a) => [a.id, a]));
+export const ACTION_STEPS = 3;
+
+/**
+ * Ca "Classroom actions" (sinh sẵn): mức 1 — 3 thẻ (stand up, sit down, clap), chạm thẻ nào cũng được (khám phá);
+ * mức 2–3 — 5 thẻ, 3 yêu cầu khác nhau, mỗi yêu cầu do một bạn trong lớp xin.
+ */
+export function makeActionsItem(level, pupils, { rng = Math.random } = {}) {
+  if (level <= 1) return { kind: 'actions', cards: shuffle(['stand-up', 'sit-down', 'clap'], rng), asks: null, askers: null };
+  const cards = shuffle(ACTIONS.map((a) => a.id), rng);
+  const asks = shuffle(cards, rng).slice(0, ACTION_STEPS);
+  return { kind: 'actions', cards, asks, askers: asks.map(() => pick(pupils, rng)) };
+}
+
+/**
+ * Kế hoạch một buổi học: lớp (3 bạn mức 1 / 4 bạn mức 2–3, chỗ ngồi cố định), thứ tự điểm danh, 5 việc =
+ * 4 hình (như cũ) + 1 ca Classroom actions thay một hình Bông nói ĐÚNG (giữ 2–3 câu sai).
+ * Chỉ test UI đặt `window.__kidTest.teacherActionsAt` để cố định chỗ ca hành động.
+ */
+export function planLesson(level, { known = new Set(), rng = Math.random } = {}) {
+  const pupils = shuffle(CLASS_IDS, rng).slice(0, level <= 1 ? 3 : 4);
+  const roll = shuffle(pupils, rng);
+  const items = planRound(level, { known, rng });
+  const rights = items.map((q, i) => (q.right ? i : -1)).filter((i) => i >= 0);
+  const at = rights.length ? pick(rights, rng) : items.length - 1;
+  items.splice(at, 1);
+  const pinned = globalThis.__kidTest?.teacherActionsAt;
+  const to = Number.isInteger(pinned) && pinned >= 0 && pinned <= items.length ? pinned : at;
+  items.splice(to, 0, makeActionsItem(level, pupils, { rng }));
+  return { pupils, roll, items };
+}
+
+export const BELL_LINE = ['Ring the bell, teacher!', 'Cô giáo rung chuông nào!'];
+export const MORNING_LINE = ['Good morning, class!', 'Chào cả lớp!'];
+export const CLASS_MORNING_LINE = ['Good morning, teacher!', 'Chúng em chào cô ạ!'];
+export const whereLine = (name) => [`Where's ${name}?`, `${name} đâu rồi?`];
+export const HERE_LINE = ['Here!', 'Có ạ!'];
+/** Chạm nhầm bạn khi điểm danh: "I'm Puppy! Kitty is over there!" */
+export const notMeLine = (me, want) => [`I'm ${me}! ${want} is over there!`, `Tớ là ${me}! ${want} ở đằng kia kìa!`];
+export const ALL_HERE_LINE = ['Everyone is here!', 'Cả lớp đủ rồi!'];
+export const WHAT_DO_LINE = ['What do we do, teacher?', 'Mình làm gì đây cô giáo?'];
+/** Bạn xin: "Can we jump, teacher?" */
+export const canWeLine = (a) => [`Can we ${a.we}, teacher?`, `Cô cho tụi tớ ${a.vi} được không ạ?`];
+/** Lệnh của cô giáo: "Jump!" */
+export const cmdLine = (a) => [a.cmd, `${a.vi.charAt(0).toUpperCase()}${a.vi.slice(1)}!`];
+/** Thẻ sai: "That's clap. We want to jump!" */
+export const wrongActionLine = (tapped, want) => [`That's ${tapped.short}. We want to ${want.we}!`, `Đó là ${tapped.vi}. Tụi tớ muốn ${want.vi}!`];
+export const ACTIONS_DONE_LINE = ['That was fun!', 'Vui quá!'];

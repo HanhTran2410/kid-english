@@ -3,6 +3,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   NOUNS, NOUN_BY_EN, planRound, wrongClaim, sayWhat, claimLine, fixLine, practiceWord, QUESTIONS_PER_ROUND,
+  planLesson, CLASS_IDS, ACTIONS, ACTION_BY_ID, whereLine, notMeLine, canWeLine, cmdLine, wrongActionLine,
 } from '../../app/js/jobs/teacher.js';
 
 function seeded(seed = 1) {
@@ -64,4 +65,40 @@ test('câu nói đúng ngữ pháp: a / an / không mạo từ / They\'re; mức
   assert.equal(practiceWord({ kind: 'noun', en: 'dog' }).en, 'dog');
   assert.equal(practiceWord({ kind: 'color', thing: 'ball', color: 'red' }), null);
   for (const n of NOUNS) for (const [en, vi] of [sayWhat({ kind: 'noun', en: n.en })]) assert.ok(en && vi && !/undefined/.test(en + vi), n.en);
+});
+
+test('SPEC-jobs2 TE1 — buổi học: lớp 3 bạn (mức 1) / 4 bạn (mức 2–3), điểm danh đủ mỗi bạn một lần; 5 việc = 4 hình (vẫn 2–3 câu Bông nói sai) + 1 ca hành động', () => {
+  const rng = seeded(31);
+  for (const level of [1, 2, 3]) for (let i = 0; i < 60; i++) {
+    const { pupils, roll, items } = planLesson(level, { rng });
+    assert.equal(pupils.length, level <= 1 ? 3 : 4);
+    assert.ok(pupils.every((p) => CLASS_IDS.includes(p)));
+    assert.deepEqual([...roll].sort(), [...pupils].sort());
+    assert.equal(items.length, QUESTIONS_PER_ROUND);
+    const acts = items.filter((x) => x.kind === 'actions');
+    assert.equal(acts.length, 1);
+    const wrong = items.filter((x) => x.kind !== 'actions' && !x.right).length;
+    assert.ok(wrong >= 2 && wrong <= 3, `mức ${level}: ${wrong} câu sai`);
+    const [a] = acts;
+    if (level <= 1) {
+      assert.deepEqual([...a.cards].sort(), ['clap', 'sit-down', 'stand-up']);
+      assert.equal(a.asks, null);
+    } else {
+      assert.equal(a.cards.length, 5);
+      assert.equal(a.asks.length, 3);
+      assert.equal(new Set(a.asks).size, 3);
+      assert.ok(a.asks.every((id) => a.cards.includes(id)));
+      assert.ok(a.askers.every((p) => pupils.includes(p)));
+    }
+  }
+});
+
+test('SPEC-jobs2 TE1 — câu điểm danh / hành động', () => {
+  assert.equal(whereLine('Kitty')[0], "Where's Kitty?");
+  assert.equal(notMeLine('Puppy', 'Kitty')[0], "I'm Puppy! Kitty is over there!");
+  assert.equal(canWeLine(ACTION_BY_ID.get('jump'))[0], 'Can we jump, teacher?');
+  assert.equal(canWeLine(ACTION_BY_ID.get('clap'))[0], 'Can we clap our hands, teacher?');
+  assert.equal(cmdLine(ACTION_BY_ID.get('stand-up'))[0], 'Stand up!');
+  assert.equal(wrongActionLine(ACTION_BY_ID.get('clap'), ACTION_BY_ID.get('jump'))[0], "That's clap. We want to jump!");
+  assert.equal(ACTIONS.length, 5);
 });

@@ -7,8 +7,9 @@ const saidSince = async (page, n, re) => (await spoken(page)).slice(n).some((t) 
 const play = (page) => page.locator('.tc-play');
 const isRight = async (page) => (await page.locator('.tc-picture').getAttribute('data-right')) === 'true';
 
-async function openTeacher(page, settings, before) {
+async function openTeacher(page, settings, before, { actionsAt = 4, roll = true } = {}) {
   await fakeSpeech(page);
+  await page.addInitScript((n) => { window.__kidTest = { teacherActionsAt: n }; }, actionsAt);
   await startApp(page);
   if (settings) await page.evaluate((s) => window.kidEnglish.setSetting('teacherGame', s), settings);
   if (before) await before();
@@ -16,18 +17,41 @@ async function openTeacher(page, settings, before) {
   await page.getByRole('button', { name: 'Đóng vai' }).click();
   await expect(page.locator('.jb-job')).toHaveCount(await page.evaluate(async () => (await import('/js/screens/jobs.js')).JOBS.length));
   await page.getByRole('button', { name: 'Cô giáo nhí' }).click();
-  await expect(play(page)).toHaveAttribute('data-state', 'judge', { timeout: 15000 });
+  await expect(play(page)).toHaveAttribute('data-state', 'bell', { timeout: 15000 });
+  if (!roll) return;
+  await doRoll(page);
+  await expect(play(page)).toHaveAttribute('data-state', /judge|act/, { timeout: 15000 });
+}
+/** SPEC-jobs2 TE1: rung chuông rồi điểm danh đúng từng bạn (đọc `data-word` của bảng). */
+async function doRoll(page) {
+  await page.locator('.tc-bell').click();
+  const n = await page.locator('.tc-pupil').count();
+  for (let i = 0; i < n; i++) {
+    await expect(play(page)).toHaveAttribute('data-state', 'roll', { timeout: 15000 });
+    await expect(page.locator('.tc-pupil[data-here="true"]')).toHaveCount(i, { timeout: 15000 });
+    await page.locator(`.tc-pupil[data-pupil="${await page.locator('.tc-picture').getAttribute('data-word')}"]`).click();
+  }
+}
+/** SPEC-jobs2 TE1: ca Classroom actions — chạm đúng thẻ (mức 1: thẻ chưa dùng) đủ 3 lệnh. */
+async function doActions(page) {
+  for (let i = 0; i < 3; i++) {
+    await expect(play(page)).toHaveAttribute('data-state', 'act', { timeout: 15000 });
+    await expect(page.locator('.tc-card.used')).toHaveCount(i, { timeout: 15000 });
+    const want = await page.locator('.tc-picture').getAttribute('data-word');
+    await page.locator(want ? `.tc-card[data-action="${want}"]` : '.tc-card:not(.used)').first().click();
+  }
 }
 async function judgeRight(page, i) {
   await expect(page.locator('.jb-count')).toHaveText(`${i + 1}/5`, { timeout: 15000 });
-  await expect(play(page)).toHaveAttribute('data-state', 'judge', { timeout: 15000 });
+  await expect(play(page)).toHaveAttribute('data-state', /judge|act/, { timeout: 15000 });
+  if ((await play(page).getAttribute('data-state')) === 'act') return doActions(page);
   await page.getByRole('button', { name: (await isRight(page)) ? 'Đúng' : 'Sai' }).click();
 }
 
 test('mức 1: Bông giơ tay nói tên; JOBS-05 — chấm nhầm thì Bông nói lại, bé chọn lại (không sang câu), nhầm 2 lần nút đúng nhún; chấm đúng → câu 2', async ({ page }) => {
   await openTeacher(page);
   const said = await spoken(page);
-  expect(said).toContain("Good morning, teacher! I'm ready!");
+  expect(said).toContain("Let's learn! I'm ready!");
   expect(said.some((t) => /^I know! (It's|They're) .+!$/.test(t))).toBe(true);
   await expect(page.locator('.jb-count')).toHaveText('1/5');
   const right = await isRight(page);
@@ -57,8 +81,8 @@ test('5 hình → Hoan hô + sticker; đếm lượt; 2–3 câu Bông nói sai'
   let wrong = 0;
   for (let i = 0; i < 5; i++) {
     await expect(page.locator('.jb-count')).toHaveText(`${i + 1}/5`, { timeout: 15000 });
-    await expect(play(page)).toHaveAttribute('data-state', 'judge', { timeout: 15000 });
-    if (!(await isRight(page))) wrong++;
+    await expect(play(page)).toHaveAttribute('data-state', /judge|act/, { timeout: 15000 });
+    if ((await play(page).getAttribute('data-state')) === 'judge' && !(await isRight(page))) wrong++;
     await judgeRight(page, i);
   }
   expect(wrong >= 2 && wrong <= 3).toBe(true);
@@ -95,7 +119,7 @@ test('hình dùng ảnh bài học (ảnh mới nhất của từ); ra nền r�
 test('mức 3: đồ tô màu / nhiều con, câu "It\'s a red ball!" / "I see two cats!"; chơi hết lượt', async ({ page }) => {
   await openTeacher(page, { level: 3, rounds: 0, lock: 3, seen: {} });
   for (let i = 0; i < 5; i++) {
-    await expect(page.locator('.tc-picture')).toHaveAttribute('data-kind', /color|count/, { timeout: 15000 });
+    await expect(page.locator('.tc-picture')).toHaveAttribute('data-kind', /color|count|actions/, { timeout: 15000 });
     await judgeRight(page, i);
   }
   expect((await spoken(page)).some((t) => /^I know! (It's a (red|blue|yellow|green|pink|orange) (ball|balloon|star)|I see (one|two|three) \w+)!$/.test(t))).toBe(true);
@@ -127,4 +151,132 @@ test('ảnh thật (512 × 640, ảnh dọc) trên bảng: thẻ hình nằm tr�
     expect(pic.x + pic.width).toBeLessThanOrEqual(board.x + board.width + 0.5);
     expect(pic.y + pic.height).toBeLessThanOrEqual(board.y + board.height + 0.5);
   }
+});
+
+// ---------- SPEC-jobs2 TE1: điểm danh + Classroom actions ----------
+const setVisible = (page, s) => page.evaluate((v) => {
+  Object.defineProperty(document, 'visibilityState', { value: v, configurable: true });
+  document.dispatchEvent(new Event('visibilitychange'));
+}, s);
+const nameOf = (page, id) => page.evaluate(async (x) => (await import('/js/doctor.js')).PATIENT_BY_ID.get(x).name, id);
+
+test('TE1 mức 1: chuông → "Good morning, class!" → "Good morning, teacher!"; lớp 3 bạn; "Where\'s …?" bạn được gọi nhún sẵn; chạm nhầm → "I\'m …! … is over there!"; đúng → "Here!"; đủ → "Everyone is here!" → hình 1', async ({ page }) => {
+  await openTeacher(page, null, null, { roll: false });
+  await expect(page.locator('.tc-pupil')).toHaveCount(3);
+  await expect(page.locator('.tc-answers')).toBeHidden();
+  await expect.poll(() => spoken(page)).toContain('Ring the bell, teacher!');
+  await page.locator('.tc-bell').click();
+  await expect.poll(() => spoken(page)).toContain('Good morning, class!');
+  await expect.poll(() => spoken(page)).toContain('Good morning, teacher!');
+  await expect(play(page)).toHaveAttribute('data-state', 'roll', { timeout: 15000 });
+  const want = await page.locator('.tc-picture').getAttribute('data-word');
+  const wantName = await nameOf(page, want);
+  await expect.poll(() => spoken(page)).toContain(`Where's ${wantName}?`);
+  await expect(page.locator(`.tc-pupil[data-pupil="${want}"]`)).toHaveClass(/called/);
+  const other = await page.locator(`.tc-pupil:not([data-pupil="${want}"])`).first().getAttribute('data-pupil');
+  const otherName = await nameOf(page, other);
+  let n = (await spoken(page)).length;
+  await page.locator(`.tc-pupil[data-pupil="${other}"]`).click();
+  await expect.poll(() => saidSince(page, n, new RegExp(`^I'm ${otherName}! ${wantName} is over there!$`))).toBe(true);
+  n = (await spoken(page)).length;
+  await page.locator(`.tc-pupil[data-pupil="${want}"]`).click();
+  await expect.poll(() => saidSince(page, n, /^Here!$/)).toBe(true);
+  await expect(page.locator('.tc-pupil[data-here="true"]')).toHaveCount(1, { timeout: 15000 });
+  for (let i = 1; i < 3; i++) {
+    await expect(page.locator('.tc-pupil[data-here="true"]')).toHaveCount(i, { timeout: 15000 });
+    await expect(play(page)).toHaveAttribute('data-state', 'roll', { timeout: 15000 });
+    await page.locator(`.tc-pupil[data-pupil="${await page.locator('.tc-picture').getAttribute('data-word')}"]`).click();
+  }
+  await expect.poll(() => spoken(page)).toContain('Everyone is here!');
+  await expect(play(page)).toHaveAttribute('data-state', 'judge', { timeout: 15000 });
+  await expect(page.locator('.tc-class')).toBeHidden();
+  await expect(page.locator('.tc-answers')).toBeVisible();
+  await expect(page.locator('.jb-count')).toHaveText('1/5');
+});
+
+test('TE1 mức 2: lớp 4 bạn, bạn được gọi không nhún sẵn; nhầm 2 lần → bạn đúng nhún; ra nền giữa lúc điểm danh → quay lại giữ bạn đã "Here!"', async ({ page }) => {
+  await openTeacher(page, { level: 2, rounds: 0, lock: 2, seen: {} }, null, { roll: false });
+  await expect(page.locator('.tc-pupil')).toHaveCount(4);
+  await page.locator('.tc-bell').click();
+  await expect(play(page)).toHaveAttribute('data-state', 'roll', { timeout: 15000 });
+  const want = await page.locator('.tc-picture').getAttribute('data-word');
+  await expect(page.locator('.tc-pupil.called')).toHaveCount(0);
+  const others = await page.locator(`.tc-pupil:not([data-pupil="${want}"])`).evaluateAll((els) => els.map((e) => e.dataset.pupil));
+  await page.locator(`.tc-pupil[data-pupil="${others[0]}"]`).click();
+  await page.locator(`.tc-pupil[data-pupil="${others[1]}"]`).click();
+  await expect(page.locator(`.tc-pupil[data-pupil="${want}"]`)).toHaveClass(/nudge/);
+  await page.locator(`.tc-pupil[data-pupil="${want}"]`).click();
+  await expect(page.locator('.tc-pupil[data-here="true"]')).toHaveCount(1, { timeout: 15000 });
+  await expect(play(page)).toHaveAttribute('data-state', 'roll', { timeout: 15000 });
+  const next = await page.locator('.tc-picture').getAttribute('data-word');
+  await setVisible(page, 'hidden');
+  await setVisible(page, 'visible');
+  await page.locator('.resume-overlay .start-btn').click();
+  await expect(play(page)).toHaveAttribute('data-state', 'roll', { timeout: 15000 });
+  await expect(page.locator('.tc-pupil[data-here="true"]')).toHaveCount(1);
+  await expect(page.locator('.tc-picture')).toHaveAttribute('data-word', next);
+});
+
+test('TE1 mức 1: ca Classroom actions — "What do we do, teacher?", 3 thẻ, chạm thẻ nào cũng được → "Stand up!" / … cả lớp làm; thẻ đã dùng không tính; 3 lệnh → "That was fun!" → ⭐', async ({ page }) => {
+  await openTeacher(page, null, null, { actionsAt: 0 });
+  await expect(play(page)).toHaveAttribute('data-state', 'act', { timeout: 15000 });
+  await expect(page.locator('.tc-card')).toHaveCount(3);
+  await expect(page.locator('.tc-class')).toBeVisible();
+  await expect.poll(() => spoken(page)).toContain('What do we do, teacher?');
+  const first = await page.locator('.tc-card').first().getAttribute('data-action');
+  const cmd = { 'stand-up': 'Stand up!', 'sit-down': 'Sit down!', clap: 'Clap your hands!' }[first];
+  let n = (await spoken(page)).length;
+  await page.locator(`.tc-card[data-action="${first}"]`).click();
+  await expect.poll(() => saidSince(page, n, new RegExp(`^${cmd}$`))).toBe(true);
+  await expect(page.locator('.tc-card.used')).toHaveCount(1);
+  await expect(play(page)).toHaveAttribute('data-state', 'act', { timeout: 15000 });
+  n = (await spoken(page)).length;
+  await page.locator(`.tc-card[data-action="${first}"]`).click();
+  await page.waitForTimeout(300);
+  expect(await saidSince(page, n, new RegExp(`^${cmd}$`))).toBe(false);
+  for (let i = 1; i < 3; i++) {
+    await expect(play(page)).toHaveAttribute('data-state', 'act', { timeout: 15000 });
+    await expect(page.locator('.tc-card.used')).toHaveCount(i, { timeout: 15000 });
+    await page.locator('.tc-card:not(.used)').first().click();
+  }
+  await expect.poll(() => spoken(page)).toContain('That was fun!');
+  await expect(page.locator('.tc-star[data-done="true"]')).toHaveCount(1, { timeout: 15000 });
+  await expect(play(page)).toHaveAttribute('data-state', 'judge', { timeout: 15000 });
+  await expect(page.locator('.jb-count')).toHaveText('2/5');
+});
+
+test('TE1 mức 2: 5 thẻ; bạn xin "Can we …, teacher?"; thẻ sai → "That\'s …. We want to …!"; đúng → lệnh, ghi đã gặp (đúng ngay lần đầu); ra nền giữa ca → cùng lệnh thứ mấy', async ({ page }) => {
+  await openTeacher(page, { level: 2, rounds: 0, lock: 2, seen: {} }, null, { actionsAt: 0 });
+  await expect(play(page)).toHaveAttribute('data-state', 'act', { timeout: 15000 });
+  await expect(page.locator('.tc-card')).toHaveCount(5);
+  const want = await page.locator('.tc-picture').getAttribute('data-word');
+  const info = await page.evaluate(async (id) => { const a = (await import('/js/jobs/teacher.js')).ACTION_BY_ID.get(id); return { we: a.we, cmd: a.cmd, word: a.word }; }, want);
+  await expect.poll(() => spoken(page)).toContain(`Can we ${info.we}, teacher?`);
+  const wrong = await page.locator(`.tc-card:not([data-action="${want}"])`).first().getAttribute('data-action');
+  const short = await page.evaluate(async (id) => (await import('/js/jobs/teacher.js')).ACTION_BY_ID.get(id).short, wrong);
+  let n = (await spoken(page)).length;
+  await page.locator(`.tc-card[data-action="${wrong}"]`).click();
+  await expect.poll(() => saidSince(page, n, new RegExp(`^That's ${short}\\. We want to ${info.we}!$`))).toBe(true);
+  n = (await spoken(page)).length;
+  await page.locator(`.tc-card[data-action="${want}"]`).click();
+  await expect.poll(() => saidSince(page, n, new RegExp(`^${info.cmd.replace('!', '')}!$`))).toBe(true);
+  // Lệnh 2: đúng ngay → ghi đã gặp.
+  await expect(page.locator('.tc-card.used')).toHaveCount(1);
+  await expect(play(page)).toHaveAttribute('data-state', 'act', { timeout: 15000 });
+  const want2 = await page.locator('.tc-picture').getAttribute('data-word');
+  const word2 = await page.evaluate(async (id) => (await import('/js/jobs/teacher.js')).ACTION_BY_ID.get(id).word, want2);
+  await page.locator(`.tc-card[data-action="${want2}"]`).click();
+  await expect.poll(() => page.evaluate(async (w) => (await window.kidEnglish.db.getAll('progress')).some((p) => p.word === w), word2)).toBe(true);
+  expect(await page.evaluate(async (w) => (await window.kidEnglish.db.getAll('progress')).some((p) => p.word === w), info.word)).toBe(false);
+  await expect(page.locator('.tc-card.used')).toHaveCount(2, { timeout: 15000 });
+  await expect(play(page)).toHaveAttribute('data-state', 'act', { timeout: 15000 });
+  const want3 = await page.locator('.tc-picture').getAttribute('data-word');
+  await setVisible(page, 'hidden');
+  await setVisible(page, 'visible');
+  await page.locator('.resume-overlay .start-btn').click();
+  await expect(play(page)).toHaveAttribute('data-state', 'act', { timeout: 15000 });
+  await expect(page.locator('.tc-picture')).toHaveAttribute('data-word', want3);
+  await expect(page.locator('.tc-card.used')).toHaveCount(2);
+  await page.locator(`.tc-card[data-action="${want3}"]`).click();
+  await expect(page.locator('.tc-star[data-done="true"]')).toHaveCount(1, { timeout: 15000 });
 });

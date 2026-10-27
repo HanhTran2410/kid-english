@@ -1,22 +1,30 @@
 // Trò Cô giáo nhí (SPEC-jobs.md mục 5): đảo vai — Bông làm học trò, nhìn hình trên bảng và giơ tay nói tên,
 // đôi khi cố tình nói sai; bé chấm ✅ / ❌. Chấm đúng: Bông vui / Bông sửa lại; chấm nhầm: Bông nói lại, bé chọn lại.
-// 5 hình → vở của Bông có 5 ⭐ → sticker. Trạng thái: claim → judge ⇄ busy → hình sau | done. Khung chung ở jobs/kit.js.
+// SPEC-jobs2 TE1: mở đầu lượt bé rung chuông + điểm danh lớp (chạm đúng bạn được gọi); một trong 5 việc là ca
+// "Classroom actions" (bé chạm thẻ hành động, cả lớp làm theo). 5 việc → vở của Bông có 5 ⭐ → sticker.
+// Trạng thái: bell → roll ⇄ busy → claim → judge | act ⇄ busy → việc sau | done. Khung chung ở jobs/kit.js.
 
 import { h } from '../ui.js';
 import { latestImageForWord, mediaBlob } from '../db.js';
 import { play } from '../speech/sfx.js';
 import { markPracticed } from '../player/track.js';
 import { bongSvg } from '../bong.js';
+import { patientSvg } from '../patients.js';
+import { PATIENT_BY_ID } from '../doctor.js';
 import { cleanJobState, afterJobRound } from '../jobs/levels.js';
 import { JOBS_BG_IMAGES } from '../jobs/backgrounds.js';
 import { jobScreen, saveSnap, takeSnap, clearSnap, restartAnim, wait, WRONG_LOCK_MS, MAX_NUDGES } from '../jobs/kit.js';
 import {
-  MAX_LEVEL, NOUN_BY_EN, COUNTABLES, planRound, claimLine, fixLine, practiceWord,
+  MAX_LEVEL, NOUN_BY_EN, COUNTABLES, planLesson, claimLine, fixLine, practiceWord,
   YAY_LINE, OOPS_LINE, SURE_LINE, START_LINE, ASK_LINE, END_LINE,
+  ACTION_BY_ID, ACTION_STEPS, BELL_LINE, MORNING_LINE, CLASS_MORNING_LINE, whereLine, HERE_LINE, notMeLine, ALL_HERE_LINE,
+  WHAT_DO_LINE, canWeLine, cmdLine, wrongActionLine, ACTIONS_DONE_LINE,
 } from '../jobs/teacher.js';
 
 const JOB = 'teacher';
 const SAY_BACK_MS = 2000; // "Oops! What is it?": chờ bé nói tên
+const ACT_MS = 1600; // cả lớp làm theo lệnh (bé làm theo nếu muốn)
+const ACTIVE = ['judge', 'bell', 'roll', 'act'];
 const COLOR_HEX = { red: '#ff6b6b', blue: '#4dabf7', yellow: '#ffd43b', green: '#51cf66', pink: '#f783ac', orange: '#ff922b' };
 
 /** Đồ tô màu của mức 3 (viewBox 100 × 100). */
@@ -37,7 +45,13 @@ function thingSvg(thing, color) {
 export function teacherScreen(app, params = {}) {
   let progress = cleanJobState(app.settings.teacherGame, { maxLevel: MAX_LEVEL });
   const level = progress.level;
-  let plan = null; // [{ shown, claim, right }]
+  let plan = null; // việc trong buổi: [{ shown, claim, right } | { kind: 'actions', cards, asks, askers }]
+  let klass = null; // { pupils, roll }
+  let phase = 'roll'; // roll (chuông + điểm danh) | quiz
+  let rollIdx = 0;
+  let rang = false; // đã rung chuông chào lớp
+  let actIdx = 0; // ca hành động: lệnh thứ mấy
+  let usedCards = []; // mức 1: thẻ đã chạm
   let idx = 0;
   let wrongs = 0;
   let nudges = 0;
@@ -48,7 +62,13 @@ export function teacherScreen(app, params = {}) {
   const urls = [];
 
   const q = () => plan?.[idx];
+  const isActions = () => q()?.kind === 'actions';
   const B = (line) => ({ who: 'bong', line });
+  const T = (line) => ({ who: 'teacher', line });
+  const P = (id, line) => ({ who: `p:${id}`, line });
+  const pupilName = (id) => PATIENT_BY_ID.get(id)?.name ?? id;
+  const rollWant = () => klass?.roll[rollIdx];
+  const actWant = () => (q()?.asks ? ACTION_BY_ID.get(q().asks[actIdx]) : null);
 
   const picture = h('div.tc-picture');
   const board = h('div.tc-board', {}, picture);
@@ -57,39 +77,80 @@ export function teacherScreen(app, params = {}) {
   const yesBtn = h('button.tc-answer.tc-yes', { type: 'button', 'aria-label': 'Đúng', text: '✅', onclick: () => judge(true) });
   const noBtn = h('button.tc-answer.tc-no', { type: 'button', 'aria-label': 'Sai', text: '❌', onclick: () => judge(false) });
   const answers = h('div.tc-answers', {}, yesBtn, noBtn);
+  const classEl = h('div.tc-class', { hidden: true });
 
   const kit = jobScreen(app, {
     job: JOB, background: { lessonId: JOBS_BG_IMAGES, word: JOB }, className: 'tc-play', stageClass: 'tc-stage', title: '👩‍🏫 Teacher', helperLabel: 'Bông học trò', cap: 'teacher',
     resetLabel: 'Học lại',
-    icon: () => '🐰',
-    onTalk: (who) => student.classList.toggle('talking', who === 'bong'),
+    icon: (who) => (who === 'teacher' ? '👩‍🏫' : who === 'class' ? '🏫' : who.startsWith('p:') ? PATIENT_BY_ID.get(who.slice(2))?.emoji ?? '' : '🐰'),
+    pitch: (who) => (who.startsWith('p:') ? PATIENT_BY_ID.get(who.slice(2))?.pitch : who === 'class' ? 1.3 : undefined),
+    onTalk: (who) => {
+      student.classList.toggle('talking', who === 'bong');
+      for (const el of classEl.children) el.classList.toggle('talking', who === `p:${el.dataset.pupil}` || who === 'class');
+    },
     onReset: () => restart(),
-    onHelper: () => repeatClaim(),
+    onHelper: () => repeatPrompt(),
     nudge: {
-      ready: () => state === 'judge' && nudges < MAX_NUDGES,
+      ready: () => ACTIVE.includes(state) && nudges < MAX_NUDGES,
       key: () => stepKey(),
       fire: (rearm) => {
         nudges += 1;
         snap();
-        restartAnim(picture, 'nudge');
-        kit.talk([B(claimLine(q().claim)), B(ASK_LINE)]).then(rearm);
+        if (state === 'bell') restartAnim(picture.querySelector('.tc-bell'), 'nudge');
+        else if (state === 'roll') restartAnim(pupilEl(rollWant()), 'nudge');
+        else if (state === 'act') {
+          const want = actWant();
+          if (want) restartAnim(cardEl(want.id), 'nudge');
+          else for (const c of picture.querySelectorAll('.tc-card:not(.used)')) restartAnim(c, 'nudge');
+        } else restartAnim(picture, 'nudge');
+        kit.talk(promptLines()).then(rearm);
       },
     },
   });
   const { stage, count, talk } = kit;
-  stage.append(board, student, notebook, answers);
-  const stepKey = () => `${kit.epoch}:${idx}`;
+  stage.append(board, student, notebook, answers, classEl);
+  const stepKey = () => `${kit.epoch}:${phase}:${rollIdx}:${idx}:${actIdx}:${state}`;
+  const pupilEl = (id) => classEl.querySelector(`.tc-pupil[data-pupil="${id}"]`);
+  const cardEl = (id) => picture.querySelector(`.tc-card[data-action="${id}"]`);
 
   function setState(s) {
     state = s;
-    kit.setState(s, s === 'judge');
+    kit.setState(s, false);
     answers.classList.toggle('locked', s !== 'judge');
   }
-  const snap = () => saveSnap(JOB, { level, plan, idx, wrongs, nudges, recorded: [...recorded] });
+  const snap = () => saveSnap(JOB, { level, plan, klass, phase, rollIdx, rang, idx, actIdx, usedCards, wrongs, nudges, recorded: [...recorded] });
+
+  /** Câu hỏi / yêu cầu của bước đang chờ bé (nhắc, chạm Bông). */
+  function promptLines() {
+    if (state === 'bell') return [B(BELL_LINE)];
+    if (state === 'roll') return [B(whereLine(pupilName(rollWant())))];
+    if (state === 'act') {
+      const want = actWant();
+      return want ? [P(q().askers[actIdx], canWeLine(want))] : [B(WHAT_DO_LINE)];
+    }
+    return [B(claimLine(q().claim)), B(ASK_LINE)];
+  }
 
   // ---------- Vẽ ----------
+  function renderClass() {
+    classEl.replaceChildren(...klass.pupils.map((id) => {
+      const p = PATIENT_BY_ID.get(id);
+      const el = h('button.tc-pupil', { type: 'button', 'aria-label': p.name, dataset: { pupil: id }, onclick: () => tapPupil(id) },
+        h('span.tc-pupil-body', { html: patientSvg(id, { mood: 'happy', title: p.name }) }), h('span.tc-pupil-fx', { 'aria-hidden': 'true' }));
+      return el;
+    }));
+    markHere();
+  }
+  function markHere() {
+    const here = new Set(klass.roll.slice(0, rollIdx));
+    for (const el of classEl.children) {
+      el.dataset.here = String(phase === 'roll' && here.has(el.dataset.pupil));
+      el.classList.toggle('called', phase === 'roll' && level <= 1 && state === 'roll' && el.dataset.pupil === rollWant());
+    }
+  }
   function renderPicture() {
     const { shown, right } = q();
+    picture.classList.remove('tc-cards');
     picture.dataset.kind = shown.kind;
     picture.dataset.right = String(right); // cho test; bé không thấy
     if (shown.kind === 'color') {
@@ -105,18 +166,134 @@ export function teacherScreen(app, params = {}) {
     }
     const noun = NOUN_BY_EN.get(shown.en);
     picture.dataset.word = noun.en;
-    const url = images.get(noun.en);
-    const emoji = () => h('span.tc-emoji', { text: noun.emoji });
-    if (!url) {
-      picture.replaceChildren(emoji());
-      return;
-    }
-    const img = h('img.tc-img', { src: url, alt: '', draggable: false });
-    img.addEventListener('error', () => img.replaceWith(emoji()), { once: true });
-    picture.replaceChildren(img);
+    picture.replaceChildren(face(noun.en, noun.emoji, 'tc-img', 'tc-emoji'));
+  }
+  /** Ảnh bài học của từ (nếu có), không thì emoji. */
+  function face(word, emoji, imgClass, emojiClass) {
+    const url = images.get(word);
+    const fallback = () => h(`span.${emojiClass}`, { text: emoji });
+    if (!url) return fallback();
+    const img = h(`img.${imgClass}`, { src: url, alt: '', draggable: false });
+    img.addEventListener('error', () => img.replaceWith(fallback()), { once: true });
+    return img;
+  }
+  function renderCards() {
+    const item = q();
+    picture.classList.add('tc-cards');
+    picture.dataset.kind = 'actions';
+    picture.dataset.right = '';
+    picture.dataset.word = item.asks ? item.asks[actIdx] ?? '' : ''; // cho test
+    picture.replaceChildren(...item.cards.map((id) => {
+      const a = ACTION_BY_ID.get(id);
+      const card = h('button.tc-card', { type: 'button', 'aria-label': a.cmd, dataset: { action: id }, onclick: () => tapCard(id) },
+        face(a.word, a.emoji, 'tc-card-img', 'tc-card-emoji'), h('span.tc-card-label', { text: a.short }));
+      card.classList.toggle('used', usedCards.includes(id));
+      return card;
+    }));
   }
   function renderNotebook() {
     notebook.replaceChildren(...plan.map((_, i) => h('span.tc-star', { text: i < idx ? '⭐' : '☆', dataset: { done: String(i < idx) } })));
+  }
+  /** Bố cục theo bước: điểm danh / hành động — lớp hiện, ✅ ❌ ẩn; chấm hình — ngược lại. */
+  function layout() {
+    const showClass = phase === 'roll' || isActions();
+    classEl.hidden = !showClass;
+    answers.hidden = showClass;
+    notebook.hidden = phase === 'roll';
+  }
+
+  // ---------- Chuông + điểm danh (SPEC-jobs2 mục 4.2) ----------
+  async function startRoll(resume = false) {
+    const e = kit.epoch;
+    phase = 'roll';
+    count.textContent = '';
+    layout();
+    renderClass();
+    if (!rang) {
+      picture.classList.remove('tc-cards');
+      picture.dataset.kind = 'bell';
+      picture.replaceChildren(h('button.tc-bell', { type: 'button', 'aria-label': 'Chuông', text: '🔔', onclick: () => ringBell() }));
+      setState('bell');
+      snap();
+      if (!resume) restartAnim(classEl, 'enter');
+      await talk([B(BELL_LINE)]);
+      if (e === kit.epoch && state === 'bell') kit.armNudge();
+      return;
+    }
+    rollStep();
+  }
+  async function ringBell() {
+    if (state !== 'bell') return;
+    const e = kit.epoch;
+    setState('busy');
+    kit.clearNudge();
+    rang = true;
+    nudges = 0;
+    snap();
+    play('ring');
+    restartAnim(picture.querySelector('.tc-bell'), 'ring');
+    await talk([T(MORNING_LINE), { who: 'class', line: CLASS_MORNING_LINE }]);
+    if (e !== kit.epoch) return;
+    rollStep();
+  }
+  async function rollStep() {
+    const e = kit.epoch;
+    if (rollIdx >= klass.roll.length) {
+      setState('busy');
+      markHere();
+      play('sparkle');
+      await talk([B(ALL_HERE_LINE)]);
+      if (e !== kit.epoch) return;
+      phase = 'quiz';
+      for (const el of classEl.children) el.dataset.here = 'false';
+      ask();
+      return;
+    }
+    picture.classList.remove('tc-cards');
+    picture.dataset.kind = 'roll';
+    picture.dataset.word = rollWant(); // cho test
+    picture.replaceChildren(h('span.tc-emoji', { text: '📋' }));
+    setState('roll');
+    markHere();
+    snap();
+    const k = stepKey();
+    await talk([B(whereLine(pupilName(rollWant())))]);
+    if (k === stepKey()) kit.armNudge();
+  }
+  async function tapPupil(id) {
+    if (state !== 'roll') return;
+    const e = kit.epoch;
+    const want = rollWant();
+    if (id !== want) {
+      // Mức 1: làm quen tên — không tính nhầm. Mức 2–3: tính nhầm; nhầm lần 2 bạn được gọi nhún.
+      if (level >= 2) {
+        const now = Date.now();
+        if (`p:${id}` === lastWrong.key && now - lastWrong.at < WRONG_LOCK_MS) return;
+        lastWrong = { key: `p:${id}`, at: now };
+        wrongs += 1;
+        snap();
+        play('boing');
+        if (wrongs >= 2) restartAnim(pupilEl(want), 'nudge');
+      }
+      kit.clearNudge();
+      restartAnim(pupilEl(id), 'shake');
+      const k = stepKey();
+      await talk([P(id, notMeLine(pupilName(id), pupilName(want)))]);
+      if (k === stepKey()) kit.armNudge();
+      return;
+    }
+    setState('busy');
+    kit.clearNudge();
+    rollIdx += 1;
+    wrongs = 0;
+    nudges = 0;
+    snap();
+    play('pop');
+    markHere();
+    restartAnim(pupilEl(id), 'hop');
+    await talk([P(id, HERE_LINE)]);
+    if (e !== kit.epoch) return;
+    rollStep();
   }
 
   // ---------- Câu ----------
@@ -127,8 +304,13 @@ export function teacherScreen(app, params = {}) {
       nudges = 0;
     }
     count.textContent = `${idx + 1}/${plan.length}`;
-    renderPicture();
+    layout();
     renderNotebook();
+    if (isActions()) {
+      startActions(resume);
+      return;
+    }
+    renderPicture();
     setState('claim');
     snap();
     restartAnim(picture, 'pop');
@@ -171,7 +353,9 @@ export function teacherScreen(app, params = {}) {
       markPracticed(app, word.en, word.emoji);
     }
     idx += 1;
-    saveSnap(JOB, { level, plan, idx, wrongs: 0, nudges: 0, recorded: [...recorded] });
+    wrongs = 0;
+    nudges = 0;
+    snap();
     renderNotebook();
     restartAnim(notebook.children[idx - 1], 'pop');
     play(cur.right ? 'cheer' : 'ding');
@@ -186,11 +370,96 @@ export function teacherScreen(app, params = {}) {
       student.classList.remove('oops');
     }
     if (e !== kit.epoch) return;
+    nextItem();
+  }
+
+  async function nextItem() {
+    const e = kit.epoch;
     if (idx >= plan.length) {
       await talk([B(END_LINE)]);
       if (e !== kit.epoch) return;
       finishRound();
     } else ask();
+  }
+
+  // ---------- Classroom actions (SPEC-jobs2 mục 4.3) ----------
+  async function startActions(resume = false) {
+    const e = kit.epoch;
+    if (!resume) {
+      actIdx = 0;
+      usedCards = [];
+    }
+    renderCards();
+    setState('act');
+    snap();
+    if (!resume) restartAnim(picture, 'pop');
+    await talk(promptLines());
+    if (e === kit.epoch && state === 'act') kit.armNudge();
+  }
+  async function tapCard(id) {
+    if (state !== 'act') return;
+    const e = kit.epoch;
+    const item = q();
+    const a = ACTION_BY_ID.get(id);
+    const want = actWant();
+    if (!want && usedCards.includes(id)) {
+      restartAnim(cardEl(id), 'shake'); // mức 1: thẻ đã làm — chọn thẻ khác (không nhầm)
+      return;
+    }
+    if (want && id !== want.id) {
+      const now = Date.now();
+      if (`a:${id}` === lastWrong.key && now - lastWrong.at < WRONG_LOCK_MS) return;
+      lastWrong = { key: `a:${id}`, at: now };
+      wrongs += 1;
+      snap();
+      kit.clearNudge();
+      play('boing');
+      restartAnim(cardEl(id), 'shake');
+      if (wrongs >= 2) restartAnim(cardEl(want.id), 'nudge');
+      const k = stepKey();
+      await talk([P(item.askers[actIdx], wrongActionLine(a, want))]);
+      if (k === stepKey()) kit.armNudge();
+      return;
+    }
+    // Đúng (mức 2–3) / thẻ bất kỳ (mức 1): nhận NGAY rồi mới nói + cả lớp làm.
+    setState('busy');
+    kit.clearNudge();
+    if (want && wrongs === 0 && !recorded.has(`act:${idx}:${actIdx}`)) {
+      recorded.add(`act:${idx}:${actIdx}`);
+      markPracticed(app, a.word, a.emoji);
+    }
+    usedCards = [...usedCards, id];
+    actIdx += 1;
+    wrongs = 0;
+    nudges = 0;
+    const last = actIdx >= ACTION_STEPS;
+    if (last) idx += 1;
+    snap();
+    cardEl(id)?.classList.add('used');
+    play('ding');
+    await talk([T(cmdLine(a))]);
+    if (e !== kit.epoch) return;
+    for (const el of classEl.children) {
+      el.querySelector('.tc-pupil-fx').textContent = a.id === 'clap' || a.id === 'wave' ? a.emoji : '';
+      restartAnim(el, `act-${a.id}`);
+    }
+    await wait(ACT_MS);
+    if (e !== kit.epoch) return;
+    for (const el of classEl.children) el.classList.remove(`act-${a.id}`);
+    if (!last) {
+      renderCards();
+      setState('act');
+      const k = stepKey();
+      await talk(promptLines());
+      if (k === stepKey()) kit.armNudge();
+      return;
+    }
+    renderNotebook();
+    restartAnim(notebook.children[idx - 1], 'pop');
+    play('cheer');
+    await talk([B(ACTIONS_DONE_LINE)]);
+    if (e !== kit.epoch) return;
+    nextItem();
   }
 
   function finishRound() {
@@ -208,48 +477,71 @@ export function teacherScreen(app, params = {}) {
     if (state === 'done' || !plan) return;
     kit.cancelAll();
     student.classList.remove('hand', 'oops');
+    if (phase === 'roll') {
+      rollIdx = 0;
+      rang = false;
+      wrongs = 0;
+      nudges = 0;
+      startRoll();
+      return;
+    }
     idx = 0;
     ask();
   }
 
-  function repeatClaim() {
-    if (state !== 'judge') return;
+  function repeatPrompt() {
+    if (!ACTIVE.includes(state)) return;
     const k = stepKey();
-    talk([B(claimLine(q().claim))]).then(() => k === stepKey() && kit.armNudge());
+    talk(state === 'judge' ? [B(claimLine(q().claim))] : promptLines()).then(() => k === stepKey() && kit.armNudge());
   }
 
-  /** Ảnh bài học mới nhất của các từ trong lượt (chỉ đọc, không chép). */
+  /** Ảnh bài học mới nhất của các từ trong lượt (hình + thẻ hành động; chỉ đọc, không chép). */
   async function loadImages() {
-    for (const { shown } of plan) {
-      if (shown.kind !== 'noun' || images.has(shown.en)) continue;
-      const img = await latestImageForWord(app.db, shown.en).catch(() => null);
+    const words = [];
+    for (const item of plan) {
+      if (item.kind === 'actions') words.push(...item.cards.map((id) => ACTION_BY_ID.get(id).word));
+      else if (item.shown.kind === 'noun') words.push(item.shown.en);
+    }
+    for (const w of words) {
+      if (images.has(w)) continue;
+      const img = await latestImageForWord(app.db, w).catch(() => null);
       if (!img) continue;
       const url = URL.createObjectURL(mediaBlob(img));
       urls.push(url);
-      images.set(shown.en, url);
+      images.set(w, url);
     }
   }
 
   (async () => {
     const s = takeSnap(JOB, { level, continueDirectly: params.continueDirectly });
-    if (s) {
+    if (s?.klass) {
       plan = s.plan;
+      klass = s.klass;
+      phase = s.phase ?? 'quiz';
+      rollIdx = s.rollIdx ?? 0;
+      rang = Boolean(s.rang);
       idx = s.idx;
+      actIdx = s.actIdx ?? 0;
+      usedCards = s.usedCards ?? [];
       wrongs = s.wrongs ?? 0;
       nudges = s.nudges ?? 0;
       recorded = new Set(s.recorded ?? []);
     } else {
       const known = new Set();
       for (const rec of await app.db.getAll('progress').catch(() => [])) if ((rec.practiceCount ?? 0) > 0) known.add(rec.word);
-      plan = planRound(level, { known });
+      const lesson = planLesson(level, { known });
+      plan = lesson.items;
+      klass = { pupils: lesson.pupils, roll: lesson.roll };
     }
     await loadImages();
     if (kit.signal.aborted) return;
+    renderClass();
     if (idx >= plan.length) {
       count.textContent = `${plan.length}/${plan.length}`;
       renderNotebook();
       finishRound();
-    } else ask(Boolean(s));
+    } else if (phase === 'roll') startRoll(Boolean(s?.klass));
+    else ask(Boolean(s?.klass));
   })();
 
   kit.onCleanup(() => urls.forEach((u) => URL.revokeObjectURL(u)));

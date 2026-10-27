@@ -2705,6 +2705,41 @@ img.dr-admin-face { width: 100%; height: 100%; object-fit: contain; }
   .tc-picture.pop, .tc-picture.nudge, .tc-star.pop, .tc-answer.nudge, .tc-student.talking svg { animation: none; }
 }
 .tc-play .jb-tray { display: none; }
+/* SPEC-jobs2 TE1: lớp học (điểm danh, Classroom actions), chuông, thẻ hành động. */
+.tc-class[hidden], .tc-answers[hidden], .tc-notebook[hidden] { display: none; }
+.tc-class { position: absolute; left: 25%; right: 25%; bottom: 3%; display: flex; justify-content: center; align-items: flex-end; gap: 2%; }
+.tc-class.enter { animation: dr-enter 0.65s ease-out; }
+.tc-pupil { position: relative; flex: 1 1 0; min-width: 0; max-width: 150px; aspect-ratio: 240 / 300; padding: 0; border: 0; background: transparent; cursor: pointer; touch-action: manipulation; }
+.tc-pupil-body { display: block; width: 100%; height: 100%; transform-origin: 50% 100%; }
+.tc-pupil-body svg { width: 100%; height: 100%; display: block; }
+.tc-pupil[data-here="true"]::after { content: '✋'; position: absolute; right: 0; top: -8%; font-family: var(--emoji); font-size: clamp(22px, 4.5vmin, 40px); }
+.tc-pupil-fx { position: absolute; left: 50%; top: 38%; transform: translateX(-50%); font-family: var(--emoji); font-size: clamp(26px, 5vmin, 44px); opacity: 0; pointer-events: none; }
+.tc-pupil.called .tc-pupil-body { animation: hint-hop 0.9s ease-in-out infinite; }
+.tc-pupil.nudge .tc-pupil-body { animation: hint-hop 0.5s ease-in-out 3; }
+.tc-pupil.shake .tc-pupil-body { animation: dr-shake 0.45s; }
+.tc-pupil.hop .tc-pupil-body { animation: dr-hop 0.5s ease-in-out; }
+.tc-pupil.talking .tc-pupil-body { animation: dr-talk 0.5s ease-in-out infinite; }
+.tc-pupil.act-stand-up .tc-pupil-body { animation: m-stand 1s ease-out; }
+.tc-pupil.act-sit-down .tc-pupil-body { animation: m-sit 1s ease-out forwards; }
+.tc-pupil.act-jump .tc-pupil-body { animation: m-jump 0.75s ease-in-out 2; }
+.tc-pupil.act-clap .tc-pupil-body, .tc-pupil.act-wave .tc-pupil-body { animation: m-jump 0.75s ease-in-out; }
+.tc-pupil.act-clap .tc-pupil-fx { opacity: 1; animation: m-clap 0.5s ease-in-out 3; }
+.tc-pupil.act-wave .tc-pupil-fx { opacity: 1; top: 18%; left: 78%; transform-origin: 50% 90%; animation: m-wave 0.8s ease-in-out 2; }
+.tc-bell { display: grid; place-items: center; width: 100%; height: 100%; border: 0; background: transparent; font-family: var(--emoji); font-size: clamp(72px, 18vmin, 150px); line-height: 1; cursor: pointer; touch-action: manipulation; transform-origin: 50% 10%; }
+.tc-bell.nudge { animation: hint-hop 0.5s ease-in-out 3; }
+.tc-bell.ring { animation: m-wiggle 0.25s ease-in-out 4; }
+.tc-picture.tc-cards { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); grid-auto-rows: minmax(0, 1fr); gap: 8px; width: 94%; height: 90%; padding: 0; background: transparent; }
+.tc-card { display: grid; grid-template-rows: minmax(0, 1fr) auto; place-items: center; min-width: 0; min-height: 0; padding: 6px 4px; border-radius: 16px; border: 0; background: #fff; box-shadow: var(--shadow); cursor: pointer; touch-action: manipulation; }
+.tc-card-img { width: 100%; height: 100%; min-height: 0; object-fit: contain; }
+.tc-card-emoji { font-family: var(--emoji); font-size: clamp(30px, 7vmin, 60px); line-height: 1; }
+.tc-card-label { font-weight: 900; font-size: clamp(12px, 2.4vmin, 18px); color: var(--ink); white-space: nowrap; }
+.tc-card.used { opacity: 0.5; }
+.tc-card.shake { animation: dr-shake 0.45s; }
+.tc-card.nudge { animation: hint-hop 0.5s ease-in-out 3; outline: 5px solid var(--yellow); }
+@media (max-width: 600px) { .tc-class { left: 3%; right: 3%; } .tc-picture.tc-cards { gap: 5px; } }
+@media (prefers-reduced-motion: reduce) {
+  .tc-class.enter, .tc-pupil .tc-pupil-body, .tc-pupil .tc-pupil-fx, .tc-bell.nudge, .tc-bell.ring, .tc-card.shake, .tc-card.nudge { animation: none !important; }
+}
 /* Màn hoan hô của các nghề: ẩn phụ đề + khay, sân khấu nền trơn, cuộn được nếu màn thấp. */
 .jb-play.jb-done .jb-say, .jb-play.jb-done .jb-tray { display: none; }
 .jb-play.jb-done .jb-stage { overflow-y: auto; align-content: center; background: none; }
