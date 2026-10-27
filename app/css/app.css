@@ -2612,6 +2612,26 @@ img.dr-admin-face { width: 100%; height: 100%; object-fit: contain; }
 .sh-bag.full span { filter: drop-shadow(0 0 8px #ffd43b); }
 .sh-bag.gone { visibility: hidden; }
 .sh-bag-fly { font-family: var(--emoji); font-size: 64px; line-height: 1; }
+/* SPEC-jobs2 SH2: máy xay + ly sinh tố (màu theo quả: lớp dưới quả đầu, lớp trên quả thứ hai). */
+.sh-blender[hidden], .sh-cup[hidden] { display: none; }
+.sh-blender { position: absolute; left: 5%; bottom: 31%; width: min(20%, 150px); display: grid; justify-items: center; z-index: 1; }
+.sh-jar { width: 82%; aspect-ratio: 3 / 4; display: flex; flex-wrap: wrap; align-content: flex-end; justify-content: center; gap: 2px; padding: 6px; border: 4px solid #74c0fc; border-top-width: 6px; border-radius: 8px 8px 18px 18px; background: rgba(231, 245, 255, 0.85); box-sizing: border-box; }
+.sh-jar-face { width: 40%; height: auto; object-fit: contain; }
+.sh-jar-face.emoji { width: auto; font-family: var(--emoji); font-size: clamp(26px, 5vmin, 42px); line-height: 1; }
+.sh-blender-base { width: 100%; display: grid; place-items: center; padding: 8px 0; border-radius: 14px; background: #495057; border: 3px solid #212529; }
+.sh-blend-btn { width: clamp(46px, 8vmin, 64px); aspect-ratio: 1; border-radius: 50%; border: 3px solid #212529; background: #adb5bd; color: #fff; font-size: clamp(18px, 3.5vmin, 26px); font-weight: 900; cursor: pointer; touch-action: manipulation; }
+.sh-blender[data-ready="true"] .sh-blend-btn { background: #40c057; box-shadow: 0 0 12px 4px rgba(64, 192, 87, 0.6); }
+.sh-blend-btn.nudge { animation: hint-hop 0.5s ease-in-out 3; outline: 4px solid #fff; }
+.sh-blender.shake { animation: dr-shake 0.45s; }
+.sh-blender.hop { animation: dr-hop 0.4s ease-in-out; }
+.sh-blender.blending .sh-jar { animation: dr-shake 0.2s linear infinite; }
+.sh-cup { position: absolute; left: calc(5% + min(20%, 150px) + 12px); bottom: 32%; width: min(9%, 70px); aspect-ratio: 3 / 4; display: grid; grid-template-rows: 1fr 1fr; border: 4px solid #3d2c5e; border-top: 0; border-radius: 0 0 14px 14px; overflow: hidden; z-index: 1; }
+.sh-cup-top { background: var(--c2); }
+.sh-cup-bottom { background: var(--c1); }
+.sh-cup.pop { animation: pop 0.4s ease-in-out; }
+.sh-cup-fly { font-family: var(--emoji); font-size: 54px; line-height: 1; }
+@media (max-width: 600px) { .sh-blender { width: 26%; bottom: 30%; } .sh-cup { left: 33%; bottom: 32%; width: 13%; } }
+@media (prefers-reduced-motion: reduce) { .sh-blend-btn.nudge, .sh-blender.shake, .sh-blender.hop, .sh-blender.blending .sh-jar, .sh-cup.pop { animation: none; } }
 @media (max-width: 600px) { .sh-basket { padding: 6px; } .sh-basket-face { width: 36px; height: 36px; } .sh-basket-face.emoji { font-size: 32px; } }
 @media (prefers-reduced-motion: reduce) { .sh-baskets.enter, .sh-basket.shake, .sh-basket.hop, .sh-basket.nudge, .sh-bag.enter, .sh-bag.nudge, .sh-bag.hop { animation: none; } }
 .sh-wish {

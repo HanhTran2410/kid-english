@@ -76,6 +76,13 @@ export function planRound(level, { foods = BUILTIN_FOODS, rng = Math.random } = 
     last = order[0].id;
     cases.push({ customer: customers[i % customers.length].id, order });
   }
+  // SPEC-jobs2 SH2: mức 2–3 một khách gọi sinh tố (thay một ca thường). Chỉ test UI đặt
+  // `window.__kidTest.shopSmoothieAt` để cố định chỗ ca sinh tố.
+  if (level >= 2) {
+    const pinned = globalThis.__kidTest?.shopSmoothieAt;
+    const at = Number.isInteger(pinned) && pinned >= 0 && pinned < cases.length ? pinned : Math.floor(rng() * cases.length);
+    cases[at] = { customer: cases[at].customer, ...makeSmoothie(level, { foods, rng }) };
+  }
   return { shelf: shelfFoods.map((f) => f.id), cases, stock };
 }
 
@@ -189,3 +196,34 @@ export const giveBagLine = (name) => [`Give it to ${name}!`, `Con đưa túi cho
 export const NICE_DAY_LINE = ['Have a nice day!', 'Chúc bạn một ngày vui vẻ!'];
 export const YOU_TOO_LINE = ['You too!', 'Bạn cũng vậy nhé!'];
 export const BYE_LINE = ['Bye-bye!', 'Tạm biệt!'];
+
+// ---------- SPEC-jobs2 SH2: quầy sinh tố (ca mới mức 2–3) ----------
+/** Quả làm sinh tố + màu ly cố định theo quả. */
+export const SMOOTHIE_FRUITS = ['banana', 'strawberry', 'mango', 'orange', 'watermelon', 'apple'];
+export const SMOOTHIE_COLOR = {
+  banana: '#ffe066', strawberry: '#f783ac', mango: '#ffa94d', orange: '#ffd8a8', watermelon: '#ff6b6b', apple: '#d8f5a2',
+};
+/**
+ * Ca sinh tố (sinh sẵn): mức 2 một quả, mức 3 hai quả khác nhau; khay = quả của đơn + 2 quả nhiễu.
+ * `order` dùng chung cơ chế món của ca thường (mỗi quả 1 cái) nên bong bóng / ✓ / trả xu giữ nguyên.
+ */
+export function makeSmoothie(level, { foods = BUILTIN_FOODS, rng = Math.random } = {}) {
+  const pool = shuffle(SMOOTHIE_FRUITS.filter((id) => foods.some((f) => f.id === id)), rng);
+  const n = level >= 3 ? 2 : 1;
+  const fruits = pool.slice(0, n);
+  return { kind: 'smoothie', order: fruits.map((id) => ({ id, count: 1 })), tray: shuffle(pool.slice(0, n + 2), rng) };
+}
+const shortVi = (f) => f.vi.replace(/^(quả|chùm) /, '');
+const smoothieName = (foods) => foods.map((f) => f.en).join(' and ');
+const smoothieA = (foods) => (/^[aeiou]/.test(foods[0].en) ? 'an' : 'a');
+/** Khách gọi: "Can I have a banana smoothie, please?" / "…a banana and strawberry smoothie…" */
+export const smoothieOrderLine = (foods) => [`Can I have ${smoothieA(foods)} ${smoothieName(foods)} smoothie, please?`, `Cho tớ một ly sinh tố ${foods.map(shortVi).join(' ')} nhé!`];
+/** Quả sai: "That's an apple. I want banana!" */
+export const wrongFruitLine = (given, want) => [`${capital(thatPhrase(given))}. I want ${smoothieName(want)}!`, `Đó là ${given.vi}. Tớ muốn ${want.map(shortVi).join(' và ')} cơ!`];
+/** Bấm máy xay khi chưa đủ quả: "We need banana!" */
+export const needFruitLine = (want) => [`We need ${smoothieName(want)}!`, `Mình cần thêm ${want.map(shortVi).join(' và ')}!`];
+export const BLEND_ASK_LINE = ['Press the button!', 'Con bấm nút máy xay nhé!'];
+export const MILK_LINE = ['And some milk!', 'Thêm chút sữa nữa!'];
+/** "Here you are! A banana smoothie!" */
+export const hereSmoothieLine = (foods) => [`Here you are! ${capital(smoothieA(foods))} ${smoothieName(foods)} smoothie!`, `Của bạn đây! Sinh tố ${foods.map(shortVi).join(' ')}!`];
+export const YUMMY_LINE = ['Yummy! Thank you!', 'Ngon quá! Cảm ơn bạn!'];

@@ -193,7 +193,7 @@ Từ mới: *stop, go, wait, red light, green light, look left, look right, cros
 | 2 | **SH1** ✅ (0.48.0) | Bán hàng | Bày kệ (2.2) + đưa túi / chào khách (2.4) |
 | 3 | **TE1** ✅ (0.49.0) | Cô giáo nhí | Điểm danh (4.2) + Classroom actions (4.3) |
 | 4 | **PO1** ✅ (0.50.0) | Bưu tá | Dán tem (3.1) + giao bưu kiện (3.2) |
-| 5 | SH2 | Bán hàng | Quầy sinh tố (2.3) |
+| 5 | SH2 ✅ (0.51.0) | Bán hàng | Quầy sinh tố (2.3) |
 | 6 | TE2 | Cô giáo nhí | Phát sao (4.4) |
 | 7 | PL2a | Cảnh sát | Giúp bạn qua đường (5.2) |
 | 8 | PL2b | Cảnh sát | Tìm bạn theo quần áo (5.3) |

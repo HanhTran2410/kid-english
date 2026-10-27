@@ -6,6 +6,7 @@ import { cleanJobState, afterJobRound, afterSeen } from '../../app/js/jobs/level
 import {
   SHELF_SIZE, makeShelf, makeOrder, planRound, coinsFor, remaining, orderDone, orderLine, wrongLine, enoughLine, coinLine, countLine,
   STOCK_SIZE, makeStock, foodGroup, groupsFor, groupLine, wrongBasketLine, giveBagLine,
+  SMOOTHIE_FRUITS, makeSmoothie, smoothieOrderLine, wrongFruitLine, needFruitLine, hereSmoothieLine,
 } from '../../app/js/jobs/shop.js';
 
 function seeded(seed = 1) {
@@ -56,7 +57,8 @@ test('một lượt: 3 khách khác nhau, khách liền nhau không gọi cùng 
     const plan = planRound(level, { rng });
     assert.equal(plan.cases.length, 3);
     assert.equal(new Set(plan.cases.map((c) => c.customer)).size, 3);
-    for (let k = 1; k < 3; k++) assert.notEqual(plan.cases[k].order[0].id, plan.cases[k - 1].order[0].id);
+    // Ca sinh tố (SPEC-jobs2 SH2) không theo luật món đầu.
+    for (let k = 1; k < 3; k++) if (!plan.cases[k].kind && !plan.cases[k - 1].kind) assert.notEqual(plan.cases[k].order[0].id, plan.cases[k - 1].order[0].id);
   }
   assert.equal(coinsFor([{ id: 'apple', count: 2 }], 1), 0);
   assert.equal(coinsFor([{ id: 'apple', count: 2 }], 2), 2);
@@ -132,4 +134,31 @@ test('SPEC-jobs2 SH1 — câu bày kệ / đưa túi', () => {
   assert.equal(wrongBasketLine(foodById('milk'))[0], 'Milk is a drink! Put it in the drinks basket.');
   assert.equal(wrongBasketLine(foodById('apple'))[0], 'Apples are fruit! Put it in the fruit basket.');
   assert.equal(giveBagLine('Kitty')[0], 'Give it to Kitty!');
+});
+
+test('SPEC-jobs2 SH2 — sinh tố: mức 1 không có; mức 2–3 đúng một ca sinh tố; mức 2 một quả, mức 3 hai quả khác nhau; khay = quả của đơn + 2 quả nhiễu, chỉ quả làm sinh tố', () => {
+  const rng = seeded(29);
+  for (const level of [1, 2, 3]) for (let i = 0; i < 60; i++) {
+    const { cases } = planRound(level, { rng });
+    const sm = cases.filter((c) => c.kind === 'smoothie');
+    assert.equal(sm.length, level >= 2 ? 1 : 0);
+    if (!sm.length) continue;
+    const [c] = sm;
+    assert.equal(c.order.length, level >= 3 ? 2 : 1);
+    assert.equal(new Set(c.order.map((o) => o.id)).size, c.order.length);
+    assert.equal(c.tray.length, c.order.length + 2);
+    assert.equal(new Set(c.tray).size, c.tray.length);
+    assert.ok(c.tray.every((id) => SMOOTHIE_FRUITS.includes(id)));
+    assert.ok(c.order.every((o) => c.tray.includes(o.id) && o.count === 1));
+  }
+  const banana = foodById('banana');
+  const strawberry = foodById('strawberry');
+  const apple = foodById('apple');
+  assert.equal(smoothieOrderLine([banana])[0], 'Can I have a banana smoothie, please?');
+  assert.equal(smoothieOrderLine([banana, strawberry])[0], 'Can I have a banana and strawberry smoothie, please?');
+  assert.equal(smoothieOrderLine([apple])[0], 'Can I have an apple smoothie, please?');
+  assert.equal(wrongFruitLine(apple, [banana])[0], "That's an apple. I want banana!");
+  assert.equal(needFruitLine([banana])[0], 'We need banana!');
+  assert.equal(hereSmoothieLine([banana])[0], 'Here you are! A banana smoothie!');
+  void makeSmoothie;
 });

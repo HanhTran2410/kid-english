@@ -20,13 +20,15 @@ import {
   WELCOME_LINE, HERE_YOU_ARE_LINE, MONEY_LINE, TAP_COINS_LINE, THANKS_LINE,
   GROUP_INFO, foodGroup, groupsFor, groupLine, wrongBasketLine, stockLine, OPEN_LINE,
   BAG_LINE, giveBagLine, NICE_DAY_LINE, YOU_TOO_LINE, BYE_LINE,
+  SMOOTHIE_COLOR, smoothieOrderLine, wrongFruitLine, needFruitLine, BLEND_ASK_LINE, MILK_LINE, hereSmoothieLine, YUMMY_LINE,
 } from '../jobs/shop.js';
 
 const JOB = 'shop';
 const ENTER_MS = 650;
 const LEAVE_MS = 600;
 const SAY_BACK_MS = 2000; // "Here you are!": chờ bé nói theo
-const ACTIVE = ['order', 'coins', 'stock', 'bag', 'give'];
+const ACTIVE = ['order', 'coins', 'stock', 'bag', 'give', 'blend-add', 'blend-ready'];
+const BLEND_MS = 1100; // máy xay chạy
 const NICE_DAY_PAUSE_MS = 1000; // "Have a nice day!" — ngắt — "You too!"
 
 export function shopScreen(app, params = {}) {
@@ -53,6 +55,8 @@ export function shopScreen(app, params = {}) {
   const cur = () => plan?.cases[caseIdx];
   const customer = () => PATIENT_BY_ID.get(cur()?.customer);
   const order = () => cur()?.order ?? [];
+  const isSmoothie = () => cur()?.kind === 'smoothie';
+  const fruitsLeft = () => remaining(order(), got).map((o) => foodById(o.id));
   const C = (line) => ({ who: 'customer', line });
   const B = (line) => ({ who: 'bong', line });
 
@@ -63,6 +67,11 @@ export function shopScreen(app, params = {}) {
   const bagEl = h('button.sh-bag', { type: 'button', 'aria-label': 'Túi giấy', hidden: true, onclick: () => tapBag() }, h('span', { text: '🛍️' }));
   const counter = h('div.sh-counter', {}, coinsEl, bagEl, till);
   const basketsEl = h('div.sh-baskets', { hidden: true });
+  // SPEC-jobs2 SH2: máy xay (cối có quả đã bỏ vào + nút) và ly sinh tố.
+  const jar = h('div.sh-jar');
+  const blendBtn = h('button.sh-blend-btn', { type: 'button', 'aria-label': 'Nút máy xay', onclick: () => pressBlend() }, h('span', { text: '▶' }));
+  const blender = h('div.sh-blender', { hidden: true }, jar, h('div.sh-blender-base', {}, blendBtn));
+  const cup = h('div.sh-cup', { hidden: true, 'aria-hidden': 'true' }, h('span.sh-cup-top'), h('span.sh-cup-bottom'));
 
   const kit = jobScreen(app, {
     job: JOB, background: { lessonId: JOBS_BG_IMAGES, word: JOB }, className: 'sh-play', stageClass: 'sh-stage', title: '🛒 Shop', helperLabel: 'Bông bán hàng', cap: 'shop',
@@ -89,6 +98,15 @@ export function shopScreen(app, params = {}) {
           kit.talk([B(stockLine(level))]).then(rearm);
           return;
         }
+        if (state === 'blend-add' || state === 'blend-ready') {
+          if (state === 'blend-ready') restartAnim(blendBtn, 'nudge');
+          else {
+            showWish();
+            restartAnim(kit.trayItem(remaining(order(), got)[0]?.id), 'nudge');
+          }
+          kit.talk(state === 'blend-ready' ? [B(BLEND_ASK_LINE)] : [C(smoothieOrderLine(order().map((o) => foodById(o.id))))]).then(rearm);
+          return;
+        }
         if (state === 'bag' || state === 'give') {
           restartAnim(state === 'bag' ? bagEl : customerEl, state === 'bag' ? 'nudge' : 'hop');
           kit.talk([B(state === 'bag' ? BAG_LINE : giveBagLine(customer().name))]).then(rearm);
@@ -102,13 +120,15 @@ export function shopScreen(app, params = {}) {
     tray: {
       face: (id) => foodFace(foodById(id), images, 'fd-face'),
       label: (id) => foodById(id)?.en ?? id,
-      canGive: () => state === 'order' || state === 'stock',
-      dropOk: (x, y) => (state === 'stock' ? Boolean(basketAt(x, y)) : inside(customerEl, x, y, 0.15) || inside(wish, x, y, 0.1)),
-      give: (id, from) => (state === 'stock' ? stockGive(id, from) : give(id, from)),
+      canGive: () => state === 'order' || state === 'stock' || state === 'blend-add',
+      dropOk: (x, y) => (state === 'stock' ? Boolean(basketAt(x, y))
+        : state === 'blend-add' ? inside(blender, x, y, 0.15) || inside(customerEl, x, y, 0.1)
+          : inside(customerEl, x, y, 0.15) || inside(wish, x, y, 0.1)),
+      give: (id, from) => (state === 'stock' ? stockGive(id, from) : state === 'blend-add' ? addFruit(id, from) : give(id, from)),
     },
   });
   const { stage, count, talk } = kit;
-  stage.append(customerEl, wish, counter, basketsEl);
+  stage.append(customerEl, wish, counter, basketsEl, blender, cup);
   const stepKey = () => `${kit.epoch}:${caseIdx}:${state}:${remaining(order(), got).length}:${paid}:${stocked.length}`;
   const basketEl = (g) => basketsEl.querySelector(`.sh-basket[data-group="${g}"]`);
   const basketAt = (x, y) => [...basketsEl.children].find((el) => inside(el, x, y, 0.08))?.dataset.group ?? null;
@@ -122,7 +142,7 @@ export function shopScreen(app, params = {}) {
   }
   function setState(s) {
     state = s;
-    kit.setState(s, s === 'order' || s === 'stock');
+    kit.setState(s, s === 'order' || s === 'stock' || s === 'blend-add');
   }
   const snap = () => saveSnap(JOB, { level, plan, caseIdx, got, paid, wrongs, nudges, wishShown, recorded: [...recorded], phase, stocked });
   const saveProgress = () => app.setSetting('shopGame', progress).catch(() => {});
@@ -172,15 +192,19 @@ export function shopScreen(app, params = {}) {
     customerEl.hidden = false;
     counter.hidden = false;
     bagEl.hidden = true;
+    blender.hidden = !isSmoothie();
+    cup.hidden = true;
     setState('enter');
     renderCustomer();
     renderWish();
-    kit.renderTray(plan.shelf);
+    renderJar();
+    kit.renderTray(isSmoothie() ? cur().tray : plan.shelf);
     renderCoins();
     snap();
     if (resume) {
       if (resume.phase === 'bag') startBag(true);
       else if (resume.phase === 'give') startGive(true);
+      else if (resume.phase === 'blend') beginOrder(true);
       else if (resume.phase === 'coins' || orderDone(order(), got)) startCoins(true);
       else beginOrder(true);
       return;
@@ -197,6 +221,10 @@ export function shopScreen(app, params = {}) {
 
   async function beginOrder() {
     const e = kit.epoch;
+    if (isSmoothie()) {
+      beginBlend();
+      return;
+    }
     setState('order');
     phase = 'order';
     snap();
@@ -309,6 +337,106 @@ export function shopScreen(app, params = {}) {
     } else if (k === stepKey()) kit.armNudge();
   }
 
+  // ---------- Quầy sinh tố (SPEC-jobs2 mục 2.3) ----------
+  function renderJar() {
+    jar.replaceChildren(...order().filter((o) => (got[o.id] ?? 0) > 0).map((o) => foodFace(foodById(o.id), images, 'sh-jar-face')));
+    blender.dataset.ready = String(isSmoothie() && orderDone(order(), got));
+  }
+  function renderCup() {
+    const ids = order().map((o) => o.id);
+    cup.style.setProperty('--c1', SMOOTHIE_COLOR[ids[0]] ?? '#fff');
+    cup.style.setProperty('--c2', SMOOTHIE_COLOR[ids[1] ?? ids[0]] ?? '#fff');
+    cup.dataset.fruits = ids.join(' '); // cho test
+  }
+  async function beginBlend() {
+    const e = kit.epoch;
+    const ready = orderDone(order(), got);
+    setState(ready ? 'blend-ready' : 'blend-add');
+    phase = 'blend';
+    renderJar();
+    snap();
+    await talk(ready ? [B(BLEND_ASK_LINE)] : [C(smoothieOrderLine(order().map((o) => foodById(o.id))))]);
+    if (e === kit.epoch && state.startsWith('blend')) kit.armNudge();
+  }
+  /** Bé kéo / chạm quả vào máy xay: quả của đơn còn thiếu → vào cối; quả sai → khách "That's an apple. I want banana!" (nhầm). */
+  async function addFruit(id, from) {
+    if (state !== 'blend-add') return;
+    const e = kit.epoch;
+    const food = foodById(id);
+    const need = remaining(order(), got).find((o) => o.id === id);
+    if (!need) {
+      if (!countWrong(`f:${id}`)) return;
+      restartAnim(kit.trayItem(id), 'shake');
+      showWish();
+      const want = remaining(order(), got)[0]?.id;
+      kit.setHint(want);
+      restartAnim(kit.trayItem(want), 'nudge');
+      const k = stepKey();
+      talk([C(wrongFruitLine(food, fruitsLeft()))]).then(() => k === stepKey() && kit.armNudge());
+      return;
+    }
+    setState('busy');
+    kit.clearNudge();
+    kit.setHint(null);
+    got = { ...got, [id]: 1 };
+    const key = `${caseIdx}:${id}`;
+    if (wrongs === 0 && FOOD_LESSON_WORDS.has(food.en) && !recorded.has(key)) {
+      recorded.add(key);
+      markPracticed(app, food.en, food.emoji);
+    }
+    wrongs = 0;
+    nudges = 0;
+    snap();
+    const ghost = await kit.flyTo(foodFace(food, images, 'fd-face'), from, center(jar.getBoundingClientRect()));
+    kit.removeGhost(ghost);
+    if (e !== kit.epoch) return;
+    play('pop');
+    renderJar();
+    renderWish();
+    restartAnim(blender, 'hop');
+    if (orderDone(order(), got)) beginBlend();
+    else {
+      setState('blend-add');
+      snap();
+      kit.armNudge();
+    }
+  }
+  /** Nút máy xay: chưa đủ quả → máy rung + nhắc quả còn thiếu (không nhầm); đủ → sữa, xay, ly sinh tố. */
+  async function pressBlend() {
+    if (state === 'blend-add') {
+      restartAnim(blender, 'shake');
+      const k = stepKey();
+      talk([B(needFruitLine(fruitsLeft()))]).then(() => k === stepKey() && kit.armNudge());
+      return;
+    }
+    if (state !== 'blend-ready') return;
+    const e = kit.epoch;
+    setState('busy');
+    kit.clearNudge();
+    phase = 'coins'; // ra nền sau lúc này: sang bước trả xu (không xay lại)
+    snap();
+    await talk([B(MILK_LINE)]);
+    if (e !== kit.epoch) return;
+    play('rumble');
+    blender.classList.add('blending');
+    await wait(BLEND_MS);
+    blender.classList.remove('blending');
+    if (e !== kit.epoch) return;
+    got = Object.fromEntries(order().map((o) => [o.id, 1]));
+    jar.replaceChildren();
+    blender.dataset.ready = 'false';
+    renderCup();
+    cup.hidden = false;
+    restartAnim(cup, 'pop');
+    play('ding');
+    await talk([B(hereSmoothieLine(order().map((o) => foodById(o.id))))]);
+    if (e !== kit.epoch) return;
+    restartAnim(customerEl, 'hop');
+    await talk([C(YUMMY_LINE)]);
+    if (e !== kit.epoch) return;
+    startCoins();
+  }
+
   // ---------- Đưa túi, chào khách (SPEC-jobs2 mục 2.4) ----------
   async function startBag(resume = false) {
     const e = kit.epoch;
@@ -336,9 +464,11 @@ export function shopScreen(app, params = {}) {
     nudges = 0;
     snap();
     const to = center(bagEl.getBoundingClientRect());
-    await Promise.all(order().map(async (o, i) => {
+    const faces = isSmoothie() ? [h('span.sh-cup-fly', { text: '🥤' })] : order().map((o) => foodFace(foodById(o.id), images, 'fd-face'));
+    cup.hidden = true;
+    await Promise.all(faces.map(async (face, i) => {
       await wait(i * 150);
-      const ghost = await kit.flyTo(foodFace(foodById(o.id), images, 'fd-face'), center(wish.hidden ? customerEl.getBoundingClientRect() : wish.getBoundingClientRect()), to);
+      const ghost = await kit.flyTo(face, center(wish.hidden ? customerEl.getBoundingClientRect() : wish.getBoundingClientRect()), to);
       kit.removeGhost(ghost);
     }));
     if (e !== kit.epoch) return;
@@ -534,6 +664,7 @@ export function shopScreen(app, params = {}) {
     const k = stepKey();
     const line = {
       coins: B(TAP_COINS_LINE), stock: B(stockLine(level)), bag: B(BAG_LINE), give: B(giveBagLine(customer()?.name ?? '')),
+      'blend-ready': B(BLEND_ASK_LINE), 'blend-add': C(smoothieOrderLine(order().map((o) => foodById(o.id)))),
     }[state] ?? C(orderLine(order(), foodById, got));
     talk([line]).then(() => k === stepKey() && kit.armNudge());
   }
@@ -547,6 +678,10 @@ export function shopScreen(app, params = {}) {
     }
     if (state === 'bag') {
       restartAnim(bagEl, 'nudge');
+      return;
+    }
+    if (state === 'blend-add') {
+      repeatPrompt();
       return;
     }
     if (state !== 'order') return;
