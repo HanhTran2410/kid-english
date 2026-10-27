@@ -2658,6 +2658,55 @@ img.dr-admin-face { width: 100%; height: 100%; object-fit: contain; }
 .ps-house.nudge { animation: hint-hop 0.5s ease-in-out 3; }
 .ps-house.shake { animation: dr-shake 0.45s; }
 .ps-letter { font-family: var(--emoji); }
+/* SPEC-jobs2 PO1: bàn dán tem (3 phong bì) + cảnh giao bưu kiện (cửa lớn, hộp, 👍 / 👎). */
+.ps-desk[hidden], .ps-visit[hidden], .ps-item[hidden], .ps-thumbs[hidden] { display: none; }
+.ps-desk { position: absolute; inset: 4%; z-index: 3; display: flex; align-items: center; justify-content: center; gap: 4%; padding: 3%; border-radius: 22px; background: rgba(255, 249, 219, 0.94); box-shadow: var(--shadow); }
+.ps-desk.enter { animation: dr-enter 0.65s ease-out; }
+.ps-envelope { position: relative; flex: 0 1 230px; min-width: 0; aspect-ratio: 4 / 3; border-radius: 10px; background: #fff; border: 3px solid #3d2c5e; overflow: hidden; transition: transform 200ms; }
+.ps-envelope-flap { position: absolute; inset: 0 0 45% 0; background: #ffe8a1; clip-path: polygon(0 0, 100% 0, 50% 100%); border-bottom: 3px solid #3d2c5e; }
+.ps-envelope-corner { position: absolute; top: 6%; right: 5%; width: 30%; aspect-ratio: 1; border-radius: 6px; border: 3px dashed #adb5bd; background: rgba(255, 255, 255, 0.7); }
+.ps-envelope-corner svg { width: 100%; height: 100%; display: block; }
+.ps-envelope[data-stamped="true"] .ps-envelope-corner { border-color: transparent; background: none; }
+.ps-envelope[data-current="true"] { transform: translateY(-8px); outline: 5px solid var(--yellow); }
+.ps-envelope.hop { animation: dr-hop 0.4s ease-in-out; }
+.ps-stamp { display: block; width: 100%; height: 100%; }
+.ps-stamp svg { width: 100%; height: 100%; display: block; }
+.ps-visit { position: absolute; inset: 0; z-index: 3; background: linear-gradient(#d0ebff 0 70%, #b2f2bb 70%); --wall: #ffe066; --roof: #f59f00; }
+.ps-visit.enter { animation: dr-fade-in 0.5s ease-out; }
+.ps-front { position: absolute; left: 6%; bottom: 0; width: 46%; height: 84%; background: var(--wall); border: 4px solid #3d2c5e; border-bottom: 0; border-radius: 12px 12px 0 0; }
+.ps-front::before { content: ''; position: absolute; left: -6%; right: -6%; top: -16%; height: 18%; background: var(--roof); clip-path: polygon(0 100%, 50% 0, 100% 100%); }
+.ps-visitor { position: absolute; left: 26%; bottom: 0; width: 48%; height: 70%; }
+.ps-visitor svg { width: 100%; height: 100%; display: block; }
+.ps-big-door { position: absolute; left: 26%; bottom: 0; width: 48%; height: 70%; padding: 0; border: 4px solid #3d2c5e; border-bottom: 0; border-radius: 14px 14px 0 0; background: #8d5a3b; transform-origin: 0 50%; transition: transform 400ms ease-out; cursor: pointer; touch-action: manipulation; }
+.ps-knob { position: absolute; right: 12%; top: 55%; width: 12%; aspect-ratio: 1; border-radius: 50%; background: #ffd43b; border: 2px solid #3d2c5e; }
+.ps-visit.open .ps-big-door { transform: perspective(600px) rotateY(-80deg); pointer-events: none; }
+.ps-big-door.nudge { animation: hint-hop 0.5s ease-in-out 3; }
+.ps-big-door.knock { animation: dr-shake 0.3s 2; }
+.ps-box { position: absolute; right: 10%; bottom: 6%; width: min(30%, 230px); aspect-ratio: 1; padding: 0; border: 0; background: none; cursor: pointer; touch-action: manipulation; }
+.ps-box-body { display: block; font-family: var(--emoji); font-size: clamp(90px, 22vmin, 190px); line-height: 1; }
+.ps-box-label { position: absolute; left: 50%; top: 52%; transform: translate(-50%, -50%); width: 38%; aspect-ratio: 1; display: grid; place-items: center; border-radius: 50%; background: #fff; border: 3px solid #3d2c5e; overflow: hidden; }
+.ps-label-img { width: 100%; height: 100%; object-fit: contain; }
+.ps-label-emoji { font-family: var(--emoji); font-size: clamp(26px, 6vmin, 52px); line-height: 1; }
+.ps-box.nudge { animation: hint-hop 0.5s ease-in-out 3; }
+.ps-box.opened { opacity: 0.55; }
+.ps-item { position: absolute; right: 12%; bottom: 44%; width: min(26%, 200px); aspect-ratio: 1; display: grid; place-items: center; }
+.ps-item.pop-out { animation: pop 0.5s ease-out; }
+.ps-item-img { width: 100%; height: 100%; object-fit: contain; }
+.ps-item-emoji { font-family: var(--emoji); font-size: clamp(80px, 18vmin, 160px); line-height: 1; }
+.ps-thumbs { position: absolute; right: 4%; top: 6%; display: flex; gap: 16px; }
+.ps-thumb { width: clamp(76px, 13vmin, 110px); aspect-ratio: 1; border-radius: 26px; border: 0; background: #fff; box-shadow: var(--shadow); font-family: var(--emoji); font-size: clamp(40px, 7vmin, 60px); cursor: pointer; touch-action: manipulation; }
+.ps-thumb.nudge { animation: hint-hop 0.5s ease-in-out 3; outline: 5px solid var(--yellow); }
+@media (max-width: 600px) {
+  .ps-desk { flex-direction: column; gap: 3%; }
+  .ps-envelope { flex: 0 1 auto; width: 58%; }
+  .ps-front { width: 54%; height: 70%; }
+  .ps-box { width: 36%; right: 4%; }
+  .ps-item { right: 6%; width: 34%; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ps-desk.enter, .ps-visit.enter, .ps-envelope.hop, .ps-big-door.nudge, .ps-big-door.knock, .ps-box.nudge, .ps-item.pop-out, .ps-thumb.nudge { animation: none; }
+  .ps-big-door, .ps-envelope { transition: none; }
+}
 @media (prefers-reduced-motion: reduce) {
   .ps-house.nudge, .ps-house.shake { animation: none; }
   .ps-peek { transition: none; }
