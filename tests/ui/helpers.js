@@ -1,8 +1,9 @@
 // Giả lập giọng đọc (máy test không có giọng) và tùy chọn tắt nhận dạng / mic.
 
-export async function fakeSpeech(page, { recognition = false, mic = true } = {}) {
-  await page.addInitScript(({ recognition, mic }) => {
+export async function fakeSpeech(page, { recognition = false, mic = true, altVoice = false } = {}) {
+  await page.addInitScript(({ recognition, mic, altVoice }) => {
     window.__spoken = [];
+    window.__voiceNames = []; // giọng từng câu (Đóng vai: nhân vật khác Bông nói giọng thứ hai)
     window.__pitches = []; // cao độ từng câu (bạn thú Bác sĩ nhí nói giọng khác)
     class FakeUtterance {
       constructor(text) {
@@ -13,6 +14,7 @@ export async function fakeSpeech(page, { recognition = false, mic = true } = {})
     const voices = [
       { name: 'Test English', lang: 'en-US', voiceURI: 'test-en', localService: true },
       { name: 'Test Vietnamese', lang: 'vi-VN', voiceURI: 'test-vi', localService: true },
+      ...(altVoice ? [{ name: 'Test English Two', lang: 'en-US', voiceURI: 'test-en-2', localService: true }] : []),
     ];
     const synth = {
       speaking: false,
@@ -21,6 +23,7 @@ export async function fakeSpeech(page, { recognition = false, mic = true } = {})
         if (u.text.trim()) {
           window.__spoken.push(u.text);
           window.__pitches.push(u.pitch ?? 1);
+          window.__voiceNames.push(u.voice?.name ?? '');
         }
         setTimeout(() => u.onend?.(), 5);
       },
@@ -41,7 +44,7 @@ export async function fakeSpeech(page, { recognition = false, mic = true } = {})
         configurable: true,
       });
     }
-  }, { recognition, mic });
+  }, { recognition, mic, altVoice });
 }
 
 /** Mở app ở chế độ chạy nhanh, không service worker, bấm "Bắt đầu". */

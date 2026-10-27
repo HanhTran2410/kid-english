@@ -62,6 +62,25 @@ export function pickVoice(voices, lang, preferredURI = null) {
   return [...family].sort((a, b) => score(b) - score(a))[0] ?? null;
 }
 
+// Đoán giới của giọng theo tên (API không cho biết): dùng để chọn giọng thứ hai khác hẳn giọng Bông.
+const MALE_NAMES = /\b(daniel|tom|nathan|evan|aaron|alex|fred|david|mark|guy|james|arthur|oliver|rishi|ryan|eric|andrew|brian|christopher|roger|steffan|thomas|male|man)\b/i;
+const FEMALE_NAMES = /\b(samantha|ava|allison|susan|zoe|nicky|karen|moira|tessa|serena|zira|aria|jenny|emma|victoria|kate|joelle|noelle|libby|sonia|michelle|ana|female|woman)\b/i;
+export const voiceGender = (v) => (MALE_NAMES.test(v?.name ?? '') ? 'm' : FEMALE_NAMES.test(v?.name ?? '') ? 'f' : null);
+/** Nhân vật khác Bông mà máy chỉ có một giọng: nói cao giọng hơn cho dễ phân biệt lượt. */
+export const ALT_PITCH = 1.35;
+
+/**
+ * Giọng thứ hai (bạn thú, khách, cô giáo, học sinh… trong trò Đóng vai): giọng tiếng Anh tốt khác giọng chính,
+ * ưu tiên khác giới với giọng chính; không có giọng nào khác thì null (khi đó đổi cao độ).
+ */
+export function pickAltVoice(voices, main) {
+  if (!main) return null;
+  const others = englishVoices(voices).filter((v) => v.voiceURI !== main.voiceURI && voiceScore(v) >= 0);
+  const g = voiceGender(main);
+  const opposite = g ? others.filter((v) => { const x = voiceGender(v); return x && x !== g; }) : [];
+  return opposite[0] ?? others[0] ?? null;
+}
+
 /** Giọng tiếng Anh, giọng tốt trước, giọng robot ở cuối. */
 export const englishVoices = (voices) => voices
   .filter((v) => /^en/i.test(v.lang))
@@ -97,6 +116,7 @@ export class Speaker {
   configure({ voiceURI = null, rate = this.rate } = {}) {
     this.voiceURI = voiceURI;
     this.en = pickVoice(this.voices, 'en-US', voiceURI);
+    this.en2 = pickAltVoice(this.voices, this.en);
     this.vi = pickVoice(this.voices, 'vi-VN');
     this.rate = rate;
   }
@@ -144,12 +164,15 @@ export class Speaker {
    * Đọc một câu. Luôn kết thúc: nếu iOS không báo đã đọc xong thì hết thời gian chờ sẽ tự đi tiếp.
    * Nếu câu không bắt đầu được (giọng đọc bị kẹt) thì gỡ kẹt và thử lại một lần.
    * @param {string} text
-   * @param {{ lang?: 'en'|'vi', signal?: AbortSignal, rate?: number, pitch?: number }} [options] — `pitch`: cao độ (1 = thường;
-   *   bạn thú ở Bác sĩ nhí mỗi bạn một cao độ). Máy không hỗ trợ thì giọng thường.
+   * @param {{ lang?: 'en'|'vi', signal?: AbortSignal, rate?: number, pitch?: number, role?: 'alt' }} [options] — `pitch`: cao độ
+   *   (1 = thường; bạn thú ở Bác sĩ nhí mỗi bạn một cao độ). Máy không hỗ trợ thì giọng thường. `role: 'alt'`: nhân vật khác
+   *   Bông — dùng giọng thứ hai (máy chỉ có một giọng thì nói cao giọng hơn).
    */
-  speak(text, { lang = 'en', signal, rate, pitch } = {}) {
+  speak(text, { lang = 'en', signal, rate, pitch, role } = {}) {
     const s = synth();
-    const voice = lang === 'vi' ? this.vi : this.en;
+    const alt = lang !== 'vi' && role === 'alt';
+    const voice = lang === 'vi' ? this.vi : alt && this.en2 ? this.en2 : this.en;
+    if (alt && !this.en2 && pitch == null) pitch = ALT_PITCH;
     if (!s || !text || (lang === 'vi' && !voice)) return Promise.resolve();
     if (signal?.aborted) return Promise.reject(abortError());
 

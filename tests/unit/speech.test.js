@@ -95,3 +95,47 @@ test('giọng đọc bị kẹt (câu không bắt đầu) thì gỡ kẹt và �
     delete globalThis.SpeechSynthesisUtterance;
   }
 });
+
+test('giọng thứ hai (Đóng vai): khác giọng chính, ưu tiên khác giới; không có giọng khác → null', async () => {
+  const { pickAltVoice, voiceGender } = await import('../../app/js/speech/tts.js');
+  const samantha = v('Samantha', 'en-US');
+  const ava = v('Ava (Enhanced)', 'en-US');
+  const daniel = v('Daniel', 'en-GB');
+  assert.equal(voiceGender(samantha), 'f');
+  assert.equal(voiceGender(daniel), 'm');
+  assert.equal(pickAltVoice([samantha, ava, daniel], samantha).name, 'Daniel');
+  assert.equal(pickAltVoice([samantha, ava], samantha).name, 'Ava (Enhanced)');
+  assert.equal(pickAltVoice([samantha, v('Linh', 'vi-VN')], samantha), null);
+  assert.equal(pickAltVoice([samantha], null), null);
+});
+
+test('speak role "alt": dùng giọng thứ hai; máy chỉ có một giọng thì nói cao giọng hơn', async () => {
+  const said = [];
+  globalThis.SpeechSynthesisUtterance = class { constructor(text) { this.text = text; } };
+  globalThis.speechSynthesis = {
+    speaking: false, pending: false, paused: false,
+    getVoices: () => [],
+    cancel() {}, resume() {},
+    speak(u) { said.push(u); setTimeout(() => { u.onstart?.(); u.onend?.(); }, 5); },
+  };
+  try {
+    const { Speaker, ALT_PITCH } = await import('../../app/js/speech/tts.js');
+    const speaker = new Speaker();
+    speaker.voices = [v('Samantha', 'en-US'), v('Daniel', 'en-GB')];
+    speaker.configure();
+    await speaker.speak('Hello!');
+    await speaker.speak('Hi, doctor!', { role: 'alt' });
+    assert.equal(said[0].voice.name, 'Samantha');
+    assert.equal(said[1].voice.name, 'Daniel');
+    speaker.voices = [v('Samantha', 'en-US')];
+    speaker.configure();
+    await speaker.speak('Hi!', { role: 'alt' });
+    assert.equal(said[2].voice.name, 'Samantha');
+    assert.equal(said[2].pitch, ALT_PITCH);
+    await speaker.speak('Ouch!', { role: 'alt', pitch: 0.8 });
+    assert.equal(said[3].pitch, 0.8);
+  } finally {
+    delete globalThis.speechSynthesis;
+    delete globalThis.SpeechSynthesisUtterance;
+  }
+});

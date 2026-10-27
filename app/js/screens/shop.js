@@ -29,6 +29,13 @@ const LEAVE_MS = 600;
 const SAY_BACK_MS = 2000; // "Here you are!": chờ bé nói theo
 const ACTIVE = ['order', 'coins', 'stock', 'bag', 'give', 'blend-add', 'blend-ready'];
 const BLEND_MS = 1100; // máy xay chạy
+/** Túi giấy (một túi, quai cầm): thay emoji 🛍️ (emoji là hai túi chồng nhau, khó nhìn). */
+const BAG_SVG = `<svg viewBox="0 0 64 72" aria-hidden="true">
+  <path d="M22 24 C22 8 42 8 42 24" fill="none" stroke="#e64980" stroke-width="4" stroke-linecap="round"/>
+  <path d="M10 22 H54 L58 68 H6 Z" fill="#fff" stroke="#3d2c5e" stroke-width="3" stroke-linejoin="round"/>
+  <path d="M10.4 26 H53.6 L54.3 34 H9.7 Z" fill="#ff8fab"/>
+  <circle cx="32" cy="50" r="7" fill="#ffd43b" stroke="#3d2c5e" stroke-width="2"/>
+</svg>`;
 const NICE_DAY_PAUSE_MS = 1000; // "Have a nice day!" — ngắt — "You too!"
 
 export function shopScreen(app, params = {}) {
@@ -64,7 +71,7 @@ export function shopScreen(app, params = {}) {
   const wish = h('div.sh-wish', { hidden: true, 'aria-label': 'Khách muốn mua' });
   const till = h('div.sh-till', { 'aria-label': 'Két tiền' }, h('span.sh-till-slot'), h('span.sh-till-count', { text: '' }));
   const coinsEl = h('div.sh-coins');
-  const bagEl = h('button.sh-bag', { type: 'button', 'aria-label': 'Túi giấy', hidden: true, onclick: () => tapBag() }, h('span', { text: '🛍️' }));
+  const bagEl = h('button.sh-bag', { type: 'button', 'aria-label': 'Túi giấy', hidden: true, onclick: () => tapBag() }, h('span', { html: BAG_SVG }));
   const counter = h('div.sh-counter', {}, coinsEl, bagEl, till);
   const basketsEl = h('div.sh-baskets', { hidden: true });
   // SPEC-jobs2 SH2: máy xay (cối có quả đã bỏ vào + nút) và ly sinh tố.
@@ -443,6 +450,7 @@ export function shopScreen(app, params = {}) {
     setState('bag');
     phase = 'bag';
     renderCoins();
+    wish.hidden = true; // món đã đủ: không còn bong bóng món muốn mua
     bagEl.hidden = false;
     bagEl.classList.remove('full', 'gone');
     snap();
@@ -479,6 +487,7 @@ export function shopScreen(app, params = {}) {
     const e = kit.epoch;
     setState('give');
     phase = 'give';
+    wish.hidden = true;
     bagEl.hidden = false;
     bagEl.classList.add('full');
     renderCoins();
@@ -493,7 +502,7 @@ export function shopScreen(app, params = {}) {
     kit.clearNudge();
     const from = center(bagEl.getBoundingClientRect());
     bagEl.classList.add('gone');
-    const ghost = await kit.flyTo(h('span.sh-bag-fly', { text: '🛍️' }), from, center(customerEl.getBoundingClientRect()));
+    const ghost = await kit.flyTo(h('span.sh-bag-fly', { html: BAG_SVG }), from, center(customerEl.getBoundingClientRect()));
     kit.removeGhost(ghost);
     if (e !== kit.epoch) return;
     bagEl.hidden = true;

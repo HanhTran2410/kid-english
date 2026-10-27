@@ -112,7 +112,8 @@ export function jobScreen(app, opts) {
         caption(en, vi, who);
         opts.onTalk?.(who);
         try {
-          await app.speaker.speak(en, { signal, pitch: opts.pitch?.(who) });
+          // Nhân vật khác Bông (bạn thú, khách, cô giáo, học sinh…) nói giọng thứ hai cho dễ phân biệt lượt.
+          await app.speaker.speak(en, { signal, pitch: opts.pitch?.(who), role: who && who !== 'bong' ? 'alt' : undefined });
         } catch {
           if (signal.aborted) return false;
         }
