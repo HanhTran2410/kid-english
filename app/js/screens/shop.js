@@ -83,6 +83,13 @@ export function shopScreen(app, params = {}) {
   const kit = jobScreen(app, {
     job: JOB, background: { lessonId: JOBS_BG_IMAGES, word: JOB }, className: 'sh-play', stageClass: 'sh-stage', title: '🛒 Shop', helperLabel: 'Bông bán hàng', cap: 'shop',
     resetLabel: 'Bán lại', trayLabel: 'Kệ hàng',
+    // SPEC-roles: Bông bán hàng đứng bên trái sau quầy, khách bên phải; ai nói người đó sáng.
+    host: { badge: '🛒' },
+    roles: {
+      of: (who) => (who === 'bong' ? kit.host : who === 'customer' ? customerEl : null),
+      all: () => [kit.host, customerEl],
+      dim: (el) => !(el === customerEl && state === 'give'), // lúc đưa túi bé phải chạm khách
+    },
     icon: (who) => (who === 'customer' ? customer()?.emoji ?? '' : '🐰'),
     onTalk: (who) => customerEl.classList.toggle('talking', who === 'customer'),
     onReset: () => restart(),

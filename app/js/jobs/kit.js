@@ -4,6 +4,7 @@
 // Mỗi nghề chỉ viết dữ liệu + câu (file thuần) và phần vẽ / thao tác riêng.
 
 import { h } from '../ui.js';
+import { bongSvg } from '../bong.js';
 import { mediaBlob } from '../db.js';
 import { play } from '../speech/sfx.js';
 import { homeButton } from '../player/layout.js';
@@ -51,6 +52,10 @@ export function takeSnap(job, { level, continueDirectly }) {
  * - `nudge`: { ready(), key(), fire(rearm) } — nhắc sau 10 giây không thao tác;
  * - `tray`: { face(id), label(id), canGive(), dropOk(x, y), give(id, from) } — kéo / chạm đồ trong khay;
  * - `background`: { lessonId, word } — ảnh nền bố mẹ thêm (Ảnh Đóng vai), không có thì nền vẽ sẵn.
+ * - `host`: { badge } — Bông đứng trên sân khấu (bên trái, huy hiệu nghề trên áo) — SPEC-roles;
+ * - `roles`: { of(who) → phần tử, all() → mọi phần tử nhân vật, dim?(el) → được làm mờ không } — ai nói thì phần tử đó
+ *   `speaking`, vai khác `quiet` (trừ thứ bé đang cần chạm),
+ *   phụ đề đặt về phía người nói (SPEC-roles). Không khai báo: như cũ.
  */
 export function jobScreen(app, opts) {
   const signal = app.startActivity();
@@ -83,6 +88,10 @@ export function jobScreen(app, opts) {
   });
   const count = h('span.ms-count.jb-count');
   const stage = h(`div.jb-stage.${opts.stageClass ?? 'jb-stage-plain'}`);
+  // SPEC-roles: Bông đứng trên sân khấu (bên trái) với huy hiệu nghề.
+  const host = opts.host ? h('div.jb-host', { 'aria-hidden': 'true' }, h('span.jb-host-body', { html: bongSvg({ mood: 'happy' }) }),
+    h('span.jb-host-badge', { text: opts.host.badge ?? '' })) : null;
+  if (host) stage.append(host);
   const sayBox = h('div.ms-say.jb-say');
   const trayEl = h('div.jb-tray.off', { 'aria-label': opts.trayLabel ?? 'Khay đồ' });
   app.root.append(
@@ -95,9 +104,53 @@ export function jobScreen(app, opts) {
   let captionTimer = null;
   function caption(en, vi, who) {
     clearTimeout(captionTimer);
-    sayBox.replaceChildren(h('div.caption.sp-caption', { 'aria-live': 'polite', dataset: { who } },
+    const box = h('div.caption.sp-caption', { 'aria-live': 'polite', dataset: { who } },
       h('span.caption-en', {}, h('span.dr-who.jb-who', { text: opts.icon?.(who) ?? '🐰', 'aria-hidden': 'true' }), en),
-      vi ? h('span.caption-vi', { text: vi }) : null));
+      vi ? h('span.caption-vi', { text: vi }) : null);
+    sayBox.replaceChildren(box);
+    placeCaption(box, who);
+  }
+
+  // ---------- SPEC-roles: ai nói thì sáng lên ----------
+  const visible = (el) => Boolean(el?.isConnected && !el.closest('[hidden]') && el.getClientRects().length);
+  const roleEls = (who) => (opts.roles && who ? [opts.roles.of(who)].flat().filter(visible) : []);
+  /** Người nói `who` sáng (`speaking` + 🔊), các vai khác mờ nhẹ (`quiet`); `null` = không ai nói. */
+  function setSpeaker(who) {
+    if (!opts.roles) return;
+    const on = new Set(roleEls(who));
+    for (const el of [opts.roles.all()].flat().filter(Boolean)) {
+      const speaking = on.has(el);
+      el.classList.toggle('speaking', speaking);
+      // Không làm mờ thứ bé đang cần chạm (bệnh nhân lúc khám, khách lúc đưa túi, các bạn lúc điểm danh…).
+      el.classList.toggle('quiet', Boolean(who) && on.size > 0 && !speaking && (opts.roles.dim?.(el) ?? true));
+      el.classList.add('jb-role');
+      if (!el.style.position && getComputedStyle(el).position === 'static') el.style.position = 'relative';
+      el.dataset.voice = who === 'bong' ? 'bong' : 'other';
+      let icon = el.querySelector(':scope > .jb-speak-icon');
+      if (speaking && !icon) {
+        icon = h('span.jb-speak-icon', { text: '🔊', 'aria-hidden': 'true' });
+        el.append(icon);
+      } else if (!speaking) icon?.remove();
+    }
+  }
+  /**
+   * Phụ đề về phía người nói: phụ đề nằm ở dải dưới sân khấu (không che khu chơi), màn ngang đủ rộng thì lệch về phía
+   * người nói, đuôi bong bóng chỉ lên người đó; màn dọc / hẹp / nhóm cùng nói / không có hình → giữa như cũ.
+   */
+  function placeCaption(box, who) {
+    box.dataset.side = 'center';
+    const els = roleEls(who);
+    if (els.length !== 1) return;
+    const s = stage.getBoundingClientRect();
+    if (s.width < 700 || s.height > s.width) return;
+    const r = els[0].getBoundingClientRect();
+    const mid = r.left + r.width / 2;
+    box.dataset.side = mid < s.left + s.width / 2 ? 'left' : 'right';
+    const sb = sayBox.getBoundingClientRect();
+    const half = box.offsetWidth / 2;
+    const target = Math.min(Math.max(mid, sb.left + half + 8), sb.right - half - 8);
+    box.style.transform = `translateX(${Math.round(target - (sb.left + sb.width / 2))}px)`;
+    box.style.setProperty('--tail', `${Math.round(mid - target)}px`); // đuôi bong bóng chỉ đúng chỗ người nói
   }
   /**
    * Một hàng nói: câu mới thay câu cũ. `lines`: [{ who, line: [en, vi] }]. Trả về false nếu bị thay / rời màn.
@@ -109,6 +162,7 @@ export function jobScreen(app, opts) {
     try {
       for (const { who, line: [en, vi] } of lines) {
         if (gen !== talkGen || signal.aborted) return false;
+        setSpeaker(who);
         caption(en, vi, who);
         opts.onTalk?.(who);
         try {
@@ -122,6 +176,7 @@ export function jobScreen(app, opts) {
       if (gen === talkGen) {
         talking = false;
         opts.onTalk?.(null);
+        setSpeaker(null);
       }
     }
     if (gen === talkGen) captionTimer = setTimeout(() => sayBox.replaceChildren(), CAPTION_MS);
@@ -273,6 +328,7 @@ export function jobScreen(app, opts) {
   }
   /** Hủy mọi việc đang chạy (câu nói, nhắc, kéo dở, đồ đang bay) và đổi mã lượt: việc cũ không đụng vào việc mới. */
   function cancelAll() {
+    setSpeaker(null);
     epoch += 1;
     talkGen += 1;
     clearNudge();
@@ -323,7 +379,7 @@ export function jobScreen(app, opts) {
   }
 
   return {
-    signal, stage, sayBox, trayEl, count, bunny, helper,
+    signal, stage, sayBox, trayEl, count, bunny, helper, host, setSpeaker,
     get epoch() { return epoch; },
     get talking() { return talking; },
     get pressing() { return Boolean(press); },

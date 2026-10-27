@@ -3140,3 +3140,49 @@ img.dr-admin-face { width: 100%; height: 100%; object-fit: contain; }
   .jolly-big.pop, .jolly-big.sounding, .letter-card.sounding, .letter-card.shake { animation: none; }
   .blend-row, .blend-tile { transition: none; }
 }
+
+/* ---------- SPEC-roles: hai bên rõ ràng, ai nói người đó sáng lên ---------- */
+.jb-host { position: absolute; left: 2%; bottom: 3%; width: min(17%, 170px); aspect-ratio: 1; z-index: 2; pointer-events: none; }
+.jb-host-body { display: block; width: 100%; height: 100%; transform-origin: 50% 90%; }
+.jb-host-body svg { width: 100%; height: 100%; display: block; }
+.jb-host-badge { position: absolute; left: 50%; bottom: 10%; transform: translateX(-50%); display: grid; place-items: center; width: 34%; aspect-ratio: 1; border-radius: 50%; background: #fff; box-shadow: var(--shadow); font-family: var(--emoji); font-size: clamp(16px, 3vmin, 28px); line-height: 1; }
+.jb-role { transition: scale 0.2s, opacity 0.2s, filter 0.2s; }
+.jb-role.speaking { scale: 1.06; opacity: 1; z-index: 3; filter: drop-shadow(0 0 4px #ffd43b) drop-shadow(0 0 12px rgba(255, 212, 59, 0.9)); }
+.jb-role.speaking[data-voice="other"] { filter: drop-shadow(0 0 4px #4dabf7) drop-shadow(0 0 12px rgba(77, 171, 247, 0.9)); }
+.jb-role.quiet { opacity: 0.7; }
+.jb-host.speaking .jb-host-body { animation: dr-talk 0.5s ease-in-out infinite; }
+.jb-speak-icon { position: absolute; left: 50%; top: 1%; transform: translateX(-50%); z-index: 4; font-family: var(--emoji); font-size: clamp(18px, 3.4vmin, 30px); line-height: 1; pointer-events: none; }
+/* Phụ đề về phía người nói (màn ngang, dải dưới sân khấu): đuôi bong bóng chỉ lên người nói. */
+.jb-say { overflow: visible; }
+.jb-play .sp-caption[data-side="left"], .jb-play .sp-caption[data-side="right"] { position: relative; top: 0; left: 0; }
+.jb-play .sp-caption[data-side="left"]::before, .jb-play .sp-caption[data-side="right"]::before {
+  content: ''; position: absolute; top: -15px; left: clamp(20px, calc(50% + var(--tail, 0px)), calc(100% - 20px)); transform: translateX(-50%);
+  border-left: 12px solid transparent; border-right: 12px solid transparent; border-bottom: 15px solid var(--yellow);
+}
+.jb-play .sp-caption[data-who]:not([data-who="bong"])::before { border-bottom-color: #4dabf7; }
+@media (max-width: 600px) { .jb-host { top: 13%; bottom: auto; width: 22%; } }
+@media (prefers-reduced-motion: reduce) {
+  .jb-role { transition: none; }
+  .jb-role.speaking { scale: none; }
+  .jb-host.speaking .jb-host-body { animation: none; }
+}
+/* Bán hàng: khách sang bên phải, máy xay giữa Bông và khách. */
+.sh-play .sh-customer { left: 30%; }
+.sh-play .jb-host { bottom: 22%; z-index: 0; width: min(20%, 230px); } /* Bông đứng sau quầy như khách */
+.sh-play .sh-blender { left: 21%; }
+.sh-play .sh-cup { left: calc(21% + min(20%, 150px) + 12px); }
+@media (max-width: 600px) { .sh-play .sh-customer { left: 0; } .sh-play .sh-blender { left: 4%; } .sh-play .sh-cup { left: 33%; } }
+/* Cô giáo nhí: bàn cô giáo bên trái, Bông (học trò) bên phải, vở của Bông lên góc trên phải. */
+.tc-desk { position: absolute; left: 3%; bottom: 4%; width: min(19%, 170px); display: grid; justify-items: center; pointer-events: none; }
+.tc-desk-face { font-family: var(--emoji); font-size: clamp(56px, 12vmin, 110px); line-height: 1; }
+.tc-desk-top { width: 100%; margin-top: -6px; padding: 6px 0 14px; border-radius: 10px 10px 4px 4px; background: #a9744a; border: 4px solid #7a5230; color: #fff; text-align: center; font-weight: 900; font-size: clamp(14px, 2.6vmin, 22px); }
+.tc-stage .tc-student { left: auto; right: 3%; }
+.tc-stage .tc-notebook { bottom: auto; top: 5%; }
+@media (max-width: 600px) {
+  /* Màn dọc: bàn cô giáo (trái) và Bông (phải) ngay dưới bảng, không đè lên hàng các bạn. */
+  .tc-desk { top: 47%; bottom: auto; width: 20%; }
+  .tc-desk-face { font-size: 38px; }
+  .tc-desk-top { padding: 3px 0 6px; font-size: 12px; }
+  .tc-stage .tc-student { top: 45%; bottom: auto; width: 22%; }
+  .tc-stage .tc-notebook { top: 54%; right: auto; left: 50%; transform: translateX(-50%); }
+}

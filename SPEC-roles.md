@@ -1,6 +1,6 @@
 # SPEC — Đóng vai: hai bên rõ ràng, ai nói người đó sáng lên
 
-> Phiên bản spec: **draft2** (sửa theo review, mục 8) · Ngày: 2026-10-27 · Chưa làm. Áp dụng cho **Bán hàng, Bác sĩ nhí, Cô giáo nhí**; Bưu tá, Cảnh sát, Cứu hỏa làm sau khi cơ chế chung chạy ổn.
+> Phiên bản spec: **draft2** (sửa theo review, mục 8) · Ngày: 2026-10-27 · **Đã làm (0.55.0)**. Áp dụng cho **Bán hàng, Bác sĩ nhí, Cô giáo nhí**; Bưu tá, Cảnh sát, Cứu hỏa làm sau khi cơ chế chung chạy ổn.
 > Lý do: hiện tại Bông không đứng trên sân khấu (chỉ có nút tròn nhỏ ở góc), phụ đề luôn ở giữa phía trên → bé khó biết **ai đang nói, tới lượt ai**.
 > Không đổi: luật chơi, câu nói, giọng (0.54.1), tiến độ, dữ liệu lưu, nút Bông ở góc (chạm để nghe lại).
 
@@ -36,11 +36,11 @@ Sân khấu chia **hai bên**, như hai người đứng đối diện nhau:
 - Dùng **đúng hàng nói hiện có** của kit (`talk`): mỗi câu bắt đầu → bỏ hiệu ứng câu trước, bật hiệu ứng câu này; câu bị thay / 🧹 / rời màn / ra nền (`cancelAll`, `onCleanup`) → dọn hết `speaking` / `quiet`. Không tạo bộ điều khiển âm thanh thứ hai.
 - Chạm nút Bông nghe lại: câu nghe lại do vai nào nói thì vai đó sáng (cơ chế chung, không xử lý riêng).
 
-## 4. Phụ đề cạnh người nói, có vùng dự phòng
-- Màn ngang: phụ đề nằm ở **vùng phụ đề của phía người nói** — dải trên cùng sân khấu, nửa trái hoặc nửa phải (`data-side="left|right"`), đuôi bong bóng chỉ xuống phía người nói. Vùng này nằm trên đầu nhân vật, không đè lên khu chơi (khay ở dưới, quầy / bảng ở giữa).
-- Giới hạn: rộng tối đa ~45% sân khấu, tự xuống dòng, tối đa 3 dòng; viền vàng = Bông, xanh = vai khác.
-- Không đủ chỗ (sân khấu hẹp / phụ đề dài): về **vùng dự phòng** giữa phía trên như hiện nay (`data-side="center"`), vẫn giữ màu viền theo người nói.
-- Màn dọc: luôn dùng vùng dự phòng giữa phía trên (`data-side="center"`), giữ màu viền + biểu tượng người nói; nhân vật đang nói vẫn sáng.
+## 4. Phụ đề về phía người nói, có vùng dự phòng
+- Ở các trò Đóng vai, phụ đề nằm ở **dải dưới sân khấu** (giữa sân khấu và khay đồ) — không bao giờ đè lên khu chơi. *(Khi làm: thay cho "dải trên cùng sân khấu" của draft2 — dải trên đè lên bảng đen / mái hiên.)*
+- Màn ngang đủ rộng (sân khấu ≥ 700px): phụ đề **lệch về phía người nói** (`data-side="left|right"`), **đuôi bong bóng chỉ lên** đúng chỗ người nói; không ra khỏi màn.
+- Giới hạn: tự xuống dòng; viền vàng = Bông, xanh = vai khác.
+- Vùng dự phòng `data-side="center"` (giữa, như cũ, giữ màu viền): màn dọc / sân khấu hẹp / nhóm cùng nói / người nói không có hình.
 - Khu chơi / vùng chạm ưu tiên hơn phụ đề: phụ đề `pointer-events: none` (không chặn chạm).
 
 ## 5. Giảm chuyển động

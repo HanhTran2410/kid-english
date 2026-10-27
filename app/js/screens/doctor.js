@@ -174,6 +174,15 @@ export function doctorScreen(app, params = {}) {
     resetLabel: 'Khám lại', trayLabel: 'Đồ của bác sĩ',
     icon: (who) => (who === 'patient' ? curPatient()?.emoji ?? '' : who === 'patient2' ? PATIENT_BY_ID.get(cases[caseIdx]?.patient2)?.emoji ?? '' : '🐰'),
     pitch: (who) => (who === 'patient' ? curPatient()?.pitch : who === 'patient2' ? PATIENT_BY_ID.get(cases[caseIdx]?.patient2)?.pitch : undefined),
+    // SPEC-roles: Bông bác sĩ đứng bên trái, bệnh nhân ở giữa / bên phải; ai nói người đó sáng.
+    host: { badge: '🩺' },
+    roles: {
+      of: (who) => (who === 'bong' ? kit.host
+        : who === 'patient' ? [patientEl, measureEl.querySelector('.dr-measure-pet[data-who="0"]'), eyesEl.querySelector('.dr-eyes-pet')]
+          : who === 'patient2' ? measureEl.querySelector('.dr-measure-pet[data-who="1"]') : null),
+      all: () => [kit.host, patientEl, ...measureEl.querySelectorAll('.dr-measure-pet'), eyesEl.querySelector('.dr-eyes-pet')].filter(Boolean),
+      dim: (el) => el === kit.host, // bệnh nhân luôn là chỗ bé chạm khám: không làm mờ
+    },
     onTalk: (who) => patientEl.classList.toggle('talking', who === 'patient'),
     onReset: () => restart(),
     onHelper: () => repeatPrompt(),

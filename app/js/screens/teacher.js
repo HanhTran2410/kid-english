@@ -83,6 +83,8 @@ export function teacherScreen(app, params = {}) {
   const noBtn = h('button.tc-answer.tc-no', { type: 'button', 'aria-label': 'Sai', text: '❌', onclick: () => judge(false) });
   const answers = h('div.tc-answers', {}, yesBtn, noBtn);
   const classEl = h('div.tc-class', { hidden: true });
+  // SPEC-roles: bàn cô giáo (bé đóng vai cô giáo, máy đọc giùm) bên trái; lớp học + Bông bên phải.
+  const desk = h('div.tc-desk', { 'aria-hidden': 'true' }, h('span.tc-desk-face', { text: '👩‍🏫' }), h('span.tc-desk-top', { text: 'Teacher' }));
 
   const kit = jobScreen(app, {
     job: JOB, background: { lessonId: JOBS_BG_IMAGES, word: JOB }, className: 'tc-play', stageClass: 'tc-stage', title: '👩‍🏫 Teacher', helperLabel: 'Bông học trò', cap: 'teacher',
@@ -95,6 +97,12 @@ export function teacherScreen(app, params = {}) {
     },
     onReset: () => restart(),
     onHelper: () => repeatPrompt(),
+    roles: {
+      of: (who) => (who === 'bong' ? student : who === 'teacher' ? desk : who === 'class' ? [...classEl.children]
+        : who?.startsWith('p:') ? pupilEl(who.slice(2)) : null),
+      all: () => [student, desk, ...classEl.children],
+      dim: (el) => !(state === 'roll' && el.classList.contains('tc-pupil')), // lúc điểm danh bé chạm các bạn
+    },
     nudge: {
       ready: () => ACTIVE.includes(state) && nudges < MAX_NUDGES,
       key: () => stepKey(),
@@ -114,7 +122,7 @@ export function teacherScreen(app, params = {}) {
     },
   });
   const { stage, count, talk } = kit;
-  stage.append(board, student, notebook, answers, classEl);
+  stage.append(board, desk, student, notebook, answers, classEl);
   const stepKey = () => `${kit.epoch}:${phase}:${rollIdx}:${idx}:${actIdx}:${starIdx}:${given}:${state}`;
   const pupilEl = (id) => classEl.querySelector(`.tc-pupil[data-pupil="${id}"]`);
   const cardEl = (id) => picture.querySelector(`.tc-card[data-action="${id}"]`);
