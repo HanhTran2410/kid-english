@@ -1,7 +1,10 @@
 // Cảnh sát giúp bạn (SPEC-jobs.md mục 6): mỗi yêu cầu khớp đúng một đồ / bạn; câu nói.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { FRIEND_LOOK, planRound, makeToyCase, matches, lostLine, describeLine, foundLine, wrongLine } from '../../app/js/jobs/police.js';
+import {
+  FRIEND_LOOK, planRound, makeToyCase, matches, lostLine, describeLine, foundLine, wrongLine,
+  makeTrafficCase, makeItLine, lightRightLine, lightWrongLine, TRAFFIC_STEPS,
+} from '../../app/js/jobs/police.js';
 
 function seeded(seed = 1) {
   let s = seed;
@@ -18,11 +21,12 @@ test('một lượt: 3 ca, người hỏi khác nhau, hai ca liền nhau không 
     assert.equal(cases.length, 3);
     assert.equal(new Set(cases.map((c) => c.asker)).size, 3);
     assert.equal(cases.filter((c) => c.kind === 'friend').length, level >= 3 ? 1 : 0);
+    assert.equal(cases.filter((c) => c.kind === 'traffic').length, 1);
     const toys = cases.filter((c) => c.kind === 'toy');
     for (let k = 1; k < cases.length; k++) {
       if (cases[k].kind === 'toy' && cases[k - 1].kind === 'toy') assert.notEqual(cases[k].toy, cases[k - 1].toy);
     }
-    for (const c of cases) {
+    for (const c of cases.filter((x) => x.kind !== 'traffic')) {
       assert.equal(matches(c, level).length, 1, `mức ${level}: ${JSON.stringify(c)}`);
       if (c.kind === 'friend') assert.ok(!c.items.some((x) => x.friend === c.asker));
     }
@@ -57,4 +61,28 @@ test('câu: mất đồ, mô tả theo mức, tìm thấy, chạm nhầm; tìm b
     const c = makeToyCase(3, { rng: seeded(i + 2) });
     for (const x of c.items) for (const [en, vi] of [describeLine(c, 3), wrongLine(c, x.id, 3)]) assert.ok(en && vi && !/undefined/.test(en + vi), en);
   }
+});
+
+test('SPEC-jobs2 PL1 — ca đèn giao thông: 3 lượt; mức 1 xanh / đỏ xen kẽ; mức 2 có cả bạn qua đường (đỏ) và vạch trống (xanh); mức 3 thêm một lượt vàng', () => {
+  const rng = seeded(17);
+  for (let i = 0; i < 60; i++) {
+    const s1 = makeTrafficCase(1, { rng }).steps;
+    assert.equal(s1.length, TRAFFIC_STEPS);
+    assert.ok(s1.every((s) => ['green', 'red'].includes(s.want) && !s.crossing));
+    assert.notEqual(s1[0].want, s1[1].want);
+    assert.notEqual(s1[1].want, s1[2].want);
+    const s2 = makeTrafficCase(2, { rng }).steps;
+    assert.ok(s2.some((s) => s.crossing) && s2.some((s) => !s.crossing));
+    assert.ok(s2.every((s) => s.want === (s.crossing ? 'red' : 'green')));
+    const s3 = makeTrafficCase(3, { rng }).steps;
+    assert.equal(s3.filter((s) => s.want === 'yellow').length, 1);
+    assert.ok(s3.some((s) => s.want === 'red' && s.crossing));
+    assert.ok(s3.some((s) => s.want === 'green' && !s.crossing));
+  }
+  assert.equal(makeItLine('green')[0], 'Make it green!');
+  assert.equal(lightRightLine({ want: 'green' })[0], 'Green — go!');
+  assert.equal(lightRightLine({ want: 'red', crossing: true })[0], 'Red — stop! A friend is crossing.');
+  assert.equal(lightWrongLine({ want: 'red', crossing: true }, 'green', 2)[0], 'Wait! A friend is crossing!');
+  assert.equal(lightWrongLine({ want: 'green', crossing: false }, 'red', 2)[0], 'The road is clear. Make it green!');
+  assert.equal(lightWrongLine({ want: 'red' }, 'green', 1)[0], "That's green. Make it red!");
 });

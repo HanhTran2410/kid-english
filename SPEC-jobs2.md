@@ -189,7 +189,7 @@ Từ mới: *stop, go, wait, red light, green light, look left, look right, cros
 ## 7. Mốc làm (thứ tự theo review)
 | # | Mốc | Nghề | Nội dung |
 |---|---|---|---|
-| 1 | **PL1** | Cảnh sát | Đèn giao thông (5.1) + ghi chú cho bố mẹ |
+| 1 | **PL1** ✅ (0.47.0) | Cảnh sát | Đèn giao thông (5.1) + ghi chú cho bố mẹ |
 | 2 | **SH1** | Bán hàng | Bày kệ (2.2) + đưa túi / chào khách (2.4) |
 | 3 | **TE1** | Cô giáo nhí | Điểm danh (4.2) + Classroom actions (4.3) |
 | 4 | **PO1** | Bưu tá | Dán tem (3.1) + giao bưu kiện (3.2) |

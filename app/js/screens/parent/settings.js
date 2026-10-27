@@ -197,7 +197,7 @@ const JOB_LEVELS = [
   ['shopGame', 'Bán hàng', ['Mức 1 — 3 món, mua 1 cái', 'Mức 2 — mua nhiều cái + trả xu', 'Mức 3 — mua hai món + trả xu']],
   ['postGame', 'Bưu tá', ['Mức 1 — theo màu nhà', 'Mức 2 — theo số nhà', 'Mức 3 — màu / số / tên bạn thú']],
   ['teacherGame', 'Cô giáo nhí', ['Mức 1 — Bông nói sai khác hẳn', 'Mức 2 — Bông nói sai gần giống', 'Mức 3 — màu và số']],
-  ['policeGame', 'Cảnh sát giúp bạn', ['Mức 1 — theo màu', 'Mức 2 — màu + to / nhỏ', 'Mức 3 — có bụi cây, tìm bạn bị lạc']],
+  ['policeGame', 'Cảnh sát giúp bạn', ['Mức 1 — tìm đồ theo màu; đèn giao thông: học màu đèn', 'Mức 2 — màu + to / nhỏ; đèn: có bạn qua đường thì đỏ', 'Mức 3 — có bụi cây, tìm bạn bị lạc; đèn có thêm vàng']],
   ['fireGame', 'Lính cứu hỏa', ['Mức 1 — mặc đồ, 1–3 ngọn lửa, an toàn với lửa', 'Mức 2 — Bông gọi từng món đồ, đếm số lửa, cứu bạn (cây / trong nhà)', 'Mức 3 — dập theo chỗ Bông gọi, phố không khói, bấm 114']],
 ];
 function jobsSection(app, save) {

@@ -41,6 +41,8 @@ export function jobsAdminView(app) {
     }
     body.append(
       notice('info', 'Các nghề chạy ngay bằng nền vẽ sẵn. Muốn đẹp hơn thì thay ảnh nền từng nghề (copy prompt để nhờ AI vẽ). Nhà, đồ chơi, lửa, bảng… vẫn là hình vẽ của app đặt lên trên ảnh nền, vì màu / số của chúng là đáp án. Ảnh món của Bán hàng thay ở "Ảnh Cho Bông ăn"; Bác sĩ nhí có trang ảnh riêng.'),
+      // SPEC-jobs2 mục 5: ca đèn giao thông của Cảnh sát là trò đóng vai giả lập.
+      notice('warn', '👮 Đèn giao thông (trò Cảnh sát) là trò đóng vai giả lập, không phải hướng dẫn an toàn giao thông. Ngoài đường: dừng lại, nhìn hai phía, và luôn qua đường cùng người lớn.'),
       ...JOB_BACKGROUNDS.map((job) => jobSection(job, bg.get(job.id))),
       gearSection(gear),
       h('div.actions', {},

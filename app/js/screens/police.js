@@ -1,6 +1,7 @@
 // Trò Cảnh sát giúp bạn (SPEC-jobs.md mục 6): bạn thú làm mất đồ ("Oh no! I lost my ball! It's red!"), bé chạm đúng
 // đồ trong công viên; đồ bay về tay bạn, bạn cảm ơn. Mức 3: đồ / bạn nấp sau bụi cây — chạm bụi để nhìn (không tính nhầm).
-// 3 ca → sticker. Trạng thái: enter → find ⇄ busy → found → leave → ca sau | done. Khung chung ở jobs/kit.js.
+// SPEC-jobs2 PL1: mỗi lượt một ca đèn giao thông (giả lập): mức 1 học màu đèn, mức 2–3 bật đỏ khi có bạn qua đường.
+// 3 ca → sticker. Trạng thái: enter → find | ask ⇄ busy / move → found → leave → ca sau | done. Khung chung ở jobs/kit.js.
 
 import { h } from '../ui.js';
 import { play } from '../speech/sfx.js';
@@ -12,6 +13,7 @@ import { JOBS_BG_IMAGES } from '../jobs/backgrounds.js';
 import { jobScreen, saveSnap, takeSnap, clearSnap, restartAnim, center, wait, WRONG_LOCK_MS, MAX_NUDGES } from '../jobs/kit.js';
 import {
   MAX_LEVEL, planRound, lostLine, describeLine, foundLine, wrongLine, HELLO_LINE, LOOK_LINE, BUSH_LINE,
+  TRAFFIC_INTRO_LINE, CAN_GO_LINE, CHANGING_LINE, TRAFFIC_DONE_LINE, makeItLine, lightRightLine, lightWrongLine,
 } from '../jobs/police.js';
 
 const JOB = 'police';
@@ -39,6 +41,8 @@ function toySvg(toy, color) {
   };
   return `<svg viewBox="0 0 100 100" aria-hidden="true">${shapes[toy] ?? shapes.ball}</svg>`;
 }
+const MOVE_MS = 1100; // xe chạy / dừng / bạn qua đường sau khi đổi đèn
+const LIGHT_EMOJI = { red: '🔴', yellow: '🟡', green: '🟢' };
 const BUSH_SVG = `<svg viewBox="0 0 100 80" aria-hidden="true"><path d="M8 72 q-6 -26 18 -30 q2 -26 28 -24 q20 -12 32 10 q20 2 14 26 q6 14 -6 18 z" fill="#51cf66" stroke="#2b8a3e" stroke-width="4" stroke-linejoin="round"/><circle cx="36" cy="40" r="4" fill="#ff8787"/><circle cx="62" cy="34" r="4" fill="#ff8787"/></svg>`;
 
 export function policeScreen(app, params = {}) {
@@ -52,6 +56,7 @@ export function policeScreen(app, params = {}) {
   let state = 'start';
   let lastWrong = { key: '', at: 0 };
   let recorded = new Set();
+  let tIdx = 0; // ca đèn giao thông: lượt đổi đèn thứ mấy
 
   const cur = () => plan?.cases[caseIdx];
   const asker = () => PATIENT_BY_ID.get(cur()?.asker);
@@ -63,30 +68,45 @@ export function policeScreen(app, params = {}) {
   const kit = jobScreen(app, {
     job: JOB, background: { lessonId: JOBS_BG_IMAGES, word: JOB }, className: 'pl-play', stageClass: 'pl-stage', title: '👮 Police', helperLabel: 'Bông cảnh sát', cap: 'police',
     resetLabel: 'Tìm lại',
-    icon: (who) => (who === 'asker' ? asker()?.emoji ?? '' : '🐰'),
+    icon: (who) => (who === 'asker' ? asker()?.emoji ?? '' : who === 'car' ? '🚗' : '🐰'),
     onTalk: (who) => askerEl.classList.toggle('talking', who === 'asker'),
     onReset: () => restart(),
     onHelper: () => repeatPrompt(),
     nudge: {
-      ready: () => state === 'find' && nudges < MAX_NUDGES,
+      ready: () => (state === 'find' || state === 'ask') && nudges < MAX_NUDGES,
       key: () => stepKey(),
       fire: (rearm) => {
         nudges += 1;
         snap();
+        if (state === 'ask') {
+          restartAnim(lampEl(cur().steps[tIdx].want), 'nudge');
+          kit.talk(trafficPrompt()).then(rearm);
+          return;
+        }
         nudgeTarget();
         kit.talk([A(describeLine(cur(), level))]).then(rearm);
       },
     },
   });
   const { stage, count, talk } = kit;
-  stage.append(h('div.pl-tree', { 'aria-hidden': 'true' }), park, askerEl);
-  const stepKey = () => `${kit.epoch}:${caseIdx}`;
+  // Ca đèn giao thông (SPEC-jobs2 mục 5.1): đường + vạch kẻ, xe chờ, bạn thú qua đường, cột đèn ba màu (chạm được).
+  const lamps = ['red', 'yellow', 'green'].map((color) => h('button.pl-lamp', {
+    type: 'button', 'aria-label': `${color} light`, dataset: { color }, onclick: () => tapLamp(color),
+  }));
+  const car = h('div.pl-car', { 'aria-hidden': 'true' }, h('span', { text: '🚗' }));
+  const walker = h('div.pl-walker', { 'aria-hidden': 'true' });
+  const trafficEl = h('div.pl-traffic', { hidden: true },
+    h('div.pl-road', {}, h('div.pl-zebra')), car, walker,
+    h('div.pl-light', {}, h('div.pl-light-box', {}, ...lamps), h('div.pl-light-pole')));
+  const lampEl = (color) => trafficEl.querySelector(`.pl-lamp[data-color="${color}"]`);
+  stage.append(h('div.pl-tree', { 'aria-hidden': 'true' }), park, askerEl, trafficEl);
+  const stepKey = () => `${kit.epoch}:${caseIdx}:${tIdx}:${state}`;
 
   function setState(s) {
     state = s;
-    kit.setState(s, s === 'find');
+    kit.setState(s, s === 'find' || s === 'ask');
   }
-  const snap = () => saveSnap(JOB, { level, plan, caseIdx, wrongs, nudges, revealed: [...revealed], recorded: [...recorded] });
+  const snap = () => saveSnap(JOB, { level, plan, caseIdx, wrongs, nudges, revealed: [...revealed], recorded: [...recorded], tIdx });
 
   // ---------- Vẽ ----------
   function renderCase() {
@@ -144,6 +164,13 @@ export function policeScreen(app, params = {}) {
     wrongs = resume?.wrongs ?? 0;
     nudges = resume?.nudges ?? 0;
     revealed = new Set(resume?.revealed ?? []);
+    if (cur().kind === 'traffic') {
+      startTraffic(resume);
+      return;
+    }
+    trafficEl.hidden = true;
+    park.hidden = false;
+    askerEl.hidden = false;
     setState('enter');
     renderCase();
     snap();
@@ -213,6 +240,109 @@ export function policeScreen(app, params = {}) {
     else startCase();
   }
 
+  // ---------- Ca đèn giao thông (SPEC-jobs2 mục 5.1) ----------
+  /** Câu hỏi của lượt: mức 1 Bông bảo màu; mức 2–3 xe hỏi "Can I go?" (lượt vàng: "The light is changing"). */
+  function trafficPrompt() {
+    const step = cur().steps[tIdx];
+    if (level <= 1) return [B(makeItLine(step.want))];
+    if (step.want === 'yellow') return [B(CHANGING_LINE)];
+    return [{ who: 'car', line: CAN_GO_LINE }];
+  }
+  /** Vẽ lượt hiện tại: xe về chỗ chờ, bạn thú đứng trên vạch kẻ nếu đang qua đường, đèn tắt hết. */
+  function renderTraffic() {
+    const step = cur().steps[tIdx];
+    count.textContent = `${caseIdx + 1}/${plan.cases.length}`;
+    car.classList.remove('go', 'slow');
+    walker.classList.remove('walk');
+    walker.innerHTML = patientSvg(asker().id, { mood: 'happy', title: asker().name });
+    walker.hidden = !step?.crossing;
+    for (const l of lamps) l.classList.remove('on', 'nudge', 'shake');
+    trafficEl.dataset.want = step?.want ?? ''; // cho test
+    trafficEl.dataset.step = String(tIdx);
+    trafficEl.dataset.crossing = String(Boolean(step?.crossing));
+  }
+  async function startTraffic(resume = null) {
+    const e = kit.epoch;
+    tIdx = resume?.tIdx ?? 0;
+    askerEl.hidden = true;
+    park.hidden = true;
+    trafficEl.hidden = false;
+    setState('enter');
+    renderTraffic();
+    snap();
+    if (!resume) {
+      restartAnim(trafficEl, 'enter');
+      play('honk');
+      await talk([B(TRAFFIC_INTRO_LINE)]);
+      if (e !== kit.epoch) return;
+    }
+    askStep();
+  }
+  async function askStep() {
+    const e = kit.epoch;
+    renderTraffic();
+    // Nhận chạm đèn ngay từ lúc hỏi.
+    setState('ask');
+    snap();
+    await talk(trafficPrompt());
+    if (e === kit.epoch && state === 'ask') kit.armNudge();
+  }
+  async function tapLamp(color) {
+    if (state !== 'ask') return; // xe đang chạy / dừng: chạm đèn không tính
+    const e = kit.epoch;
+    const step = cur().steps[tIdx];
+    if (color !== step.want) {
+      const now = Date.now();
+      if (`l:${color}` === lastWrong.key && now - lastWrong.at < WRONG_LOCK_MS) return;
+      lastWrong = { key: `l:${color}`, at: now };
+      wrongs += 1;
+      snap();
+      kit.clearNudge();
+      play('boing');
+      restartAnim(lampEl(color), 'shake');
+      if (wrongs >= 2) restartAnim(lampEl(step.want), 'nudge');
+      const k = stepKey();
+      await talk([B(lightWrongLine(step, color, level))]);
+      if (k === stepKey()) kit.armNudge();
+      return;
+    }
+    // Đúng: nhận NGAY (một lần) — đèn sáng, ghi màu đã gặp (đúng ngay lần đầu), lưu lượt sau.
+    setState('move');
+    kit.clearNudge();
+    if (wrongs === 0 && !recorded.has(`${caseIdx}:light:${tIdx}`)) {
+      recorded.add(`${caseIdx}:light:${tIdx}`);
+      markPracticed(app, color, LIGHT_EMOJI[color]);
+    }
+    tIdx += 1;
+    wrongs = 0;
+    nudges = 0;
+    const last = tIdx >= cur().steps.length;
+    if (last) saveSnap(JOB, { level, plan, caseIdx: caseIdx + 1, wrongs: 0, nudges: 0, revealed: [], recorded: [...recorded], tIdx: 0 });
+    else snap();
+    play('ding');
+    lampEl(color).classList.add('on');
+    if (color === 'green') car.classList.add('go');
+    else if (color === 'yellow') car.classList.add('slow');
+    else if (step.crossing) walker.classList.add('walk');
+    await Promise.all([talk([B(lightRightLine(step))]), wait(MOVE_MS)]);
+    if (e !== kit.epoch) return;
+    if (!last) {
+      askStep();
+      return;
+    }
+    play('sparkle');
+    await talk([B(TRAFFIC_DONE_LINE)]);
+    if (e !== kit.epoch) return;
+    setState('leave');
+    restartAnim(trafficEl, 'leave');
+    await wait(LEAVE_MS);
+    if (e !== kit.epoch) return;
+    trafficEl.classList.remove('leave');
+    caseIdx += 1;
+    if (caseIdx >= plan.cases.length) finishRound();
+    else startCase();
+  }
+
   function finishRound() {
     if (state === 'done') return;
     setState('done');
@@ -231,6 +361,11 @@ export function policeScreen(app, params = {}) {
   }
 
   function repeatPrompt() {
+    if (state === 'ask') {
+      const k = stepKey();
+      talk(trafficPrompt()).then(() => k === stepKey() && kit.armNudge());
+      return;
+    }
     if (state !== 'find') return;
     const k = stepKey();
     talk([A(describeLine(cur(), level))]).then(() => k === stepKey() && kit.armNudge());

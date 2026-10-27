@@ -69,17 +69,26 @@ export function makeFriendCase(asker, { rng = Math.random } = {}) {
 }
 
 /**
- * 3 ca của một lượt, mỗi ca một bạn thú (người hỏi) khác nhau. Mức 3: đúng một ca tìm bạn bị lạc, còn lại tìm đồ.
- * Hai ca liền nhau không cùng loại đồ.
+ * 3 ca của một lượt, mỗi ca một bạn thú (người hỏi) khác nhau. Mức 3: đúng một ca tìm bạn bị lạc. Mọi mức: đúng một ca
+ * đèn giao thông (SPEC-jobs2 mục 5.1, thay một ca tìm đồ); còn lại tìm đồ. Hai ca liền nhau không cùng loại đồ.
  */
 export function planRound(level, { rng = Math.random } = {}) {
   const askers = shuffle(PATIENTS, rng).slice(0, CASES_PER_ROUND).map((p) => p.id);
-  const friendAt = level >= 3 ? Math.floor(rng() * CASES_PER_ROUND) : -1;
+  // Chỉ test UI đặt `window.__kidTest.policeTrafficAt` để cố định chỗ ca đèn; bình thường ngẫu nhiên.
+  const pinned = globalThis.__kidTest?.policeTrafficAt;
+  let friendAt = level >= 3 ? Math.floor(rng() * CASES_PER_ROUND) : -1;
+  if (friendAt === pinned) friendAt = (friendAt + 1) % CASES_PER_ROUND;
+  const free = [0, 1, 2].filter((i) => i !== friendAt);
+  const trafficAt = free.includes(pinned) ? pinned : free[Math.floor(rng() * free.length)];
   const cases = [];
   let lastToy = null;
   askers.forEach((asker, i) => {
     if (i === friendAt) {
       cases.push({ asker, ...makeFriendCase(asker, { rng }) });
+      return;
+    }
+    if (i === trafficAt) {
+      cases.push({ asker, ...makeTrafficCase(level, { rng }) });
       return;
     }
     let c = makeToyCase(level, { rng });
@@ -138,4 +147,48 @@ export function wrongLine(c, itemId, level) {
   const [xEn, xVi] = describe(x, level);
   const [tEn, tVi] = describe(t, level);
   return [`Hmm, that ${c.toy} is ${xEn}. Mine is ${tEn}!`, `Ừm, cái đó ${xVi}. Của tớ ${tVi} cơ!`];
+}
+
+// ---------- SPEC-jobs2 PL1: ca đèn giao thông (giả lập — không phải hướng dẫn an toàn giao thông đầy đủ) ----------
+export const TRAFFIC_STEPS = 3;
+export const LIGHT_VI = { red: 'đỏ', yellow: 'vàng', green: 'xanh' };
+/**
+ * Ca đèn giao thông (sinh sẵn): 3 lượt đổi đèn. Luật CỦA MÀN CHƠI: xe chỉ đi khi đèn xe xanh và vạch kẻ không có ai.
+ * - mức 1: học màu — `want` xen kẽ xanh / đỏ (Bông bảo "Make it green!");
+ * - mức 2: xe hỏi "Can I go?" — `crossing` (có bạn trên vạch kẻ) → đỏ, vạch trống → xanh; có cả hai kiểu;
+ * - mức 3: như mức 2, thêm một lượt đèn vàng ("The light is changing").
+ */
+export function makeTrafficCase(level, { rng = Math.random } = {}) {
+  let steps;
+  if (level <= 1) {
+    const first = rng() < 0.5 ? 'green' : 'red';
+    const other = first === 'green' ? 'red' : 'green';
+    steps = [first, other, first].map((want) => ({ want, crossing: false }));
+  } else if (level === 2) {
+    // Có cả lượt "có bạn qua đường" (đỏ) và "vạch trống" (xanh).
+    steps = shuffle([true, false, rng() < 0.5], rng).map((crossing) => ({ want: crossing ? 'red' : 'green', crossing }));
+  } else {
+    // Mức 3: đủ ba kiểu — có bạn qua đường, vạch trống, đèn vàng.
+    steps = shuffle([{ want: 'red', crossing: true }, { want: 'green', crossing: false }, { want: 'yellow', crossing: false, changing: true }], rng);
+  }
+  return { kind: 'traffic', steps };
+}
+
+export const TRAFFIC_INTRO_LINE = ['You are the traffic police!', 'Con là cảnh sát giao thông!'];
+export const CAN_GO_LINE = ['Can I go?', 'Cho tớ đi được không?'];
+export const CHANGING_LINE = ['The light is changing. Make it yellow!', 'Đèn sắp đổi. Bật đèn vàng nào!'];
+export const TRAFFIC_DONE_LINE = ['Great job, traffic police!', 'Cảnh sát giao thông giỏi quá!'];
+/** Mức 1: "Make it green!" */
+export const makeItLine = (color) => [`Make it ${color}!`, `Bật đèn ${LIGHT_VI[color]} nào!`];
+/** Đúng: xanh đi, đỏ dừng (có bạn qua đường thì nói rõ), vàng chậm lại. */
+export function lightRightLine(step) {
+  if (step.want === 'green') return ['Green — go!', 'Xanh — đi!'];
+  if (step.want === 'yellow') return ['Yellow — slow down!', 'Vàng — đi chậm lại!'];
+  return step.crossing ? ['Red — stop! A friend is crossing.', 'Đỏ — dừng lại! Có bạn đang qua đường.'] : ['Red — stop!', 'Đỏ — dừng lại!'];
+}
+/** Nhầm: nói màu vừa chạm + nhắc yêu cầu (mức 2–3 nói lý do theo vạch kẻ). Không có cảnh va chạm. */
+export function lightWrongLine(step, tapped, level) {
+  if (level <= 1 || step.want === 'yellow') return [`That's ${tapped}. Make it ${step.want}!`, `Đó là đèn ${LIGHT_VI[tapped]}. Bật đèn ${LIGHT_VI[step.want]} nhé!`];
+  if (step.crossing) return ['Wait! A friend is crossing!', 'Chờ đã! Có bạn đang qua đường!'];
+  return ['The road is clear. Make it green!', 'Đường vắng rồi. Bật đèn xanh nhé!'];
 }
