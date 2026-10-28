@@ -48,6 +48,7 @@ export function takeSnap(job, { level, continueDirectly }) {
  * - `job`, `className` (class của root), `title`, `helperLabel` (tên Bông), `cap` (mũ của Bông: 'nurse' | 'shop' | …);
  * - `icon(who)`: hình người nói ở phụ đề ('bong' → 🐰); `onTalk(who | null)`: ai đang nói (để nhân vật nhún);
  * - `pitch(who)`: cao độ giọng của người nói (không có = giọng thường);
+ * - `altVoice(who)`: người nói dùng giọng thứ hai không (mặc định: mọi người trừ 'bong');
  * - `onReset()` (🧹), `onHelper()` (chạm Bông);
  * - `nudge`: { ready(), key(), fire(rearm) } — nhắc sau 10 giây không thao tác;
  * - `tray`: { face(id), label(id), canGive(), dropOk(x, y), give(id, from) } — kéo / chạm đồ trong khay;
@@ -177,7 +178,7 @@ export function jobScreen(app, opts) {
         opts.onTalk?.(who);
         try {
           // Nhân vật khác Bông (bạn thú, khách, cô giáo, học sinh…) nói giọng thứ hai cho dễ phân biệt lượt.
-          await app.speaker.speak(en, { signal, pitch: opts.pitch?.(who), role: who && who !== 'bong' ? 'alt' : undefined });
+          await app.speaker.speak(en, { signal, pitch: opts.pitch?.(who), role: (opts.altVoice ? opts.altVoice(who) : who && who !== 'bong') ? 'alt' : undefined });
         } catch {
           if (signal.aborted) return false;
         }

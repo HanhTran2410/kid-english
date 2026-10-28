@@ -68,20 +68,21 @@ test.describe('màn ngang 1180×820', () => {
     await expect(page.locator('.jb-role.speaking')).toHaveCount(1);
   });
 
-  test('ROLE-04 + ROLE-05 + ROLE-06 Cô giáo nhí: cô giáo nói → bàn cô giáo sáng, lớp không sáng; cả lớp chào → mọi bạn sáng, một phụ đề giữa; điểm danh: các bạn (bé cần chạm) không bị mờ', async ({ page }) => {
+  test('ROLE-04 + ROLE-05 + ROLE-06 Cô giáo nhí: cô giáo nói → bàn cô giáo sáng, lớp không sáng; cả lớp chào → mọi bạn + bạn học sinh sáng, một phụ đề giữa; điểm danh do cô giáo gọi, các bạn (bé cần chạm) không bị mờ', async ({ page }) => {
     await slowSpeech(page, 250);
     await openJob(page, 'Cô giáo nhí');
     await expect.poll(() => rolesAt(page, 'Ring the bell, teacher!')).toMatchObject({ speaking: ['tc-student'] });
     await page.locator('.tc-bell').click();
     await expect.poll(() => rolesAt(page, 'Good morning, class!')).toMatchObject({ speaking: ['tc-desk'], side: 'left' });
     const morning = await (async () => { await expect.poll(() => rolesAt(page, 'Good morning, teacher!')).toBeTruthy(); return rolesAt(page, 'Good morning, teacher!'); })();
-    expect(morning.speaking.length).toBe(3);
+    expect(morning.speaking.length).toBe(4); // 3 bạn + bạn học sinh (cũng là học trò của lớp)
+    expect(morning.speaking).toContain('tc-student');
     expect(morning.speaking).not.toContain('tc-desk');
     expect(morning.side).toBe('center');
     await expect.poll(() => page.evaluate(() => window.__roles.find((r) => /^Where's /.test(r.text)))).toBeTruthy();
     const where = await page.evaluate(() => window.__roles.find((r) => /^Where's /.test(r.text)));
-    expect(where.speaking).toEqual(['tc-student']);
-    expect(where.quiet).toEqual(['tc-desk']); // các bạn không mờ lúc điểm danh
+    expect(where.speaking).toEqual(['tc-desk']); // cô giáo điểm danh
+    expect(where.quiet).toEqual(['tc-student']); // các bạn không mờ lúc điểm danh
   });
 
   test('ROLE-01 Bác sĩ nhí: chú bác sĩ (vẽ sẵn) bên trái; bệnh nhân nói thì bệnh nhân sáng, Bông mờ; bệnh nhân không bao giờ bị mờ', async ({ page }) => {

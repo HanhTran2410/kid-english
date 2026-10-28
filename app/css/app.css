@@ -3252,3 +3252,6 @@ img.dr-admin-face { width: 100%; height: 100%; object-fit: contain; }
   .pl-play .jb-host { top: auto; bottom: 3%; left: 2%; width: 26%; }
   .pl-stage[data-scene="road"] .jb-host { top: 3%; bottom: auto; left: 50%; translate: -50% 0; width: 20%; }
 }
+/* Ô đồ trong khay: ảnh món (bố mẹ thêm, kể cả ảnh dọc cao) luôn nằm gọn trong ô — hàng / cột lưới cố định theo ô. */
+.dr-item { grid-template: minmax(0, 1fr) / minmax(0, 1fr); overflow: hidden; }
+.dr-item > img { max-width: 100%; max-height: 100%; min-width: 0; min-height: 0; object-fit: contain; }

@@ -110,7 +110,7 @@ export function sayWhat(x) {
   if (x.kind === 'color') return [`It's a ${x.color} ${x.thing}`, `Đó là ${thingVi(x.thing)} ${COLOR_VI[x.color]}`];
   if (x.kind === 'count') {
     const c = countable(x.thing);
-    return [`I see ${NUMBERS[x.n]} ${x.n === 1 ? c.id : c.plural}`, `Tớ thấy ${NUMBERS_VI[x.n]} ${c.vi}`];
+    return [`I see ${NUMBERS[x.n]} ${x.n === 1 ? c.id : c.plural}`, `Em thấy ${NUMBERS_VI[x.n]} ${c.vi}`];
   }
   const noun = NOUN_BY_EN.get(x.en);
   const vi = `Đó là ${noun.vi}`;
@@ -118,22 +118,22 @@ export function sayWhat(x) {
   if (noun.form === 'mass') return [`It's ${noun.en}`, vi];
   return [`It's ${noun.form} ${noun.en}`, vi];
 }
-/** Bông giơ tay: "I know! It's a cat!" */
+/** Bạn học sinh giơ tay: "I know! It's a cat!" (học trò nói với cô: xưng "em"). */
 export const claimLine = (claim) => {
   const [en, vi] = sayWhat(claim);
-  return [`I know! ${en}!`, `Tớ biết! ${vi}!`];
+  return [`I know! ${en}!`, `Em biết! ${vi}!`];
 };
-export const YAY_LINE = ["Yay! I'm right!", 'Hoan hô! Tớ nói đúng rồi!'];
-export const OOPS_LINE = ['Oops! What is it?', 'Ối! Đây là gì nhỉ?'];
+export const YAY_LINE = ["Yay! I'm right!", 'Hoan hô! Em nói đúng rồi!'];
+export const OOPS_LINE = ['Oops! What is it?', 'Ối! Đây là gì hả cô?'];
 /** Sau khi bé chạm ❌ và chờ bé nói: Bông nói lại đúng. */
 export const fixLine = (shown) => {
   const [en, vi] = sayWhat(shown);
-  return [`${en}! Thank you, teacher!`, `${vi}! Cảm ơn cô giáo!`];
+  return [`${en}! Thank you, teacher!`, `${vi}! Em cảm ơn cô ạ!`];
 };
-export const SURE_LINE = ['Hmm, are you sure? Look again!', 'Ừm, cô chắc không? Cô nhìn lại xem!'];
-export const START_LINE = ["Let's learn! I'm ready!", 'Mình học nào! Tớ sẵn sàng rồi!'];
-export const ASK_LINE = ['Is Bông right? Tap yes or no!', 'Bông nói đúng không? Con chạm đúng hay sai nhé!'];
-export const END_LINE = ['Thank you, teacher! I learned a lot!', 'Cảm ơn cô giáo! Tớ học được nhiều lắm!'];
+export const SURE_LINE = ['Hmm, are you sure? Look again!', 'Ừm, cô chắc không ạ? Cô nhìn lại xem!'];
+export const START_LINE = ["Let's learn! I'm ready!", 'Mình học nào! Em sẵn sàng rồi ạ!'];
+export const ASK_LINE = ['Am I right? Tap yes or no!', 'Em nói đúng không cô? Cô chạm Đúng hay Sai nhé!'];
+export const END_LINE = ['Thank you, teacher! I learned a lot!', 'Em cảm ơn cô ạ! Em học được nhiều lắm!'];
 
 /** Từ để ghi "đã gặp" của một hình (chỉ danh từ của bài có sẵn; mức 3 không ghi). */
 export const practiceWord = (shown) => (shown.kind === 'noun' ? NOUN_BY_EN.get(shown.en) : null);
@@ -184,21 +184,23 @@ export function planLesson(level, { known = new Set(), rng = Math.random } = {})
   return { pupils, roll, items, stars: planStars(level, pupils, { rng }) };
 }
 
-export const BELL_LINE = ['Ring the bell, teacher!', 'Cô giáo rung chuông nào!'];
+export const BELL_LINE = ['Ring the bell, teacher!', 'Cô ơi, cô rung chuông vào lớp đi ạ!'];
 export const MORNING_LINE = ['Good morning, class!', 'Chào cả lớp!'];
 export const CLASS_MORNING_LINE = ['Good morning, teacher!', 'Chúng em chào cô ạ!'];
-export const whereLine = (name) => [`Where's ${name}?`, `${name} đâu rồi?`];
+/** Cô giáo điểm danh: "Where's Kitty?" */
+export const whereLine = (name) => [`Where's ${name}?`, `${name} đâu nhỉ?`];
 export const HERE_LINE = ['Here!', 'Có ạ!'];
 /** Chạm nhầm bạn khi điểm danh: "I'm Puppy! Kitty is over there!" */
-export const notMeLine = (me, want) => [`I'm ${me}! ${want} is over there!`, `Tớ là ${me}! ${want} ở đằng kia kìa!`];
-export const ALL_HERE_LINE = ['Everyone is here!', 'Cả lớp đủ rồi!'];
-export const WHAT_DO_LINE = ['What do we do, teacher?', 'Mình làm gì đây cô giáo?'];
+export const notMeLine = (me, want) => [`I'm ${me}! ${want} is over there!`, `Em là ${me} ạ! ${want} ở đằng kia kìa cô!`];
+/** Lớp trưởng (bạn học sinh) báo cáo sĩ số. */
+export const ALL_HERE_LINE = ['Everyone is here!', 'Thưa cô, lớp mình đủ rồi ạ!'];
+export const WHAT_DO_LINE = ['What do we do, teacher?', 'Chúng em làm gì bây giờ hả cô?'];
 /** Bạn xin: "Can we jump, teacher?" */
-export const canWeLine = (a) => [`Can we ${a.we}, teacher?`, `Cô cho tụi tớ ${a.vi} được không ạ?`];
+export const canWeLine = (a) => [`Can we ${a.we}, teacher?`, `Cô cho chúng em ${a.vi} được không ạ?`];
 /** Lệnh của cô giáo: "Jump!" */
 export const cmdLine = (a) => [a.cmd, `${a.vi.charAt(0).toUpperCase()}${a.vi.slice(1)}!`];
 /** Thẻ sai: "That's clap. We want to jump!" */
-export const wrongActionLine = (tapped, want) => [`That's ${tapped.short}. We want to ${want.we}!`, `Đó là ${tapped.vi}. Tụi tớ muốn ${want.vi}!`];
+export const wrongActionLine = (tapped, want) => [`That's ${tapped.short}. We want to ${want.we}!`, `Đó là ${tapped.vi} ạ. Chúng em muốn ${want.vi}!`];
 export const ACTIONS_DONE_LINE = ['That was fun!', 'Vui quá!'];
 
 // ---------- SPEC-jobs2 TE2: phát sao cuối buổi (mức 2–3) + chào tạm biệt ----------
@@ -212,12 +214,12 @@ export function planStars(level, pupils, { rng = Math.random } = {}) {
   return shuffle(pupils, rng).slice(0, 2).map((pupil) => ({ pupil, n: lo + Math.floor(rng() * (hi - lo + 1)) }));
 }
 const starsWord = (n) => `${STAR_NUM[n]} ${n === 1 ? 'star' : 'stars'}`;
-/** "Two stars for Kitty!" */
+/** Cô giáo phát sao: "Two stars for Kitty!" */
 export const starsForLine = (n, name) => [`${capitalize(starsWord(n))} for ${name}!`, `${capitalize(STAR_NUM_VI[n])} ngôi sao cho ${name}!`];
-/** Bông đếm: "One!", "Two!" */
+/** Cô giáo đếm sao: "One!", "Two!" */
 export const starCountLine = (n) => [`${capitalize(STAR_NUM[n])}!`, `${capitalize(STAR_NUM_VI[n])}!`];
 export const STAR_THANKS_LINE = ['Thank you, teacher!', 'Cảm ơn cô giáo ạ!'];
 /** Chạm thừa khi đã đủ: "I have two stars! Thank you!" */
-export const haveStarsLine = (n) => [`I have ${starsWord(n)}! Thank you!`, `Tớ có ${STAR_NUM_VI[n]} ngôi sao rồi! Cảm ơn cô!`];
+export const haveStarsLine = (n) => [`I have ${starsWord(n)}! Thank you!`, `Em có ${STAR_NUM_VI[n]} ngôi sao rồi ạ! Em cảm ơn cô!`];
 export const GOODBYE_CLASS_LINE = ['Goodbye, class!', 'Tạm biệt cả lớp!'];
 export const GOODBYE_TEACHER_LINE = ['Goodbye, teacher!', 'Chúng em chào cô ạ!'];

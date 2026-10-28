@@ -399,16 +399,16 @@ test('đưa món: món đặt lên quầy (không bay thẳng tới khách); ch�
   await expect(page.locator('.sh-goods .sh-good')).toHaveCount(0);
 });
 
-test('ảnh món trong bong bóng luôn nằm gọn trong ô (ảnh dọc to không tràn)', async ({ page }) => {
+test('ảnh món trong bong bóng và trong khay đồ luôn nằm gọn trong ô (ảnh dọc to không tràn)', async ({ page }) => {
   await fakeSpeech(page);
   await startApp(page);
   await page.evaluate(async () => {
     const db = await import('/js/db.js');
     const feed = await import('/js/feed.js');
-    const c = document.createElement('canvas'); c.width = 600; c.height = 900;
-    const g = c.getContext('2d'); g.fillStyle = '#ff922b'; g.fillRect(150, 50, 300, 800);
+    const c = document.createElement('canvas'); c.width = 200; c.height = 320; // cỡ ảnh món đã lưu (cạnh dài tối đa 320)
+    const g = c.getContext('2d'); g.fillStyle = '#ff922b'; g.fillRect(0, 0, 200, 320);
     const blob = await new Promise((r) => c.toBlob(r, 'image/png'));
-    for (const f of feed.BUILTIN_FOODS.filter((x) => x.easy)) await db.setWordImage(window.kidEnglish.db, { lessonId: 'feed:food', word: f.id, blob, mimeType: 'image/png', width: 600, height: 900 });
+    for (const f of feed.BUILTIN_FOODS) await db.setWordImage(window.kidEnglish.db, { lessonId: 'feed:food', word: f.id, blob, mimeType: 'image/png', width: 200, height: 320 });
   });
   await page.getByRole('button', { name: 'Trò chơi' }).click();
   await page.getByRole('button', { name: 'Đóng vai' }).click();
@@ -417,4 +417,12 @@ test('ảnh món trong bong bóng luôn nằm gọn trong ô (ảnh dọc to kh�
   const [item, face] = await Promise.all(['.sh-wish-item', '.sh-wish-item .sh-wish-face'].map((s) => page.locator(s).first().boundingBox()));
   expect(face.width).toBeLessThanOrEqual(item.width + 0.5);
   expect(face.height).toBeLessThanOrEqual(item.height + 0.5);
+  // Khay đồ dưới cùng: ảnh dọc cao không lòi ra ngoài ô.
+  const tiles = page.locator('.jb-tray .dr-item:has(img)');
+  await expect.poll(() => tiles.count()).toBeGreaterThan(0);
+  for (const tile of await tiles.all()) {
+    const [t, f] = await Promise.all([tile.boundingBox(), tile.locator('img').boundingBox()]);
+    expect(f.y).toBeGreaterThanOrEqual(t.y - 0.5);
+    expect(f.y + f.height).toBeLessThanOrEqual(t.y + t.height + 0.5);
+  }
 });

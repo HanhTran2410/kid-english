@@ -109,14 +109,16 @@ export function teacherScreen(app, params = {}) {
     resetLabel: 'Học lại',
     icon: (who) => (who === 'teacher' ? '👩‍🏫' : who === 'class' ? '🏫' : who.startsWith('p:') ? PATIENT_BY_ID.get(who.slice(2))?.emoji ?? '' : '🧒'),
     pitch: (who) => (who.startsWith('p:') ? PATIENT_BY_ID.get(who.slice(2))?.pitch : who === 'class' ? 1.3 : undefined),
+    // Cô giáo (người lớn) giọng chính; bạn học sinh, các bạn, cả lớp (trẻ con) giọng thứ hai (máy một giọng: cao giọng hơn).
+    altVoice: (who) => who !== 'teacher',
     onTalk: (who) => {
-      student.classList.toggle('talking', who === 'bong');
+      student.classList.toggle('talking', who === 'bong' || who === 'class');
       for (const el of classEl.children) el.classList.toggle('talking', who === `p:${el.dataset.pupil}` || who === 'class');
     },
     onReset: () => restart(),
     onHelper: () => repeatPrompt(),
     roles: {
-      of: (who) => (who === 'bong' ? student : who === 'teacher' ? desk : who === 'class' ? [...classEl.children]
+      of: (who) => (who === 'bong' ? student : who === 'teacher' ? desk : who === 'class' ? [student, ...classEl.children]
         : who?.startsWith('p:') ? pupilEl(who.slice(2)) : null),
       all: () => [student, desk, ...classEl.children],
       dim: (el) => !(state === 'roll' && el.classList.contains('tc-pupil')), // lúc điểm danh bé chạm các bạn
@@ -155,8 +157,8 @@ export function teacherScreen(app, params = {}) {
   /** Câu hỏi / yêu cầu của bước đang chờ bé (nhắc, chạm Bông). */
   function promptLines() {
     if (state === 'bell') return [B(BELL_LINE)];
-    if (state === 'roll') return [B(whereLine(pupilName(rollWant())))];
-    if (state === 'stars') return [B(starsForLine(starTurn().n, pupilName(starTurn().pupil)))];
+    if (state === 'roll') return [T(whereLine(pupilName(rollWant())))];
+    if (state === 'stars') return [T(starsForLine(starTurn().n, pupilName(starTurn().pupil)))];
     if (state === 'act') {
       const want = actWant();
       return want ? [P(q().askers[actIdx], canWeLine(want))] : [B(WHAT_DO_LINE)];
@@ -291,7 +293,7 @@ export function teacherScreen(app, params = {}) {
     markHere();
     snap();
     const k = stepKey();
-    await talk([B(whereLine(pupilName(rollWant())))]);
+    await talk([T(whereLine(pupilName(rollWant())))]);
     if (k === stepKey()) kit.armNudge();
   }
   async function tapPupil(id) {
@@ -448,10 +450,10 @@ export function teacherScreen(app, params = {}) {
     for (const el of classEl.children) el.classList.toggle('called', el.dataset.pupil === t.pupil);
     setState('stars');
     snap();
-    await talk([B(starsForLine(t.n, pupilName(t.pupil)))]);
+    await talk([T(starsForLine(t.n, pupilName(t.pupil)))]);
     if (e === kit.epoch && state === 'stars') kit.armNudge();
   }
-  /** Mỗi chạm hộp sao: một sao bay vào vở bạn, Bông đếm; đủ → bạn cảm ơn → bạn sau. Chạm thừa: bạn nói đã đủ (không nhầm). */
+  /** Mỗi chạm hộp sao: một sao bay vào vở bạn, cô giáo đếm; đủ → bạn cảm ơn → bạn sau. Chạm thừa: bạn nói đã đủ (không nhầm). */
   async function tapStarBox() {
     const t = starTurn();
     if (state === 'stars-full') {
@@ -482,7 +484,7 @@ export function teacherScreen(app, params = {}) {
     if (e !== kit.epoch) return;
     renderPupilStars();
     restartAnim(pupilEl(t.pupil), 'hop');
-    await talk([B(starCountLine(n))]);
+    await talk([T(starCountLine(n))]);
     if (e !== kit.epoch || !full || n !== given) {
       if (e === kit.epoch && !full) kit.armNudge();
       return;

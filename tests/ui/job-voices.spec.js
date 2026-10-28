@@ -13,16 +13,18 @@ async function openTeacher(page, opts) {
   await expect(page.locator('.tc-play')).toHaveAttribute('data-state', 'bell', { timeout: 15000 });
 }
 
-test('máy có 2 giọng tiếng Anh: Bông giọng chính, cô giáo / cả lớp giọng thứ hai; phụ đề của nhân vật khác Bông viền xanh', async ({ page }) => {
+test('máy có 2 giọng tiếng Anh (Cô giáo nhí): cô giáo (người lớn) giọng chính; bạn học sinh, cả lớp, các bạn giọng thứ hai; phụ đề của nhân vật khác viền xanh', async ({ page }) => {
   await openTeacher(page, { altVoice: true });
   await expect.poll(() => page.evaluate(() => window.__spoken)).toContain('Ring the bell, teacher!');
-  expect(await voiceOf(page, 'Ring the bell, teacher!')).toBe('Test English');
+  expect(await voiceOf(page, 'Ring the bell, teacher!')).toBe('Test English Two');
   await expect(page.locator('.sp-caption')).toHaveAttribute('data-who', 'bong');
   await page.locator('.tc-bell').click();
   await expect.poll(() => page.evaluate(() => window.__spoken)).toContain('Good morning, teacher!');
-  expect(await voiceOf(page, 'Good morning, class!')).toBe('Test English Two');
+  expect(await voiceOf(page, 'Good morning, class!')).toBe('Test English');
   expect(await voiceOf(page, 'Good morning, teacher!')).toBe('Test English Two');
   await expect.poll(async () => page.evaluate(() => window.__spoken.some((t) => /^Where's \w+\?$/.test(t)))).toBe(true);
+  const where = await page.evaluate(() => window.__spoken.find((t) => /^Where's \w+\?$/.test(t)));
+  expect(await voiceOf(page, where)).toBe('Test English'); // cô giáo điểm danh
   await page.evaluate(() => {
     // Phụ đề lúc một bạn nói: viền xanh (khác viền vàng của Bông).
     window.__capBorder = null;
@@ -35,11 +37,12 @@ test('máy có 2 giọng tiếng Anh: Bông giọng chính, cô giáo / cả l�
   await expect.poll(() => page.evaluate(() => window.__capBorder)).toBe('rgb(77, 171, 247)');
 });
 
-test('máy chỉ có 1 giọng tiếng Anh: nhân vật khác Bông nói cao giọng hơn', async ({ page }) => {
+test('máy chỉ có 1 giọng tiếng Anh (Cô giáo nhí): cô giáo giọng thường, bạn học sinh / cả lớp cao giọng hơn', async ({ page }) => {
   await openTeacher(page);
   await page.locator('.tc-bell').click();
   await expect.poll(() => page.evaluate(() => window.__spoken)).toContain('Good morning, teacher!');
   const pitchOf = (line) => page.evaluate((t) => window.__pitches[window.__spoken.lastIndexOf(t)], line);
-  expect(await pitchOf('Ring the bell, teacher!')).toBe(1);
-  expect(await pitchOf('Good morning, class!')).toBeGreaterThan(1);
+  expect(await pitchOf('Ring the bell, teacher!')).toBeGreaterThan(1);
+  expect(await pitchOf('Good morning, class!')).toBe(1);
+  expect(await pitchOf('Good morning, teacher!')).toBeGreaterThan(1);
 });
