@@ -1,6 +1,7 @@
 # SPEC — "Nói chuyện với Bông" (hội thoại hỏi – đáp ngắn)
 
-> Phiên bản spec: **draft4** · Ngày: 2026-10-16 · Dựa trên app 0.16.1
+> Phiên bản spec: **draft5** (mục 16 — ai nói câu nào, hai giọng; **đã duyệt, đã làm 0.59.0**) · Ngày: 2026-10-28
+> Bản trước: draft4 · 2026-10-16 · app 0.16.1
 > - **draft4 — trả lời review draft2 (mục 15):** định nghĩa lại "nỗ lực nói" cho khớp code (có mic mà mất mạng vẫn đo âm lượng); bảng trường bắt buộc theo `type`; vòng đời ▶ / 🏠 / ra nền kể cả cuộc gọi; luật cập nhật bài có sẵn; ca biên của cuộc gọi; kiểm thử ảnh gia đình. **Sửa 3 lỗi thật trong 0.16.1** (15.3).
 > - draft1: hướng **nâng cấp nút "Học cùng Bông"** (không thêm nút thứ 9).
 > - **draft2 — sửa theo review (PO + QA):** tách rõ "nỗ lực nói" với nhận dạng; trạng thái hội thoại (một luồng tiếng tại một thời điểm); schema đầy đủ cho từng kiểu lượt (có `type` rõ ràng, mọi câu đọc đều có tiếng Việt); luật sao theo **từng lượt / ngày**; xử lý hồ sơ thiếu; 3 trạng thái bong bóng của bé (gợi ý / đang nghe / đã thử nói); thời gian nghe; rút gọn nội dung 5 bài; chia T-a thành 4 mốc nghiệm thu; ghi rõ phần nào cần mạng.
@@ -76,7 +77,7 @@ intro → bong_speaking → child_turn (listening) → feedback → next_turn �
  🐰  [ Nice to meet you, Na! ]
 ```
 - Bên phải **không bao giờ hiện câu mẫu như thể là lời bé đã được nhận dạng**.
-- Câu Bông đọc sau khi bé chọn hình nằm ở **bong bóng của Bông** (câu mẫu của Bông).
+- ~~Câu Bông đọc sau khi bé chọn hình nằm ở bong bóng của Bông~~ → **0.59.0 (mục 16):** câu mẫu của bé chỉ ở bong bóng gợi ý bên phải ("Con nói:"), đọc bằng giọng bạn nhỏ.
 - Phụ đề 🔊: dùng bản tiếng Việt có sẵn trong bài cho **mọi câu được đọc** (câu hỏi, câu mẫu, câu đáp, lời khen, lời chào).
 
 ## 7. Dữ liệu
@@ -295,3 +296,36 @@ Sai thì từ chối cả bài, liệt kê lỗi theo "Lượt n" (unit test).
 | Âm thanh / ca biên cuộc gọi | 15.5 |
 | Ảnh gia đình | 15.6 + test |
 | Checklist QA 16 mục | Phần lớn đã có test tự động; những mục cần máy thật (iOS tắt tiếng, tiếng TV nền, mất mạng thật) thử tay |
+
+## 16. draft5 — Ai nói câu nào + hai giọng (đã duyệt 2026-10-28, đã làm 0.59.0)
+> Bố mẹ chơi thử: lúc bé chọn hình, câu mẫu của bé hiện trong bong bóng **của Bông** rồi bé nhắc lại → nghe như Bông tự nói về mình ("I like red!"), dễ nhầm ai nói. Các trò Đóng vai đã có hai giọng + ai nói người đó sáng (SPEC-roles); trò này chưa có.
+
+### 16.1 Hiện tại (0.58.3) — chỗ sai ngôi
+| Lúc | Hiện ở | Giọng | Vấn đề |
+|---|---|---|---|
+| Bé chạm hình / 👍👎 → câu mẫu của bé ("I like red!", "Yes, I do!") | **bong bóng Bông** (avatar Bông, chữ đậm) | Bông | nghe / nhìn như **Bông** thích màu đỏ; ngay sau đó bong bóng gợi ý của bé lặp lại cùng câu |
+| Bé im lặng → đọc mẫu câu của bé | bong bóng gợi ý của bé | Bông | cùng giọng Bông → bé không biết đó là câu **của mình** |
+| "Good try!" rồi đọc lại câu mẫu | — | Bông | như trên |
+| 🔊 trên bong bóng gợi ý của bé | — | Bông | như trên |
+| Lượt đổi vai ("Now you ask me!" → gợi ý "What's your name?") | gợi ý của bé | Bông | câu hỏi của bé đọc bằng giọng Bông |
+| 🔊 trên đầu màn (nghe lại câu hỏi) sau khi bé chọn hình | — | Bông | đọc lại **câu mẫu của bé** (bị coi là câu hỏi) thay vì câu hỏi của Bông |
+
+### 16.2 Đề xuất
+1. **Câu mẫu của bé chỉ ở bên phải (phía bé)**: bỏ bong bóng Bông đọc câu mẫu sau khi chọn hình. Bé chạm hình → hiện ngay bong bóng gợi ý của bé (mờ, viền đứt, 🔊, 🧒 — như mục 6, **vẫn không giả làm lời bé đã nhận dạng**) và **đọc mẫu bằng "giọng bạn nhỏ"** → chờ ~1 giây → nghe bé.
+2. **Hai giọng**: Bông = giọng chính. **"Giọng bạn nhỏ"** = mọi câu mẫu của bé (đọc mẫu sau khi chọn, đọc mẫu khi im lặng, sau "Good try!", 🔊 trên gợi ý, câu hỏi ở lượt đổi vai): giọng tiếng Anh thứ hai trên máy (như Đóng vai) **và cao giọng hơn** cho giống trẻ con; máy chỉ có một giọng → cùng giọng nhưng cao hơn rõ.
+3. **Ai nói người đó sáng** (như SPEC-roles): Bông nói → bong bóng Bông + Bông ở góc sáng (viền vàng); câu mẫu của bé đang đọc → bong bóng gợi ý của bé sáng viền xanh + 🔊 nhỏ; bé đang được nghe → 🎤 như cũ.
+4. Bong bóng gợi ý có nhãn nhỏ **"Con nói:"** phía trên câu mẫu (tiếng Việt cho bố mẹ, chữ nhỏ) để rõ đó là phần của bé.
+5. 🔊 trên đầu màn luôn đọc lại **câu hỏi của Bông** (không đổi thành câu mẫu của bé).
+6. Lời khen / "Good try!" / câu đáp vẫn là Bông (giọng chính, bong bóng trái). Cuộc gọi 📞: luồng y hệt (thanh gọi không đổi).
+7. **Giữ nguyên**: kiểu lượt, nội dung bài, cách ghi nhận nỗ lực nói, sao, thời gian nghe, hồ sơ, ảnh.
+
+### 16.3 Kiểm thử
+| ID | Trường hợp | Mong đợi |
+|---|---|---|
+| TV1 | Chọn màu → câu mẫu | **không** có bong bóng Bông chứa câu mẫu; bong bóng bé có câu mẫu + "Con nói:"; câu mẫu đọc bằng giọng thứ hai |
+| TV2 | Máy một giọng | câu mẫu của bé cao giọng hơn câu của Bông |
+| TV3 | Im lặng → đọc mẫu; "Good try!" → đọc lại | đọc mẫu giọng bạn nhỏ, "Good try!" giọng Bông |
+| TV4 | Lượt đổi vai | "Now you ask me!" giọng Bông; gợi ý câu hỏi của bé giọng bạn nhỏ |
+| TV5 | 🔊 trên đầu màn sau khi chọn hình | đọc câu hỏi của Bông |
+| TV6 | Đang đọc câu mẫu | bong bóng bé sáng viền xanh; Bông nói thì bong bóng Bông sáng |
+| TV7 | Cuộc gọi 📞 | như TV1–TV6 |

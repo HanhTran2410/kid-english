@@ -3265,3 +3265,11 @@ img.dr-admin-face { width: 100%; height: 100%; object-fit: contain; }
   .fr-resident { height: min(26%, calc((100vw - 24px) * 0.42)); z-index: 3; }
   .fr-hose { width: 84px; }
 }
+
+/* SPEC-talk mục 16: câu mẫu của bé có nhãn "Con nói:"; ai đang nói thì bong bóng người đó sáng — Bông viền vàng,
+   câu mẫu của bé (giọng bạn nhỏ) viền xanh. */
+.bubble-label { flex-basis: 100%; font-size: 0.55em; font-weight: 800; color: var(--ink-soft); line-height: 1; }
+.bubble.child.spoken .bubble-label, .bubble.child.listening .bubble-label { display: none; }
+.bubble.bong.talking .bubble-body { box-shadow: 0 0 0 3px var(--yellow), var(--shadow); }
+.bubble.child.talking .bubble-body { border-style: solid; border-color: #4dabf7; box-shadow: 0 0 0 3px rgba(77, 171, 247, 0.35); opacity: 1; }
+.talk-speaking { filter: drop-shadow(0 0 4px #ffd43b) drop-shadow(0 0 10px rgba(255, 212, 59, 0.9)); }

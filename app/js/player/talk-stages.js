@@ -1,6 +1,8 @@
 // "Nói chuyện với Bông" (SPEC-talk.md mục 4–6, 13): bong bóng chat và các kiểu lượt hội thoại.
 // Một luồng tiếng tại một thời điểm (dùng giọng đọc chung có hủy câu trước); mic chỉ mở trong lượt của bé
 // (teacher.hear); bong bóng của bé KHÔNG BAO GIỜ giả làm lời bé đã được nhận dạng.
+// SPEC-talk mục 16: câu mẫu của bé chỉ ở bên phải (bong bóng gợi ý "Con nói:") và đọc bằng "giọng bạn nhỏ"
+// (giọng thứ hai, cao giọng); Bông giọng chính. Ai đang nói thì bong bóng người đó sáng (`talking`).
 
 import { h } from '../ui.js';
 import { play } from '../speech/sfx.js';
@@ -14,6 +16,8 @@ export const WAIT_BEFORE_LISTEN_MS = 1000; // Bông nói xong, chờ ~1 giây r�
 export const LISTEN_MS = 6000; // nghe tối đa ~6 giây (cấu hình)
 export const ACTION_WAIT_MS = 8000; // lượt động tác: chờ bé chạm tối đa ~8 giây rồi Bông tự làm mẫu
 const MAX_BUBBLES = 6;
+/** "Giọng bạn nhỏ" cho câu mẫu của bé: giọng tiếng Anh thứ hai trên máy + cao giọng (máy một giọng: chỉ cao giọng). */
+export const CHILD_VOICE = { role: 'alt', pitch: 1.3 };
 const BURST = { clap: ['⭐', '✨'], hearts: ['❤️', '💕', '💖'], confetti: ['🎉', '🎊', '✨'] };
 
 /** Khung chat (giữ nguyên qua các lượt của bài). ctx.pictures: ảnh bố mẹ đã thêm (khóa → URL). */
@@ -66,11 +70,24 @@ async function bongSays(ctx, text, vi = '', { question = false, pic = null, mood
   setMood(ctx, mood);
   const bubble = addBubble(ctx, 'bong', [pic ? picture(ctx, pic) : null, h('span.bubble-text', { text })], '', mood);
   bubble.classList.add('talking');
+  const corner = ctx.teacher.bunny?.el;
+  corner?.classList.add('talk-speaking'); // Bông ở góc cũng sáng khi Bông nói
   try {
     if (question) await ctx.teacher.ask(text, { vi });
     else await ctx.teacher.say(text);
   } finally {
     bubble.classList.remove('talking');
+    corner?.classList.remove('talk-speaking');
+  }
+}
+
+/** Đọc câu mẫu của bé bằng giọng bạn nhỏ; bong bóng của bé sáng trong lúc đọc. */
+async function childModel(ctx, bubble, text) {
+  bubble?.classList.add('talking');
+  try {
+    await ctx.teacher.say(text, CHILD_VOICE);
+  } finally {
+    bubble?.classList.remove('talking');
   }
 }
 
@@ -95,13 +112,15 @@ const randomPraise = () => PRAISES[Math.floor(Math.random() * PRAISES.length)];
  * @returns {Promise<boolean>} bé đã thử nói
  */
 async function childTurn(ctx, o) {
-  const { app, teacher } = ctx;
+  const { app } = ctx;
   const hintBtn = h('button.hint-play', { type: 'button', 'aria-label': 'Nghe câu gợi ý', text: '🔊' });
-  const bubble = addBubble(ctx, 'child', [h('span.bubble-text', { text: o.hint }), hintBtn], '.hint');
+  const bubble = addBubble(ctx, 'child', [h('span.bubble-label', { text: 'Con nói:' }), h('span.bubble-text', { text: o.hint }), hintBtn], '.hint');
   hintBtn.addEventListener('click', () => {
-    if (!app.speaker.speaking && !app.listening) teacher.say(o.hint).catch(() => {});
+    if (!app.speaker.speaking && !app.listening) childModel(ctx, bubble, o.hint).catch(() => {});
   });
   try {
+    // Lượt chọn hình: đọc mẫu câu của bé ngay (giọng bạn nhỏ) rồi mới nghe.
+    if (o.model) await childModel(ctx, bubble, o.hint);
     return await childListen(ctx, o, bubble);
   } finally {
     if (bubble.classList.contains('listening')) setChildState(bubble, 'hint', o.hint);
@@ -119,7 +138,7 @@ async function childListen(ctx, o, bubble) {
   let result = await listen();
   if (result === RESULT.SILENT) {
     setChildState(bubble, 'hint', o.hint);
-    await teacher.say(o.hint);
+    await childModel(ctx, bubble, o.hint);
     result = await listen();
   }
   const spoke = result === RESULT.MATCH || result === RESULT.VOICE;
@@ -134,13 +153,13 @@ async function childListen(ctx, o, bubble) {
     } else {
       play('pop');
       await teacher.say('Good try!');
-      await teacher.say(o.hint);
+      await childModel(ctx, bubble, o.hint);
     }
     teacher.bunny.set('idle');
   } else {
     // Im lặng hai lần / không có mic: không ghi nhận, không chê — Bông đọc mẫu rồi đi tiếp nhẹ nhàng.
     setChildState(bubble, 'hint', o.hint);
-    if (result === RESULT.LISTEN_ONLY) await teacher.say(o.hint);
+    if (result === RESULT.LISTEN_ONLY) await childModel(ctx, bubble, o.hint);
   }
   return spoke;
 }
@@ -248,9 +267,9 @@ export async function runTalkTurn(ctx, turn) {
     const chosen = await pickOption(ctx, options);
     picked = chosen.id;
     teacher.endQuestion();
-    // Câu mẫu của lựa chọn là câu của BÔNG (không giả làm lời bé); rồi đến lượt bé nói theo; rồi Bông đáp theo lựa chọn.
-    await bongSays(ctx, chosen.answer, chosen.answerVi, { question: true });
-    await childTurn(ctx, { hint: chosen.answer, keywords: chosen.keywords ?? [], key, emoji });
+    // Câu mẫu của lựa chọn là câu CỦA BÉ: chỉ ở bong bóng gợi ý bên phải, đọc mẫu bằng giọng bạn nhỏ (SPEC-talk mục 16);
+    // rồi bé nói theo; rồi Bông đáp theo lựa chọn. 🔊 trên đầu màn vẫn đọc lại câu hỏi của Bông.
+    await childTurn(ctx, { hint: chosen.answer, keywords: chosen.keywords ?? [], key, emoji, model: true });
     teacher.endQuestion();
     // Bông "nhớ" hồ sơ: bé chọn đúng màu / món thích → "I know! You like red!"
     if (turn.rememberReply && chosen.id === turn.favorite) {
