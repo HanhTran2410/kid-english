@@ -258,9 +258,10 @@ export const WHERE_LINE = ['Where does it hurt? Touch it!', 'Bạn đau ở đâ
 export const HOW_HELP_LINE = ['How can we help?', 'Mình giúp bạn thế nào nhỉ?'];
 export const BETTER_LINE = ['I feel better! Thank you, doctor!', 'Tớ khỏe rồi! Cảm ơn bác sĩ!'];
 export const GREAT_LINE = ['I feel great! Thank you, doctor!', 'Tớ khỏe lắm rồi! Cảm ơn bác sĩ!'];
-export const GOOD_JOB_LINE = ['Great job, doctor!', 'Bác sĩ giỏi quá!'];
+// Chú bác sĩ (bên trái, SPEC-roles mục 9) khen bé — bé là bác sĩ nhí: gọi "little doctor" cho khỏi nhầm hai bác sĩ.
+export const GOOD_JOB_LINE = ['Great job, little doctor!', 'Bác sĩ nhí giỏi quá!'];
 export const BYE_LINE = ['Bye-bye!', 'Tạm biệt!'];
-export const ALL_BETTER_LINE = ["All better! You're a great doctor!", 'Các bạn khỏe hết rồi! Con là bác sĩ giỏi!'];
+export const ALL_BETTER_LINE = ["All better! You're a great little doctor!", 'Các bạn khỏe hết rồi! Con là bác sĩ nhí giỏi lắm!'];
 
 /** Chạm đúng chỗ đau: "Yes! My tummy." */
 export const yesTouchLine = (c) => {

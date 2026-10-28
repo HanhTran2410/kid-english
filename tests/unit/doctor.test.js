@@ -291,3 +291,9 @@ test('SPEC-doctor2 DR3 — ca mới mức 2–3: đo chiều cao / khám mắt t
   assert.equal(wrongEyeLine('cat', 'fish')[0], "That's the cat. Where's the fish?");
   assert.equal(needGlassesLine('Teddy')[0], 'Teddy needs glasses!');
 });
+
+test('chú bác sĩ khen bé là "little doctor" (không nhầm hai bác sĩ)', async () => {
+  const { GOOD_JOB_LINE, ALL_BETTER_LINE } = await import('../../app/js/doctor.js');
+  assert.deepEqual(GOOD_JOB_LINE, ['Great job, little doctor!', 'Bác sĩ nhí giỏi quá!']);
+  assert.match(ALL_BETTER_LINE[0], /little doctor/);
+});
