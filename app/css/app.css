@@ -3255,3 +3255,13 @@ img.dr-admin-face { width: 100%; height: 100%; object-fit: contain; }
 /* Ô đồ trong khay: ảnh món (bố mẹ thêm, kể cả ảnh dọc cao) luôn nằm gọn trong ô — hàng / cột lưới cố định theo ô. */
 .dr-item { grid-template: minmax(0, 1fr) / minmax(0, 1fr); overflow: hidden; }
 .dr-item > img { max-width: 100%; max-height: 100%; min-width: 0; min-height: 0; object-fit: contain; }
+/* Điện thoại màn dọc (iPhone cao): nhân vật tính cỡ theo cả bề ngang (không phình theo chiều cao sân khấu);
+   người bên trái (cô bán hàng, chú bác sĩ) to hơn cho cân hai bên. 100vw − 24px ≈ bề ngang sân khấu. */
+@media (max-width: 600px) {
+  .sh-play .sh-customer { height: min(48%, calc((100vw - 24px) * 0.7)); }
+  .sh-play .jb-host, .dr-play .jb-host { top: 3%; width: 30%; }
+  .dr-play .dr-patient { inset: 16% 9% 0; }
+  .fr-scene { height: min(50%, calc((100vw - 24px) * 0.78)); bottom: 30%; }
+  .fr-resident { height: min(26%, calc((100vw - 24px) * 0.42)); z-index: 3; }
+  .fr-hose { width: 84px; }
+}

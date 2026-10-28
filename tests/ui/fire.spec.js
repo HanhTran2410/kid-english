@@ -596,3 +596,15 @@ test.describe('điện thoại 360×640', () => {
     }
   });
 });
+
+test.describe('iPhone màn dọc 428×926', () => {
+  test.use({ viewport: { width: 428, height: 926 } });
+  test('nhà vừa bề ngang, bạn thú đứng cạnh nhà (không bị nhà che)', async ({ page }) => {
+    await openFire(page);
+    const stage = await page.locator('.fr-stage').boundingBox();
+    const scene = await page.locator('.fr-scene').boundingBox();
+    const pet = await page.locator('.fr-resident').boundingBox();
+    expect(scene.width).toBeLessThanOrEqual(stage.width * 0.85);
+    expect(pet.y).toBeGreaterThanOrEqual(scene.y + scene.height - pet.height * 0.15);
+  });
+});
