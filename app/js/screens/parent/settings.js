@@ -2,6 +2,7 @@
 
 import { h, toast, formatBytes } from '../../ui.js';
 import { englishVoices, isNoveltyVoice } from '../../speech/tts.js';
+import { CHILD_VOICE } from '../../player/talk-stages.js';
 import { pickMimeType } from '../../speech/recorder.js';
 import { LIMIT_OPTIONS } from '../../session.js';
 import { isStandalone, characterName } from '../child.js';
@@ -31,20 +32,34 @@ export function settingsView(app) {
   const name = h('input', { type: 'text', value: s.characterName, onchange: (e) => save('characterName', e.target.value.trim() || 'Bông') });
 
   const voices = englishVoices(app.speaker.voices);
+  const voiceText = (v) => `${v.name} (${v.lang})${isNoveltyVoice(v) ? ' — giọng hiệu ứng, không nên dùng' : ''}`;
+  // Giọng thứ hai đang dùng thật (máy chỉ có một giọng / chọn trùng giọng chính: giọng chính đọc cao giọng hơn).
+  const altNow = h('p.field-hint');
+  const showAlt = () => {
+    const sp = app.speaker;
+    altNow.textContent = sp.en2
+      ? `Đang dùng: ${sp.en2.name} (${sp.en2.lang}).`
+      : `Đang dùng: giọng chính${sp.en ? ` (${sp.en.name})` : ''}, đọc cao giọng hơn.`;
+  };
+  const reconfigure = () => {
+    app.speaker.configure({ voiceURI: s.voiceURI, voiceURI2: s.voiceURI2, rate: s.rate });
+    showAlt();
+  };
   const voiceSel = h('select', {
-    onchange: (e) => save('voiceURI', e.target.value || null, () => app.speaker.configure({ voiceURI: s.voiceURI, rate: s.rate })),
+    onchange: (e) => save('voiceURI', e.target.value || null, reconfigure),
   }, h('option', { value: '', text: 'Tự chọn (en-US)' }),
-  ...voices.map((v) => h('option', {
-    value: v.voiceURI,
-    text: `${v.name} (${v.lang})${isNoveltyVoice(v) ? ' — giọng hiệu ứng, không nên dùng' : ''}`,
-    selected: v.voiceURI === s.voiceURI,
-  })));
+  ...voices.map((v) => h('option', { value: v.voiceURI, text: voiceText(v), selected: v.voiceURI === s.voiceURI })));
+  const voice2Sel = h('select', {
+    onchange: (e) => save('voiceURI2', e.target.value || null, reconfigure),
+  }, h('option', { value: '', text: 'Tự chọn (khác giọng chính)' }),
+  ...voices.map((v) => h('option', { value: v.voiceURI, text: voiceText(v), selected: v.voiceURI === s.voiceURI2 })));
+  showAlt();
 
   const rateOut = h('output', { text: String(s.rate) });
   const rate = h('input', {
     type: 'range', min: '0.5', max: '1.2', step: '0.05', value: String(s.rate),
     oninput: (e) => { rateOut.textContent = e.target.value; },
-    onchange: (e) => save('rate', Number(e.target.value), () => app.speaker.configure({ voiceURI: s.voiceURI, rate: s.rate })),
+    onchange: (e) => save('rate', Number(e.target.value), reconfigure),
   });
 
   const check = (key, label, after) => h('label.check', {},
@@ -68,6 +83,18 @@ export function settingsView(app) {
       h('button.btn', {
         type: 'button', text: '🔊 Nghe thử', onclick: () => app.speaker.speak('Hello! Can you say cow?').catch(() => {}),
       }),
+      field('Giọng thứ hai', voice2Sel,
+        'Giọng của bạn thú, khách, bệnh nhân, học sinh… trong Đóng vai và câu mẫu của bé ở Nói chuyện với Bông. Nên chọn giọng khác giọng chính (khác giới càng dễ phân biệt). Chọn trùng giọng chính thì giọng chính đọc cao giọng hơn.'),
+      altNow,
+      h('div.row', {},
+        h('button.btn', {
+          type: 'button', text: '🔊 Nghe thử giọng thứ hai',
+          onclick: () => app.speaker.speak('Hello! Can I have a banana, please?', { role: 'alt' }).catch(() => {}),
+        }),
+        h('button.btn', {
+          type: 'button', text: '🔊 Giọng bạn nhỏ',
+          onclick: () => app.speaker.speak('I like apples!', CHILD_VOICE).catch(() => {}),
+        })),
       check('readVietnamese', 'Đọc nghĩa tiếng Việt khi bé gặp từ lần đầu trong bài'),
       app.speaker.hasVietnamese ? null : h('p.field-hint', { text: 'Máy chưa có giọng tiếng Việt nên app sẽ bỏ qua phần đọc nghĩa.' })),
     section('Nghe và ghi âm',
@@ -240,6 +267,7 @@ function diagnostics(app) {
   add('Mở từ Màn hình chính', isStandalone() ? 'Có' : 'Không (đang mở trong trình duyệt)');
   add('Giữ màn hình sáng', 'wakeLock' in navigator ? 'Có hỗ trợ' : 'Không hỗ trợ — hãy chỉnh Tự động khóa lâu hơn');
   add('Giọng tiếng Anh đang dùng', app.speaker.en ? `${app.speaker.en.name} (${app.speaker.en.lang})` : 'Mặc định của máy');
+  add('Giọng thứ hai', app.speaker.en2 ? `${app.speaker.en2.name} (${app.speaker.en2.lang})` : 'Giọng chính, đọc cao giọng hơn');
   add('Giọng tiếng Việt', app.speaker.vi ? `${app.speaker.vi.name} (${app.speaker.vi.lang})` : 'Không có');
 
   const storage = h('dd', { text: '…' });

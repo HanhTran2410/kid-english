@@ -72,9 +72,12 @@ export const ALT_PITCH = 1.35;
 /**
  * Giọng thứ hai (bạn thú, khách, cô giáo, học sinh… trong trò Đóng vai): giọng tiếng Anh tốt khác giọng chính,
  * ưu tiên khác giới với giọng chính; không có giọng nào khác thì null (khi đó đổi cao độ).
+ * `preferredURI`: giọng bố mẹ chọn ở Cài đặt (null = tự chọn); trùng giọng chính thì null (đọc cao giọng hơn).
  */
-export function pickAltVoice(voices, main) {
+export function pickAltVoice(voices, main, preferredURI = null) {
   if (!main) return null;
+  const chosen = preferredURI ? voices.find((v) => v.voiceURI === preferredURI && /^en/i.test(v.lang)) : null;
+  if (chosen) return chosen.voiceURI === main.voiceURI ? null : chosen;
   const others = englishVoices(voices).filter((v) => v.voiceURI !== main.voiceURI && voiceScore(v) >= 0);
   const g = voiceGender(main);
   const opposite = g ? others.filter((v) => { const x = voiceGender(v); return x && x !== g; }) : [];
@@ -102,21 +105,24 @@ export class Speaker {
     return Boolean(synth());
   }
 
-  async init({ voiceURI = null, rate = 0.8 } = {}) {
+  async init({ voiceURI = null, voiceURI2 = null, rate = 0.8 } = {}) {
     this.voiceURI = voiceURI;
+    this.voiceURI2 = voiceURI2;
     this.voices = await loadVoices();
-    this.configure({ voiceURI, rate });
+    this.configure({ voiceURI, voiceURI2, rate });
     // iOS có lúc trả danh sách giọng muộn (hoặc đổi sau khi tải giọng mới): cập nhật lại khi có thay đổi.
     synth()?.addEventListener?.('voiceschanged', () => {
       this.voices = synth().getVoices();
-      this.configure({ voiceURI: this.voiceURI, rate: this.rate });
+      this.configure({ voiceURI: this.voiceURI, voiceURI2: this.voiceURI2, rate: this.rate });
     });
   }
 
-  configure({ voiceURI = null, rate = this.rate } = {}) {
+  /** `voiceURI2`: giọng thứ hai bố mẹ chọn (null = tự chọn). */
+  configure({ voiceURI = null, voiceURI2 = null, rate = this.rate } = {}) {
     this.voiceURI = voiceURI;
+    this.voiceURI2 = voiceURI2;
     this.en = pickVoice(this.voices, 'en-US', voiceURI);
-    this.en2 = pickAltVoice(this.voices, this.en);
+    this.en2 = pickAltVoice(this.voices, this.en, voiceURI2);
     this.vi = pickVoice(this.voices, 'vi-VN');
     this.rate = rate;
   }

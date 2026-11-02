@@ -92,7 +92,7 @@ async function boot() {
   await upgradeTalkLessons(app).catch(() => {});
   // Chuyển ảnh/ghi âm cũ (lưu dạng Blob) sang dạng Safari đọc lại ổn định hơn.
   migrateMedia(app.db).catch((err) => console.warn('migrateMedia', err));
-  await app.speaker.init({ voiceURI: app.settings.voiceURI, rate: app.settings.rate });
+  await app.speaker.init({ voiceURI: app.settings.voiceURI, voiceURI2: app.settings.voiceURI2, rate: app.settings.rate });
   app.recognizer.setAllowed(app.settings.useRecognition);
   app.startSessionClock();
 

@@ -101,7 +101,7 @@ export function backupView(app) {
       }
       await applyBackup(app.db, payload, mode);
       app.settings = await loadSettings(app.db);
-      app.speaker.configure({ voiceURI: app.settings.voiceURI, rate: app.settings.rate });
+      app.speaker.configure({ voiceURI: app.settings.voiceURI, voiceURI2: app.settings.voiceURI2, rate: app.settings.rate });
       app.recognizer.setAllowed(app.settings.useRecognition);
       toast('Đã khôi phục.');
       goParent(app);

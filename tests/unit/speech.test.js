@@ -107,6 +107,11 @@ test('giọng thứ hai (Đóng vai): khác giọng chính, ưu tiên khác gi�
   assert.equal(pickAltVoice([samantha, ava], samantha).name, 'Ava (Enhanced)');
   assert.equal(pickAltVoice([samantha, v('Linh', 'vi-VN')], samantha), null);
   assert.equal(pickAltVoice([samantha], null), null);
+  // Bố mẹ chọn giọng thứ hai ở Cài đặt: dùng đúng giọng đó; trùng giọng chính → null (cao giọng); máy không còn → tự chọn.
+  assert.equal(pickAltVoice([samantha, ava, daniel], samantha, ava.voiceURI).name, 'Ava (Enhanced)');
+  assert.equal(pickAltVoice([samantha, ava, daniel], samantha, samantha.voiceURI), null);
+  assert.equal(pickAltVoice([samantha, ava, daniel], samantha, 'gone').name, 'Daniel');
+  assert.equal(pickAltVoice([samantha, v('Linh', 'vi-VN'), daniel], samantha, 'Linh-vi-VN').name, 'Daniel');
 });
 
 test('speak role "alt": dùng giọng thứ hai; máy chỉ có một giọng thì nói cao giọng hơn', async () => {

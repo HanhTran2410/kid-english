@@ -3,6 +3,7 @@
 export const DEFAULT_SETTINGS = {
   characterName: 'Bông',
   voiceURI: null, // null = tự chọn giọng en-US
+  voiceURI2: null, // giọng thứ hai (bạn thú, khách, học sinh… — SPEC-roles); null = tự chọn
   readVietnamese: false, // mặc định chỉ đọc tiếng Anh; bố mẹ bật lại được trong Cài đặt
   rate: 0.8,
   recordVoice: true,
