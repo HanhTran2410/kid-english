@@ -535,7 +535,7 @@ function kindLabel(lesson) {
   if (isTalkLesson(lesson)) return '🗨️ Hội thoại';
   if (isJollyLesson(lesson)) return '🐍 Âm & ghép vần';
   if (isPhonicsLesson(lesson)) return '🔤 Chữ cái';
-  if (isNumberLesson(lesson)) return lesson.mode === 'shapes' ? '🔢 Số đếm (Đếm hình)' : lesson.mode === 'game' ? '🔢 Số đếm (trò chơi)' : '🔢 Số đếm';
+  if (isNumberLesson(lesson)) return lesson.mode === 'shapes' ? `🔢 Số đếm (${lesson.set === 2 ? 'Đếm hình mới' : 'Đếm hình'})` : lesson.mode === 'game' ? '🔢 Số đếm (trò chơi)' : '🔢 Số đếm';
   return isPhraseLesson(lesson) ? '💬 Câu nói' : '📚 Từ vựng';
 }
 

@@ -2257,9 +2257,19 @@ details > summary { cursor: pointer; font-weight: 800; padding: 6px 0; }
   .sc-pic { width: min(100%, 50vh); }
   .sc-side { grid-auto-flow: column; align-items: center; }
 }
+/* Đếm hình mới (SPEC-shapes2.md): chấm góc trên thẻ mẫu, hình dễ nhầm nháy cùng thẻ mẫu. */
+.sc-sample .sc-corner { fill: #fff; stroke: #2b2b2b; stroke-width: 2.5; }
+.sc-sample .sc-corner.lit { fill: #f59f00; }
+.sc-pic .sc-compare { animation: sc-compare 0.45s ease-in-out 2 alternate; }
+.sc-target.sc-compare { animation: sc-compare-card 0.45s ease-in-out 2 alternate; }
+@keyframes sc-compare { to { stroke: #4dabf7; stroke-width: 7; } }
+@keyframes sc-compare-card { to { box-shadow: 0 0 0 5px #4dabf7, var(--shadow); } }
 @media (prefers-reduced-motion: reduce) {
-  .sc-pic .sc-hint, .sc-pic .sc-flash, .sc-pic .bounce, .sc-pic .shake, .sc-target.bounce { animation: none; }
+  .sc-pic .sc-hint, .sc-pic .sc-flash, .sc-pic .bounce, .sc-pic .shake, .sc-target.bounce,
+  .sc-pic .sc-compare, .sc-target.sc-compare { animation: none; }
   .sc-pic .sc-hint { stroke: #ffd43b; stroke-width: 8; }
+  .sc-pic .sc-compare { stroke: #4dabf7; stroke-width: 7; }
+  .sc-target.sc-compare { box-shadow: 0 0 0 5px #4dabf7, var(--shadow); }
 }
 
 /* ---------- Tìm đồ còn thiếu (SPEC-missing.md) ---------- */

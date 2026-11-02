@@ -87,6 +87,7 @@ export function settingsView(app) {
     hideSection(app, save, check),
     puzzleSection(app, save, check),
     shapeSection(app, save),
+    shape2Section(app, save),
     missingSection(app, save),
     soundsSection(app, save),
     bubblesSection(app, save),
@@ -151,6 +152,21 @@ function shapeSection(app, save) {
   }, ...[['auto', `Tự lên mức (đang ở mức ${state.level})`], ['1', 'Mức 1 — tròn, vuông, tam giác; đếm đến 5'], ['2', 'Mức 2 — thêm chữ nhật, sao, tim; đến 10 + chọn số']]
     .map(([value, text]) => h('option', { value, text, selected: value === String(state.lock ?? 'auto') })));
   return section('Đếm hình', field('Mức chơi Đếm hình', level, 'Tự lên mức 2 sau 3 lượt chơi xong ở mức 1.'));
+}
+
+/** Đếm hình mới (SPEC-shapes2 mục 4.4, 5): khóa mức; mức riêng, không dính với Đếm hình. */
+function shape2Section(app, save) {
+  const state = cleanShapeState(app.settings.shapeCount2);
+  const level = h('select', {
+    onchange: (e) => {
+      const lock = e.target.value === 'auto' ? null : Number(e.target.value);
+      save('shapeCount2', { ...cleanShapeState(app.settings.shapeCount2), lock, ...(lock ? { level: lock } : {}) });
+    },
+  }, ...[['auto', `Tự lên mức (đang ở mức ${state.level})`], ['1', 'Mức 1 — bầu dục, thoi, thang, bình hành; đếm đến 5'],
+    ['2', 'Mức 2 — thêm ngũ / lục / bát giác, nửa tròn; đến 10 + chọn số']]
+    .map(([value, text]) => h('option', { value, text, selected: value === String(state.lock ?? 'auto') })));
+  return section('Đếm hình mới', field('Mức chơi Đếm hình mới', level,
+    'Tự lên mức 2 sau 3 lượt chơi xong ở mức 1. Trò này gọi mỗi hình bằng tên riêng nhất: hình vuông là square, không gọi là diamond hay parallelogram.'));
 }
 
 /** Tìm đồ còn thiếu (SPEC-missing mục 5): khóa mức. */

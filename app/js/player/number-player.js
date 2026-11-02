@@ -45,6 +45,9 @@ export function numberLessonScreen(app, { lessonId, start = 'begin', continueDir
     }
     const shapes = lesson.mode === 'shapes';
     const game = lesson.mode === 'game' || shapes;
+    // Đếm hình (set 1) / Đếm hình mới (set 2, SPEC-shapes2): mỗi trò có mức riêng.
+    const shapeSet = lesson.set === 2 ? 2 : 1;
+    const shapeKey = shapeSet === 2 ? 'shapeCount2' : 'shapeCount';
     const teacher = new Teacher(app, { signal, bunny: layout.bunny, stage: layout.stage, replayBtn: layout.replayBtn });
     const ctx = {
       app, teacher, lesson, signal,
@@ -85,14 +88,18 @@ export function numberLessonScreen(app, { lessonId, start = 'begin', continueDir
       ctx.allowHigh = [...mastery].some(([n, m]) => n > 5 && m > 0);
       if (shapes) {
         // Đếm hình (SPEC-shapes): mức theo cài đặt; câu khởi động "Find a …!" ở mức 1 với loại hình bé chưa gặp.
-        const st = cleanShapeState(app.settings.shapeCount);
+        const st = cleanShapeState(app.settings[shapeKey]);
         ctx.shapeLevel = st.level;
         ctx.shapeSeen = new Set(st.seen);
+        ctx.shapeIntroduced = new Set(); // Đếm hình mới: loại hình đã giới thiệu đầy đủ trong lượt
         const snap = shapeSnapshot;
         const fresh = continueDirectly && snap?.lessonId === lesson.id && Date.now() - snap.savedAt < SNAPSHOT_MS;
-        rounds = fresh ? snap.rounds : buildShapeQuestions(st.level, mastery, { rounds: lesson.rounds ?? 5 });
+        rounds = fresh ? snap.rounds : buildShapeQuestions(st.level, mastery, { rounds: lesson.rounds ?? 5, set: shapeSet });
         ctx.shapeStart = fresh ? snap.index : 0;
-        if (fresh) ctx.shapeSeen = new Set([...ctx.shapeSeen, ...snap.seen]);
+        if (fresh) {
+          ctx.shapeSeen = new Set([...ctx.shapeSeen, ...snap.seen]);
+          ctx.shapeIntroduced = new Set(snap.introduced ?? []);
+        }
       } else {
         rounds = buildGameRounds([...byN.keys()], mastery, { rounds: lesson.rounds });
       }
@@ -116,11 +123,15 @@ export function numberLessonScreen(app, { lessonId, start = 'begin', continueDir
       await runSkippable(ctx, signal, () => {
         if (shapes) {
           const q = rounds[step.index];
-          shapeSnapshot = { lessonId: lesson.id, rounds, index: step.index, seen: [...ctx.shapeSeen], savedAt: Date.now() };
+          shapeSnapshot = {
+            lessonId: lesson.id, rounds, index: step.index, seen: [...ctx.shapeSeen], introduced: [...ctx.shapeIntroduced], savedAt: Date.now(),
+          };
           const prev = rounds[step.index - 1];
           const warmup = ctx.shapeLevel === 1 && !ctx.shapeSeen.has(q.kind);
+          const firstIntro = !ctx.shapeIntroduced.has(q.kind);
           ctx.shapeSeen.add(q.kind);
-          return runShapeQuestion(ctx, q, { level: ctx.shapeLevel, look: prev?.picture !== q.picture, warmup });
+          ctx.shapeIntroduced.add(q.kind);
+          return runShapeQuestion(ctx, q, { level: ctx.shapeLevel, look: prev?.picture !== q.picture, warmup, set: shapeSet, firstIntro });
         }
         if (game) {
           const round = rounds[step.index];
@@ -138,8 +149,8 @@ export function numberLessonScreen(app, { lessonId, start = 'begin', continueDir
     if (shapes) {
       shapeSnapshot = null;
       // Đếm số lượt để tự lên mức (áp dụng từ lượt sau); nhớ loại hình bé đã gặp (không cần khởi động lại).
-      const st = afterShapeRound(cleanShapeState(app.settings.shapeCount));
-      await app.setSetting('shapeCount', { ...st, seen: [...ctx.shapeSeen] }).catch(() => {});
+      const st = afterShapeRound(cleanShapeState(app.settings[shapeKey]));
+      await app.setSetting(shapeKey, { ...st, seen: [...ctx.shapeSeen] }).catch(() => {});
     }
     lesson.timesCompleted = (lesson.timesCompleted ?? 0) + 1;
     lesson.resume = null;

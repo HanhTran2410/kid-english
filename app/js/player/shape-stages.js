@@ -1,5 +1,7 @@
 // Một câu của trò Đếm hình (SPEC-shapes mục 3): tranh ghép từ hình học, Bông hỏi "How many triangles?", bé chạm từng
 // hình đúng loại để đếm (huy hiệu số, Bông đếm), chạm hình khác thì Bông nói tên hình đó. Mức 2: đếm xong chọn thẻ số.
+// Đếm hình mới (SPEC-shapes2 mục 3): giới thiệu hình mỗi câu (lần đầu trong lượt: câu nhận dạng / đếm góc trên thẻ mẫu),
+// chạm hình dễ nhầm thì hình đó và thẻ mẫu nháy cùng lúc, nhầm 3 hình khác nhau thì nhắc một lần.
 
 import { h } from '../ui.js';
 import { play } from '../speech/sfx.js';
@@ -9,7 +11,7 @@ import { markPracticed, markDid } from './track.js';
 import { numeral, NUMBER_COLORS, shake, recordPick, waitChoice } from './number-stages.js';
 import {
   KINDS, PICTURE_BY_ID, pictureSvg, sampleSvg, lookLine, thisIsLine, findOneLine, foundOneLine, howManyLine, otherShapeLine,
-  againLine, findAllLine, totalLine, countWord,
+  againLine, findAllLine, totalLine, countWord, idLine, cornerLine, remindLine, isConfusable,
 } from '../shapes.js';
 
 const HINT_MS = 10_000; // 10 giây không chạm → một hình chưa đếm lấp lánh
@@ -36,10 +38,11 @@ function badge(svg, shapeEl, n) {
 
 /**
  * @param {{ picture: string, kind: string, n: number }} q
- * @param {{ level: number, look: boolean, warmup: boolean }} opts look: nói "Look! A boat!" (câu đầu của tranh);
- *   warmup: bé chưa gặp loại hình này → "This is a triangle!" + "Find a triangle!" trước khi đếm
+ * @param {{ level: number, look: boolean, warmup: boolean, set?: number, firstIntro?: boolean }} opts look: nói "Look! A boat!"
+ *   (câu đầu của tranh); warmup: bé chưa gặp loại hình này → "Find a triangle!" trước khi đếm; set 2 (Đếm hình mới): mỗi câu
+ *   "This is a …!", `firstIntro` (lần đầu trong lượt) thì thêm câu nhận dạng / đếm góc
  */
-export async function runShapeQuestion(ctx, q, { level = 1, look = true, warmup = false } = {}) {
+export async function runShapeQuestion(ctx, q, { level = 1, look = true, warmup = false, set = 1, firstIntro = false } = {}) {
   const { app, teacher } = ctx;
   const pic = PICTURE_BY_ID.get(q.picture);
   const kind = KINDS[q.kind];
@@ -64,15 +67,18 @@ export async function runShapeQuestion(ctx, q, { level = 1, look = true, warmup 
   await markPracticed(app, kind.en, kind.emoji); // "đã gặp" tên hình
 
   if (look) await teacher.say(lookLine(pic)[0]);
+  if (set === 2) await introduce(ctx, target, q.kind, { first: firstIntro, bounce });
   if (warmup) {
-    bounce(target);
-    await teacher.say(thisIsLine(q.kind)[0]);
+    if (set !== 2) {
+      bounce(target);
+      await teacher.say(thisIsLine(q.kind)[0]);
+    }
     await findOne(ctx, svg, q.kind, shapeById);
   }
 
   // ---------- Đếm ----------
   const counted = new Map(); // id → số
-  const done = waitCount(ctx, { svg, kind: q.kind, targets, counted, counter, shapeById, bounce });
+  const done = waitCount(ctx, { svg, kind: q.kind, targets, counted, counter, shapeById, bounce, target, distinct: set === 2 });
   done.catch(() => {});
   await teacher.ask(howManyLine(q.kind)[0], { vi: howManyLine(q.kind)[1] }).catch((err) => {
     if (ctx.signal.aborted) throw err;
@@ -132,6 +138,38 @@ export async function runShapeQuestion(ctx, q, { level = 1, look = true, warmup 
   await teacher.pause(600);
 }
 
+/**
+ * Đếm hình mới: "This is a hexagon!"; lần đầu trong lượt thêm câu nhận dạng ("It leans over!"), hoặc với hình nhiều góc:
+ * các góc trên thẻ mẫu sáng lần lượt, Bông đếm "One! Two! …", rồi "A hexagon has six corners!". Bé chưa chạm tranh được.
+ */
+async function introduce(ctx, target, kind, { first, bounce }) {
+  const { teacher } = ctx;
+  bounce(target);
+  await teacher.say(thisIsLine(kind)[0]);
+  if (!first) return;
+  const corners = [...target.querySelectorAll('.sc-corner')];
+  if (!corners.length) {
+    const line = idLine(kind);
+    if (line) await teacher.say(line[0]);
+    return;
+  }
+  for (const [i, dot] of corners.entries()) {
+    dot.classList.add('lit');
+    await teacher.say(countWord(i + 1));
+  }
+  await teacher.say(cornerLine(kind)[0]);
+}
+
+/** Thẻ mẫu và hình dễ nhầm vừa chạm nháy cùng lúc một nhịp (giảm chuyển động: viền đậm đứng yên). */
+function compare(el, target) {
+  el.ownerSVGElement?.querySelectorAll('.sc-compare').forEach((x) => x.classList.remove('sc-compare'));
+  for (const x of [el, target]) {
+    x.classList.remove('sc-compare');
+    void x.getBoundingClientRect();
+    x.classList.add('sc-compare');
+  }
+}
+
 /** Khởi động: "Find a triangle!" — chạm một hình đúng loại là xong (không đếm). */
 function findOne(ctx, svg, kind, shapeById) {
   const { teacher, signal } = ctx;
@@ -170,12 +208,16 @@ function findOne(ctx, svg, kind, shapeById) {
 /**
  * Chờ bé chạm đếm hết các hình đúng loại. Mỗi hình chỉ đếm một lần (chạm lại thì đọc lại số của nó);
  * chạm hình khác loại thì nói tên hình đó; 10 giây không chạm thì gợi ý (tối đa 2 lần).
+ * `distinct` (Đếm hình mới): lần nhầm = số hình sai KHÁC NHAU; hình dễ nhầm chạm lần đầu thì nháy cùng thẻ mẫu;
+ * đủ 3 hình sai thì nhắc một lần ("Find the parallelograms! It leans over!").
  */
-function waitCount(ctx, { svg, kind, targets, counted, counter, shapeById, bounce }) {
+function waitCount(ctx, { svg, kind, targets, counted, counter, shapeById, bounce, target, distinct = false }) {
   const { teacher, signal } = ctx;
   return new Promise((resolve, reject) => {
     let hints = 0;
     let wrong = 0;
+    const wrongIds = new Set();
+    let reminded = false;
     let timer = null;
     const cleanup = () => {
       clearTimeout(timer);
@@ -207,6 +249,20 @@ function waitCount(ctx, { svg, kind, targets, counted, counter, shapeById, bounc
       const id = hit.dataset.shape;
       const el = shapeById(id);
       arm();
+      if (hit.dataset.kind !== kind && distinct) {
+        shake(el);
+        const first = !wrongIds.has(id);
+        wrongIds.add(id);
+        if (first && isConfusable(kind, hit.dataset.kind)) compare(el, target);
+        if (first && !reminded && wrongIds.size >= WRONG_TO_REMIND) {
+          reminded = true;
+          bounce(target);
+          teacher.say(remindLine(kind)[0]).catch(() => {});
+          return;
+        }
+        teacher.say(otherShapeLine(hit.dataset.kind)[0]).catch(() => {});
+        return;
+      }
       if (hit.dataset.kind !== kind) {
         shake(el);
         wrong += 1;

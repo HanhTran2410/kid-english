@@ -210,7 +210,8 @@ test('trò Chọn số 11–20: thẻ riêng, chỉ hỏi số 11–20, có Hoan
   await startApp(page);
   await page.getByRole('button', { name: 'Số đếm' }).click();
   await expect(page.locator('.lesson-card').nth(3)).toHaveAttribute('aria-label', 'Number game 11–20');
-  await expect(page.locator('.lesson-card').last()).toHaveAttribute('aria-label', 'Count the shapes');
+  await expect(page.locator('.lesson-card').nth(4)).toHaveAttribute('aria-label', 'Count the shapes');
+  await expect(page.locator('.lesson-card').last()).toHaveAttribute('aria-label', 'More shapes');
   await page.getByRole('button', { name: 'Number game 11–20', exact: true }).click();
   await expect(page.locator('.numeral-choice')).toHaveCount(3);
   for (const t of await page.locator('.numeral-choice').allTextContents()) expect(Number(t)).toBeGreaterThanOrEqual(11);

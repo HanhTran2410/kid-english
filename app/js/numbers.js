@@ -29,6 +29,9 @@ export const NUMBER_ITEMS = [
 /** Bài Đếm hình: mỗi số một hình học (hàng emoji trên thẻ bài là 🔺⚪🟥⭐). */
 const SHAPE_ITEMS = ['🔺', '⚪', '🟥', '⭐', '❤️', '🔺', '⚪', '🟥', '⭐', '❤️']
   .map((emoji, i) => ({ n: i + 1, item: 'shape', items: 'shapes', emoji }));
+/** Bài Đếm hình mới (SPEC-shapes2): hàng emoji trên thẻ bài là 🔷🥚🛑🔶. */
+const SHAPE_ITEMS_2 = ['🔷', '🥚', '🛑', '🔶', '🔷', '🥚', '🛑', '🔶', '🔷', '🥚']
+  .map((emoji, i) => ({ n: i + 1, item: 'shape', items: 'shapes', emoji }));
 
 export const TEEN_ITEMS = [
   { n: 11, item: 'bee', items: 'bees', emoji: '🐝' },
@@ -56,6 +59,8 @@ export function builtInNumberLessons() {
     { version: 2, kind: NUMBER_KIND, mode: 'game', builtin: 'game-11-20', title: 'Number game 11–20', titleVi: 'Chọn số 11–20', topic: 'Numbers', emoji: '🎯', numbers: copy(TEEN_ITEMS), rounds: GAME_ROUNDS },
     // Đếm hình (SPEC-shapes): số 1–10 dùng cho tiến độ; hàng emoji trên thẻ là các hình học.
     { version: 2, kind: NUMBER_KIND, mode: 'shapes', builtin: 'shapes-1', title: 'Count the shapes', titleVi: 'Đếm hình', topic: 'Numbers', emoji: '🔺', numbers: SHAPE_ITEMS.map((x) => ({ ...x })), rounds: 5 },
+    // Đếm hình mới (SPEC-shapes2): cùng trình chơi, bộ hình mới (set 2), mức riêng.
+    { version: 2, kind: NUMBER_KIND, mode: 'shapes', set: 2, builtin: 'shapes-2', title: 'More shapes', titleVi: 'Đếm hình mới', topic: 'Numbers', emoji: '🔷', numbers: copy(SHAPE_ITEMS_2), rounds: 5 },
   ];
 }
 
