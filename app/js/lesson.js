@@ -4,6 +4,7 @@
 import { cleanSound, MAX_SOUND_WORDS, MAX_SOUND_CHARS } from './word-play.js';
 import { normalizeWord, wordCount } from './text.js';
 import { validatePhraseLesson } from './phrase.js';
+import { validatePatternLesson, PATTERN_KIND } from './patterns.js';
 
 export const LIMITS = {
   minWords: 2,
@@ -275,6 +276,10 @@ export function parseLesson(text, options) {
   const extracted = extractJson(text);
   if (!extracted.ok) return { ok: false, lesson: null, errors: [extracted.error], warnings: [] };
   const raw = extracted.value;
+  // Bài mẫu câu (SPEC-patterns): có khung câu + danh sách từ điền vào.
+  if (raw && typeof raw === 'object' && (raw.kind === PATTERN_KIND || (typeof raw.frame === 'string' && Array.isArray(raw.slots ?? raw.words) && !raw.conversation))) {
+    return validatePatternLesson(raw);
+  }
   if (raw && typeof raw === 'object' && (raw.kind === 'phrases' || (Array.isArray(raw.phrases) && !Array.isArray(raw.words)))) {
     return validatePhraseLesson(raw);
   }

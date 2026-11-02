@@ -1,7 +1,7 @@
 // Ghi tiến độ và ghi âm trong lúc bé học. Lỗi lưu (ví dụ bộ nhớ đầy) không được làm hỏng bài học.
 
 import { updateProgress, addRecording, isQuotaError } from '../db.js';
-import { onPracticed, onSpoke, onPickedCorrectFirstTry, onPickedWrong, onDid, onAttempt } from '../progress.js';
+import { onPracticed, onSpoke, onPickedCorrectFirstTry, onPickedWrong, onDid, onAttempt, onSentence } from '../progress.js';
 import { RESULT } from '../speech/listen.js';
 
 async function safely(app, fn) {
@@ -34,6 +34,10 @@ export const markPickedWrong = (app, word, emoji) =>
 
 export const saveRecording = (app, lessonId, word, recording) =>
   safely(app, () => addRecording(app.db, { lessonId, word, ...recording }));
+
+/** Bé nói câu mẫu (SPEC-patterns mục 5): chỉ "cả câu" mới +1 sao; mức khác chỉ ghi lần luyện. */
+export const markSentence = (app, key, emoji, level) =>
+  safely(app, () => updateProgress(app.db, key, emoji, (p) => onSentence(p, level)));
 
 /** Bé làm theo câu và chạm ✔ (SPEC-v1.0 mục 8). */
 export const markDid = (app, key, emoji) =>

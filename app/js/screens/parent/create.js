@@ -1,8 +1,10 @@
 // Tạo bài: form → Copy prompt → Dán bài → Xem trước → Lưu (SPEC mục 3).
 
 import { h, toast, copyText } from '../../ui.js';
-import { buildLessonPrompt, DURATIONS, MAX_AVOID_WORDS, buildPhraseLessonPrompt, SITUATIONS, PHRASE_COUNTS, splitAvoidWords, MANY_TOPIC_WORDS, isSubtopic } from '../../prompts.js';
+import { buildLessonPrompt, DURATIONS, MAX_AVOID_WORDS, buildPhraseLessonPrompt, SITUATIONS, PHRASE_COUNTS, splitAvoidWords, MANY_TOPIC_WORDS, isSubtopic,
+  buildPatternLessonPrompt, PATTERN_FRAMES, PATTERN_COUNTS } from '../../prompts.js';
 import { isPhraseLesson, phraseOverlap } from '../../phrase.js';
+import { isPatternLesson, sentenceOf, sentenceViOf } from '../../patterns.js';
 import { createScene } from '../../player/scene.js';
 import { pickWordsForPrompt, markUsedInPrompt, isUnknown, KNOWN_MASTERY, wordRecords } from '../../progress.js';
 import { parseLesson, createLessonRecord, overlapWithLessons, uniqueTitle, baseTitle, nextLessonNo, topicOf } from '../../lesson.js';
@@ -195,7 +197,8 @@ export function pasteView(app) {
       parsed.warnings.push(`Đã có bài tên "${parsed.lesson.title}" — bài này sẽ được lưu là "${finalTitle}".`);
     }
     const phrases = isPhraseLesson(parsed.lesson);
-    const overlap = phrases ? [] : overlapWithLessons(parsed.lesson, lessons, app.settings.lastPromptReviewWords ?? []);
+    const patterns = isPatternLesson(parsed.lesson);
+    const overlap = phrases || patterns ? [] : overlapWithLessons(parsed.lesson, lessons, app.settings.lastPromptReviewWords ?? []);
     const repeated = phrases ? phraseOverlap(parsed.lesson, lessons) : [];
     if (repeated.length) {
       parsed.warnings.push(`${repeated.length}/${parsed.lesson.phrases.length} câu đã có ở bài khác: `
@@ -221,11 +224,11 @@ export function pasteView(app) {
         await markNewLesson(app, record.id);
         await app.setSetting('lastPromptReviewWords', []);
         await app.setSetting('lastPromptTopic', '');
-        toast('Đã lưu bài. Bé đã thấy bài này trong 📚.');
+        toast(`Đã lưu bài. Bé đã thấy bài này trong ${patterns ? '🌸 Mẫu câu' : phrases ? '💬 Câu nói' : '📚 Từ vựng'}.`);
         goParent(app, 'lesson', { lessonId: record.id });
       },
     });
-    result.append(phrases ? phrasePreview(app, parsed.lesson) : lessonPreview(app, parsed.lesson), h('div.actions.sticky', {}, save));
+    result.append(patterns ? patternPreview(app, parsed.lesson) : phrases ? phrasePreview(app, parsed.lesson) : lessonPreview(app, parsed.lesson), h('div.actions.sticky', {}, save));
   };
 
   body.append(
@@ -313,5 +316,74 @@ export function phraseCreateView(app) {
 
   body.append(
     notice('info', 'Bài câu dạy bé câu ngắn dùng hằng ngày (Open the door, Wash your face…). Bé nghe, xem Bông làm, làm theo rồi nói theo.'),
+    form, result);
+}
+
+/** Xem trước bài mẫu câu: khung + từng câu đầy đủ (🔊), câu tiếng Việt. */
+export function patternPreview(app, lesson) {
+  return h('div.preview', {},
+    h('h2.preview-title', {}, `${lesson.emoji} ${lesson.title}`, lesson.titleVi ? h('span.muted', { text: ` — ${lesson.titleVi}` }) : null),
+    section('Khung câu', h('p', {}, h('b', { text: lesson.frame }), lesson.frameVi ? h('span.muted', { text: ` — ${lesson.frameVi}` }) : null),
+      lesson.ask ? h('p.muted', { text: `Câu đời thật: ${lesson.ask}${lesson.askVi ? ` (${lesson.askVi})` : ''}` }) : null),
+    section(`Câu (${lesson.slots.length})`,
+      h('ul.phrase-admin-list', {}, ...lesson.slots.map((s) => h('li.phrase-admin', {},
+        h('span.p-emoji', { text: s.emoji }),
+        h('div.grow', {},
+          h('b', { text: sentenceOf(lesson, s) }), speakButton(app, sentenceOf(lesson, s)),
+          h('div.muted', { text: `${sentenceViOf(lesson, s)}${s.concept !== s.word ? ` · hình: ${s.concept}` : ''}` })))))));
+}
+
+/** Tạo bài mẫu câu (SPEC-patterns mục 4.6): chủ đề + khung câu + số từ → Copy prompt. */
+export function patternCreateView(app) {
+  const body = parentLayout(app, { title: 'Tạo bài mẫu câu', back: () => goParent(app) });
+  const topic = h('input', { type: 'text', placeholder: 'Ví dụ: Toys, Fruits, At the zoo…', value: 'Toys' });
+  const topicChips = h('div.chips', {}, ...TOPICS.map((t) => h('button.chip', {
+    type: 'button', text: t, onclick: () => { topic.value = t; },
+  })));
+  const frame = h('input', { type: 'text', value: 'I have {a} ___.' });
+  const frameChips = h('div.chips', {}, ...PATTERN_FRAMES.map((f) => h('button.chip', {
+    type: 'button', text: f, onclick: () => { frame.value = f; },
+  })));
+  let avoidWords = [];
+  listLessons(app.db).then((lessons) => {
+    avoidWords = lessons.filter(isPatternLesson).flatMap((l) => l.slots.map((s) => s.word));
+  });
+
+  const promptArea = h('textarea.prompt-area', { rows: '8', readonly: true, 'aria-label': 'Prompt' });
+  const result = h('div.prompt-result', { hidden: true },
+    notice('info', 'Nếu chưa copy được: chạm vào ô dưới → "Chọn tất cả" → "Sao chép".'),
+    promptArea,
+    h('div.actions', {},
+      h('a.btn', { href: 'https://chatgpt.com/', target: '_blank', rel: 'noopener', text: 'Mở ChatGPT' }),
+      h('a.btn', { href: 'https://gemini.google.com/app', target: '_blank', rel: 'noopener', text: 'Mở Gemini' })),
+    h('button.btn.primary.big', { type: 'button', text: 'Đã có bài từ AI → Dán bài', onclick: () => goParent(app, 'paste') }));
+
+  const form = h('form.form', {
+    onsubmit: (e) => {
+      e.preventDefault();
+      const f = frame.value.trim() || 'It is ___.';
+      if ((f.match(/_{2,}/g) ?? []).length !== 1) {
+        toast('Khung câu cần đúng một chỗ trống ___ (ví dụ: I like ___.)', 3500);
+        return;
+      }
+      const prompt = buildPatternLessonPrompt({ topic: topic.value.trim() || 'Toys', frame: f, count: Number(radioValue(form, 'count')), avoidWords });
+      const copied = copyText(prompt); // copy NGAY trong lúc chạm (iOS)
+      promptArea.value = prompt;
+      result.hidden = false;
+      copied.then((ok) => {
+        toast(ok ? 'Đã copy prompt. Mở ChatGPT hoặc Gemini, dán vào và gửi.' : 'Chưa copy được tự động — hãy copy tay trong ô prompt.', 4000);
+        result.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      });
+      app.setSetting('lastPromptReviewWords', []);
+      app.setSetting('lastPromptTopic', 'Sentences');
+    },
+  },
+  section('🧸 Chủ đề', topicChips, field('Hoặc tự gõ', topic)),
+  section('🌸 Khung câu', frameChips, field('Hoặc tự gõ (một chỗ trống ___; {a} là chỗ "a / an")', frame)),
+  section('Bài mẫu câu', field('🖼️ Số hình', radios('count', PATTERN_COUNTS.map((n) => [n, `${n} hình`]), 6))),
+  h('div.actions', {}, h('button.btn.primary.big', { type: 'submit', text: 'Copy prompt' })));
+
+  body.append(
+    notice('info', 'Bài mẫu câu dạy bé MỘT khung câu với nhiều từ (It is sunny / It is rainy…), giống tranh khung câu: bé chạm hình, nghe rồi nói cả câu.'),
     form, result);
 }

@@ -29,14 +29,19 @@ export function decideResult({ micReady, matched, voiced, heardAnything }) {
  * @param {{ mic: import('./microphone.js').Microphone, recognizer: import('./recognition.js').Recognizer,
  *           keywords: string[], record?: boolean, maxMs?: number, signal?: AbortSignal,
  *           onLevel?: (ratio: number) => void }} options
- * @returns {Promise<{ result: string, recording: null | { blob: Blob, mimeType: string, durationMs: number } }>}
+ *   `matcher` (tùy chọn): thay cách so khớp mặc định theo `keywords`; `stopWhen`: nghe ra gì thì dừng sớm
+ *   (mặc định = khớp). Mẫu câu (SPEC-patterns mục 4.4) chỉ dừng sớm khi bé nói đủ câu.
+ * @returns {Promise<{ result: string, recording: null | { blob: Blob, mimeType: string, durationMs: number }, heard: string[] }>}
+ *   heard: các phương án nhận dạng nghe được (rỗng khi không có nhận dạng)
  */
-export async function listen({ mic, recognizer, keywords, record = false, maxMs = 5500, signal, onLevel }) {
+export async function listen({ mic, recognizer, keywords, record = false, maxMs = 5500, signal, onLevel, matcher = null, stopWhen = null }) {
   if (!mic?.ready) {
     // Chế độ chỉ nghe: chờ 3 giây cho bé nói theo, không đánh giá.
     await sleep(3000, signal);
-    return { result: RESULT.LISTEN_ONLY, recording: null };
+    return { result: RESULT.LISTEN_ONLY, recording: null, heard: [] };
   }
+  const isMatch = matcher ?? ((alts) => matches(alts, keywords));
+  const shouldStop = stopWhen ?? isMatch;
 
   // AudioContext bị iOS tạm dừng (sau cuộc gọi, khi mic vừa bật…) thì đo âm lượng luôn ra 0: thử bật lại.
   const ctx = audioContext();
@@ -56,9 +61,11 @@ export async function listen({ mic, recognizer, keywords, record = false, maxMs 
   }
 
   let matched = false;
+  let stopEarly = false;
   const session = recognizer?.enabled
     ? recognizer.begin((alts) => {
-      if (matches(alts, keywords)) matched = true;
+      if (isMatch(alts)) matched = true;
+      if (shouldStop(alts)) stopEarly = true;
     })
     : null;
 
@@ -81,7 +88,7 @@ export async function listen({ mic, recognizer, keywords, record = false, maxMs 
         lastVoiceAt = now;
         if (voicedMs >= scaled(VOICED_MIN_MS)) voiced = true;
       }
-      if (matched && !matchedAt) matchedAt = now;
+      if (stopEarly && !matchedAt) matchedAt = now;
       if (now - started >= scaled(maxMs)) break;
       if (voiced && now - lastVoiceAt > scaled(END_SILENCE_MS)) break;
       if (matchedAt && now - matchedAt > scaled(400)) break;
@@ -95,11 +102,11 @@ export async function listen({ mic, recognizer, keywords, record = false, maxMs 
   }
 
   const heard = session ? await session.stop() : [];
-  if (!matched && heard.length) matched = matches(heard, keywords);
+  if (!matched && heard.length) matched = isMatch(heard);
   const recording = recorder ? await recorder.stop() : null;
   checkAbort(signal);
 
   const result = decideResult({ micReady: true, matched, voiced, heardAnything: heard.some((h) => h.trim()) });
   const keep = recording && result !== RESULT.SILENT && recording.blob.size > 0;
-  return { result, recording: keep ? recording : null };
+  return { result, recording: keep ? recording : null, heard };
 }

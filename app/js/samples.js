@@ -9,6 +9,18 @@ import { builtInJollyLessons } from './jolly.js';
 /** Bài phonics có sẵn: chữ cái ABC (SPEC-phonics) + Âm & ghép vần kiểu Jolly Phonics (SPEC-jolly). */
 const allPhonicsLessons = () => [...builtInPhonicsLessons(), ...builtInJollyLessons()];
 import { builtInTalkLessons } from './talk.js';
+import { builtInPatternLessons } from './patterns.js';
+
+/** Bài mẫu câu có sẵn (SPEC-patterns mục 4.3). `only`: chỉ thêm các bài có mã này. */
+async function addPatternLessons(app, only = null) {
+  const now = Date.now();
+  const list = builtInPatternLessons().filter((l) => !only || only.includes(l.builtin));
+  for (const [i, lesson] of list.entries()) {
+    await app.db.put('lessons', createLessonRecord(lesson, now - list.length + i));
+  }
+  await ensureLessonNumbers(app.db);
+  return list.length;
+}
 
 export const SAMPLE_FILES = ['lessons/animals.json', 'lessons/colors.json'];
 export const PHRASE_SAMPLE_FILES = ['lessons/morning.json', 'lessons/actions.json'];
@@ -62,7 +74,7 @@ async function addPhonicsLessons(app, only = null) {
 /** Nút "Thêm lại bài mẫu": thêm lại bài từ vựng, bài câu, bài số và bài phonics mẫu. */
 export async function addSampleLessons(app) {
   return (await addFrom(app, SAMPLE_FILES)) + (await addFrom(app, MORE_VOCAB_FILES)) + (await addFrom(app, PHRASE_SAMPLE_FILES)) + (await addNumberLessons(app))
-    + (await addPhonicsLessons(app));
+    + (await addPhonicsLessons(app)) + (await addPatternLessons(app));
 }
 
 /** Lần chạy đầu: thêm bài mẫu. Bài câu mẫu có cờ riêng để máy đã dùng bản cũ vẫn nhận được. */
@@ -95,6 +107,17 @@ export async function seedSamplesOnce(app) {
       await app.setSetting('numberLessonsSeeded', [...seeded, ...missing]);
     } catch (err) {
       console.error('Không thêm được bài số', err);
+    }
+  }
+  // Bài mẫu câu (SPEC-patterns): mỗi bài có sẵn chỉ tự thêm MỘT lần (bố mẹ xóa rồi thì không tự thêm lại).
+  const patternSeeded = app.settings.patternLessonsSeeded ?? [];
+  const newPatterns = builtInPatternLessons().map((l) => l.builtin).filter((id) => !patternSeeded.includes(id));
+  if (newPatterns.length) {
+    try {
+      await addPatternLessons(app, newPatterns);
+      await app.setSetting('patternLessonsSeeded', [...patternSeeded, ...newPatterns]);
+    } catch (err) {
+      console.error('Không thêm được bài mẫu câu', err);
     }
   }
   // Bài phonics: mỗi bài có sẵn chỉ tự thêm MỘT lần.

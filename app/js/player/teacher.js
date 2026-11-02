@@ -121,7 +121,7 @@ export class Teacher {
   }
 
   /** Nghe bé nói một lượt (SPEC 4.3.1). */
-  async hear(keywords, { record = false, maxMs = 5500 } = {}) {
+  async hear(keywords, { record = false, maxMs = 5500, matcher = null, stopWhen = null } = {}) {
     const { app } = this;
     if (!app.mic.ready) await this.say('Your turn!');
     this.bunny.set('listen');
@@ -136,6 +136,8 @@ export class Teacher {
         keywords,
         record,
         maxMs,
+        matcher,
+        stopWhen,
         signal: this.signal,
         onLevel: (r) => this.bunny.setLevel(r),
       });

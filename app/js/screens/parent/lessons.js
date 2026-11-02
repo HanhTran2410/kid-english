@@ -12,6 +12,8 @@ import { isNumberLesson, numberKey, countPhrase } from '../../numbers.js';
 import { isPhonicsLesson, letterKey } from '../../phonics.js';
 import { isJollyLesson, soundKey, BLEND_BY } from '../../jolly.js';
 import { isTalkLesson, talkKey, talkPictures } from '../../talk.js';
+import { isPatternLesson, patternKey, frameKeyOf, frameStars, sentenceOf } from '../../patterns.js';
+import { patternRecords } from '../../progress.js';
 import { getFrameSets, setFrameSet, removeFrameSet, frameBlobs } from '../../db.js';
 import { createFlipbook } from '../../player/flipbook.js';
 import { createScene } from '../../player/scene.js';
@@ -234,6 +236,13 @@ export function lessonDetailView(app, { lessonId }) {
       // Ảnh đồ vật (SPEC-numbers mục 14.2): dùng lại phần ảnh lưới của bài từ vựng, mỗi ô là MỘT đồ vật.
       if (!['game', 'shapes'].includes(lesson.mode)) body.append(...lessonGrid(app, numberImageLesson(lesson), urls, imageOf, { prefix: 'Ảnh đồ vật', what: 'đồ vật' }));
       body.append(shareSection(app, lesson), section(null, deleteButton(app, lesson)));
+      return;
+    }
+    if (isPatternLesson(lesson)) {
+      // Bài mẫu câu (SPEC-patterns): tiến độ từng câu + sao khung; ảnh cho từng hình (ảnh lưới như bài từ vựng, theo `concept`).
+      const picLesson = { id: lesson.id, words: lesson.slots.map((s) => ({ en: s.concept || s.word, label: s.word, emoji: s.emoji })) };
+      body.append(rename, await patternDetailSection(app, lesson), ...lessonGrid(app, picLesson, urls, imageOf, { what: 'hình' }),
+        shareSection(app, lesson), section(null, deleteButton(app, lesson)));
       return;
     }
     if (isPhraseLesson(lesson)) {
@@ -532,6 +541,7 @@ function shareSection(app, lesson) {
 
 /** Đổi số bài, tên bài, chủ đề (dùng chung cho bài từ vựng và bài câu). */
 function kindLabel(lesson) {
+  if (isPatternLesson(lesson)) return '🌸 Mẫu câu';
   if (isTalkLesson(lesson)) return '🗨️ Hội thoại';
   if (isJollyLesson(lesson)) return '🐍 Âm & ghép vần';
   if (isPhonicsLesson(lesson)) return '🔤 Chữ cái';
@@ -540,11 +550,32 @@ function kindLabel(lesson) {
 }
 
 function sizeLabel(lesson) {
+  if (isPatternLesson(lesson)) return `${lesson.slots.length} câu`;
   if (isTalkLesson(lesson)) return `${lesson.turns.length} lượt`;
   if (isJollyLesson(lesson)) return lesson.blendOnly ? `${lesson.blends.length} từ ghép` : `${lesson.letters.length} âm`;
   if (isPhonicsLesson(lesson)) return `${lesson.letters.length} chữ`;
   if (isNumberLesson(lesson)) return `${lesson.numbers.length} số`;
   return isPhraseLesson(lesson) ? `${lesson.phrases.length} câu` : `${lesson.words.length} từ`;
+}
+
+/** Trang bài mẫu câu (SPEC-patterns mục 5): sao từng câu (chỉ "cả câu" mới có sao), mức cao nhất bé đạt, sao khung. */
+async function patternDetailSection(app, lesson) {
+  const LEVEL_VI = { full: 'nói cả câu', partial: 'nói một phần câu', keyword: 'nói từ khóa' };
+  const records = patternRecords(await app.db.getAll('progress'));
+  const byKey = new Map(records.map((r) => [r.word, r]));
+  const rows = lesson.slots.map((s) => {
+    const rec = byKey.get(normalizeWord(patternKey(lesson, s)));
+    return h('li', {},
+      h('span.p-emoji', { text: s.emoji }),
+      h('span.p-word', {}, sentenceOf(lesson, s), speakButton(app, sentenceOf(lesson, s))),
+      h('span.p-stars', { text: rec?.mastery ? '⭐'.repeat(rec.mastery) : '—' }),
+      h('span.p-meta', { text: rec ? `luyện ${rec.practiceCount} lần${rec.bestLevel ? ` · tốt nhất: ${LEVEL_VI[rec.bestLevel]}` : ''}` : 'chưa học' }));
+  });
+  const n = frameStars(records, frameKeyOf(lesson));
+  return section('Tiến độ từng câu',
+    h('p', {}, 'Bé nói được khung ', h('b', { text: lesson.frame.replace(/\{a\}\s*/g, '') }), ` với ${n} từ (gộp mọi bài cùng khung).`),
+    h('p.muted', { text: 'Sao chỉ tăng khi bé nói CẢ CÂU (tối đa một sao mỗi ngày cho mỗi câu). Nói một phần câu hoặc chỉ từ khóa vẫn được khen và ghi lần luyện. Không bao giờ trừ sao.' }),
+    h('ul.progress-list', {}, ...rows));
 }
 
 /** Trang bài số (SPEC-numbers mục 7): nội dung có sẵn, chỉ xem tiến độ từng số. */

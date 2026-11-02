@@ -10,7 +10,7 @@ import { pickWordsForPrompt, isLearned, KNOWN_MASTERY, wordRecords, phraseRecord
 import { isWordLesson } from '../../phrase.js';
 import { isStandalone, micProblem } from '../child.js';
 import { parentLayout, goParent, section, notice } from './common.js';
-import { createView, pasteView, phraseCreateView } from './create.js';
+import { createView, pasteView, phraseCreateView, patternCreateView } from './create.js';
 import { lessonsView, lessonDetailView } from './lessons.js';
 import { recordingsView } from './recordings.js';
 import { settingsView } from './settings.js';
@@ -32,6 +32,7 @@ const VIEWS = {
   menu: menuView,
   create: createView,
   'create-phrases': phraseCreateView,
+  'create-patterns': patternCreateView,
   paste: pasteView,
   lessons: lessonsView,
   lesson: lessonDetailView,
@@ -74,6 +75,7 @@ function menuView(app) {
     h('nav.menu', {},
       item('＋', 'Tạo bài học (từ vựng)', () => goParent(app, 'create')),
       item('💬', 'Tạo bài câu', () => goParent(app, 'create-phrases')),
+      item('🌸', 'Tạo bài mẫu câu', () => goParent(app, 'create-patterns')),
       item('📋', 'Dán bài', () => goParent(app, 'paste')),
       item('📚', 'Quản lý bài', () => goParent(app, 'lessons')),
       item('🧒', 'Hồ sơ của bé', () => goParent(app, 'profile')),

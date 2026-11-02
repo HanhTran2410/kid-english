@@ -5,6 +5,7 @@ import { MISSING_EMOJI } from './lesson.js';
 import { NUMBER_KIND, isNumberLesson } from './numbers.js';
 import { PHONICS_KIND, isPhonicsLesson } from './phonics.js';
 import { TALK_KIND, isTalkLesson } from './talk.js';
+import { PATTERN_KIND, isPatternLesson } from './patterns.js';
 
 export const PHRASE_KIND = 'phrases';
 export const WORDS_KIND = 'words';
@@ -62,6 +63,7 @@ const FILLER = new Set(['the', 'a', 'an', 'your', 'my', 'our', 'his', 'her', 'it
 
 /** Bài từ vựng cũ không có `kind` → coi là bài từ vựng. */
 export const lessonKind = (lesson) => {
+  if (isPatternLesson(lesson)) return PATTERN_KIND;
   if (isNumberLesson(lesson)) return NUMBER_KIND;
   if (isPhonicsLesson(lesson)) return PHONICS_KIND;
   if (isTalkLesson(lesson)) return TALK_KIND;

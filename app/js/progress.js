@@ -115,7 +115,25 @@ export function mergeProgress(current, incoming) {
 }
 
 /** Bỏ các bản ghi tiến độ của câu (`phrase:…`) và số (`number:…`) — dùng cho phần từ vựng. */
-export const wordRecords = (records) => records.filter((r) => !/^(phrase|number|letter|sound|talk):/.test(String(r.word)));
+export const wordRecords = (records) => records.filter((r) => !/^(phrase|number|letter|sound|talk|pattern):/.test(String(r.word)));
+/** Chỉ các bản ghi tiến độ của câu mẫu (SPEC-patterns mục 5). */
+export const patternRecords = (records) => records.filter((r) => String(r.word).startsWith('pattern:'));
+
+const SAY_RANK = { keyword: 1, partial: 2, full: 3 };
+
+/**
+ * Bé nói một câu mẫu (SPEC-patterns mục 5): ghi lần luyện + mức cao nhất bé đạt; chỉ CẢ CÂU mới +1 sao
+ * (tối đa một lần mỗi ngày). Không bao giờ trừ sao.
+ * @param {'full'|'partial'|'keyword'|null} level
+ */
+export function onSentence(rec, level, now = Date.now()) {
+  const next = onPracticed(rec, now);
+  if (level && (SAY_RANK[level] ?? 0) > (SAY_RANK[rec.bestLevel] ?? 0)) next.bestLevel = level;
+  if (level !== 'full') return next;
+  const today = dayKey(new Date(now));
+  if (rec.lastFullDay === today) return next;
+  return { ...next, mastery: clamp(rec.mastery + 1), lastFullDay: today };
+}
 /** Chỉ các bản ghi tiến độ của lượt hội thoại (SPEC-talk mục 8). */
 export const talkRecords = (records) => records.filter((r) => String(r.word).startsWith('talk:'));
 /** Chỉ các bản ghi tiến độ của chữ cái (SPEC-phonics mục 10). */

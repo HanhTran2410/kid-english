@@ -698,3 +698,53 @@ export function buildFramesPrompt(rows) {
     `FINAL CHECK: exactly ${cells} equal cells in ${cols} columns and ${n} ${rowWord}, showing ${n} separate ${cols}-frame ${n === 1 ? 'activity' : 'activities'} in the order above.`,
   ].join('\n');
 }
+
+// ---------- Bài mẫu câu (SPEC-patterns mục 4.6) ----------
+
+/** Khung câu gợi ý khi bố mẹ tạo bài mẫu câu. */
+export const PATTERN_FRAMES = ['It is ___.', 'I am ___.', 'I can see {a} ___.', 'I like ___.', 'I have {a} ___.', 'I can ___.', 'I want ___.', 'Where is the ___?'];
+export const PATTERN_COUNTS = [5, 6];
+
+/**
+ * Prompt tạo bài mẫu câu: một khung có ĐÚNG MỘT chỗ trống + 5–6 từ điền vào.
+ * @param {{ topic: string, frame: string, count?: number, age?: number, avoidWords?: string[] }} options
+ */
+export function buildPatternLessonPrompt({ topic, frame, count = 6, age = 3, avoidWords = [] }) {
+  const shape = `{
+  "kind": "patterns",
+  "title": "Weather",
+  "titleVi": "Thời tiết",
+  "emoji": "🌦️",
+  "frame": "It is ___.",
+  "frameVi": "Trời ___.",
+  "prompt": "What's the weather? Tell me!",
+  "promptVi": "Trời thế nào? Con nói đi!",
+  "ask": "What's the weather today?",
+  "askVi": "Hôm nay trời thế nào?",
+  "words": [
+    { "word": "sunny", "concept": "sunny", "article": "auto", "emoji": "☀️", "vi": "nắng", "sentenceVi": "Trời nắng." }
+  ]
+}`;
+  const avoid = [...new Set(avoidWords.map((w) => w.toLowerCase()))].slice(0, 40);
+  return [
+    `You are an English teacher for a ${age}-year-old Vietnamese child who is learning to say short, complete sentences.`,
+    `Create one "sentence frame" lesson about the topic "${topic}" with the frame "${frame}".`,
+    'The child learns ONE sentence frame and fills the blank with different words (like a classroom poster: "It is ___." with sunny, rainy, windy…).',
+    '',
+    'Reply with ONLY one JSON object in exactly this format. No explanation, no greeting, no markdown:',
+    shape,
+    '',
+    'Rules:',
+    `- "frame": exactly "${frame}" — exactly ONE blank written as ___. Write {a} where "a/an" goes (example "I can see {a} ___."); never write "a" or "an" before the blank yourself.`,
+    `- "words": exactly ${count} different, very common words a ${age}-year-old knows, each one easy to draw as one picture and natural in the frame.`,
+    '- "word": the exact word that goes into the blank (use plural when the sentence needs it, e.g. "I like apples").',
+    '- "concept": the singular picture name (e.g. word "apples" → concept "apple"); same as "word" when it is already singular or an adjective/verb.',
+    '- "article": only matters when the frame has {a}: "a" or "an" when the usual rule (vowel letter → an) is wrong (a unicorn, an hour); "none" for plural or uncountable words (eyes, rice); otherwise "auto".',
+    '- "emoji": one emoji that shows the word.',
+    '- "vi": the Vietnamese meaning of the word; "frameVi": the frame in natural Vietnamese with ___ for the blank; "sentenceVi": the whole sentence in natural Vietnamese (not word-by-word).',
+    '- "prompt": a short question Bông asks when the child must say the sentence alone, ending with "Tell me!".',
+    '- "ask" / "askVi": OPTIONAL — only when the child can answer from real life today (weather, feelings, what they like). Leave them out otherwise.',
+    '- "title": 1–2 English words; "titleVi": Vietnamese title; "emoji": one emoji for the lesson.',
+    avoid.length ? `- Avoid these words (the child already has a sentence lesson with them): ${avoid.join(', ')}.` : null,
+  ].filter((line) => line !== null).join('\n');
+}

@@ -9,6 +9,7 @@ import { startScreen, homeScreen, lessonsScreen, stickersScreen, sleepScreen } f
 import { lessonScreen } from './player/lesson-player.js';
 import { phraseLessonScreen } from './player/phrase-player.js';
 import { numberLessonScreen } from './player/number-player.js';
+import { patternLessonScreen } from './player/pattern-player.js';
 import { phonicsLessonScreen } from './player/phonics-player.js';
 import { mixScreen } from './player/mix-player.js';
 import { learnScreen } from './screens/learn.js';
@@ -101,6 +102,9 @@ async function boot() {
   app.register('lesson', lessonScreen);
   app.register('phrases', (a) => lessonsScreen(a, { kind: 'phrases' }));
   app.register('phrase-lesson', phraseLessonScreen);
+  // Mẫu câu (SPEC-patterns.md): tranh khung câu "It is ___." + các hình để điền.
+  app.register('patterns', (a) => lessonsScreen(a, { kind: 'patterns' }));
+  app.register('pattern-lesson', patternLessonScreen);
   app.register('numbers', (a) => lessonsScreen(a, { kind: 'numbers' }));
   app.register('number-lesson', numberLessonScreen);
   app.register('phonics', (a) => lessonsScreen(a, { kind: 'phonics' }));

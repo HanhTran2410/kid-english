@@ -16,6 +16,7 @@ import { lessonKind, PHRASE_KIND, WORDS_KIND } from '../phrase.js';
 import { NUMBER_KIND } from '../numbers.js';
 import { PHONICS_KIND } from '../phonics.js';
 import { TALK_KIND } from '../talk.js';
+import { PATTERN_KIND } from '../patterns.js';
 
 const ALL = '__all__';
 import { bongElement } from '../bong.js';
@@ -106,6 +107,8 @@ export function homeScreen(app) {
     h('div.home-grid', {},
       big('📚', 'Words', 'Từ vựng', () => app.go('lessons'), '.lessons'),
       big('💬', 'Phrases', 'Câu nói', () => app.go('phrases'), '.phrases'),
+      // Mẫu câu (SPEC-patterns.md): nút thứ 9 — lưới 5 + 4 trên màn rộng, 3 × 3 trên iPhone/iPad dọc.
+      big('🌸', 'Sentences', 'Mẫu câu', () => app.go('patterns'), '.patterns'),
       big('🔢', 'Numbers', 'Số đếm', () => app.go('numbers'), '.numbers'),
       // Chữ cái và âm (SPEC-phonics.md): nút thứ 8, lưới 2 × 4 / 4 × 2 vừa khít.
       big('🔤', 'Phonics', 'Chữ cái', () => app.go('phonics'), '.phonics'),
@@ -133,7 +136,9 @@ export function homeScreen(app) {
  * Danh sách bài của bé: bài từ vựng (mặc định), bài câu (`kind: 'phrases'`, SPEC-v1.0 mục 6.2) hoặc bài số (SPEC-numbers mục 2).
  */
 export function lessonsScreen(app, { kind = WORDS_KIND } = {}) {
-  const playScreen = { [PHRASE_KIND]: 'phrase-lesson', [NUMBER_KIND]: 'number-lesson', [PHONICS_KIND]: 'phonics-lesson', [TALK_KIND]: 'talk-lesson' }[kind] ?? 'lesson';
+  const playScreen = {
+    [PHRASE_KIND]: 'phrase-lesson', [NUMBER_KIND]: 'number-lesson', [PHONICS_KIND]: 'phonics-lesson', [TALK_KIND]: 'talk-lesson', [PATTERN_KIND]: 'pattern-lesson',
+  }[kind] ?? 'lesson';
   app.lessonTabs ??= {};
   app.root.className = `child-screen lessons ${kind}`;
   const grid = h('div.lesson-grid');
@@ -172,9 +177,14 @@ export function lessonsScreen(app, { kind = WORDS_KIND } = {}) {
   grid.before(tabs);
 
   const card = async (lesson) => {
-    const items = lesson.words ?? lesson.phrases ?? lesson.numbers ?? [];
+    const items = lesson.words ?? lesson.phrases ?? lesson.numbers ?? lesson.slots ?? [];
     let cover = null;
-    if (lesson.words) {
+    if (lesson.slots?.length) {
+      // Bài mẫu câu: ảnh hình đầu tiên (bố mẹ thêm ở bài này), không có thì ảnh mới nhất của `concept` đó ở bài khác.
+      const images = await app.db.getAllByIndex('images', 'lessonId', lesson.id);
+      const first = lesson.slots[0].concept || lesson.slots[0].word;
+      cover = images.find((img) => img.word === normalizeWord(first)) ?? await latestImageForWord(app.db, first);
+    } else if (lesson.words) {
       const images = await app.db.getAllByIndex('images', 'lessonId', lesson.id);
       const firstKey = normalizeWord(lesson.words[0]?.en ?? '');
       // Ảnh từ đầu tiên của bài; bài chưa có thì ảnh mới nhất của từ đó ở bài khác (như khi học bài).
@@ -223,6 +233,8 @@ export function lessonsScreen(app, { kind = WORDS_KIND } = {}) {
     // Thẻ trò chơi có huy hiệu 🎯 ở góc ảnh để bé phân biệt với thẻ bài học.
     lesson.mode === 'game' && url ? h('span.card-badge', { text: '🎯', 'aria-hidden': 'true' }) : null,
     h('span.lesson-title', { text: lesson.title }),
+    // Bài mẫu câu: khung câu ("It is ___.") ngay dưới tên bài.
+    lesson.slots ? h('span.lesson-frame', { text: lesson.frame.replace(/\{a\}\s*/g, '').replace(/_{2,}/, '___') }) : null,
     // Hàng emoji các từ trong bài: bé chưa biết đọc vẫn phân biệt được "Animals" và "Animals 2".
     // Bài phonics: hàng chữ cái của bài ("A B C D E F").
     // Dòng chữ (tên tiếng Việt của bài hội thoại, chữ cái phonics) dùng font Nunito như cả app; chỉ hàng emoji dùng font emoji.
@@ -235,7 +247,7 @@ export function lessonsScreen(app, { kind = WORDS_KIND } = {}) {
   (async () => {
     const lessons = (await listLessons(app.db)).filter((l) => lessonKind(l) === kind);
     // Bài số: theo thứ tự bài (Đếm 1–10 trước Đếm 11–20), không theo bài mới nhất.
-    if ([NUMBER_KIND, PHONICS_KIND, TALK_KIND].includes(kind)) lessons.sort((a, b) => (a.no ?? 0) - (b.no ?? 0));
+    if ([NUMBER_KIND, PHONICS_KIND, TALK_KIND, PATTERN_KIND].includes(kind)) lessons.sort((a, b) => (a.no ?? 0) - (b.no ?? 0));
     // Nói chuyện với Bông: thẻ cuối là "Ôn từ đã học" (màn Học cùng Bông cũ, giữ nguyên).
     const extra = kind === TALK_KIND ? [h('button.lesson-card.review-card', {
       type: 'button', 'aria-label': 'Ôn từ đã học', onclick: () => { play('tap'); app.go('learn-review'); },

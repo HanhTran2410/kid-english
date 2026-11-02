@@ -6,10 +6,10 @@ const spoken = (page) => page.evaluate(() => window.__spoken);
 const setProfile = (page, profile) => page.evaluate((p) => window.kidEnglish.setSetting('childProfile', p), profile);
 const progressOf = (page, key) => page.evaluate(async (k) => (await window.kidEnglish.db.get('progress', k)) ?? null, key);
 
-test('nút đổi thành "Nói chuyện với Bông": 13 bài hội thoại (5 bài đầu + 8 bài chủ đề, SPEC-talk-topics) + thẻ Ôn từ đã học (màn Học cùng Bông cũ); không có nút thứ 9', async ({ page }) => {
+test('nút đổi thành "Nói chuyện với Bông": 13 bài hội thoại (5 bài đầu + 8 bài chủ đề, SPEC-talk-topics) + thẻ Ôn từ đã học (màn Học cùng Bông cũ); màn hình chính 9 nút (thêm 🌸 Mẫu câu)', async ({ page }) => {
   await fakeSpeech(page);
   await startApp(page);
-  await expect(page.locator('.home-grid .home-btn')).toHaveCount(8);
+  await expect(page.locator('.home-grid .home-btn')).toHaveCount(9);
   await page.getByRole('button', { name: 'Nói chuyện với Bông' }).click();
   await expect(page.locator('.lesson-card')).toHaveCount(14);
   await expect(page.locator('.lesson-card').first()).toHaveAttribute('aria-label', 'Hello & Goodbye');

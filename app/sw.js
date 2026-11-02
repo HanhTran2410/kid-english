@@ -3,7 +3,7 @@
 // Thêm/bớt file trong app/ thì cập nhật ASSETS (test tests/unit/sw.test.js sẽ báo nếu thiếu).
 // Thư viện bài app/shared/ (file .zip + index.json) KHÔNG lưu offline: tải từ mạng khi bố mẹ mở Thư viện bài.
 
-const VERSION = '0.60.0';
+const VERSION = '0.61.0';
 const CACHE = `kid-english-${VERSION}`;
 
 const ASSETS = [
@@ -67,6 +67,9 @@ const ASSETS = [
   'js/puzzle.js',
   'js/screens/puzzle.js',
   'js/shapes.js',
+  'js/patterns.js',
+  'js/player/pattern-player.js',
+  'js/player/pattern-stages.js',
   'js/player/shape-stages.js',
   'js/missing.js',
   'js/animal-sounds.js',

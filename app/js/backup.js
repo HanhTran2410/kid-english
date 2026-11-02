@@ -4,6 +4,7 @@
 import { STORES, mediaSize } from './db.js';
 import { normalizeWord } from './text.js';
 import { lessonFileName } from './lesson.js';
+import { frameKeyOf } from './patterns.js';
 import { mergeProgress } from './progress.js';
 import { mergeSticker } from './stickers.js';
 import { dayKey } from './text.js';
@@ -31,8 +32,11 @@ const wordSignature = (lesson) => (Array.isArray(lesson.turns)
   ? `tk:${lesson.builtin ?? lesson.title}`
   : Array.isArray(lesson.letters)
   ? `ph:${lesson.letters.map((l) => l.letter).join('')}`
+  : Array.isArray(lesson.slots)
+  ? `pt:${frameKeyOf(lesson)}:${lesson.slots.map((s) => normalizeWord(s.concept || s.word)).sort().join('|')}`
   : Array.isArray(lesson.numbers)
-  ? `n:${lesson.mode ?? 'count'}:${lesson.numbers.map((x) => x.n).join('|')}`
+  // Đếm hình và Đếm hình mới (set 2) có cùng các số 1–10: phân biệt bằng `set`.
+  ? `n:${lesson.mode ?? 'count'}${lesson.set ? `:${lesson.set}` : ''}:${lesson.numbers.map((x) => x.n).join('|')}`
   : `${lesson.words ? 'w' : 'p'}:${(lesson.words ?? lesson.phrases ?? []).map((w) => normalizeWord(w.en)).sort().join('|')}`);
 
 const withoutBlob = ({ blob, data, ...meta }) => meta;
@@ -171,7 +175,7 @@ export async function readBackup(input, { JSZip = globalThis.JSZip } = {}) {
   const lessons = [];
   for (const file of zip.file(/^lessons\/[^/]+\.json$/)) {
     const lesson = await readJson(file.name);
-    if (!lesson?.id || !lesson.title || !(Array.isArray(lesson.words) || Array.isArray(lesson.phrases) || Array.isArray(lesson.numbers) || Array.isArray(lesson.letters) || Array.isArray(lesson.turns))) {
+    if (!lesson?.id || !lesson.title || !(Array.isArray(lesson.words) || Array.isArray(lesson.phrases) || Array.isArray(lesson.numbers) || Array.isArray(lesson.letters) || Array.isArray(lesson.turns) || Array.isArray(lesson.slots))) {
       throw new BackupError(`File sao lưu bị hỏng (${file.name}).`);
     }
     lessons.push(lesson);
