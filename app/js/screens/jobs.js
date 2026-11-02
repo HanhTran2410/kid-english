@@ -12,6 +12,10 @@ export const JOBS = [
   { id: 'teacher', emoji: '👩‍🏫', en: 'Teacher', vi: 'Cô giáo nhí', screen: 'teacher' },
   { id: 'police', emoji: '👮', en: 'Police officer', vi: 'Cảnh sát giúp bạn', screen: 'police' },
   { id: 'fire', emoji: '🚒', en: 'Firefighter', vi: 'Lính cứu hỏa', screen: 'fire' },
+  { id: 'farm', emoji: '👩‍🌾', en: 'Farmer', vi: 'Nông trại', screen: 'farm' },
+  { id: 'chef', emoji: '👨‍🍳', en: 'Chef', vi: 'Đầu bếp nhí', screen: 'chef' },
+  { id: 'build', emoji: '👷', en: 'Builder', vi: 'Thợ xây', screen: 'build' },
+  { id: 'bus', emoji: '🚌', en: 'Bus driver', vi: 'Xe buýt', screen: 'bus' },
 ];
 
 export function jobsScreen(app) {
@@ -23,7 +27,7 @@ export function jobsScreen(app) {
       app.go('play');
     },
   });
-  const grid = h('div.bb-modes.jb-jobs');
+  const grid = h('div.bb-modes.jb-jobs', { dataset: { count: String(JOBS.length) } });
   app.root.append(h('header.child-top', {}, homeButton(app), back), grid);
   grid.append(...JOBS.map((job) => h(`button.home-btn.bb-mode.jb-job.jb-job-${job.id}`, {
     type: 'button', 'aria-label': job.vi, dataset: { job: job.id },

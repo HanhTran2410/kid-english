@@ -242,6 +242,10 @@ const JOB_LEVELS = [
   ['teacherGame', 'Cô giáo nhí', ['Mức 1 — Bông nói sai khác hẳn', 'Mức 2 — Bông nói sai gần giống', 'Mức 3 — màu và số']],
   ['policeGame', 'Cảnh sát giúp bạn', ['Mức 1 — tìm đồ theo màu; đèn giao thông: học màu đèn', 'Mức 2 — màu + to / nhỏ; đèn: có bạn qua đường thì đỏ', 'Mức 3 — có bụi cây, tìm bạn bị lạc; đèn có thêm vàng']],
   ['fireGame', 'Lính cứu hỏa', ['Mức 1 — mặc đồ, 1–3 ngọn lửa, an toàn với lửa', 'Mức 2 — Bông gọi từng món đồ, đếm số lửa, cứu bạn (cây / trong nhà)', 'Mức 3 — dập theo chỗ Bông gọi, phố không khói, bấm 114']],
+  ['farmGame', 'Nông trại', ['Mức 1 — cho ăn (có hình thức ăn), nhặt 1–3 trứng', 'Mức 2 — nghe tên thức ăn, đếm trứng, hái táo theo màu', 'Mức 3 — nghe tiếng kêu tìm chuồng, trứng theo màu, táo theo màu + cỡ + số']],
+  ['chefGame', 'Đầu bếp nhí', ['Mức 1 — bánh mì kẹp 3 lớp (chú gọi từng lớp), làm bánh: đồ sáng sẵn', 'Mức 2 — khách gọi cả món, nghe động từ chọn đồ, trang trí 2–5 cái', 'Mức 3 — "No tomato!", làm bánh đúng thứ tự, trang trí hai loại']],
+  ['buildGame', 'Thợ xây', ['Mức 1 — bản vẽ lộ dáng + màu, chú đọc tên hình', 'Mức 2 — nghe hình + màu (ô xám), lấp ổ gà gần dáng', 'Mức 3 — hình + to / nhỏ, hai cửa sổ; hình mới khi đã chơi Đếm hình mới']],
+  ['busGame', 'Xe buýt', ['Mức 1 — đón 1 người mỗi trạm, xuống ở bến cuối', 'Mức 2 — có trạm đón 2 người, người xuống nói trạm màu (chọn trên bản đồ)', 'Mức 3 — đón theo cảm xúc ("the sleepy baby"), có đèn đỏ']],
 ];
 function jobsSection(app, save) {
   const clean = (v) => cleanJobState(v);

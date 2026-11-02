@@ -10,13 +10,13 @@ const addBg = (page, word) => page.evaluate(async (w) => {
 }, word);
 const bgWords = (page) => page.evaluate(async () => (await window.kidEnglish.db.getAllByIndex('images', 'lessonId', 'jobs:bg')).map((i) => i.word).sort());
 
-test('Góc bố mẹ → Ảnh Đóng vai: 5 nghề, nghề có ảnh hiện ảnh + "Dùng nền vẽ sẵn" bỏ ảnh', async ({ page }) => {
+test('Góc bố mẹ → Ảnh Đóng vai: 9 nghề (5 cũ + 4 nghề mới SPEC-jobs3), nghề có ảnh hiện ảnh + "Dùng nền vẽ sẵn" bỏ ảnh', async ({ page }) => {
   await fakeSpeech(page);
   await startApp(page);
   await addBg(page, 'post');
   await openParent(page);
   await page.getByRole('button', { name: /Ảnh Đóng vai/ }).click();
-  await expect(page.locator('.jb-admin-job')).toHaveCount(5);
+  await expect(page.locator('.jb-admin-job')).toHaveCount(9);
   await expect(page.locator('.jb-admin-job[data-job="post"] img')).toHaveCount(1);
   await expect(page.locator('.jb-admin-job[data-job="shop"] img')).toHaveCount(0);
   await page.locator('.jb-admin-job[data-job="post"]').getByRole('button', { name: 'Dùng nền vẽ sẵn' }).click();

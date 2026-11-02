@@ -31,6 +31,10 @@ import { postScreen } from './screens/post.js';
 import { teacherScreen } from './screens/teacher.js';
 import { policeScreen } from './screens/police.js';
 import { fireScreen } from './screens/fire.js';
+import { farmScreen } from './screens/farm.js';
+import { chefScreen } from './screens/chef.js';
+import { buildScreen } from './screens/build.js';
+import { busScreen } from './screens/bus.js';
 import { bubblesHome, bubblesScreen } from './screens/bubbles.js';
 import { parentScreen } from './screens/parent/index.js';
 
@@ -150,6 +154,10 @@ async function boot() {
   app.register('teacher', teacherScreen);
   app.register('police', policeScreen);
   app.register('fire', fireScreen);
+  app.register('farm', farmScreen);
+  app.register('chef', chefScreen);
+  app.register('build', buildScreen);
+  app.register('bus', busScreen);
   app.register('sleep', sleepScreen);
   app.register('parent', parentScreen);
 

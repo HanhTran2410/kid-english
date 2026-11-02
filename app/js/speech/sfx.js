@@ -113,9 +113,19 @@ const SOUNDS = {
   // Gõ cửa: hai tiếng cộc trầm (Cứu hỏa — cứu bạn trong nhà).
   knock: (c) => [0, 0.18].forEach((t) => tone(c, { freq: 150, endFreq: 90, start: t, duration: 0.08, type: 'triangle', gain: 0.28 })),
   brush: (c) => [0, 0.2, 0.4, 0.6].forEach((t) => noise(c, { start: t, duration: 0.14, gain: 0.18, filter: 3000 })),
+  // Đóng vai nghề mới (SPEC-jobs3 mục 8): đập trứng "crack", khối khớp vào bản vẽ "click", đồng hồ lò nướng "tick".
+  crack: (c) => {
+    noise(c, { duration: 0.05, gain: 0.4, filter: 2500 });
+    noise(c, { start: 0.07, duration: 0.04, gain: 0.25, filter: 1800 });
+  },
+  click: (c) => {
+    tone(c, { freq: 1800, duration: 0.03, type: 'square', gain: 0.08 });
+    tone(c, { freq: 900, start: 0.04, duration: 0.04, type: 'square', gain: 0.06 });
+  },
+  tick: (c) => tone(c, { freq: 2200, duration: 0.03, type: 'triangle', gain: 0.1 }),
 };
 
-/** Phát hiệu ứng: 'tap' | 'pop' | 'ding' | 'boing' | 'whoosh' | 'cheer' | 'ring' | 'hangup' | 'drumroll' | 'tada' | 'sparkle' | 'chomp' | 'munch' | 'burp' | 'rumble' | 'doorbell' | 'honk' | 'brush'. Không có âm thanh thì bỏ qua. */
+/** Phát hiệu ứng: 'tap' | 'pop' | 'ding' | 'boing' | 'whoosh' | 'cheer' | 'ring' | 'hangup' | 'drumroll' | 'tada' | 'sparkle' | 'chomp' | 'munch' | 'burp' | 'rumble' | 'doorbell' | 'honk' | 'brush' | 'crack' | 'click' | 'tick'. Không có âm thanh thì bỏ qua. */
 export function play(name) {
   const c = audioContext();
   if (!c || c.state !== 'running') return;

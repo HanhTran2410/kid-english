@@ -31,7 +31,7 @@ export function restartAnim(el, cls) {
   el.classList.add(cls);
 }
 
-export { cleanJobState, afterJobRound, afterSeen, ROUNDS_TO_LEVEL_UP } from './levels.js';
+export { cleanJobState, afterJobRound, afterSeen, ROUNDS_TO_LEVEL_UP, claims } from './levels.js';
 
 // ---------- Lưu để chơi tiếp khi app ra nền (mỗi nghề một bản) ----------
 const snapshots = new Map();

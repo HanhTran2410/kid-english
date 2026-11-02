@@ -1,6 +1,6 @@
 # SPEC — 🧑‍⚕️ Đóng vai nghề: 4 nghề mới
 
-> Phiên bản spec: **draft2** (sửa theo review, mục 13) · Ngày: 2026-11-02 · Chưa làm.
+> Phiên bản spec: **draft2** (sửa theo review, mục 13) · Ngày: 2026-11-02 · **Đã làm N0–N5 trong app 0.62.0** (ghi chú ở mục 14).
 > - draft1: bản đầu; chốt thứ tự làm, xe buýt vẽ người, bếp có lò nướng (mục 12).
 > - **draft2, sửa theo review:**
 >   - luật chung mới (mục 2.1–2.7): kế hoạch lượt + bản lưu, luật đáp án luôn đủ, chống chạm trùng, giọng và nghe lại, giới hạn thao tác mỗi ca, câu theo mức, ưu tiên từ chưa gặp;
@@ -433,3 +433,39 @@ Mỗi hành khách trong kế hoạch lượt:
 | 3.2 ca dài | Mục 2.5 (≤ 5 thao tác con mỗi ca); khuấy một lần chạm; bánh nướng mức 1 còn 3 bước |
 | 3.3 trùng *egg* | Mục 2.7; bánh mì kẹp mức 1 đổi thành *bread, cheese, bread* |
 | 6 test thêm | JOBS3-13…21 (JOBS3-21 kiểm tra ra nền, không phải tắt app — xem dòng 2.1) |
+
+## 14. Ghi chú khi code (0.62.0 — làm cả N0–N5 trong một bản)
+- **Chung (N0):**
+  - `jobs/levels.js` thêm `planChecked` (bốc lại tối đa 50 lần → kế hoạch cố định), `claims` (mỗi mã nhận một lần — `kit.js` export lại), `shuffle` / `pick` / `leastSeen`.
+  - Trang chọn nghề: `data-count` trên lưới; khác 6 nghề thì màn ngang 5 cột, màn dọc / điện thoại 2 cột (thẻ nằm ngang, emoji bên trái).
+  - Người lớn mới vẽ bằng `manSvg` trong `jobs/people.js` (`FARMER_SVG`, `CHEF_SVG`, `BUILDER_SVG`, `DRIVER_SVG`), có trong `JOB_PEOPLE` (thay ảnh được) và `JOB_BACKGROUNDS` (ảnh nền + prompt).
+- **Nông trại** (`jobs/farm.js`, `screens/farm.js`):
+  - Con vật vẽ SVG cùng kiểu bạn thú (`jobs/farm-animals.js`: bò, cừu, ngựa, gà, lợn, vịt; mặt đói / vui), cả ở cửa chuồng; thức ăn vẽ SVG (hay = bó buộc dây, grass = cụm cỏ mọc từ đất).
+  - Tiếng kêu: file của Ai kêu thế? (`playSoundFile`); không phát được thì con vật nói tiếng kêu.
+  - Thức ăn lần đầu gặp trong lượt: bác nông dân đọc tên khi khay hiện (*"Hay! Corn! Carrot!"*), món đó nhún; rồi con vật mới xin.
+  - Chạm gà để gà đứng dậy là khám phá — không tính nhầm, không tính vào 5 thao tác con. Mức 2 có thêm thẻ số nên tổng trứng thực tế 2–4 (5 trứng + thẻ số = 6 thao tác, kế hoạch bị loại).
+- **Đầu bếp nhí** (`jobs/chef.js`, `screens/chef.js`):
+  - Khách là 3 bạn thú khác nhau mỗi lượt (`plan.customers`).
+  - Lúc nướng chú nói *"Bake!"* (không lặp *"In the oven!"*).
+  - Bánh trang trí xong tự mang ra cho khách (không thêm thao tác); bánh mì kẹp và bánh nướng bé chạm đĩa / bánh để đưa.
+  - Mức 1 chạm nhầm đồ chỉ làm đồ đúng nhún (không tính nhầm).
+  - Âm thanh: đập trứng *crack*, lò nướng *tick*, mang món ra có tiếng bát đĩa (`dishes.mp3`). Trang trí thừa: quả bay tới bánh rồi bay về khay + *"That's enough!"*.
+- **Thợ xây** (`jobs/build.js`, `screens/build.js`):
+  - Mức 2: mỗi bước khay 3 khối (đúng, cùng dáng khác màu, dáng gần giống cùng màu); mức 3: đúng, cùng dáng khác cỡ, dáng gần giống.
+  - Hình mới chỉ ở **mức 3** và khi đã chơi Đếm hình mới (`playedShapes2`: `shapeCount2` có lượt / đã lên mức / có `seen`).
+  - Hai cửa sổ cùng bước: đặt xong cả hai mới nói *"Two squares! The windows!"*.
+  - Hình vẽ riêng (polygon đơn giản) cùng tên với `shapes.js`, không dùng lại SVG của Đếm hình.
+  - Nhà xây xong: bạn thú đi vào cửa rồi ló ra vẫy tay 👋 ở cửa sổ (nhà không có cửa sổ thì ở góc tường) lúc nói *"My house! Thank you!"*. Khối khớp vào bản vẽ / ổ gà kêu *click*.
+- **Xe buýt** (`jobs/bus.js`, `jobs/family.js`, `screens/bus.js`):
+  - Máy trạng thái hành khách (`initialStates`, `board`, `alight`) có unit test trước khi làm màn.
+  - Lời mời bấm còi: *"Let's beep!"* rồi bấm còi mới *"Beep beep!"*. Còi dùng tiếng thật `car.mp3` (không phát được thì tiếng tổng hợp).
+  - Màn dọc: bác tài ngồi trong ô cửa lái phía trước xe (`.bs-cab`; xoay ngang thì về đứng bên trái).
+  - Không bỏ ai: nhắc 2 lần (10 + 10 giây), thêm 5 giây thì người cần đón tự lên (`by: 'auto'`, không ghi Family / Feelings / `seen`).
+  - Đèn đỏ (mức 3, một lần mỗi lượt) có thể ở trước trạm 2, 3 hoặc bến cuối.
+  - Hành khách trẻ con nói giọng bạn nhỏ (`CHILD_VOICE`), bác tài giọng chính.
+- **Đã kiểm tra trên máy này** (không có Node):
+  - unit test mới chạy trong Edge: `farm`, `chef`, `build`, `bus` (500 seed mỗi mức), cùng các test nghề cũ;
+  - chạy app thật trong Edge headless: cả 4 nghề × 3 mức đi hết lượt có chạm nhầm → sticker; ra nền giữa ca quay lại đúng bước; Xe buýt không chạm → tự lên, không ghi tiến độ;
+  - ảnh chụp iPad + điện thoại 390px.
+- **Ưu tiên từ chưa gặp (2.7):** Nông trại (con vật), Đầu bếp (nhân bánh, đồ trang trí — ghi `seen` từng món), Thợ xây (hình ổ gà), Xe buýt (người nhà).
+- **Chưa chạy:** `tests/ui/jobs3.spec.js` (Playwright — cần Node). JOBS3-06 (*"Hot! Wait!"*) khó bắt ở chế độ chạy nhanh vì bánh nóng chỉ ~40 ms.

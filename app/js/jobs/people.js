@@ -90,6 +90,84 @@ export const POLICE_SVG = `<svg class="jb-police" viewBox="0 0 200 200" aria-hid
   <path d="M88 103 Q100 114 112 103" fill="#e64980" stroke="${INK}" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
 </svg>`;
 
+/**
+ * Chú / bác (nửa người, viewBox 200 × 200) của 4 nghề mới (SPEC-jobs3 mục 8): tóc ngắn, mặt cười, tai hai bên.
+ * `clothes` vẽ đè lên thân, `hat` vẽ trên đầu (sau tóc), `extra` vẽ trên mặt (ria, kính).
+ */
+function manSvg(cls, { clothes, hat = '', extra = '', hair = HAIR }) {
+  return `<svg class="${cls}" viewBox="0 0 200 200" aria-hidden="true">
+  <path d="M26 200 C26 152 58 128 100 128 C142 128 174 152 174 200 Z" fill="#fff" stroke="${INK}" stroke-width="4" stroke-linejoin="round"/>
+  ${clothes}
+  <rect x="88" y="106" width="24" height="26" fill="${SKIN}" stroke="${INK}" stroke-width="3"/>
+  <circle cx="58" cy="86" r="9" fill="${SKIN}" stroke="${INK}" stroke-width="3"/>
+  <circle cx="142" cy="86" r="9" fill="${SKIN}" stroke="${INK}" stroke-width="3"/>
+  <circle cx="100" cy="82" r="42" fill="${SKIN}" stroke="${INK}" stroke-width="3"/>
+  <path d="M60 74 C56 44 144 44 140 74 C130 62 116 58 100 58 C84 58 70 62 60 74 Z" fill="${hair}" stroke="${INK}" stroke-width="3" stroke-linejoin="round"/>
+  ${hat}
+  <circle cx="86" cy="86" r="5" fill="${INK}"/><circle cx="114" cy="86" r="5" fill="${INK}"/>
+  <circle cx="87.5" cy="84.5" r="1.6" fill="#fff"/><circle cx="115.5" cy="84.5" r="1.6" fill="#fff"/>
+  <circle cx="74" cy="100" r="6" fill="#ffa8a8" opacity="0.7"/><circle cx="126" cy="100" r="6" fill="#ffa8a8" opacity="0.7"/>
+  <path d="M88 103 Q100 114 112 103" fill="#e64980" stroke="${INK}" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+  ${extra}
+</svg>`;
+}
+
+/** Bác nông dân: mũ rơm vành rộng, áo kẻ đỏ, yếm xanh. */
+export const FARMER_SVG = manSvg('jb-farmer', {
+  clothes: `
+  <path d="M26 200 C26 152 58 128 100 128 C142 128 174 152 174 200 Z" fill="#ff8787" stroke="${INK}" stroke-width="4" stroke-linejoin="round"/>
+  <path d="M40 170 H160 M34 186 H166 M70 134 V200 M130 134 V200" stroke="#c92a2a" stroke-width="3" opacity="0.55"/>
+  <path d="M64 150 H136 L140 200 H60 Z" fill="#4dabf7" stroke="${INK}" stroke-width="3" stroke-linejoin="round"/>
+  <path d="M70 152 L62 132 M130 152 L138 132" stroke="#4dabf7" stroke-width="8" stroke-linecap="round"/>
+  <circle cx="72" cy="158" r="4" fill="#ffd43b" stroke="${INK}" stroke-width="2"/><circle cx="128" cy="158" r="4" fill="#ffd43b" stroke="${INK}" stroke-width="2"/>
+  <rect x="86" y="168" width="28" height="18" rx="3" fill="#74c0fc" stroke="${INK}" stroke-width="2.5"/>`,
+  hat: `
+  <ellipse cx="100" cy="54" rx="72" ry="14" fill="#f8d66d" stroke="${INK}" stroke-width="3"/>
+  <path d="M62 54 C62 18 138 18 138 54 Z" fill="#fcc419" stroke="${INK}" stroke-width="3" stroke-linejoin="round"/>
+  <path d="M64 46 H136" stroke="#e8590c" stroke-width="6"/>`,
+});
+
+/** Chú đầu bếp: mũ trắng cao, áo trắng hai hàng cúc, khăn đỏ ở cổ. */
+export const CHEF_SVG = manSvg('jb-chef', {
+  clothes: `
+  <path d="M26 200 C26 152 58 128 100 128 C142 128 174 152 174 200 Z" fill="#fff" stroke="${INK}" stroke-width="4" stroke-linejoin="round"/>
+  <path d="M82 132 L100 150 L118 132 L112 128 L100 140 L88 128 Z" fill="#fa5252" stroke="${INK}" stroke-width="2.5" stroke-linejoin="round"/>
+  <circle cx="88" cy="164" r="3.5" fill="${INK}"/><circle cx="112" cy="164" r="3.5" fill="${INK}"/>
+  <circle cx="88" cy="182" r="3.5" fill="${INK}"/><circle cx="112" cy="182" r="3.5" fill="${INK}"/>`,
+  hat: `
+  <path d="M66 56 C48 50 50 22 70 22 C70 4 98 0 104 14 C112 0 140 6 134 24 C152 24 152 52 134 56 Z" fill="#fff" stroke="${INK}" stroke-width="3" stroke-linejoin="round"/>
+  <rect x="66" y="48" width="68" height="14" rx="3" fill="#fff" stroke="${INK}" stroke-width="3"/>`,
+  extra: `<path d="M84 98 Q92 92 100 98 Q108 92 116 98" fill="none" stroke="${HAIR}" stroke-width="4" stroke-linecap="round"/>`,
+});
+
+/** Chú thợ xây: mũ bảo hộ vàng, áo phản quang cam có sọc bạc. */
+export const BUILDER_SVG = manSvg('jb-builder', {
+  clothes: `
+  <path d="M26 200 C26 152 58 128 100 128 C142 128 174 152 174 200 Z" fill="#4dabf7" stroke="${INK}" stroke-width="4" stroke-linejoin="round"/>
+  <path d="M52 146 C64 134 80 130 88 130 L100 160 L112 130 C120 130 136 134 148 146 L154 200 H46 Z" fill="#ff922b" stroke="${INK}" stroke-width="3" stroke-linejoin="round"/>
+  <path d="M50 176 H150" stroke="#e9ecef" stroke-width="8"/>
+  <path d="M50 176 H150" stroke="${INK}" stroke-width="1.5" opacity="0.3"/>`,
+  hat: `
+  <path d="M56 62 C54 24 146 24 144 62 Z" fill="#ffd43b" stroke="${INK}" stroke-width="3" stroke-linejoin="round"/>
+  <path d="M100 26 V60" stroke="#f59f00" stroke-width="8"/>
+  <rect x="48" y="56" width="104" height="10" rx="5" fill="#fcc419" stroke="${INK}" stroke-width="3"/>`,
+});
+
+/** Bác tài xe buýt: mũ lưỡi trai xanh, áo sơ mi xanh nhạt, cà vạt xanh đậm, bảng tên. */
+export const DRIVER_SVG = manSvg('jb-driver', {
+  hair: '#868e96',
+  clothes: `
+  <path d="M26 200 C26 152 58 128 100 128 C142 128 174 152 174 200 Z" fill="#a5d8ff" stroke="${INK}" stroke-width="4" stroke-linejoin="round"/>
+  <path d="M84 130 L100 148 L116 130" fill="none" stroke="${INK}" stroke-width="3" stroke-linejoin="round"/>
+  <path d="M100 148 L92 158 L100 196 L108 158 Z" fill="#1c7ed6" stroke="${INK}" stroke-width="2.5" stroke-linejoin="round"/>
+  <rect x="122" y="160" width="26" height="14" rx="3" fill="#fff" stroke="${INK}" stroke-width="2.5"/>`,
+  hat: `
+  <path d="M58 60 C56 26 144 26 142 60 Z" fill="#1c7ed6" stroke="${INK}" stroke-width="3" stroke-linejoin="round"/>
+  <path d="M60 60 Q100 74 140 60 L132 70 Q100 80 68 70 Z" fill="#1864ab" stroke="${INK}" stroke-width="2.5" stroke-linejoin="round"/>
+  <rect x="88" y="38" width="24" height="12" rx="3" fill="#ffd43b" stroke="${INK}" stroke-width="2"/>`,
+  extra: `<path d="M84 98 Q92 93 100 98 Q108 93 116 98" fill="none" stroke="#868e96" stroke-width="4" stroke-linecap="round"/>`,
+});
+
 const STYLE = [
   'Cute children\'s picture-book style, simple flat shapes, thick soft dark outlines, bright pastel colors.',
   'Pure flat white (#FFFFFF) background, no shadow, no scenery, no frame, no text, no logo.',
@@ -113,6 +191,23 @@ export const JOB_PEOPLE = [
   {
     id: 'police', emoji: '👮', vi: 'Chú cảnh sát (trò Cảnh sát)', svg: POLICE_SVG,
     prompt: `A friendly cartoon male police officer for a children's game, smiling kindly, short dark hair, navy blue police cap with a gold star, navy blue uniform with a gold badge and a whistle, giving a thumbs up. ${STYLE}`,
+  },
+  // SPEC-jobs3 mục 8: người lớn của 4 nghề mới.
+  {
+    id: 'farm', emoji: '👩‍🌾', vi: 'Bác nông dân (trò Nông trại)', svg: FARMER_SVG,
+    prompt: `A friendly cartoon farmer for a children's game, smiling kindly, wide straw hat, red checked shirt with blue dungarees, waving one hand. ${STYLE}`,
+  },
+  {
+    id: 'chef', emoji: '👨‍🍳', vi: 'Chú đầu bếp (trò Đầu bếp nhí)', svg: CHEF_SVG,
+    prompt: `A friendly cartoon male chef for a children's game, smiling kindly, tall white chef hat, white double-breasted chef jacket with a red neckerchief, holding a wooden spoon. ${STYLE}`,
+  },
+  {
+    id: 'build', emoji: '👷', vi: 'Chú thợ xây (trò Thợ xây)', svg: BUILDER_SVG,
+    prompt: `A friendly cartoon male builder for a children's game, smiling kindly, yellow hard hat, orange safety vest with a silver stripe over a blue shirt, giving a thumbs up. ${STYLE}`,
+  },
+  {
+    id: 'bus', emoji: '🚌', vi: 'Bác tài xe buýt (trò Xe buýt)', svg: DRIVER_SVG,
+    prompt: `A friendly cartoon older male bus driver for a children's game, smiling kindly, grey hair and moustache, blue cap with a peak, light blue shirt with a dark blue tie and a name badge. ${STYLE}`,
   },
 ];
 

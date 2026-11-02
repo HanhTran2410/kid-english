@@ -31,5 +31,22 @@ export const JOB_BACKGROUNDS = [
     id: 'fire', emoji: '🚒', vi: 'Lính cứu hỏa',
     prompt: `A calm neighbourhood background: light blue sky, a few far-away trees and hills, green grass at the bottom.\nNo houses, no fire, no smoke (the game draws a house or a tree in the middle).\n${COMMON}`,
   },
+  // SPEC-jobs3 mục 8: 4 nghề mới.
+  {
+    id: 'farm', emoji: '👩‍🌾', vi: 'Nông trại',
+    prompt: `A sunny farmyard: light blue sky, soft hills far away, a wooden fence along the back, green grass and a little dirt path at the bottom.\nNo barn, no animals, no trees in the middle (the game draws the barn, the hens and an apple tree).\n${COMMON}`,
+  },
+  {
+    id: 'chef', emoji: '👨‍🍳', vi: 'Đầu bếp nhí',
+    prompt: `A bright, tidy kitchen wall: pastel tiles, a shelf with a few jars and pots high up, a window with curtains.\nKeep the middle and the bottom half plain (the game draws the table, the oven and the food).\n${COMMON}`,
+  },
+  {
+    id: 'build', emoji: '👷', vi: 'Thợ xây',
+    prompt: `An empty, sunny building site: light sky, a few orange traffic cones and a small crane far away at the edges, flat sandy ground.\nKeep the middle plain (the game draws the house plan and the road).\n${COMMON}`,
+  },
+  {
+    id: 'bus', emoji: '🚌', vi: 'Xe buýt',
+    prompt: `A quiet town street seen from the side: light sky, small shops and trees far away, a pavement and a grey road along the bottom third.\nNo cars, no bus, no bus stop (the game draws them).\n${COMMON}`,
+  },
 ];
 export const JOB_BG_BY_ID = new Map(JOB_BACKGROUNDS.map((j) => [j.id, j]));

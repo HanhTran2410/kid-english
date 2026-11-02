@@ -3,7 +3,7 @@
 // Thêm/bớt file trong app/ thì cập nhật ASSETS (test tests/unit/sw.test.js sẽ báo nếu thiếu).
 // Thư viện bài app/shared/ (file .zip + index.json) KHÔNG lưu offline: tải từ mạng khi bố mẹ mở Thư viện bài.
 
-const VERSION = '0.61.1';
+const VERSION = '0.62.0';
 const CACHE = `kid-english-${VERSION}`;
 
 const ASSETS = [
@@ -89,6 +89,12 @@ const ASSETS = [
   'js/jobs/people.js',
   'js/jobs/fire.js',
   'js/jobs/backgrounds.js',
+  'js/jobs/farm.js',
+  'js/jobs/chef.js',
+  'js/jobs/build.js',
+  'js/jobs/bus.js',
+  'js/jobs/family.js',
+  'js/jobs/farm-animals.js',
   'js/link-import.js',
   'js/jolly.js',
   'js/player/jolly-stages.js',
@@ -101,6 +107,10 @@ const ASSETS = [
   'js/screens/teacher.js',
   'js/screens/police.js',
   'js/screens/fire.js',
+  'js/screens/farm.js',
+  'js/screens/chef.js',
+  'js/screens/build.js',
+  'js/screens/bus.js',
   'js/screens/parent/scenes.js',
   'js/screens/parent/dress.js',
   'js/screens/parent/feed.js',
