@@ -13,7 +13,18 @@ import { quizQuestions } from '../../player/plan.js';
 import { parentLayout, goParent, section, notice, speakButton, field } from './common.js';
 import { markNewLesson } from './github.js';
 
-const TOPICS = ['Animals', 'Food', 'Colors', 'Toys', 'Family', 'Vehicles', 'At the park', 'Fruits', 'Body', 'Weather'];
+// Chủ đề có sẵn: [tên tiếng Anh (đưa vào prompt, chia tab), tên tiếng Việt hiện kèm trên chip].
+const TOPICS = [
+  ['Animals', 'Con vật'], ['Food', 'Đồ ăn'], ['Colors', 'Màu sắc'], ['Toys', 'Đồ chơi'], ['Family', 'Gia đình'],
+  ['Vehicles', 'Xe cộ'], ['At the park', 'Công viên'], ['Fruits', 'Hoa quả'], ['Body', 'Cơ thể'], ['Weather', 'Thời tiết'],
+  ['Vegetables', 'Rau củ'], ['Things at home', 'Đồ vật trong nhà'], ['In the kitchen', 'Trong bếp'], ['In the bathroom', 'Phòng tắm'],
+  ['In the bedroom', 'Phòng ngủ'], ['Clothes', 'Quần áo'], ['Drinks', 'Đồ uống'], ['Farm animals', 'Con vật nông trại'],
+  ['Sea animals', 'Con vật dưới biển'], ['Bugs', 'Côn trùng'], ['Nature', 'Thiên nhiên'], ['At school', 'Ở trường'],
+  ['Shapes', 'Hình khối'], ['Jobs', 'Nghề nghiệp'], ['Musical instruments', 'Nhạc cụ'], ['Sports', 'Thể thao'],
+];
+const topicChips = (onPick) => h('div.chips', {}, ...TOPICS.map(([en, vi]) => h('button.chip', {
+  type: 'button', 'aria-label': en, onclick: () => onPick(en),
+}, en, h('span.chip-vi', { text: ` · ${vi}` }))));
 
 function radios(name, options, value) {
   return h('div.radios', {}, ...options.map(([v, label]) => h('label.radio', {},
@@ -26,9 +37,7 @@ const radioValue = (form, name) => form.querySelector(`input[name="${name}"]:che
 export function createView(app) {
   const body = parentLayout(app, { title: 'Tạo bài học', back: () => goParent(app) });
   const topic = h('input', { type: 'text', placeholder: 'Ví dụ: Animals, Fruits, My house…', value: 'Animals' });
-  const chips = h('div.chips', {}, ...TOPICS.map((t) => h('button.chip', {
-    type: 'button', text: t, onclick: () => { topic.value = t; refreshAvoid(); },
-  })));
+  const chips = topicChips((t) => { topic.value = t; refreshAvoid(); });
   const age = h('input', { type: 'number', min: '2', max: '8', value: '3' });
   const MAX_REVIEW = 2;
   const reviewBox = h('div.review-picker');
@@ -57,7 +66,7 @@ export function createView(app) {
         ? notice('warn', `Chủ đề "${name}" đã có ${topicWords.length} từ, còn ít từ dễ cho bé ${age.value || 3} tuổi — AI có thể chọn từ khó hoặc lạc đề. Nên chọn chủ đề hẹp hơn (ví dụ "${name}: actions", "${name}: at bath time")${unusedTopics().length ? ` hoặc chủ đề chưa có bài: ${unusedTopics().join(', ')}` : ''}.`)
         : null);
   }
-  const unusedTopics = () => TOPICS.filter((t) => !splitAvoidWords(wordLessons, t, topicOf).topicLessons.length).slice(0, 4);
+  const unusedTopics = () => TOPICS.map(([en]) => en).filter((t) =>!splitAvoidWords(wordLessons, t, topicOf).topicLessons.length).slice(0, 4);
   topic.addEventListener('input', refreshAvoid);
   extraAvoid.addEventListener('input', refreshAvoid);
 
@@ -337,9 +346,7 @@ export function patternPreview(app, lesson) {
 export function patternCreateView(app) {
   const body = parentLayout(app, { title: 'Tạo bài mẫu câu', back: () => goParent(app) });
   const topic = h('input', { type: 'text', placeholder: 'Ví dụ: Toys, Fruits, At the zoo…', value: 'Toys' });
-  const topicChips = h('div.chips', {}, ...TOPICS.map((t) => h('button.chip', {
-    type: 'button', text: t, onclick: () => { topic.value = t; },
-  })));
+  const patternChips = topicChips((t) => { topic.value = t; });
   const frame = h('input', { type: 'text', value: 'I have {a} ___.' });
   const frameChips = h('div.chips', {}, ...PATTERN_FRAMES.map((f) => h('button.chip', {
     type: 'button', text: f, onclick: () => { frame.value = f; },
@@ -378,7 +385,7 @@ export function patternCreateView(app) {
       app.setSetting('lastPromptTopic', 'Sentences');
     },
   },
-  section('🧸 Chủ đề', topicChips, field('Hoặc tự gõ', topic)),
+  section('🧸 Chủ đề', patternChips,field('Hoặc tự gõ', topic)),
   section('🌸 Khung câu', frameChips, field('Hoặc tự gõ (một chỗ trống ___; {a} là chỗ "a / an")', frame)),
   section('Bài mẫu câu', field('🖼️ Số hình', radios('count', PATTERN_COUNTS.map((n) => [n, `${n} hình`]), 6))),
   h('div.actions', {}, h('button.btn.primary.big', { type: 'submit', text: 'Copy prompt' })));
