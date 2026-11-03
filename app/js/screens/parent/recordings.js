@@ -3,6 +3,7 @@
 import { h, confirmDialog, formatBytes, formatDateTime, toast } from '../../ui.js';
 import { listLessons, filterRecordings, deleteRecordings, recordingStats, mediaBlob } from '../../db.js';
 import { parentLayout, goParent, section } from './common.js';
+import { kindLabel } from './lessons.js';
 
 const DAY = 86400000;
 
@@ -136,7 +137,8 @@ export function recordingsView(app) {
   (async () => {
     [all, lessons] = await Promise.all([app.db.getAll('recordings'), listLessons(app.db)]);
     lessonSel.replaceChildren(h('option', { value: '', text: 'Tất cả' }),
-      ...lessons.map((l) => h('option', { value: l.id, text: l.title })));
+      // Bài trùng tên (bài Từ vựng "Animals" và bài Mẫu câu "Animals"): thêm loại bài để phân biệt.
+      ...lessons.map((l) => h('option', { value: l.id, text: lessons.some((o) => o !== l && o.title === l.title) ? `${l.title} · ${kindLabel(l)}` : l.title })));
     const words = [...new Set(all.map((r) => r.word))].sort();
     wordSel.replaceChildren(h('option', { value: '', text: 'Tất cả' }), ...words.map((w) => h('option', { value: w, text: w })));
     render();

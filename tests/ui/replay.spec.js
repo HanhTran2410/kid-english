@@ -65,7 +65,7 @@ test('chạm 🔊: hiện phụ đề tiếng Anh + tiếng Việt (có nghĩa c
   const question = (await spoken(page)).findLast((t) => /^(Where is the|Which one is)/.test(t));
   const word = question.replace(/^Where is the |^Which one is |\?$/g, '');
   const vi = await page.evaluate(async (w) => {
-    const lesson = (await window.kidEnglish.db.getAll('lessons')).find((l) => l.title === 'Animals');
+    const lesson = (await window.kidEnglish.db.getAll('lessons')).find((l) => l.title === 'Animals' && l.kind !== 'patterns');
     return lesson.words.find((x) => x.en === w).vi;
   }, word);
   await replay.click();

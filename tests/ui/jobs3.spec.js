@@ -84,8 +84,9 @@ test('Đầu bếp mức 3: rửa tay → bánh mì kẹp; đưa món "No …" �
   await stateIs(page, 'wash');
   await page.locator('.cf-sink').click();
   await stateIs(page, 'layer');
-  const said = await spoken(page);
-  const no = said.find((t) => /^No \w+, please!$/.test(t)).match(/^No (\w+)/)[1];
+  // Trạng thái "layer" bật ngay lúc khách bắt đầu nói (nhận chạm sớm) — chờ khách nói xong câu "No …, please!".
+  await expect.poll(async () => (await spoken(page)).some((t) => /^No \w+, please!$/.test(t))).toBe(true);
+  const no = (await spoken(page)).find((t) => /^No \w+, please!$/.test(t)).match(/^No (\w+)/)[1];
   await tapTray(page, no);
   await expect.poll(async () => (await spoken(page)).filter((t) => t === `No ${no}, please!`).length).toBe(2);
   await expect(page.locator('.cf-layer')).toHaveCount(0);

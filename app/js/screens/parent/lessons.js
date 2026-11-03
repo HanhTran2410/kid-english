@@ -6,7 +6,7 @@ const IMPORT_LOG_MAX = 30;
 import { listLessons, deleteLesson, setWordImage, removeWordImage, isQuotaError, mediaBlob, ensureLessonNumbers } from '../../db.js';
 import { normalizeWord } from '../../text.js';
 import { uniqueTitle, topicOf, formatLessonNo, lessonFileName } from '../../lesson.js';
-import { isPhraseLesson, MOTION_NAMES, frameGroups, frameSteps, defaultFrameMapping, collectFrames, singlePhraseGroup } from '../../phrase.js';
+import { isPhraseLesson, lessonKind, MOTION_NAMES, frameGroups, frameSteps, defaultFrameMapping, collectFrames, singlePhraseGroup } from '../../phrase.js';
 import { buildFramesPrompt } from '../../prompts.js';
 import { isNumberLesson, numberKey, countPhrase } from '../../numbers.js';
 import { isPhonicsLesson, letterKey } from '../../phonics.js';
@@ -75,12 +75,14 @@ export async function importPackage(app, file) {
   if (!payload.lessons.length && !sceneImages && !hasDress && !hasFeed && !hasHide && !hasPuzzle && !hasMissing && !hasSounds && !hasDoctor && !hasJobs) throw new BackupError('File này không có bài học nào.');
   const existing = await listLessons(app.db);
   const before = new Set(existing.map((l) => l.id));
-  // Bài mới trùng tên với bài đang có thì đặt tên "… 2", "… 3".
-  const titles = existing.map((l) => l.title);
+  // Bài mới trùng tên với bài đang có CÙNG LOẠI thì đặt tên "… 2", "… 3" (bài Mẫu câu "Animals" không làm bài Từ vựng
+  // "Animals" nhập vào thành "Animals 2").
+  const named = existing.map((l) => ({ title: l.title, kind: lessonKind(l) }));
   for (const l of payload.lessons) {
     if (before.has(l.id)) continue;
-    l.title = uniqueTitle(l.title, titles);
-    titles.push(l.title);
+    const kind = lessonKind(l);
+    l.title = uniqueTitle(l.title, named.filter((x) => x.kind === kind).map((x) => x.title));
+    named.push({ title: l.title, kind });
   }
   // Chỉ lấy bài và ảnh; không đụng tới tiến độ, sticker, cài đặt, ghi âm của máy này.
   // Bài đã có trên máy này (cùng bài, chia sẻ lại sau khi sửa) thì cập nhật nội dung và ảnh mới hơn.
@@ -540,7 +542,7 @@ function shareSection(app, lesson) {
 }
 
 /** Đổi số bài, tên bài, chủ đề (dùng chung cho bài từ vựng và bài câu). */
-function kindLabel(lesson) {
+export function kindLabel(lesson) {
   if (isPatternLesson(lesson)) return '🌸 Mẫu câu';
   if (isTalkLesson(lesson)) return '🗨️ Hội thoại';
   if (isJollyLesson(lesson)) return '🐍 Âm & ghép vần';
@@ -724,7 +726,7 @@ function renameSection(app, lesson) {
       onclick: async () => {
         const title = name.value.trim();
         if (!title) return;
-        const others = (await listLessons(app.db)).filter((l) => l.id !== lesson.id).map((l) => l.title);
+        const others = (await listLessons(app.db)).filter((l) => l.id !== lesson.id && lessonKind(l) === lessonKind(lesson)).map((l) => l.title);
         lesson.title = uniqueTitle(title, others);
         lesson.topic = topicInput.value.trim();
         if (Number(noInput.value) > 0) lesson.no = Math.round(Number(noInput.value));

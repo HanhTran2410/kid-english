@@ -29,9 +29,14 @@ async function asked(page) {
 }
 
 test('thẻ More shapes nằm sau Count the shapes; câu đầu: This is …, câu nhận dạng, Find a …, rồi đếm', async ({ page }) => {
-  await openMoreShapes(page);
-  const cards = page.locator('.lesson-card');
-  expect(await cards.count()).toBeGreaterThan(0);
+  await fakeSpeech(page);
+  await startApp(page);
+  await page.getByRole('button', { name: 'Số đếm' }).click();
+  // Danh sách bài số: "More shapes" ngay sau "Count the shapes".
+  const titles = await page.locator('.lesson-card').evaluateAll((els) => els.map((e) => e.getAttribute('aria-label')));
+  expect(titles.indexOf('More shapes')).toBe(titles.indexOf('Count the shapes') + 1);
+  await page.getByRole('button', { name: 'More shapes' }).click();
+  await expect(card(page)).toBeVisible();
   const { kind } = await question(page);
   expect(LEVEL1).toContain(kind);
   await expect.poll(() => spoken(page)).toContainEqual(expect.stringMatching(/^This is an? [a-z]+!$/));
@@ -41,9 +46,11 @@ test('thẻ More shapes nằm sau Count the shapes; câu đầu: This is …, c�
   await tapShape(page, `.sc-pic [data-kind="${kind}"]:not(.sc-pad)`);
   await asked(page);
   const list = await ids(page, `.sc-pic [data-kind="${kind}"]:not(.sc-pad)`);
-  for (const id of list) await tapShape(page, shapeSel(id));
+  // Đếm tới hình trước hình cuối: mỗi hình một huy hiệu số (chạm hình cuối là app khen rồi sang câu sau ngay).
+  for (const id of list.slice(0, -1)) await tapShape(page, shapeSel(id));
+  await expect(page.locator('.sc-badge')).toHaveCount(list.length - 1);
+  await tapShape(page, shapeSel(list.at(-1)));
   await expect.poll(() => spoken(page)).toContainEqual(expect.stringMatching(/Great counting!$/));
-  await expect(page.locator('.sc-badge')).toHaveCount(list.length);
 });
 
 test('chạm nhầm: hình dễ nhầm nháy cùng thẻ mẫu; chạm lại cùng hình không tính; 3 hình sai khác nhau thì nhắc một lần', async ({ page }) => {
@@ -111,13 +118,15 @@ test('mức 2 (khóa): hình nhiều góc lần đầu trong lượt → góc tr
 
 test('▶ khi đang đếm góc: sang câu sau ngay, không đếm tiếp', async ({ page }) => {
   await openMoreShapes(page, { lock: 2, seen: ALL });
-  // Giọng giả đọc xong ngay: giữ câu "One!" lại (không bao giờ đọc xong) để chạm ▶ đúng lúc đang đếm góc.
+  // Giữ câu "One!" lại tới khi bị hủy (▶), để chạm ▶ đúng lúc đang đếm góc. Phải chặn ở `speaker.speak`: giọng đọc
+  // của máy không báo đọc xong thì app vẫn tự đi tiếp sau một lúc (để bé không bị kẹt).
   await page.evaluate(() => {
-    const synth = window.speechSynthesis;
-    const speak = synth.speak.bind(synth);
-    synth.speak = (u) => {
-      if (u.text === 'One!') window.__spoken.push(u.text);
-      else speak(u);
+    const sp = window.kidEnglish.speaker;
+    const speak = sp.speak.bind(sp);
+    sp.speak = (text, opts = {}) => {
+      if (text !== 'One!') return speak(text, opts);
+      window.__spoken.push(text);
+      return new Promise((_, reject) => opts.signal?.addEventListener('abort', () => reject(new DOMException('Đã dừng', 'AbortError')), { once: true }));
     };
   });
   // Bỏ qua tới câu có hình nhiều góc đang được đếm góc.

@@ -119,7 +119,7 @@ test('máy A tải bài lên Google Drive (thư mục Kid English) → máy B nh
   await a.page.getByRole('button', { name: 'Kết nối thử' }).click();
   await expect(a.page.getByText(/Đã kết nối.*"Kid English"/)).toBeVisible();
   await a.page.evaluate(() => window.kidEnglish.go('parent', { view: 'lessons' }));
-  await a.page.getByRole('button', { name: /Animals/ }).click();
+  await a.page.getByRole('button', { name: /Animals 📚/ }).click();
   await a.page.getByRole('button', { name: '1. Tạo file bài' }).click();
   const upload = a.page.getByRole('button', { name: '3. Tải lên Google Drive' });
   await expect(upload).toBeVisible();
@@ -134,17 +134,17 @@ test('máy A tải bài lên Google Drive (thư mục Kid English) → máy B nh
   // ----- Máy B: xóa bài Animals có sẵn, rồi nhập lại từ Drive -----
   const b = await device(browser, google);
   await b.page.evaluate(() => window.kidEnglish.go('parent', { view: 'lessons' }));
-  await b.page.getByRole('button', { name: /Animals/ }).click();
+  await b.page.getByRole('button', { name: /Animals 📚/ }).click();
   await b.page.getByRole('button', { name: 'Xóa bài này' }).click();
   await b.page.getByRole('button', { name: 'Xóa bài', exact: true }).click();
-  await expect(b.page.getByRole('button', { name: /Animals/ })).toHaveCount(0);
+  await expect(b.page.getByRole('button', { name: /Animals 📚/ })).toHaveCount(0);
 
   await b.page.getByRole('button', { name: 'Nhập bài từ Google Drive' }).click();
   const file = b.page.getByRole('button', { name: /⬇️ \d+-animals\.zip/ });
   await expect(file).toBeVisible();
   await file.click();
   await expect(b.page.getByRole('status').filter({ hasText: 'nhập 1 bài mới' })).toBeVisible();
-  await expect(b.page.getByRole('button', { name: /Animals/ })).toBeVisible();
+  await expect(b.page.getByRole('button', { name: /Animals 📚/ })).toBeVisible();
   // Đăng nhập một lần cho cả buổi (vé còn hạn thì không hỏi lại).
   expect(await b.page.evaluate(() => window.__logins)).toBe(1);
 
@@ -157,7 +157,7 @@ test('chưa thiết lập Google Drive: không có nút tải lên, có hướng
   await startApp(page);
   await openParent(page);
   await page.getByRole('button', { name: 'Quản lý bài' }).click();
-  await page.getByRole('button', { name: /Animals/ }).click();
+  await page.getByRole('button', { name: /Animals 📚/ }).click();
   await page.getByRole('button', { name: '1. Tạo file bài' }).click();
   await expect(page.getByRole('button', { name: '2. Gửi file' })).toBeVisible();
   await expect(page.getByRole('button', { name: '3. Tải lên Google Drive' })).toBeHidden();
@@ -168,7 +168,7 @@ test('link nhập bài: máy A (có API key) tải lên → copy link → máy C
   const google = fakeGoogle();
   const a = await device(browser, google, { apiKey: API_KEY });
   await a.page.evaluate(() => window.kidEnglish.go('parent', { view: 'lessons' }));
-  await a.page.getByRole('button', { name: /Colors/ }).click();
+  await a.page.getByRole('button', { name: /Colors 📚/ }).click();
   await a.page.getByRole('button', { name: '1. Tạo file bài' }).click();
   await a.page.getByRole('button', { name: '3. Tải lên Google Drive' }).click();
   const linkInput = a.page.getByLabel('Link nhập bài');
@@ -184,10 +184,10 @@ test('link nhập bài: máy A (có API key) tải lên → copy link → máy C
   await c.route('https://www.googleapis.com/**', google.handler);
   await startApp(c);
   await c.evaluate(() => window.kidEnglish.go('parent', { view: 'lessons' }));
-  await c.getByRole('button', { name: /Colors/ }).click();
+  await c.getByRole('button', { name: /Colors 📚/ }).click();
   await c.getByRole('button', { name: 'Xóa bài này' }).click();
   await c.getByRole('button', { name: 'Xóa bài', exact: true }).click();
-  await expect(c.getByRole('button', { name: /Colors/ })).toHaveCount(0);
+  await expect(c.getByRole('button', { name: /Colors 📚/ })).toHaveCount(0);
 
   await c.getByRole('button', { name: 'Nhập bài từ link' }).click();
   await c.getByLabel('Link bài học').fill('xin chào');
@@ -196,7 +196,7 @@ test('link nhập bài: máy A (có API key) tải lên → copy link → máy C
   await c.getByLabel('Link bài học').fill(link);
   await c.getByRole('button', { name: 'Nhập', exact: true }).click();
   await expect(c.getByRole('status').filter({ hasText: 'nhập 1 bài mới' })).toBeVisible();
-  await expect(c.getByRole('button', { name: /Colors/ })).toBeVisible();
+  await expect(c.getByRole('button', { name: /Colors 📚/ })).toBeVisible();
   expect(await c.evaluate(() => window.__logins ?? 0)).toBe(0);
 
   // Mở app bằng chính link nhập bài: ô link được điền sẵn ở Quản lý bài, phần # bị xóa khỏi thanh địa chỉ.
@@ -217,7 +217,7 @@ test('tài khoản công ty chặn chia sẻ ra ngoài: vẫn báo đã tải l�
   google.stats.blockSharing = true;
   const a = await device(browser, google, { apiKey: API_KEY });
   await a.page.evaluate(() => window.kidEnglish.go('parent', { view: 'lessons' }));
-  await a.page.getByRole('button', { name: /Colors/ }).click();
+  await a.page.getByRole('button', { name: /Colors 📚/ }).click();
   await a.page.getByRole('button', { name: '1. Tạo file bài' }).click();
   await a.page.getByRole('button', { name: '3. Tải lên Google Drive' }).click();
   await expect(a.page.getByText(/✅ Đã tải lên Google Drive: Kid English\/\d+-colors\.zip/)).toBeVisible();

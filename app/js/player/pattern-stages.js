@@ -206,12 +206,14 @@ function waitExplore(ctx) {
     poster.pics.forEach((p) => p.addEventListener('click', onPic));
     poster.showMe.addEventListener('click', onShowMe);
     signal.addEventListener('abort', onAbort, { once: true });
+    // Test giao diện chỉnh được thời gian nhắc / tự chọn (`window.__kidTest`), vì ở chế độ chạy nhanh chỉ còn 0,2 / 0,4 giây.
+    const t = globalThis.__kidTest ?? {};
     timers.push(setTimeout(() => {
       const rest = poster.unchecked();
       if (rest.length) poster.bounce(rest[0]);
       teacher.say('Tap a picture!').catch(() => {});
-    }, scaled(NUDGE_MS)));
-    timers.push(setTimeout(() => done(pickUnchecked()), scaled(AUTO_MS)));
+    }, t.patternNudgeMs ?? scaled(NUDGE_MS)));
+    timers.push(setTimeout(() => done(pickUnchecked()), t.patternAutoMs ?? scaled(AUTO_MS)));
   });
 }
 

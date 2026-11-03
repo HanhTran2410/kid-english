@@ -27,7 +27,7 @@ test('màn hình chính có nút Số đếm; học hết bài Đếm 1–10: B�
   await startApp(page);
   await page.getByRole('button', { name: 'Số đếm' }).click();
   // Danh sách bài số: bài đếm và trò chơi, không lẫn bài từ vựng / bài câu.
-  await expect(page.locator('.lesson-card')).toHaveCount(5); // + Đếm hình (SPEC-shapes)
+  await expect(page.locator('.lesson-card')).toHaveCount(6); // + Đếm hình (SPEC-shapes) + Đếm hình mới (SPEC-shapes2)
   await autoTapCount(page);
   await page.getByRole('button', { name: 'Count 1–10', exact: true }).click();
 

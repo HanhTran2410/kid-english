@@ -99,7 +99,7 @@ test('học dở rồi tải lại trang: Học tiếp vào đúng chỗ dừng,
   // Chờ học xong 3 thẻ từ (bước thứ 4 đang chạy).
   await expect.poll(async () => page.evaluate(async () => {
     const lessons = await window.kidEnglish.db.getAll('lessons');
-    return lessons.find((l) => l.title === 'Animals')?.resume?.index ?? -1;
+    return lessons.find((l) => l.title === 'Animals' && l.kind !== 'patterns')?.resume?.index ?? -1;
   }), { timeout: 30_000 }).toBeGreaterThanOrEqual(3);
 
   await page.reload();
@@ -107,7 +107,7 @@ test('học dở rồi tải lại trang: Học tiếp vào đúng chỗ dừng,
   await page.getByRole('button', { name: 'Từ vựng' }).click();
   const card = page.getByRole('button', { name: 'Animals', exact: true });
   await expect(card.locator('.resume-bar')).toBeVisible();
-  const resume = await page.evaluate(async () => (await window.kidEnglish.db.getAll('lessons')).find((l) => l.title === 'Animals').resume);
+  const resume = await page.evaluate(async () => (await window.kidEnglish.db.getAll('lessons')).find((l) => l.title === 'Animals' && l.kind !== 'patterns').resume);
 
   await card.click();
   await expect(page.getByRole('button', { name: 'Học tiếp' })).toBeVisible();
@@ -212,8 +212,8 @@ test('nghe lại giọng bé: lọc theo bài, chọn tất cả rồi xóa', as
       id: crypto.randomUUID(), lessonId: lesson.id, word, date: now - daysAgo * 86400000,
       blob: new Blob(['x'.repeat(1000)], { type: 'audio/webm' }), mimeType: 'audio/webm', durationMs: 1200,
     });
-    const animals = lessons.find((l) => l.title === 'Animals');
-    const colors = lessons.find((l) => l.title === 'Colors');
+    const animals = lessons.find((l) => l.title === 'Animals' && l.kind !== 'patterns');
+    const colors = lessons.find((l) => l.title === 'Colors' && l.kind !== 'patterns');
     await add(animals, 'dog', 0);
     await add(animals, 'cat', 10);
     await add(colors, 'red', 40);
@@ -226,7 +226,7 @@ test('nghe lại giọng bé: lọc theo bài, chọn tất cả rồi xóa', as
   await expect(page.locator('.rec-row')).toHaveCount(1);
   await page.getByLabel('Ngày:').selectOption('all');
 
-  await page.getByLabel('Bài:').selectOption({ label: 'Animals' });
+  await page.getByLabel('Bài:').selectOption({ label: 'Animals · 📚 Từ vựng' });
   await expect(page.locator('.rec-row')).toHaveCount(2);
   await page.getByRole('button', { name: 'Chọn nhiều' }).click();
   await page.getByRole('button', { name: 'Chọn tất cả' }).click();
@@ -377,7 +377,7 @@ test('ảnh lưới: app tự đoán lưới thật (AI vẽ 3×3 thay vì yêu 
   }, colors);
   await openParent(page);
   await page.getByRole('button', { name: 'Quản lý bài' }).click();
-  await page.getByRole('button', { name: /Animals/ }).click();
+  await page.getByRole('button', { name: /Animals 📚/ }).click();
   await expect(page.getByRole('heading', { name: /Ảnh lưới.*3×3/ })).toBeVisible();
   await page.locator('section', { hasText: 'Ảnh lưới' }).locator('input[type=file]')
     .setInputFiles({ name: 'grid.png', mimeType: 'image/png', buffer: Buffer.from(png, 'base64') });
@@ -406,7 +406,7 @@ test('ảnh lưới: app tự đoán lưới thật (AI vẽ 3×3 thay vì yêu 
   // Ô thứ 2 (cat) phải là hình tròn màu xanh lá ở giữa.
   const color = await page.evaluate(async () => {
     const lessons = await window.kidEnglish.db.getAll('lessons');
-    const id = lessons.find((l) => l.title === 'Animals').id;
+    const id = lessons.find((l) => l.title === 'Animals' && l.kind !== 'patterns').id;
     const imgs = await window.kidEnglish.db.getAllByIndex('images', 'lessonId', id);
     const cat = imgs.find((i) => i.word === 'cat');
     const bmp = await createImageBitmap(new Blob([cat.data], { type: cat.mimeType }));
@@ -424,7 +424,7 @@ test('chia sẻ bài: xuất file bài rồi nhập lại trên máy khác', asy
   await startApp(page);
   await openParent(page);
   await page.getByRole('button', { name: 'Quản lý bài' }).click();
-  await page.getByRole('button', { name: /Colors/ }).click();
+  await page.getByRole('button', { name: /Colors 📚/ }).click();
   await page.getByRole('button', { name: '1. Tạo file bài' }).click();
   const download = page.waitForEvent('download');
   await page.getByRole('button', { name: '2. Gửi file' }).click();
@@ -441,12 +441,12 @@ test('chia sẻ bài: xuất file bài rồi nhập lại trên máy khác', asy
   });
   await openParent(other);
   await other.getByRole('button', { name: 'Quản lý bài' }).click();
-  await expect(other.getByRole('button', { name: /Colors/ })).toHaveCount(0);
+  await expect(other.getByRole('button', { name: /Colors 📚/ })).toHaveCount(0);
   // Đưa file vào với đúng tên đã tải về (Playwright lưu file tạm dưới tên ngẫu nhiên).
   const { readFile } = await import('node:fs/promises');
   await other.locator('input[type=file]').setInputFiles({ name: '02-colors.zip', mimeType: 'application/zip', buffer: await readFile(file) });
   await expect(other.getByRole('status')).toContainText('Đã nhập 1 bài mới');
-  await expect(other.getByRole('button', { name: /Colors/ })).toBeVisible();
+  await expect(other.getByRole('button', { name: /Colors 📚/ })).toBeVisible();
   // Số bài đi theo file; danh sách "Đã nhập gần đây" ghi lại file đã nhập.
   await expect(other.locator('.lesson-row', { hasText: 'Colors' }).locator('.lesson-no')).toHaveText('#02');
   await other.getByRole('button', { name: '← Quay lại' }).click();
@@ -515,7 +515,7 @@ test('ảnh không đọc được thì hiện emoji thay vì biểu tượng �
   await startApp(page);
   await page.evaluate(async () => {
     const db = window.kidEnglish.db;
-    const animals = (await db.getAll('lessons')).find((l) => l.title === 'Animals');
+    const animals = (await db.getAll('lessons')).find((l) => l.title === 'Animals' && l.kind !== 'patterns');
     await db.put('images', {
       id: 'broken', lessonId: animals.id, word: 'dog', data: new TextEncoder().encode('không phải ảnh').buffer,
       mimeType: 'image/jpeg', createdAt: Date.now(),
@@ -630,7 +630,7 @@ test('màn hình chính hiện phiên bản app nhỏ ở góc (khớp với Gó
 test('ảnh lưới bài học: chỉ gồm từ CHƯA có ảnh (prompt bỏ từ đã có ảnh); đủ ảnh thì lưới "vẽ lại" thu gọn', async ({ page }) => {
   await startApp(page);
   const { id, words } = await page.evaluate(async () => {
-    const l = (await window.kidEnglish.db.getAll('lessons')).find((x) => x.title === 'Animals');
+    const l = (await window.kidEnglish.db.getAll('lessons')).find((x) => x.title === 'Animals' && x.kind !== 'patterns');
     return { id: l.id, words: l.words.map((w) => w.en) };
   });
   const save = (list) => page.evaluate(async ({ list, id }) => {
@@ -641,7 +641,7 @@ test('ảnh lưới bài học: chỉ gồm từ CHƯA có ảnh (prompt bỏ t�
   await save(words.slice(0, -2));
   await openParent(page);
   await page.getByRole('button', { name: 'Quản lý bài' }).click();
-  await page.getByRole('button', { name: /Animals/ }).click();
+  await page.getByRole('button', { name: /Animals 📚/ }).click();
   await expect(page.getByRole('heading', { name: /^Ảnh lưới — 2 từ chưa có ảnh/ })).toBeVisible();
   await page.evaluate(() => {
     window.__copied = '';
@@ -655,7 +655,7 @@ test('ảnh lưới bài học: chỉ gồm từ CHƯA có ảnh (prompt bỏ t�
 
   await save(words.slice(-2));
   await page.getByRole('button', { name: /Quay lại|←/ }).first().click();
-  await page.getByRole('button', { name: /Animals/ }).click();
+  await page.getByRole('button', { name: /Animals 📚/ }).click();
   await expect(page.getByText(new RegExp(`đã đủ ảnh cho cả ${words.length} từ`))).toBeVisible();
   await expect(page.getByRole('heading', { name: /từ chưa có ảnh/ })).toHaveCount(0);
 });

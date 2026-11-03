@@ -3,7 +3,7 @@
 import { h, toast, copyText } from '../../ui.js';
 import { buildLessonPrompt, DURATIONS, MAX_AVOID_WORDS, buildPhraseLessonPrompt, SITUATIONS, PHRASE_COUNTS, splitAvoidWords, MANY_TOPIC_WORDS, isSubtopic,
   buildPatternLessonPrompt, PATTERN_FRAMES, PATTERN_COUNTS } from '../../prompts.js';
-import { isPhraseLesson, phraseOverlap } from '../../phrase.js';
+import { isPhraseLesson, phraseOverlap, lessonKind } from '../../phrase.js';
 import { isPatternLesson, sentenceOf, sentenceViOf } from '../../patterns.js';
 import { createScene } from '../../player/scene.js';
 import { pickWordsForPrompt, markUsedInPrompt, isUnknown, KNOWN_MASTERY, wordRecords } from '../../progress.js';
