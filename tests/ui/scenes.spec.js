@@ -37,7 +37,7 @@ async function openScene(page, name) {
   await expect(page.locator('.tray-sticker').first()).toBeVisible();
 }
 
-test('góc trò chơi: thẻ Dán tranh, Mặc đồ, Chọn từ (không có Chọn số); Dán tranh có 10 tranh, mỗi tranh đủ bộ sticker theo chủ đề', async ({ page }) => {
+test('góc trò chơi: thẻ Dán tranh, Mặc đồ, Chọn từ (không có Chọn số); Dán tranh có 14 tranh, mỗi tranh đủ bộ sticker theo chủ đề', async ({ page }) => {
   await fakeSpeech(page);
   await startApp(page);
   await page.getByRole('button', { name: 'Trò chơi' }).click();
@@ -47,7 +47,7 @@ test('góc trò chơi: thẻ Dán tranh, Mặc đồ, Chọn từ (không có Ch
   await expect(page.getByRole('button', { name: /Chọn số/ })).toHaveCount(0);
   await expect(page.getByRole('button', { name: 'Mặc đồ' })).toBeVisible();
   await page.getByRole('button', { name: 'Dán tranh' }).click();
-  await expect(page.locator('.sp-card')).toHaveCount(10);
+  await expect(page.locator('.sp-card')).toHaveCount(14);
   // Không cần sticker trong album: tranh nào cũng có đủ bộ sticker theo chủ đề.
   await page.getByRole('button', { name: 'Bãi biển' }).click();
   await expect(page.locator('.tray-sticker')).toHaveCount(16);
@@ -211,7 +211,7 @@ test('Góc bố mẹ: thay ảnh một sticker (tự bỏ nền trắng) và ả
   await startApp(page);
   await openParent(page);
   await page.getByRole('button', { name: /Ảnh Dán tranh/ }).click();
-  await expect(page.locator('.menu-item')).toHaveCount(10);
+  await expect(page.locator('.menu-item')).toHaveCount(14);
   await page.getByRole('button', { name: /Nông trại/ }).click();
 
   // Copy prompt ảnh tranh có bố cục theo %.

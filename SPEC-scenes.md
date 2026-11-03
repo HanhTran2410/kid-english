@@ -233,3 +233,13 @@ Góc bố mẹ → **🎨 Ảnh Dán tranh** → danh sách 7 tranh (ghi đang d
   - **Nhầm** → *"That's the pig! Where is the cow?"*. Nhầm từ lần 2 thì sticker đúng nhún.
 - Bé gỡ hết sticker đang được hỏi khỏi tranh → thôi hỏi.
 - Câu số nhiều: *"Where are the grapes?"*.
+
+## 12. Thêm 4 tranh (app 0.63.0)
+
+- Tổng cộng **14 tranh**. Bốn tranh mới, mỗi tranh vẽ SVG, có các chỗ có giới từ, bộ 16 sticker và gợi ý prompt ảnh tranh riêng:
+  - 🐠 **Under the sea / Đáy biển**: *in the chest*, *on the rock*, *in the seaweed*, *on the sand*, *in the water*. Sticker: cá, cá nóc, cua, bạch tuộc, mực, cá heo, cá voi, cá mập, rùa, tôm, tôm hùm, vỏ ốc, nàng tiên cá, mỏ neo, kim cương, kính lặn.
+  - 🌻 **Garden / Khu vườn**: *in the pot*, *on the fence*, *in the tree*, *under the tree*, *in the sky*, *on the grass*. Sticker: bướm, ong, bọ rùa, ốc sên, sâu, kiến, chim, mèo, thỏ, nhím, hoa, hướng dương, hoa hồng, nấm, dâu tây, cà rốt.
+  - 🛁 **Bathroom / Phòng tắm**: *in the sink*, *on the shelf*, *in the bath*, *on the wall*, *on the floor*. Sticker: vịt, xà phòng, bọt biển, bàn chải đánh răng, giấy vệ sinh, chai, thuyền, cá, ếch, bạch tuộc, cá voi, bóng, gấu bông, tất, áo, mèo.
+  - 🏫 **Classroom / Lớp học**: *on the board*, *in the bag*, *on the desk*, *under the desk*, *on the wall*, *on the floor*. Sticker: sách, vở, bút chì, bút sáp, kéo, thước, ba lô, táo, đồng hồ, quả địa cầu, máy tính, chuông, bóng, gấu bông, rô-bốt, ngôi sao.
+- Sticker trùng tên với tranh cũ dùng chung mã và emoji (một ảnh). *scissors* là số nhiều: *"The scissors are on the desk!"*.
+- Đồ của tranh mới cũng được dùng làm đồ nhiễu ở trò Tìm đồ còn thiếu.

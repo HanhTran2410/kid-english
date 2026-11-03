@@ -1,4 +1,4 @@
-// Dán tranh (SPEC-scenes.md): 7 bức tranh vẽ SVG, mỗi tranh một bộ sticker theo chủ đề, các "chỗ" có giới từ,
+// Dán tranh (SPEC-scenes.md): 14 bức tranh vẽ SVG, mỗi tranh một bộ sticker theo chủ đề, các "chỗ" có giới từ,
 // câu Bông nói, Bông giao việc, prompt ảnh cho bố mẹ.
 // Tọa độ vẽ theo khung 400 × 300; vị trí sticker lưu theo % của tranh.
 
@@ -185,6 +185,72 @@ const SNOW_SVG = `
 <ellipse cx="262" cy="250" rx="92" ry="26" fill="#cfeaff"/><ellipse cx="240" cy="244" rx="40" ry="6" fill="#eaf6ff"/>
 <g fill="#dbe9f5"><circle cx="40" cy="230" r="5"/><circle cx="150" cy="270" r="5"/><circle cx="380" cy="214" r="5"/></g>`;
 
+const SEA_SVG = `
+<defs><linearGradient id="sea-water" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#8fdcfa"/><stop offset="1" stop-color="#3a95d6"/></linearGradient></defs>
+<rect width="400" height="300" fill="url(#sea-water)"/>
+<g fill="none" stroke="#e3f5ff" stroke-width="2"><circle cx="250" cy="70" r="6"/><circle cx="262" cy="48" r="4"/><circle cx="255" cy="30" r="3"/><circle cx="110" cy="100" r="5"/><circle cx="118" cy="80" r="3"/><circle cx="350" cy="120" r="4"/></g>
+<path d="M0 244 Q100 232 200 246 T400 240 V300 H0 Z" fill="#f3d9a0"/>
+<path d="M24 252 Q30 196 84 188 Q136 190 146 252 Z" fill="#8d99ae"/>
+<ellipse cx="74" cy="202" rx="28" ry="7" fill="#a9b4c4"/>
+<path d="M190 240 Q170 204 190 174 Q208 146 190 122" stroke="#3fae6a" stroke-width="10" fill="none" stroke-linecap="round"/>
+<path d="M212 240 Q230 206 212 178 Q196 152 214 132" stroke="#52c27c" stroke-width="9" fill="none" stroke-linecap="round"/>
+<path d="M290 226 L300 202 H376 L366 226 Z" fill="#a8622e"/>
+<rect x="290" y="226" width="76" height="36" rx="4" fill="#c9783f"/>
+<rect x="294" y="222" width="68" height="8" rx="2" fill="#5a3418"/>
+<path d="M290 242 H366" stroke="#ffd166" stroke-width="4"/>
+<rect x="322" y="236" width="12" height="12" rx="2" fill="#ffd166"/>
+<g fill="#ff9ab5"><circle cx="170" cy="272" r="5"/><circle cx="250" cy="284" r="4"/><circle cx="30" cy="282" r="4"/></g>`;
+
+const GARDEN_SVG = `
+<rect width="400" height="300" fill="#bfe9ff"/>
+<circle cx="210" cy="44" r="22" fill="#ffd166"/>
+<g fill="#fff"><ellipse cx="300" cy="44" rx="26" ry="10"/><ellipse cx="318" cy="37" rx="15" ry="9"/><ellipse cx="160" cy="70" rx="20" ry="8"/></g>
+<path d="M0 160 Q200 146 400 160 V300 H0 Z" fill="#8fd17a"/>
+<path d="M0 222 Q200 208 400 222 V300 H0 Z" fill="#7cc566"/>
+<rect x="62" y="110" width="24" height="104" rx="6" fill="#9b6a43"/>
+<circle cx="40" cy="100" r="30" fill="#5cc067"/><circle cx="108" cy="100" r="30" fill="#5cc067"/><circle cx="74" cy="74" r="44" fill="#4fb35a"/>
+<g fill="#fff" stroke="#d8cfc4" stroke-width="2">
+<path d="M258 190 V138 l7 -10 l7 10 V190 Z"/><path d="M282 190 V138 l7 -10 l7 10 V190 Z"/><path d="M306 190 V138 l7 -10 l7 10 V190 Z"/>
+<path d="M330 190 V138 l7 -10 l7 10 V190 Z"/><path d="M354 190 V138 l7 -10 l7 10 V190 Z"/><path d="M378 190 V138 l7 -10 l7 10 V190 Z"/>
+<rect x="250" y="148" width="150" height="7"/><rect x="250" y="172" width="150" height="7"/></g>
+<path d="M180 208 H236 L228 248 H188 Z" fill="#e07a4f"/>
+<rect x="176" y="198" width="64" height="12" rx="4" fill="#c9653d"/>
+<ellipse cx="208" cy="204" rx="26" ry="4" fill="#6b4a2f"/>
+<g fill="#ff9ab5"><circle cx="30" cy="270" r="5"/><circle cx="380" cy="262" r="5"/><circle cx="140" cy="285" r="5"/></g>
+<g fill="#ffd166"><circle cx="30" cy="270" r="2"/><circle cx="380" cy="262" r="2"/><circle cx="140" cy="285" r="2"/></g>`;
+
+const BATHROOM_SVG = `
+<rect width="400" height="220" fill="#dff4f7"/>
+<path d="M0 55 H400 M0 110 H400 M0 165 H400 M50 0 V220 M100 0 V220 M150 0 V220 M200 0 V220 M250 0 V220 M300 0 V220 M350 0 V220" stroke="#c6e8ee" stroke-width="2"/>
+<rect y="220" width="400" height="80" fill="#a7c7d9"/>
+<path d="M0 252 H400 M0 282 H400" stroke="#93b6ca" stroke-width="2"/>
+<rect x="154" y="80" width="102" height="8" rx="3" fill="#9b6a43"/>
+<path d="M166 88 v10 M244 88 v10" stroke="#9b6a43" stroke-width="5"/>
+<rect x="78" y="152" width="20" height="74" fill="#f4f6f8" stroke="#c9d3dd" stroke-width="2"/>
+<path d="M40 128 H136 Q134 158 88 160 Q42 158 40 128 Z" fill="#fff" stroke="#c9d3dd" stroke-width="3"/>
+<ellipse cx="88" cy="133" rx="40" ry="6" fill="#dbe4ec"/>
+<path d="M88 128 V112 H102" stroke="#8d99ae" stroke-width="5" fill="none" stroke-linecap="round"/>
+<path d="M372 164 V120 Q372 110 362 110 H348" stroke="#8d99ae" stroke-width="5" fill="none" stroke-linecap="round"/>
+<path d="M196 172 H392 V198 Q392 238 352 238 H236 Q196 238 196 198 Z" fill="#fff" stroke="#c9d3dd" stroke-width="3"/>
+<rect x="190" y="164" width="208" height="12" rx="6" fill="#f4f6f8" stroke="#c9d3dd" stroke-width="2"/>
+<rect x="204" y="178" width="180" height="10" rx="4" fill="#9fdcff"/>
+<path d="M222 238 v14 M366 238 v14" stroke="#8d99ae" stroke-width="6" stroke-linecap="round"/>
+<ellipse cx="120" cy="272" rx="56" ry="12" fill="#ffb4c6"/>`;
+
+const CLASSROOM_SVG = `
+<rect width="400" height="200" fill="#fff3c4"/>
+<rect y="200" width="400" height="100" fill="#d9a877"/>
+<path d="M0 232 H400 M0 266 H400" stroke="#c99665" stroke-width="2"/>
+<rect x="116" y="26" width="188" height="98" rx="6" fill="#9b6a43"/>
+<rect x="124" y="34" width="172" height="82" rx="3" fill="#2f7d5b"/>
+<rect x="140" y="122" width="140" height="6" rx="2" fill="#9b6a43"/>
+<rect x="200" y="182" width="170" height="12" rx="4" fill="#c9783f"/>
+<rect x="214" y="194" width="8" height="70" fill="#a8622e"/><rect x="348" y="194" width="8" height="70" fill="#a8622e"/>
+<rect x="28" y="214" width="62" height="56" rx="12" fill="#4d96ff"/>
+<path d="M40 216 Q59 192 78 216" stroke="#2d6fd6" stroke-width="5" fill="none"/>
+<ellipse cx="59" cy="217" rx="26" ry="6" fill="#1f4f9e"/>
+<rect x="40" y="238" width="38" height="20" rx="6" fill="#74b0ff"/>`;
+
 /**
  * Các tranh. zones: các chỗ theo thứ tự ưu tiên (vùng nhỏ trước, 1–2 vùng nền sau cùng);
  * rect: [x, y, rộng, cao] theo khung 400 × 300; draw: vật cần vẽ ở chỗ đó (prompt ảnh tranh).
@@ -333,6 +399,60 @@ export const SCENES = [
     items: [['snowman', '☃️'], ['penguin', '🐧'], ['polar bear', '🐻‍❄️'], ['seal', '🦭'], ['fox', '🦊'], ['owl', '🦉'], ['deer', '🦌'], ['rabbit', '🐇'],
       ['squirrel', '🐿️'], ['sled', '🛷'], ['snowflake', '❄️'], ['scarf', '🧣'], ['ice skate', '⛸️'], ['pine tree', '🌲'], ['gift', '🎁'], ['star', '⭐']],
   },
+  {
+    id: 'sea', en: 'Under the sea', vi: 'Đáy biển', emoji: '🐠', intro: "Let's play under the sea!", svg: SEA_SVG,
+    setting: 'the bottom of the sea',
+    zones: [
+      { id: 'chest', en: 'in the chest', vi: 'trong rương', rect: [282, 200, 90, 62], draw: 'an open wooden treasure chest standing on the sand, EMPTY inside' },
+      { id: 'rock', en: 'on the rock', vi: 'trên tảng đá', rect: [30, 176, 110, 40], draw: 'the rounded top of a big gray rock' },
+      { id: 'seaweed', en: 'in the seaweed', vi: 'trong rong biển', rect: [166, 118, 64, 112], draw: 'two tall wavy green seaweed plants' },
+      { id: 'sand', en: 'on the sand', vi: 'trên cát', rect: [0, 240, 400, 60], draw: 'flat open yellow sand at the bottom of the sea' },
+      { id: 'water', en: 'in the water', vi: 'trong nước', rect: [0, 0, 400, 240], draw: 'open blue sea water with a few small bubbles' },
+    ],
+    items: [['fish', '🐠'], ['blowfish', '🐡'], ['crab', '🦀'], ['octopus', '🐙'], ['squid', '🦑'], ['dolphin', '🐬'], ['whale', '🐳'], ['shark', '🦈'],
+      ['turtle', '🐢'], ['shrimp', '🦐'], ['lobster', '🦞'], ['shell', '🐚'], ['mermaid', '🧜‍♀️'], ['anchor', '⚓'], ['diamond', '💎'], ['diving mask', '🤿']],
+  },
+  {
+    id: 'garden', en: 'Garden', vi: 'Khu vườn', emoji: '🌻', intro: "Let's play in the garden!", svg: GARDEN_SVG,
+    setting: 'a sunny garden behind a house',
+    zones: [
+      { id: 'pot', en: 'in the pot', vi: 'trong chậu', rect: [176, 196, 64, 52], draw: 'a big EMPTY orange flower pot with only soil in it, standing on the grass' },
+      { id: 'fence', en: 'on the fence', vi: 'trên hàng rào', rect: [250, 120, 150, 50], draw: 'the pointed tops of a white wooden picket fence' },
+      { id: 'tree', en: 'in the tree', vi: 'trong tán cây', rect: [10, 30, 130, 100], draw: 'the round leafy green crown of a big tree' },
+      { id: 'under-tree', en: 'under the tree', vi: 'dưới gốc cây', rect: [0, 130, 150, 90], draw: 'the brown tree trunk and the grass right under the tree' },
+      { id: 'sky', en: 'in the sky', vi: 'trên trời', rect: [0, 0, 400, 160], draw: 'open blue sky with a sun and small clouds' },
+      { id: 'grass', en: 'on the grass', vi: 'trên bãi cỏ', rect: [0, 160, 400, 140], draw: 'flat open green grass' },
+    ],
+    items: [['butterfly', '🦋'], ['bee', '🐝'], ['ladybug', '🐞'], ['snail', '🐌'], ['caterpillar', '🐛'], ['ant', '🐜'], ['bird', '🐦'], ['cat', '🐈'],
+      ['rabbit', '🐇'], ['hedgehog', '🦔'], ['flower', '🌷'], ['sunflower', '🌻'], ['rose', '🌹'], ['mushroom', '🍄'], ['strawberry', '🍓'], ['carrot', '🥕']],
+  },
+  {
+    id: 'bathroom', en: 'Bathroom', vi: 'Phòng tắm', emoji: '🛁', intro: "Let's play in the bathroom!", svg: BATHROOM_SVG,
+    setting: 'a clean bright bathroom',
+    zones: [
+      { id: 'sink', en: 'in the sink', vi: 'trong bồn rửa', rect: [40, 120, 96, 36], draw: 'a white washbasin on a pedestal with a tap, EMPTY inside' },
+      { id: 'shelf', en: 'on the shelf', vi: 'trên kệ', rect: [150, 40, 110, 48], draw: 'an EMPTY wooden wall shelf (the shelf board is at the bottom of this area)' },
+      { id: 'bath', en: 'in the bath', vi: 'trong bồn tắm', rect: [196, 150, 196, 56], draw: 'a big white bathtub with a little blue water inside' },
+      { id: 'wall', en: 'on the wall', vi: 'trên tường', rect: [0, 0, 400, 220], draw: 'a plain light-blue tiled bathroom wall' },
+      { id: 'floor', en: 'on the floor', vi: 'trên sàn', rect: [0, 220, 400, 80], draw: 'a plain bathroom floor with a small pink bath mat' },
+    ],
+    items: [['duck', '🦆'], ['soap', '🧼'], ['sponge', '🧽'], ['toothbrush', '🪥'], ['toilet paper', '🧻'], ['bottle', '🧴'], ['boat', '⛵'], ['fish', '🐠'],
+      ['frog', '🐸'], ['octopus', '🐙'], ['whale', '🐳'], ['ball', '⚽'], ['teddy bear', '🧸'], ['socks', '🧦'], ['shirt', '👕'], ['cat', '🐈']],
+  },
+  {
+    id: 'classroom', en: 'Classroom', vi: 'Lớp học', emoji: '🏫', intro: "Let's play in the classroom!", svg: CLASSROOM_SVG,
+    setting: 'a friendly preschool classroom',
+    zones: [
+      { id: 'board', en: 'on the board', vi: 'trên bảng', rect: [120, 30, 180, 90], draw: 'a big EMPTY green chalkboard in a wooden frame' },
+      { id: 'bag', en: 'in the bag', vi: 'trong cặp', rect: [24, 196, 70, 74], draw: 'an open blue school bag standing on the floor, EMPTY inside' },
+      { id: 'desk', en: 'on the desk', vi: 'trên bàn', rect: [200, 160, 170, 36], draw: 'the empty top of a small wooden school desk' },
+      { id: 'under-desk', en: 'under the desk', vi: 'dưới gầm bàn', rect: [212, 200, 146, 70], draw: 'the empty space under the desk between its legs' },
+      { id: 'wall', en: 'on the wall', vi: 'trên tường', rect: [0, 0, 400, 200], draw: 'a plain light-yellow classroom wall' },
+      { id: 'floor', en: 'on the floor', vi: 'trên sàn', rect: [0, 200, 400, 100], draw: 'a plain wooden floor' },
+    ],
+    items: [['book', '📕'], ['notebook', '📓'], ['pencil', '✏️'], ['crayon', '🖍️'], ['scissors', '✂️'], ['ruler', '📏'], ['backpack', '🎒'], ['apple', '🍎'],
+      ['clock', '⏰'], ['globe', '🌏'], ['computer', '💻'], ['bell', '🔔'], ['ball', '⚽'], ['teddy bear', '🧸'], ['robot', '🤖'], ['star', '⭐']],
+  },
 ].map((scene) => ({ ...scene, items: scene.items.map(([name, emoji]) => ({ id: itemId(name), name, emoji })) }));
 
 function itemId(name) {
@@ -363,7 +483,7 @@ export function zoneAt(scene, xPct, yPct) {
     ?? scene.zones.at(-1);
 }
 
-const PLURAL = new Set(['grapes', 'socks', 'sunglasses']);
+const PLURAL = new Set(['grapes', 'socks', 'sunglasses', 'scissors']);
 
 /** "The lion is in the tree!" / "The grapes are on the table!" */
 export function placedSentence(item, zone) {
@@ -546,6 +666,48 @@ const PROMPT_HINTS = {
       hill: { notes: ['One gentle rounded hill, empty.'] },
       sky: { notes: ['Calm and pale, a few small falling snowflakes; no sun, no birds.'] },
       snow: { notes: ['Broad, flat, open white snow.'] },
+    },
+  },
+  sea: {
+    avoid: ['fish', 'sea animals', 'coral reefs', 'shipwrecks', 'divers', 'shells', 'starfish', 'extra rocks', 'extra plants'],
+    zones: {
+      chest: { notes: ['The lid is tipped back; the inside is dark and EMPTY (no gold, no jewels).'] },
+      rock: { notes: ['One big smooth rock; its top is empty.'] },
+      seaweed: { notes: ['Only two simple plants with a few wavy leaves; nothing hiding in them.'] },
+      sand: { notes: ['Broad, flat and open; no shells or starfish.'] },
+      water: { notes: ['Calm blue water getting a little darker towards the bottom, with a few small bubbles; no light beams.'] },
+    },
+  },
+  garden: {
+    avoid: ['houses', 'flower beds', 'vegetable patches', 'paths', 'benches', 'tools', 'insects', 'birds', 'extra trees'],
+    zones: {
+      pot: { notes: ['Side view, open at the top, with only brown soil inside (no plant).'] },
+      fence: { notes: ['A short white fence on the right with simple pointed planks; nothing on it.'] },
+      tree: { joins: 'under-tree', notes: ['Simple rounded leaf shapes; no fruit, no birds in it.'] },
+      'under-tree': { notes: ['One simple trunk; keep the grass under it open.'] },
+      sky: { notes: ['Exactly one simple sun and at most three small clouds; no birds or butterflies.'] },
+      grass: { notes: ['Broad, flat and open green grass with no flowers on it.'] },
+    },
+  },
+  bathroom: {
+    avoid: ['toilets', 'mirrors', 'towels', 'bottles', 'toys', 'plants', 'windows', 'curtains', 'bath mats with patterns'],
+    zones: {
+      sink: { notes: ['Front view, white and simple, nothing in or on it.'] },
+      shelf: { notes: ['A single plain board on the wall with nothing on it.'] },
+      bath: { notes: ['Side view; a little calm blue water and NO foam, bubbles or toys in it.', 'A simple tap above its right end.'] },
+      wall: { notes: ['Plain light tiles.'] },
+      floor: { notes: ['Plain, with one small plain pink mat.'] },
+    },
+  },
+  classroom: {
+    avoid: ['children', 'teachers', 'chairs', 'posters', 'letters or numbers', 'books', 'toys', 'plants', 'windows', 'clocks'],
+    zones: {
+      board: { notes: ['Completely empty: no writing, no drawings, no chalk marks.'] },
+      bag: { notes: ['Front view with one simple handle, open at the top and empty.'] },
+      desk: { notes: ['Front view, a simple wooden desk with visible legs; its top is empty.'] },
+      'under-desk': { joins: 'desk', notes: ['Keep the floor under the desk empty (no chair).'] },
+      wall: { notes: ['Plain, light and calm; only the chalkboard on it.'] },
+      floor: { notes: ['Plain and empty.'] },
     },
   },
 };

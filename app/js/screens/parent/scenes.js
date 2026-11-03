@@ -75,7 +75,7 @@ export function scenesView(app) {
   let images = null;
   loadSceneImages(app.db).then((loaded) => {
     images = loaded;
-    list.before(reuseSection(app, SCENES.flatMap((s) => s.items), images, () => goParent(app, 'scenes'), 'của cả 7 tranh'));
+    list.before(reuseSection(app, SCENES.flatMap((s) => s.items), images, () => goParent(app, 'scenes'), `của cả ${SCENES.length} tranh`));
     list.replaceChildren(...SCENES.map((scene) => {
       const done = scene.items.filter((it) => images.sticker.has(normalizeWord(it.name))).length;
       return h('button.menu-item', { type: 'button', onclick: () => goParent(app, 'scene', { sceneId: scene.id }) },

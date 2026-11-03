@@ -20,8 +20,8 @@ const pointIn = (scene, zone) => {
   throw new Error(`${scene.id}/${zone.id} không có điểm nào`);
 };
 
-test('10 tranh; mã chỗ không trùng; vùng nằm trong tranh; câu có giới từ in / on / under', () => {
-  assert.deepEqual(SCENES.map((s) => s.id), ['farm', 'beach', 'bedroom', 'park', 'kitchen', 'space', 'jungle', 'street', 'party', 'snow']);
+test('14 tranh; mã chỗ không trùng; vùng nằm trong tranh; câu có giới từ in / on / under', () => {
+  assert.deepEqual(SCENES.map((s) => s.id), ['farm', 'beach', 'bedroom', 'park', 'kitchen', 'space', 'jungle', 'street', 'party', 'snow', 'sea', 'garden', 'bathroom', 'classroom']);
   for (const scene of SCENES) {
     const ids = scene.zones.map((z) => z.id);
     assert.equal(new Set(ids).size, ids.length, scene.id);
@@ -101,7 +101,7 @@ test('ranh giới giữa hai chỗ: chỗ đứng trước trong danh sách th�
   for (const scene of SCENES) for (const [x, y] of [[0, 0], [100, 0], [0, 100], [100, 100]]) assert.ok(zoneAt(scene, x, y));
 });
 
-test('mọi sticker × mọi chỗ của tranh: câu đúng mẫu; chỉ grapes / socks / sunglasses dùng are', () => {
+test('mọi sticker × mọi chỗ của tranh: câu đúng mẫu; chỉ grapes / scissors / socks / sunglasses dùng are', () => {
   const plural = new Set();
   for (const scene of SCENES) {
     for (const zone of scene.zones) {
@@ -113,7 +113,7 @@ test('mọi sticker × mọi chỗ của tranh: câu đúng mẫu; chỉ grapes 
       }
     }
   }
-  assert.deepEqual([...plural].sort(), ['grapes', 'socks', 'sunglasses']);
+  assert.deepEqual([...plural].sort(), ['grapes', 'scissors', 'socks', 'sunglasses']);
   const tree = SCENE_BY_ID.get('jungle').zones.find((z) => z.id === 'tree');
   assert.equal(placedSentence(ITEM_BY_ID.get('monkey'), tree), 'The monkey is in the tree!');
 });
@@ -258,4 +258,18 @@ test('3 tranh mới: Đường phố (xe cộ), Sinh nhật, Mùa đông tuyết
     if (byId.has(it.id)) assert.equal(byId.get(it.id), it.emoji, it.id);
     byId.set(it.id, it.emoji);
   }
+});
+
+test('4 tranh mới: Đáy biển, Khu vườn, Phòng tắm, Lớp học — chỗ và sticker theo chủ đề', () => {
+  const names = (id) => SCENE_BY_ID.get(id).items.map((i) => i.name);
+  const zones = (id) => SCENE_BY_ID.get(id).zones.map((z) => z.en);
+  assert.ok(['octopus', 'mermaid', 'shell'].every((n) => names('sea').includes(n)));
+  assert.ok(zones('sea').includes('in the chest'));
+  assert.ok(['caterpillar', 'sunflower', 'ladybug'].every((n) => names('garden').includes(n)));
+  assert.ok(zones('garden').includes('on the fence'));
+  assert.ok(['duck', 'soap', 'sponge'].every((n) => names('bathroom').includes(n)));
+  assert.ok(zones('bathroom').includes('in the bath'));
+  assert.ok(['pencil', 'scissors', 'backpack'].every((n) => names('classroom').includes(n)));
+  assert.ok(zones('classroom').includes('under the desk'));
+  assert.equal(placedSentence(ITEM_BY_ID.get('scissors'), SCENE_BY_ID.get('classroom').zones[2]), 'The scissors are on the desk!');
 });
