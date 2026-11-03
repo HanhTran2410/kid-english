@@ -30,6 +30,8 @@ const LEAVE_MS = 600;
 const SAY_BACK_MS = 2000; // "Here you are!": chờ bé nói theo
 const ACTIVE = ['order', 'coins', 'stock', 'bag', 'give', 'blend-add', 'blend-ready'];
 const BLEND_MS = 1100; // máy xay chạy
+const MILK_MS = 1400; // hộp sữa rót vào cối
+const POUR_CUP_MS = 700; // sinh tố từ cối rót sang ly
 /** Túi giấy (một túi, quai cầm): thay emoji 🛍️ (emoji là hai túi chồng nhau, khó nhìn). */
 const BAG_SVG = `<svg viewBox="0 0 64 72" aria-hidden="true">
   <path d="M22 24 C22 8 42 8 42 24" fill="none" stroke="#e64980" stroke-width="4" stroke-linecap="round"/>
@@ -58,6 +60,7 @@ export function shopScreen(app, params = {}) {
   let recorded = new Set();
   let phase = 'order'; // bước đang lưu: stock | order | coins | bag | give
   let stocked = []; // món đã vào giỏ (bày kệ)
+  let milked = false; // quầy sinh tố: đã rót sữa vào cối (rót khi đủ quả, trước khi bé bấm nút)
   let picked = null; // mức 2–3: món đã chạm, chờ chạm giỏ
 
   const cur = () => plan?.cases[caseIdx];
@@ -80,8 +83,10 @@ export function shopScreen(app, params = {}) {
   const basketsEl = h('div.sh-baskets', { hidden: true });
   // SPEC-jobs2 SH2: máy xay (cối có quả đã bỏ vào + nút) và ly sinh tố.
   const jar = h('div.sh-jar');
+  const liquid = h('span.sh-jar-liquid', { 'aria-hidden': 'true' }); // sữa / sinh tố trong cối
+  const milkJug = h('span.sh-milk', { hidden: true, 'aria-hidden': 'true' }, h('span.sh-milk-carton', { text: '🥛' }), h('span.sh-milk-stream'));
   const blendBtn = h('button.sh-blend-btn', { type: 'button', 'aria-label': 'Nút máy xay', onclick: () => pressBlend() }, h('span', { text: '▶' }));
-  const blender = h('div.sh-blender', { hidden: true }, jar, h('div.sh-blender-base', {}, blendBtn));
+  const blender = h('div.sh-blender', { hidden: true }, milkJug, jar,h('div.sh-blender-base', {}, blendBtn));
   const cup = h('div.sh-cup', { hidden: true, 'aria-hidden': 'true' }, h('span.sh-cup-top'), h('span.sh-cup-bottom'));
 
   const kit = jobScreen(app, {
@@ -163,7 +168,7 @@ export function shopScreen(app, params = {}) {
     state = s;
     kit.setState(s, s === 'order' || s === 'stock' || s === 'blend-add');
   }
-  const snap = () => saveSnap(JOB, { level, plan, caseIdx, got, paid, wrongs, nudges, wishShown, recorded: [...recorded], phase, stocked });
+  const snap = () => saveSnap(JOB, { level, plan, caseIdx, got, paid, wrongs, nudges, wishShown, recorded: [...recorded], phase, stocked, milked });
   const saveProgress = () => app.setSetting('shopGame', progress).catch(() => {});
 
   // ---------- Vẽ ----------
@@ -207,6 +212,7 @@ export function shopScreen(app, params = {}) {
     nudges = resume?.nudges ?? 0;
     wishShown = resume?.wishShown ?? false;
     phase = resume?.phase ?? 'order';
+    milked = resume?.milked ?? false;
     basketsEl.hidden = true;
     customerEl.hidden = false;
     counter.hidden = false;
@@ -374,7 +380,9 @@ export function shopScreen(app, params = {}) {
 
   // ---------- Quầy sinh tố (SPEC-jobs2 mục 2.3) ----------
   function renderJar() {
-    jar.replaceChildren(...order().filter((o) => (got[o.id] ?? 0) > 0).map((o) => foodFace(foodById(o.id), images, 'sh-jar-face')));
+    liquid.dataset.fill = milked ? 'milk' : '';
+    jar.classList.remove('blending', 'mixed');
+    jar.replaceChildren(liquid, ...order().filter((o) => (got[o.id] ?? 0) > 0).map((o) => foodFace(foodById(o.id), images, 'sh-jar-face')));
     blender.dataset.ready = String(isSmoothie() && orderDone(order(), got));
   }
   function renderCup() {
@@ -383,9 +391,30 @@ export function shopScreen(app, params = {}) {
     cup.style.setProperty('--c2', SMOOTHIE_COLOR[ids[1] ?? ids[0]] ?? '#fff');
     cup.dataset.fruits = ids.join(' '); // cho test
   }
+  /**
+   * Đủ quả: hộp sữa hiện ra, nghiêng rót, dòng sữa chảy vào cối, cối đầy dần màu trắng — Bông "And some milk!"
+   * (máy tự rót, bé không phải làm). Rót một lần mỗi ca (`milked` nằm trong bản lưu: ra nền quay lại không rót lại).
+   */
+  async function pourMilk(e) {
+    setState('busy');
+    phase = 'blend';
+    snap();
+    milkJug.hidden = false;
+    restartAnim(milkJug, 'pour');
+    play('whoosh');
+    const pouring = wait(MILK_MS / 3).then(() => { liquid.dataset.fill = 'milk'; });
+    await Promise.all([talk([B(MILK_LINE)]), wait(MILK_MS), pouring]);
+    milkJug.hidden = true;
+    milkJug.classList.remove('pour');
+    if (e !== kit.epoch) return false;
+    milked = true;
+    snap();
+    return true;
+  }
   async function beginBlend() {
     const e = kit.epoch;
     const ready = orderDone(order(), got);
+    if (ready && !milked && !(await pourMilk(e))) return;
     setState(ready ? 'blend-ready' : 'blend-add');
     phase = 'blend';
     renderJar();
@@ -450,18 +479,27 @@ export function shopScreen(app, params = {}) {
     kit.clearNudge();
     phase = 'coins'; // ra nền sau lúc này: sang bước trả xu (không xay lại)
     snap();
-    await talk([B(MILK_LINE)]);
-    if (e !== kit.epoch) return;
+    // Xay: quả tan dần, sữa trong cối đổi sang màu của quả (hai quả: lớp dưới màu quả đầu, lớp trên màu quả sau).
+    renderCup();
+    jar.style.setProperty('--c1', cup.style.getPropertyValue('--c1'));
+    jar.style.setProperty('--c2', cup.style.getPropertyValue('--c2'));
     play('rumble');
     blender.classList.add('blending');
+    jar.classList.add('blending');
+    liquid.dataset.fill = 'mix';
     await wait(BLEND_MS);
     blender.classList.remove('blending');
     if (e !== kit.epoch) return;
     got = Object.fromEntries(order().map((o) => [o.id, 1]));
-    jar.replaceChildren();
     blender.dataset.ready = 'false';
-    renderCup();
+    // Rót sang ly: cối cạn dần, ly đầy dần từ dưới lên, cùng màu.
+    jar.classList.add('mixed');
+    liquid.dataset.fill = '';
     cup.hidden = false;
+    restartAnim(cup, 'fill');
+    await wait(POUR_CUP_MS);
+    if (e !== kit.epoch) return;
+    jar.replaceChildren(liquid);
     restartAnim(cup, 'pop');
     play('ding');
     await talk([B(hereSmoothieLine(order().map((o) => foodById(o.id))))]);

@@ -40,7 +40,7 @@ Từ mới: *fruit, drink, bag, smoothie, have a nice day*; ôn đồ ăn (bài 
 
 ### 2.3 Quầy sinh tố (ca mới, thay 1 ca khách, mức 2–3 — SH2)
 - Đơn sinh sẵn: mức 2 **một quả** (*"Can I have a banana smoothie, please?"*), mức 3 **hai quả khác nhau** (*"…a banana and strawberry smoothie…"*), chỉ quả có cột "Làm sinh tố".
-- Bé kéo / chạm quả vào **máy xay** (khay có quả của đơn + 2 quả nhiễu). Đủ quả → bé chạm **nút máy xay** → Bông: *"And some milk!"* (máy tự rót) → tiếng *whirr* → ly sinh tố.
+- Bé kéo / chạm quả vào **máy xay** (khay có quả của đơn + 2 quả nhiễu). Đủ quả → **máy tự rót sữa** (hộp sữa nghiêng, dòng sữa chảy, cối đầy màu trắng) + Bông: *"And some milk!"* → Bông: *"Press the button!"* → bé chạm **nút máy xay** → tiếng *whirr*, quả tan dần, sữa trong cối **đổi sang màu của quả** → rót sang ly (ly đầy dần từ dưới lên). *(0.62.2: rót sữa chuyển lên trước khi bấm nút, theo yêu cầu sau khi chơi thử.)*
 - **Màu ly** cố định theo quả: banana vàng, strawberry hồng, mango cam, orange cam nhạt, watermelon đỏ, apple xanh nhạt; hai quả = **ly màu quả đầu tiên, lớp trên màu quả thứ hai**.
 - Xong: *"Here you are! A banana smoothie!"* → khách: *"Yummy! Thank you!"* → bước trả xu như ca thường (mức 2–3) → đưa túi (2.4).
 
