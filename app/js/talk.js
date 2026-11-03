@@ -399,7 +399,7 @@ export function builtInTalkLessons() {
           choices: [
             choice('duck', '🦆', 'A duck!', 'Con vịt!', { reply: 'Quack, quack!', replyVi: 'Cạp cạp!', draw: 'a yellow rubber duck' }),
             choice('boat', '⛵', 'A boat!', 'Cái thuyền!', { reply: 'Toot, toot!', replyVi: 'Tu tu!', draw: 'a small toy boat' }),
-            choice('bubbles', '🫧', 'Bubbles!', 'Bong bóng!', { keywords: ['bubble', 'bubbles'], reply: 'Pop, pop, pop!', replyVi: 'Bụp, bụp, bụp!', mood: 'surprise', draw: 'soap bubbles' }),
+            choice('bubbles', '🧼', 'Bubbles!', 'Bong bóng!', { keywords: ['bubble', 'bubbles'], reply: 'Pop, pop, pop!', replyVi: 'Bụp, bụp, bụp!', mood: 'surprise', draw: 'soap bubbles' }),
           ] },
         action('splash', '💦', 'Splash, splash!', 'Té nước nào!', 'Wow! Big splash!', 'Ồ! Té nước to quá!', 'confetti', { draw: 'water splashing' }),
         { id: 'hair', type: 'free', ask: 'Wash your hair. Rub, rub!', askVi: 'Gội đầu nào. Xoa, xoa!', answer: 'Rub, rub!', answerVi: 'Xoa, xoa!', keywords: ['rub'],

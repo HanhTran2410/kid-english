@@ -10,7 +10,7 @@ function effectLayer(motion) {
   const fx = h('div.scene-fx', { 'aria-hidden': 'true' });
   const add = (text, i = 0, cls = '') => fx.append(h(`span.fx${cls ? `.${cls}` : ''}`, { text, style: { '--i': String(i) } }));
   const overlay = MOTIONS[motion]?.overlay;
-  if (motion === 'wash') for (let i = 0; i < 5; i++) add(i % 2 ? '💧' : '🫧', i, 'bubble');
+  if (motion === 'wash') for (let i = 0; i < 5; i++) add(i % 2 ? '💧' : '🧼', i, 'bubble');
   else if (motion === 'sleep') for (let i = 0; i < 3; i++) add('💤', i, 'zzz');
   else if (motion === 'go' || motion === 'walk') for (let i = 0; i < 3; i++) add('👣', i, 'step');
   else if (motion === 'pour') for (let i = 0; i < 4; i++) add('💧', i, 'drop');

@@ -28,8 +28,8 @@ export function gamesScreen(app) {
     card('🧩', 'Puzzle', 'Ghép hình', '.game-puzzle', () => app.go('puzzle')),
     card('🔍', "What's missing?", 'Tìm đồ còn thiếu', '.game-missing', () => app.go('missing')),
     card('🐮', 'Who says moo?', 'Ai kêu thế?', '.game-sounds', () => app.go('animal-sounds')),
-    card('🫧', 'Pop the bubbles', 'Bắt bong bóng', '.game-bubbles', () => app.go('bubbles')),
-    card('🧑‍⚕️', 'Jobs', 'Đóng vai', '.game-jobs', () => app.go('jobs')),
+    card('🧼', 'Pop the bubbles', 'Bắt bong bóng', '.game-bubbles', () => app.go('bubbles')),
+    card('👨‍⚕️', 'Jobs', 'Đóng vai', '.game-jobs', () => app.go('jobs')),
     card('🎲', 'Pick it', 'Chọn từ', '.game-mix', () => app.go('play-mix')),
   );
   app.speaker.speak("Let's play a game!").catch(() => {});

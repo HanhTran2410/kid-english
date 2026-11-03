@@ -57,7 +57,7 @@ export function chefScreen(app, params = {}) {
 
   const custEl = h('div.cf-customer');
   const sink = h('button.cf-sink', { type: 'button', 'aria-label': 'Vòi nước', onclick: () => tapSink() },
-    h('span.cf-tap', { text: '🚰' }), h('span.cf-water'), h('span.cf-soap', { text: '🫧' }));
+    h('span.cf-tap', { text: '🚰' }), h('span.cf-water'), h('span.cf-soap', { text: '🧼' }));
   const card = h('div.cf-card', { 'aria-hidden': 'true' });
   const plate = h('button.cf-plate', { type: 'button', 'aria-label': 'Đĩa', onclick: () => tapPlate() },
     h('span.cf-stack'), h('span.cf-plate-art', { html: PLATE_SVG }));

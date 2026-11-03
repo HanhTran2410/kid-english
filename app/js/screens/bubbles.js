@@ -93,13 +93,13 @@ export function bubblesScreen(app, params = {}) {
   // ---------- Giao diện ----------
   const bunny = createBunny(app);
   const bongBtn = h('button.sp-bong', { type: 'button', 'aria-label': 'Nghe lại', onclick: () => { play('tap'); say(); } }, bunny.el);
-  const back = h('button.sp-back', { type: 'button', 'aria-label': 'Chọn kiểu bong bóng', text: '🫧', onclick: () => { play('tap'); app.go('bubbles'); } });
+  const back = h('button.sp-back', { type: 'button', 'aria-label': 'Chọn kiểu bong bóng', text: '🧼', onclick: () => { play('tap'); app.go('bubbles'); } });
   const wantCard = h('button.sp-request.bb-want', { type: 'button', 'aria-label': 'Cần bắt', hidden: true, onclick: () => { play('tap'); say(); } });
   const dots = h('div.bb-dots', { 'aria-label': 'Đã bắt' }, ...Array.from({ length: TARGETS_PER_ROUND }, () => h('span.bb-dot')));
   const field = h('div.bb-field', { dataset: { motion: reduced ? 'still' : 'rise' } });
   const sayBox = h('div.ms-say.bb-say');
   app.root.append(
-    h('header.child-top.sp-top', {}, homeButton(app), back, h('span.sp-title', { text: `🫧 ${MODE_LABEL[mode].en}` }), wantCard, bongBtn),
+    h('header.child-top.sp-top', {}, homeButton(app), back, h('span.sp-title', { text: `🧼 ${MODE_LABEL[mode].en}` }), wantCard, bongBtn),
     dots, field, sayBox,
   );
 

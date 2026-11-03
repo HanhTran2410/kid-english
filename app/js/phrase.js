@@ -21,7 +21,7 @@ export const MOTIONS = {
   close: { needsObject: true, onImage: 'pulse' },
   'put-on': { needsObject: true, onImage: 'pulse' },
   'take-off': { needsObject: true, onImage: 'pulse' },
-  wash: { needsObject: false, overlay: '🫧', onImage: 'pulse' },
+  wash: { needsObject: false, overlay: '🧼', onImage: 'pulse' },
   brush: { needsObject: false, overlay: '🪥', onImage: 'pulse' },
   eat: { needsObject: true, onImage: 'pulse' },
   drink: { needsObject: true, onImage: 'pulse' },

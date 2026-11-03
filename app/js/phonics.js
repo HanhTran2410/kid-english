@@ -21,7 +21,7 @@ const RAW = {
   k: ['kite 🪁', 'key 🔑', 'king 🤴', 'kangaroo 🦘', 'koala 🐨', 'kiwi 🥝'],
   l: ['lion 🦁', 'leaf 🍃', 'lemon 🍋', 'lamp 💡', 'ladybug 🐞', 'log 🪵'],
   m: ['moon 🌙', 'monkey 🐵', 'milk 🥛', 'mouse 🐭', 'mushroom 🍄', 'map 🗺️'],
-  n: ['nose 👃', 'nut 🥜', 'net 🥅', 'nest 🪺', 'noodles 🍜', 'nurse 🧑‍⚕️'],
+  n: ['nose 👃', 'nut 🥜', 'net 🥅', 'nest 🪺', 'noodles 🍜', 'nurse 👩‍⚕️'],
   o: ['octopus 🐙', 'ox 🐂', 'otter 🦦', 'olive 🫒'], // không dùng orange: giọng Mỹ đọc /ɔːr/, không phải /ɒ/
   p: ['pig 🐷', 'pen 🖊️', 'pizza 🍕', 'panda 🐼', 'pear 🍐', 'penguin 🐧'],
   q: ['queen 👸', 'question ❓', 'quilt 🛏️'],

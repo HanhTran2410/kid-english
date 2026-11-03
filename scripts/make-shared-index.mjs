@@ -21,7 +21,7 @@ function kindOf(lesson) {
 const GAME_FILES = {
   feed: ['🍌', 'Ảnh Cho Bông ăn'], hide: ['🙈', 'Ảnh Trốn tìm'], scene: ['🎨', 'Ảnh Dán tranh'], dress: ['👗', 'Đồ Mặc đồ'],
   puzzle: ['🧩', 'Ảnh Ghép hình'], missing: ['🔍', 'Ảnh Tìm đồ còn thiếu'], sounds: ['🐮', 'Ảnh & tiếng Ai kêu thế?'],
-  doctor: ['🩺', 'Ảnh Bác sĩ nhí'], jobs: ['🧑‍⚕️', 'Ảnh Đóng vai'],
+  doctor: ['🩺', 'Ảnh Bác sĩ nhí'], jobs: ['👨‍⚕️', 'Ảnh Đóng vai'],
 };
 
 async function describe(file) {
