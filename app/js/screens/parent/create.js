@@ -5,6 +5,7 @@ import { buildLessonPrompt, DURATIONS, MAX_AVOID_WORDS, buildPhraseLessonPrompt,
   buildPatternLessonPrompt, PATTERN_FRAMES, PATTERN_COUNTS } from '../../prompts.js';
 import { isPhraseLesson, phraseOverlap, lessonKind } from '../../phrase.js';
 import { isPatternLesson, sentenceOf, sentenceViOf } from '../../patterns.js';
+import { isDoingLesson, personOf, statement, statementVi, whoQuestion, DOING_TOPIC, DOING_TOPIC_EMOJI } from '../../patterns2.js';
 import { createScene } from '../../player/scene.js';
 import { pickWordsForPrompt, markUsedInPrompt, isUnknown, KNOWN_MASTERY, wordRecords } from '../../progress.js';
 import { parseLesson, createLessonRecord, overlapWithLessons, uniqueTitle, baseTitle, nextLessonNo, topicOf } from '../../lesson.js';
@@ -227,7 +228,9 @@ export function pasteView(app) {
         save.disabled = true;
         const record = createLessonRecord({ ...parsed.lesson, title: finalTitle });
         // Chủ đề (để chia tab): chủ đề đã chọn lúc tạo prompt, không có thì theo tên bài.
-        record.topic = app.settings.lastPromptTopic || baseTitle(parsed.lesson.title);
+        // Bài "Ai đang làm gì?" luôn ở tab riêng của Mẫu câu (SPEC-patterns2 mục 2).
+        record.topic = isDoingLesson(parsed.lesson) ? DOING_TOPIC : app.settings.lastPromptTopic || baseTitle(parsed.lesson.title);
+        if (isDoingLesson(parsed.lesson)) record.topicEmoji = DOING_TOPIC_EMOJI;
         record.no = nextLessonNo(await listLessons(app.db));
         await app.db.put('lessons', record);
         await markNewLesson(app, record.id);
@@ -328,8 +331,23 @@ export function phraseCreateView(app) {
     form, result);
 }
 
+/** Xem trước bài "Ai đang làm gì?": từng hành động với câu mẫu của Daddy / Mummy / bé (🔊), câu tiếng Việt. */
+function doingPreview(app, lesson) {
+  const people = ['daddy', 'mummy', 'me'].map((id) => personOf(id));
+  return h('div.preview', {},
+    h('h2.preview-title', {}, `${lesson.emoji} ${lesson.title}`, lesson.titleVi ? h('span.muted', { text: ` — ${lesson.titleVi}` }) : null),
+    section(`Hành động (${lesson.actions.length})`,
+      h('p.muted', { text: 'App tự ghép câu theo người trong nhà của bé (Hồ sơ của bé → Gia đình).' }),
+      h('ul.phrase-admin-list', {}, ...lesson.actions.map((a) => h('li.phrase-admin', {},
+        h('span.p-emoji', { text: a.emoji }),
+        h('div.grow', {},
+          ...people.map((p) => h('div', {}, h('b', { text: statement(p, a) }), speakButton(app, statement(p, a)))),
+          h('div.muted', { text: `${statementVi(personOf('me'), a)} · ${whoQuestion(a)} · motion: ${a.motion}` })))))));
+}
+
 /** Xem trước bài mẫu câu: khung + từng câu đầy đủ (🔊), câu tiếng Việt. */
 export function patternPreview(app, lesson) {
+  if (isDoingLesson(lesson)) return doingPreview(app, lesson);
   return h('div.preview', {},
     h('h2.preview-title', {}, `${lesson.emoji} ${lesson.title}`, lesson.titleVi ? h('span.muted', { text: ` — ${lesson.titleVi}` }) : null),
     section('Khung câu', h('p', {}, h('b', { text: lesson.frame }), lesson.frameVi ? h('span.muted', { text: ` — ${lesson.frameVi}` }) : null),
@@ -353,7 +371,7 @@ export function patternCreateView(app) {
   })));
   let avoidWords = [];
   listLessons(app.db).then((lessons) => {
-    avoidWords = lessons.filter(isPatternLesson).flatMap((l) => l.slots.map((s) => s.word));
+    avoidWords = lessons.filter(isPatternLesson).flatMap((l) => (l.slots ?? []).map((s) => s.word));
   });
 
   const promptArea = h('textarea.prompt-area', { rows: '8', readonly: true, 'aria-label': 'Prompt' });

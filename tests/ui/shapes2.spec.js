@@ -32,7 +32,8 @@ test('thẻ More shapes nằm sau Count the shapes; câu đầu: This is …, c�
   await fakeSpeech(page);
   await startApp(page);
   await page.getByRole('button', { name: 'Số đếm' }).click();
-  // Danh sách bài số: "More shapes" ngay sau "Count the shapes".
+  // Danh sách bài số: "More shapes" ngay sau "Count the shapes". Thẻ được dựng dần (mỗi thẻ tra ảnh bìa): chờ đủ thẻ rồi mới đọc.
+  await expect(page.locator('.lesson-card[aria-label="More shapes"]')).toBeVisible();
   const titles = await page.locator('.lesson-card').evaluateAll((els) => els.map((e) => e.getAttribute('aria-label')));
   expect(titles.indexOf('More shapes')).toBe(titles.indexOf('Count the shapes') + 1);
   await page.getByRole('button', { name: 'More shapes' }).click();
@@ -117,9 +118,12 @@ test('mức 2 (khóa): hình nhiều góc lần đầu trong lượt → góc tr
 });
 
 test('▶ khi đang đếm góc: sang câu sau ngay, không đếm tiếp', async ({ page }) => {
-  await openMoreShapes(page, { lock: 2, seen: ALL });
+  await fakeSpeech(page);
+  await startApp(page);
+  await page.evaluate((s) => window.kidEnglish.setSetting('shapeCount2', s), { lock: 2, seen: ALL });
   // Giữ câu "One!" lại tới khi bị hủy (▶), để chạm ▶ đúng lúc đang đếm góc. Phải chặn ở `speaker.speak`: giọng đọc
-  // của máy không báo đọc xong thì app vẫn tự đi tiếp sau một lúc (để bé không bị kẹt).
+  // của máy không báo đọc xong thì app vẫn tự đi tiếp sau một lúc (để bé không bị kẹt). Cài TRƯỚC khi mở bài: câu hỏi
+  // đầu có thể là hình nhiều góc, mở bài rồi mới cài thì Bông đã đếm xong.
   await page.evaluate(() => {
     const sp = window.kidEnglish.speaker;
     const speak = sp.speak.bind(sp);
@@ -129,6 +133,9 @@ test('▶ khi đang đếm góc: sang câu sau ngay, không đếm tiếp', asyn
       return new Promise((_, reject) => opts.signal?.addEventListener('abort', () => reject(new DOMException('Đã dừng', 'AbortError')), { once: true }));
     };
   });
+  await page.getByRole('button', { name: 'Số đếm' }).click();
+  await page.getByRole('button', { name: 'More shapes' }).click();
+  await expect(card(page)).toBeVisible();
   // Bỏ qua tới câu có hình nhiều góc đang được đếm góc.
   for (let tries = 0; tries < 5; tries++) {
     const q = await question(page);

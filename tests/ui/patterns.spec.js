@@ -62,6 +62,8 @@ test('nút 🌸 Mẫu câu: 8 bài có sẵn (Weather đầu, Body cuối), th�
   await fakeSpeech(page);
   await startApp(page);
   await page.getByRole('button', { name: 'Mẫu câu' }).click();
+  // Tab "Sentences": 8 bài khung câu (tab "Who is doing?" là kiểu bài mới — SPEC-patterns2, tests/ui/doing.spec.js).
+  await page.locator('.topic-tab[data-topic="Sentences"]').click();
   const cards = page.locator('.lesson-card');
   await expect(cards).toHaveCount(8);
   await expect(cards.first()).toHaveAttribute('aria-label', 'Weather');
@@ -70,7 +72,8 @@ test('nút 🌸 Mẫu câu: 8 bài có sẵn (Weather đầu, Body cuối), th�
   await expect(page.locator('.lesson-card[aria-label="Animals"] .lesson-frame')).toHaveText('I can see ___.');
   await page.goto('/?fast&nosw');
   await page.getByRole('button', { name: 'Bắt đầu' }).click();
-  expect(await page.evaluate(async () => (await window.kidEnglish.db.getAll('lessons')).filter((l) => l.kind === 'patterns').length)).toBe(8);
+  expect(await page.evaluate(async () => (await window.kidEnglish.db.getAll('lessons')).filter((l) => l.kind === 'patterns' && !l.style).length)).toBe(8);
+  expect(await page.evaluate(async () => (await window.kidEnglish.db.getAll('lessons')).filter((l) => l.style === 'doing').length)).toBe(4);
 });
 
 test('phần A: Bông đọc khung, chạm mẫu "sunny"; bé chạm "rainy" → hình vào chỗ trống, "It is rainy!", ✓; đủ hình thì sang phần B', async ({ page }) => {

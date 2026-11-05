@@ -77,6 +77,12 @@ const DRAW = {
     top: `<path d="M44 70 C24 72 22 100 30 116 C40 104 46 90 46 78 Z M116 70 C136 72 138 100 130 116 C120 104 114 90 114 78 Z" fill="${BROWN}" stroke="${INK}" stroke-width="3" stroke-linejoin="round"/><circle cx="34" cy="70" r="6" fill="#ff6b6b"/><circle cx="126" cy="70" r="6" fill="#ff6b6b"/>`,
     clothes: `<path d="M40 170 H120" stroke="#fab005" stroke-width="5"/>`,
   })}</g>`,
+  /** Anh (trẻ con ~2/3 người lớn): tóc ngắn dựng, áo phông xanh lá có ngôi sao. */
+  brother: (mood) => `<g transform="translate(80 200) scale(0.74) translate(-80 -200)">${adult({
+    mood, shirt: '#51cf66',
+    hairFront: `<path d="M44 70 C40 34 120 34 116 70 L106 56 L98 64 L88 52 L80 62 L70 52 L62 64 L54 56 Z" fill="#212529" stroke="${INK}" stroke-width="3" stroke-linejoin="round"/>`,
+    clothes: `<path d="M80 152 l5 10 l11 1 l-8 7 l3 11 l-11 -6 l-11 6 l3 -11 l-8 -7 l11 -1 z" fill="#fff" stroke="${INK}" stroke-width="2" stroke-linejoin="round"/>`,
+  })}</g>`,
   /** Em bé trong xe đẩy, mũ len. */
   baby: (mood) => `
   <path d="M20 112 H140 Q140 168 80 172 Q20 168 20 112 Z" fill="#74c0fc" stroke="${INK}" stroke-width="4" stroke-linejoin="round"/>

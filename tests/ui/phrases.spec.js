@@ -158,7 +158,7 @@ test('khung hình (flipbook): ảnh lưới 3×4 → cắt → xem trước → 
   });
   await openParent(page);
   await page.getByRole('button', { name: 'Quản lý bài' }).click();
-  await page.getByRole('button', { name: /Morning/ }).click();
+  await page.getByRole('button', { name: /Morning 💬/ }).click(); // bài Câu nói (Mẫu câu cũng có bài "Morning")
 
   const frames = page.locator('section', { hasText: 'Khung hình (flipbook)' });
   await expect(frames.getByText('Cả bài: 4 câu → lưới 3 cột × 4 hàng')).toBeVisible();

@@ -13,6 +13,8 @@ import { isPhonicsLesson, letterKey } from '../../phonics.js';
 import { isJollyLesson, soundKey, BLEND_BY } from '../../jolly.js';
 import { isTalkLesson, talkKey, talkPictures } from '../../talk.js';
 import { isPatternLesson, patternKey, frameKeyOf, frameStars, sentenceOf } from '../../patterns.js';
+import { isDoingLesson, personOf, statement, doingKey, doingRecords, FAMILY_ORDER } from '../../patterns2.js';
+import { characterName } from '../child.js';
 import { patternRecords } from '../../progress.js';
 import { getFrameSets, setFrameSet, removeFrameSet, frameBlobs } from '../../db.js';
 import { createFlipbook } from '../../player/flipbook.js';
@@ -238,6 +240,11 @@ export function lessonDetailView(app, { lessonId }) {
       // Ảnh đồ vật (SPEC-numbers mục 14.2): dùng lại phần ảnh lưới của bài từ vựng, mỗi ô là MỘT đồ vật.
       if (!['game', 'shapes'].includes(lesson.mode)) body.append(...lessonGrid(app, numberImageLesson(lesson), urls, imageOf, { prefix: 'Ảnh đồ vật', what: 'đồ vật' }));
       body.append(shareSection(app, lesson), section(null, deleteButton(app, lesson)));
+      return;
+    }
+    if (isDoingLesson(lesson)) {
+      // Bài "Ai đang làm gì?" (SPEC-patterns2 mục 5): sao câu theo từng người, nhóm theo I am / he is / she is.
+      body.append(rename, await doingDetailSection(app, lesson), shareSection(app, lesson), section(null, deleteButton(app, lesson)));
       return;
     }
     if (isPatternLesson(lesson)) {
@@ -552,6 +559,7 @@ export function kindLabel(lesson) {
 }
 
 function sizeLabel(lesson) {
+  if (isDoingLesson(lesson)) return `${lesson.actions.length} hành động`;
   if (isPatternLesson(lesson)) return `${lesson.slots.length} câu`;
   if (isTalkLesson(lesson)) return `${lesson.turns.length} lượt`;
   if (isJollyLesson(lesson)) return lesson.blendOnly ? `${lesson.blends.length} từ ghép` : `${lesson.letters.length} âm`;
@@ -577,6 +585,35 @@ async function patternDetailSection(app, lesson) {
   return section('Tiến độ từng câu',
     h('p', {}, 'Bé nói được khung ', h('b', { text: lesson.frame.replace(/\{a\}\s*/g, '') }), ` với ${n} từ (gộp mọi bài cùng khung).`),
     h('p.muted', { text: 'Sao chỉ tăng khi bé nói CẢ CÂU (tối đa một sao mỗi ngày cho mỗi câu). Nói một phần câu hoặc chỉ từ khóa vẫn được khen và ghi lần luyện. Không bao giờ trừ sao.' }),
+    h('ul.progress-list', {}, ...rows));
+}
+
+/**
+ * Trang bài "Ai đang làm gì?" (SPEC-patterns2 mục 5): mỗi hành động một dòng, sao theo nhóm bé (I am) / người nam (he) /
+ * người nữ (she) — gộp các người cùng nhóm (lấy sao cao nhất), chi tiết từng người trong dòng phụ.
+ */
+async function doingDetailSection(app, lesson) {
+  const byKey = new Map(doingRecords(await app.db.getAll('progress')).map((r) => [r.word, r]));
+  const ids = ['me', ...FAMILY_ORDER, 'bong'];
+  const group = (id) => (id === 'me' ? 'me' : personOf(id).gender === 'm' ? 'he' : 'she');
+  const LABEL = { me: 'I am', he: 'he is', she: 'she is' };
+  const rows = lesson.actions.map((a) => {
+    const stars = { me: 0, he: 0, she: 0 };
+    const who = [];
+    for (const id of ids) {
+      const rec = byKey.get(doingKey(a, id));
+      if (!rec) continue;
+      stars[group(id)] = Math.max(stars[group(id)], rec.mastery ?? 0);
+      who.push(`${id === 'me' ? 'bé' : personOf(id, characterName(app)).name} ${rec.mastery ? '⭐'.repeat(rec.mastery) : '·'}`);
+    }
+    return h('li', {},
+      h('span.p-emoji', { text: a.emoji }),
+      h('span.p-word', {}, statement(personOf('me'), a), speakButton(app, statement(personOf('me'), a))),
+      h('span.p-stars', { text: Object.entries(stars).map(([g, n]) => `${LABEL[g]} ${n ? '⭐'.repeat(n) : '—'}`).join(' · ') }),
+      h('span.p-meta', { text: who.length ? who.join(', ') : 'chưa học' }));
+  });
+  return section('Tiến độ từng hành động',
+    h('p.muted', { text: 'Bé nghe câu về người trong nhà (Daddy is cooking) rồi nói về mình (I am cooking). Người trong bài lấy theo Hồ sơ của bé → Gia đình. Sao chỉ tăng khi bé nói CẢ CÂU (tối đa một sao mỗi ngày cho mỗi câu); không bao giờ trừ sao.' }),
     h('ul.progress-list', {}, ...rows));
 }
 

@@ -3681,3 +3681,64 @@ img.dr-admin-face { width: 100%; height: 100%; object-fit: contain; }
   .sh-jar.blending .sh-jar-liquid, .sh-milk.pour .sh-milk-carton, .sh-cup.fill .sh-cup-bottom, .sh-cup.fill .sh-cup-top { animation: none; }
   .sh-milk.pour .sh-milk-stream { animation: none; opacity: 1; }
 }
+
+/* ---------- Mẫu câu "Ai đang làm gì?" (SPEC-patterns2.md): ngôi nhà nhiều ô cửa ---------- */
+.dg-scene { display: grid; justify-items: center; align-content: center; gap: 14px; width: 100%; min-height: 100%; }
+.dg-house {
+  position: relative; width: min(100%, 960px); margin-top: 46px; padding: 22px 18px 18px;
+  background: #ffe8cc; border: 5px solid #c98b55; border-radius: 10px 10px 26px 26px; box-shadow: var(--shadow);
+}
+.dg-roof {
+  position: absolute; left: -26px; right: -26px; top: -54px; height: 58px;
+  background: #e8590c; clip-path: polygon(6% 100%, 50% 0, 94% 100%); border-radius: 8px;
+}
+.dg-windows { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); gap: clamp(10px, 2vw, 18px); align-items: end; }
+.dg-win {
+  position: relative; display: grid; grid-template-rows: 1fr auto; justify-items: center; aspect-ratio: 3 / 4;
+  padding: 8px 6px 6px; border-radius: 18px; background: #e7f5ff; border: 5px solid #fff; overflow: hidden;
+  box-shadow: inset 0 0 0 2px #d0ebff; transition: transform 200ms, background 200ms;
+}
+.dg-win.active { background: #fff9db; transform: scale(1.05); outline: 5px solid var(--yellow); outline-offset: 2px; }
+.dg-me { border-color: var(--yellow); background: #fff3bf; transform-origin: bottom; }
+.dg-me:not(.active) { transform: scale(1.04); }
+.dg-face { display: grid; place-items: center; width: 100%; min-height: 0; height: 100%; overflow: hidden; }
+.dg-face img.dg-photo { width: 100%; height: 100%; object-fit: cover; border-radius: 12px; }
+.dg-art { display: grid; place-items: end center; width: 100%; height: 100%; }
+.dg-art svg { height: 100%; width: auto; max-width: 100%; }
+.dg-face .dg-bong { width: 90%; height: 90%; }
+.dg-sparkle { font-family: var(--emoji); font-size: clamp(40px, 7vw, 72px); }
+.dg-name { font-size: clamp(14px, 1.9vw, 20px); font-weight: 800; color: var(--ink); }
+.dg-thing {
+  position: absolute; right: 6%; bottom: 20%; font-family: var(--emoji); line-height: 1;
+  font-size: clamp(30px, 5vw, 56px); pointer-events: none; filter: drop-shadow(0 2px 2px rgba(0, 0, 0, 0.2));
+}
+.dg-thing:empty { display: none; }
+/* Chuyển động theo `motion` (bảng MOTIONS của Câu nói); "none": nảy nhẹ một lần khi câu bắt đầu. */
+.dg-thing.pop { animation: dg-pop 0.5s ease-out; }
+.dg-thing[data-motion='brush'] { animation: dg-brush 0.5s ease-in-out infinite; }
+.dg-thing[data-motion='wash'] { animation: dg-wash 0.9s ease-in-out infinite; }
+.dg-thing[data-motion='stir'] { animation: dg-stir 1.2s linear infinite; }
+.dg-thing[data-motion='eat'], .dg-thing[data-motion='drink'] { animation: dg-eat 0.8s ease-in-out infinite; }
+.dg-thing[data-motion='dance'] { animation: dg-dance 0.7s ease-in-out infinite; }
+.dg-thing[data-motion='sleep'] { animation: dg-sleep 2s ease-in-out infinite; }
+.dg-thing[data-motion='kick'] { animation: dg-kick 0.8s ease-in-out infinite; }
+.dg-thing[data-motion='push'] { animation: dg-push 1s ease-in-out infinite; }
+@keyframes dg-pop { 40% { transform: translateY(-14px) scale(1.15); } }
+@keyframes dg-brush { 50% { transform: translateX(-14px) rotate(-8deg); } }
+@keyframes dg-wash { 25% { transform: translate(-8px, -6px); } 75% { transform: translate(8px, -6px); } }
+@keyframes dg-stir { to { transform: rotate(360deg); } }
+@keyframes dg-eat { 50% { transform: translate(-10px, -14px) rotate(-12deg); } }
+@keyframes dg-dance { 25% { transform: translateY(-10px) rotate(-12deg); } 75% { transform: translateY(-10px) rotate(12deg); } }
+@keyframes dg-sleep { 50% { transform: translate(6px, -12px); opacity: 0.6; } }
+@keyframes dg-kick { 50% { transform: translateX(16px) rotate(40deg); } }
+@keyframes dg-push { 50% { transform: translateX(-16px); } }
+.dg-say { display: grid; justify-items: center; gap: 2px; min-height: 84px; text-align: center; padding: 0 12px; }
+.dg-line { margin: 0; font-size: clamp(22px, 3.6vw, 38px); font-weight: 800; color: var(--ink); }
+.dg-line.ghost { opacity: 0.35; }
+.dg-vi { margin: 0; font-size: clamp(15px, 2vw, 20px); color: var(--ink-soft); }
+@media (max-width: 600px) {
+  .dg-house { margin-top: 36px; padding: 14px 10px 10px; }
+  .dg-roof { top: -40px; height: 44px; left: -14px; right: -14px; }
+  .dg-windows { grid-auto-flow: row; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .dg-win { aspect-ratio: 1; }
+}

@@ -66,6 +66,10 @@ export function profileView(app) {
   const select = (label, list, value) => h('select', { 'aria-label': label },
     h('option', { value: '', text: '— không bắt buộc —' }),
     ...list.map((x) => h('option', { value: x, text: x, selected: value === x })));
+  const kid = h('select', { 'aria-label': 'Bé là' },
+    h('option', { value: '', text: '— chưa chọn —' }),
+    h('option', { value: 'boy', text: '👦 Bé trai', selected: p.kid === 'boy' }),
+    h('option', { value: 'girl', text: '👧 Bé gái', selected: p.kid === 'girl' }));
   const color = select('Màu thích', COLORS, p.color);
   const food = select('Món thích', FOODS, p.food);
   const family = FAMILY.map((m) => h('div.family-row', {},
@@ -88,7 +92,7 @@ export function profileView(app) {
     onclick: async () => {
       const chosen = family.map((l) => l.querySelector('input[type=checkbox]')).filter((i) => i.checked).map((i) => i.value);
       const profile = normalizeProfile({
-        name: name.value, age: age.value ? Number(age.value) : null, color: color.value, food: food.value, family: chosen,
+        name: name.value, age: age.value ? Number(age.value) : null, kid: kid.value, color: color.value, food: food.value, family: chosen,
       });
       await app.setSetting('childProfile', profile);
       toast('Đã lưu hồ sơ của bé.');
@@ -101,6 +105,7 @@ export function profileView(app) {
       h('div.actions', {}, listen)),
     section('Tuổi và sở thích',
       field('Tuổi', age, 'Bông hỏi "How old are you?" → bé trả lời "I\'m three!". Chưa chọn tuổi thì Bông bỏ câu hỏi tuổi.'),
+      field('Bé là', kid, 'Mẫu câu "Ai đang làm gì?": ô của bé hiện hình bé trai / bé gái khi chưa có ảnh của bé. Chưa chọn thì hiện ✨ và tên bé.'),
       field('Màu thích (không bắt buộc)', color),
       field('Món thích (không bắt buộc)', food)),
     section('Ảnh của bé',

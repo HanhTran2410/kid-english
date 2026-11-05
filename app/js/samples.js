@@ -10,11 +10,15 @@ import { builtInJollyLessons } from './jolly.js';
 const allPhonicsLessons = () => [...builtInPhonicsLessons(), ...builtInJollyLessons()];
 import { builtInTalkLessons } from './talk.js';
 import { builtInPatternLessons } from './patterns.js';
+import { builtInDoingLessons } from './patterns2.js';
+
+/** Bài mẫu câu có sẵn: Khung câu (SPEC-patterns) + Ai đang làm gì? (SPEC-patterns2). */
+const allPatternLessons = () => [...builtInPatternLessons(), ...builtInDoingLessons()];
 
 /** Bài mẫu câu có sẵn (SPEC-patterns mục 4.3). `only`: chỉ thêm các bài có mã này. */
 async function addPatternLessons(app, only = null) {
   const now = Date.now();
-  const list = builtInPatternLessons().filter((l) => !only || only.includes(l.builtin));
+  const list = allPatternLessons().filter((l) => !only || only.includes(l.builtin));
   for (const [i, lesson] of list.entries()) {
     await app.db.put('lessons', createLessonRecord(lesson, now - list.length + i));
   }
@@ -111,7 +115,7 @@ export async function seedSamplesOnce(app) {
   }
   // Bài mẫu câu (SPEC-patterns): mỗi bài có sẵn chỉ tự thêm MỘT lần (bố mẹ xóa rồi thì không tự thêm lại).
   const patternSeeded = app.settings.patternLessonsSeeded ?? [];
-  const newPatterns = builtInPatternLessons().map((l) => l.builtin).filter((id) => !patternSeeded.includes(id));
+  const newPatterns = allPatternLessons().map((l) => l.builtin).filter((id) => !patternSeeded.includes(id));
   if (newPatterns.length) {
     try {
       await addPatternLessons(app, newPatterns);

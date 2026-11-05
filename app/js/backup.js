@@ -34,6 +34,9 @@ const wordSignature = (lesson) => (Array.isArray(lesson.turns)
   ? `ph:${lesson.letters.map((l) => l.letter).join('')}`
   : Array.isArray(lesson.slots)
   ? `pt:${frameKeyOf(lesson)}:${lesson.slots.map((s) => normalizeWord(s.concept || s.word)).sort().join('|')}`
+  // Mẫu câu "Ai đang làm gì?" (SPEC-patterns2): theo các hành động.
+  : Array.isArray(lesson.actions)
+  ? `do:${lesson.actions.map((a) => normalizeWord(a.base)).sort().join('|')}`
   : Array.isArray(lesson.numbers)
   // Đếm hình và Đếm hình mới (set 2) có cùng các số 1–10: phân biệt bằng `set`.
   ? `n:${lesson.mode ?? 'count'}${lesson.set ? `:${lesson.set}` : ''}:${lesson.numbers.map((x) => x.n).join('|')}`
@@ -175,7 +178,7 @@ export async function readBackup(input, { JSZip = globalThis.JSZip } = {}) {
   const lessons = [];
   for (const file of zip.file(/^lessons\/[^/]+\.json$/)) {
     const lesson = await readJson(file.name);
-    if (!lesson?.id || !lesson.title || !(Array.isArray(lesson.words) || Array.isArray(lesson.phrases) || Array.isArray(lesson.numbers) || Array.isArray(lesson.letters) || Array.isArray(lesson.turns) || Array.isArray(lesson.slots))) {
+    if (!lesson?.id || !lesson.title || !(Array.isArray(lesson.words) || Array.isArray(lesson.phrases) || Array.isArray(lesson.numbers) || Array.isArray(lesson.letters) || Array.isArray(lesson.turns) || Array.isArray(lesson.slots) || Array.isArray(lesson.actions))) {
       throw new BackupError(`File sao lưu bị hỏng (${file.name}).`);
     }
     lessons.push(lesson);

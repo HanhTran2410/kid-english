@@ -64,7 +64,7 @@ const POOLS = {
   foods: FOOD_POOL.map((f) => ({ ...f, answer: `${f.en.charAt(0).toUpperCase()}${f.en.slice(1)}, please!`, answerVi: `Con muốn ăn ${f.vi}!`, keywords: [f.en.split(' ')[0]], draw: f.en })),
 };
 
-export const DEFAULT_PROFILE = { name: '', age: null, color: '', food: '', family: ['mummy', 'daddy'] };
+export const DEFAULT_PROFILE = { name: '', age: null, kid: '', color: '', food: '', family: ['mummy', 'daddy'] };
 
 /** Hồ sơ đã chuẩn hóa (thiếu trường thì lấy mặc định). */
 export function normalizeProfile(p = {}) {
@@ -72,6 +72,7 @@ export function normalizeProfile(p = {}) {
   return {
     name: String(p?.name ?? '').trim(),
     age: Number.isInteger(age) && age >= 2 && age <= 6 ? age : null,
+    kid: p?.kid === 'boy' || p?.kid === 'girl' ? p.kid : '', // bé trai / bé gái (SPEC-patterns2: ô Me)
     color: String(p?.color ?? '').trim(),
     food: String(p?.food ?? '').trim(),
     family: Array.isArray(p?.family) && p.family.length ? p.family.filter((f) => FAMILY.some((m) => m.id === f)) : [...DEFAULT_PROFILE.family],

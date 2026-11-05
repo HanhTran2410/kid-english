@@ -20,7 +20,7 @@ async function watch(page, selectors) {
 const seen = (page) => page.evaluate(() => window.__seen);
 
 async function lessonId(page, title = 'Animals') {
-  return page.evaluate(async (t) => (await window.kidEnglish.db.getAll('lessons')).find((l) => l.title === t).id, title);
+  return page.evaluate(async (t) => (await window.kidEnglish.db.getAll('lessons')).find((l) => l.title === t && Array.isArray(l.words)).id, title); // bài Từ vựng (Mẫu câu cũng có "Animals")
 }
 
 test('học hết bài: thẻ từ có màn ló dần (bong bóng 3×3, rèm, hình bóng), truyện có nhân vật + lượt Tìm, trang The end, rồi quà', async ({ page }) => {
