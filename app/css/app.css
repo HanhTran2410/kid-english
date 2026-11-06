@@ -3594,6 +3594,10 @@ img.dr-admin-face { width: 100%; height: 100%; object-fit: contain; }
 .bd-block.nudge { animation: hint-hop 0.5s ease-in-out 3; }
 .bd-block.shake { animation: dr-shake 0.45s; }
 .bd-play .jb-host { width: min(20%, 200px); }
+/* Chú thợ xây đầu trần tới khi bé chạm mũ ("Helmet on!"), mũ đội lên thì nảy nhẹ. */
+.bd-play .jb-host:not(.bd-helmet-on) .jb-builder-hat { display: none; }
+.bd-play .jb-host.bd-hat-pop .jb-builder-hat { animation: bd-hat-pop 0.4s ease-out; transform-box: fill-box; transform-origin: 50% 100%; }
+@keyframes bd-hat-pop { 0% { transform: translateY(-30%) scale(1.15); } 60% { transform: translateY(4%) scale(0.95); } }
 .bd-wave { position: absolute; z-index: 4; overflow: hidden; border-radius: 8px; background: #e7f5ff; border: 3px solid #3d2c5e; animation: pop 0.3s ease-out; }
 .bd-wave .dr-svg { display: block; width: 100%; height: auto; aspect-ratio: 240 / 300; margin-top: 4%; }
 .bd-hand { position: absolute; right: 2px; bottom: 2px; font-family: var(--emoji); font-size: clamp(18px, 3.6vmin, 32px); line-height: 1; transform-origin: 70% 90%; animation: bd-wave 0.5s ease-in-out infinite alternate; }
@@ -3605,7 +3609,7 @@ img.dr-admin-face { width: 100%; height: 100%; object-fit: contain; }
   .bd-road { height: 22%; }
 }
 @media (prefers-reduced-motion: reduce) {
-  .bd-customer.enter, .bd-customer.hop, .bd-customer.talking .dr-svg, .bd-helmet.nudge, .bd-plan.shake, .bd-slot.active, .bd-slot.done,
+  .bd-customer.enter, .bd-customer.hop, .bd-customer.talking .dr-svg, .bd-helmet.nudge, .bd-play .jb-host.bd-hat-pop .jb-builder-hat, .bd-plan.shake, .bd-slot.active, .bd-slot.done,
   .bd-smoke, .bd-block.nudge, .bd-block.shake, .bd-wave, .bd-hand { animation: none; }
   .bd-customer.leave { animation: dr-fade 0.3s forwards; }
   .bd-car { transition: none; }

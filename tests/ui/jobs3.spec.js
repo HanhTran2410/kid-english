@@ -242,3 +242,12 @@ test('Ảnh con vật Nông trại (đói / no): có ảnh thì con vật vào x
   await page.evaluate(() => window.kidEnglish.go('parent', { view: 'jobs' }));
   await expect(page.getByText(/6 hình chưa có ảnh: cow \(happy\)/)).toBeVisible();
 });
+
+test('Thợ xây "Helmet on!": chú thợ xây đầu trần tới khi bé chạm mũ, chạm mũ → mũ đội lên đầu chú (không thêm huy hiệu che người)', async ({ page }) => {
+  await openJob(page, 'build', 1);
+  await stateIs(page, 'helmet');
+  await expect(page.locator('.jb-host .jb-builder-hat')).toBeHidden();
+  await page.locator('.bd-helmet').click();
+  await expect(page.locator('.jb-host .jb-builder-hat')).toBeVisible();
+  await expect(page.locator('.jb-host-badge')).toHaveText('');
+});

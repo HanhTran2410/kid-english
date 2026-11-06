@@ -147,10 +147,11 @@ export const BUILDER_SVG = manSvg('jb-builder', {
   <path d="M52 146 C64 134 80 130 88 130 L100 160 L112 130 C120 130 136 134 148 146 L154 200 H46 Z" fill="#ff922b" stroke="${INK}" stroke-width="3" stroke-linejoin="round"/>
   <path d="M50 176 H150" stroke="#e9ecef" stroke-width="8"/>
   <path d="M50 176 H150" stroke="${INK}" stroke-width="1.5" opacity="0.3"/>`,
-  hat: `
+  // Mũ trong nhóm riêng: trò Thợ xây giấu mũ tới khi bé chạm mũ ("Helmet on!" → mũ bay lên đội vào đầu chú).
+  hat: `<g class="jb-builder-hat">
   <path d="M56 62 C54 24 146 24 144 62 Z" fill="#ffd43b" stroke="${INK}" stroke-width="3" stroke-linejoin="round"/>
   <path d="M100 26 V60" stroke="#f59f00" stroke-width="8"/>
-  <rect x="48" y="56" width="104" height="10" rx="5" fill="#fcc419" stroke="${INK}" stroke-width="3"/>`,
+  <rect x="48" y="56" width="104" height="10" rx="5" fill="#fcc419" stroke="${INK}" stroke-width="3"/></g>`,
 });
 
 /** Bác tài xe buýt: mũ lưỡi trai xanh, áo sơ mi xanh nhạt, cà vạt xanh đậm, bảng tên. */

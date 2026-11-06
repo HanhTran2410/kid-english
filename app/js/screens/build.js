@@ -251,10 +251,13 @@ export function buildScreen(app, params = {}) {
     helmet = true;
     snap();
     play('pop');
-    const g = await kit.flyTo(h('span.bd-fly-helmet', { html: HELMET_SVG }), center(helmetBtn.getBoundingClientRect()), center(kit.host.getBoundingClientRect()));
+    // Mũ bay tới đầu chú thợ xây (phần trên của hình), không phải giữa người.
+    const r = kit.host.getBoundingClientRect();
+    const g = await kit.flyTo(h('span.bd-fly-helmet', { html: HELMET_SVG }), center(helmetBtn.getBoundingClientRect()), { x: r.left + r.width / 2, y: r.top + r.height * 0.22 });
     kit.removeGhost(g);
     if (e !== kit.epoch) return;
     setBadge();
+    restartAnim(kit.host, 'bd-hat-pop');
     await talk([B(BUILD_LINE)]);
     if (e !== kit.epoch) return;
     taken = claims();
@@ -262,7 +265,10 @@ export function buildScreen(app, params = {}) {
   }
   function setBadge() {
     const badge = kit.host?.querySelector('.jb-host-badge');
-    if (badge) badge.textContent = helmet ? '👷' : '';
+    // Hình vẽ sẵn: mũ đội lên đầu chú (chưa chạm mũ thì đầu trần). Ảnh của bố mẹ không đội mũ được → huy hiệu 👷.
+    const drawn = Boolean(kit.host?.querySelector('.jb-builder-hat'));
+    if (badge) badge.textContent = helmet && !drawn ? '👷' : '';
+    kit.host?.classList.toggle('bd-helmet-on', helmet);
   }
 
   // ---------- Ca ----------
@@ -471,6 +477,7 @@ export function buildScreen(app, params = {}) {
     if (kit.signal.aborted) URL.revokeObjectURL(url);
     else {
       kit.setHostImage(url);
+      setBadge(); // ảnh không có mũ vẽ: đã đội mũ thì hiện huy hiệu 👷
       kit.onCleanup(() => URL.revokeObjectURL(url));
     }
   });
