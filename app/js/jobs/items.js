@@ -33,6 +33,28 @@ export const JOB_ITEMS = {
   ],
 };
 
+/** Con vật Nông trại: mỗi con 2 ảnh (mã `<con>-hungry` vào xin ăn, `<con>-happy` ăn xong), đứng cạnh nhau trong lưới 4 × 3. */
+const FARM_ANIMAL_LOOKS = [
+  ['cow', 'cow', 'con bò', 'a black-and-white spotted cow'],
+  ['sheep', 'sheep', 'con cừu', 'a fluffy white sheep'],
+  ['horse', 'horse', 'con ngựa', 'a brown horse with a dark mane'],
+  ['chicken', 'hen', 'con gà mái', 'a white hen with a red comb'],
+  ['pig', 'pig', 'con lợn', 'a pink pig'],
+  ['duck', 'duck', 'con vịt', 'a yellow duck with an orange beak'],
+];
+export const FARM_ANIMAL_ITEMS = FARM_ANIMAL_LOOKS.flatMap(([id, en, vi, look]) => [
+  { id: `${id}-hungry`, en: `${en} (hungry)`, vi: `${vi} — đói`, draw: `${look}, full body, standing and facing the viewer, looking HUNGRY: mouth in a small round "o", big hopeful eyes looking up.` },
+  { id: `${id}-happy`, en: `${en} (happy)`, vi: `${vi} — no`, draw: `The SAME ${look} as in its hungry picture (identical colors, size and pose), now HAPPY and full: big smile, eyes curved shut with joy.` },
+]);
+export const FARM_ANIMAL_PROMPT_NOTE = [
+  '',
+  'FARM ANIMAL RULES (the app swaps the two pictures of each animal in the same spot, so they must match)',
+  '- Each row shows two animals; each animal appears twice side by side: first hungry, then happy.',
+  '- The two pictures of one animal are the SAME character: same colors, same size, same pose and position — only the face changes.',
+  '- Full body, centered, feet near the bottom of the cell, never cropped. No food, no fence, no grass, no other animals.',
+  '- Pure flat white (#FFFFFF) background: no shadow, no scenery, no frame.',
+].join('\n');
+
 /** Thêm vào prompt ảnh lưới: nền trắng để app tự cắt nền; chỉ vẽ món. */
 export const JOB_ITEM_PROMPT_NOTE = [
   '',

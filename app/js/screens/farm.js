@@ -62,6 +62,7 @@ export function farmScreen(app, params = {}) {
 
   const cur = () => plan?.cases[caseIdx];
   const foodFace = (id, tag) => itemFace(pics, id, tag, { html: foodSvg(id) });
+  const animalFace = (id, mood, tag, title = '') => itemFace(pics, `${id}-${mood}`, tag, { html: farmAnimalSvg(id, mood, title) });
   const F = (line) => ({ who: 'farmer', line });
   const A = (line) => ({ who: 'animal', line });
 
@@ -203,7 +204,7 @@ export function farmScreen(app, params = {}) {
   }
   function renderAnimal(id, mood = 'hungry') {
     const a = ANIMAL_BY_ID.get(id);
-    animalEl.replaceChildren(h('span.fm-animal-face', { html: farmAnimalSvg(id, mood, a.name) }), ...(mood === 'hungry' ? [h('span.fm-tummy', { text: '💭' })] : []));
+    animalEl.replaceChildren(animalFace(id, mood, 'span.fm-animal-face', a.name), ...(mood === 'hungry' ? [h('span.fm-tummy', { text: '💭' })] : []));
     animalEl.dataset.animal = id;
     animalEl.dataset.mood = mood;
   }
@@ -211,7 +212,7 @@ export function farmScreen(app, params = {}) {
     doors.replaceChildren(...(c.doors ?? []).map((id) => h('button.fm-door', {
       type: 'button', 'aria-label': 'Cửa chuồng', dataset: { animal: id },
       onclick: () => tapDoor(id),
-    }, h('span.fm-door-peek', { html: farmAnimalSvg(id, 'hungry') }))));
+    }, animalFace(id, 'hungry', 'span.fm-door-peek'))));
     doors.hidden = !c.doors || open;
     doors.dataset.target = c.animal ?? ''; // cho test; bé không thấy
     barn.classList.toggle('closed', Boolean(c.doors) && !open);
@@ -350,7 +351,7 @@ export function farmScreen(app, params = {}) {
     nests.replaceChildren(...c.hens.map((hen) => {
       const up = taken.has(`hen:${hen.id}`);
       return h('div.fm-nest', { dataset: { hen: hen.id } },
-        h('button.fm-hen', { type: 'button', 'aria-label': 'Con gà mái', class: up ? 'up' : '', onclick: () => tapHen(hen.id) }, h('span.fm-hen-art', { html: farmAnimalSvg('chicken', 'happy') })),
+        h('button.fm-hen', { type: 'button', 'aria-label': 'Con gà mái', class: up ? 'up' : '', onclick: () => tapHen(hen.id) }, animalFace('chicken', 'happy', 'span.fm-hen-art')),
         h('div.fm-eggs', {}, ...hen.eggs.map((egg) => h('button.fm-egg', {
           type: 'button', 'aria-label': `${egg.color} egg`, dataset: { id: egg.id, color: egg.color },
           class: taken.has(egg.id) ? 'taken' : '',

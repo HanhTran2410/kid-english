@@ -1,5 +1,5 @@
 // Con vật Nông trại (SPEC-jobs3 mục 4.1) vẽ SVG cùng kiểu bạn thú (viewBox 200 × 200): thân tròn, đầu to, mắt chấm,
-// má hồng, nét viền tím đậm. Mặt 'hungry' (miệng chữ o) / 'happy' (cười). Không dùng ảnh.
+// má hồng, nét viền tím đậm. Mặt 'hungry' (miệng chữ o) / 'happy' (cười). Bố mẹ thay được bằng ảnh AI (jobs/items.js, mã `<con>-hungry` / `<con>-happy`).
 
 const INK = '#4a3360';
 const CHEEK = '#ff9ab5';

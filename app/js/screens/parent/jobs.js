@@ -9,7 +9,7 @@ import { applyBackup, BackupError } from '../../backup.js';
 import { JOBS_BG_IMAGES, JOB_BACKGROUNDS } from '../../jobs/backgrounds.js';
 import { FIRE_GEAR_IMAGES, FIRE_GEAR_FRAMES, FIRE_GEAR_FRAME_VI, FIRE_GEAR_PROMPT } from '../../jobs/fire.js';
 import { JOB_PEOPLE_IMAGES, JOB_PEOPLE } from '../../jobs/people.js';
-import { JOB_ITEM_IMAGES, JOB_ITEMS, JOB_ITEM_PROMPT_NOTE } from '../../jobs/items.js';
+import { JOB_ITEM_IMAGES, JOB_ITEMS, JOB_ITEM_PROMPT_NOTE, FARM_ANIMAL_ITEMS, FARM_ANIMAL_PROMPT_NOTE } from '../../jobs/items.js';
 import { parentLayout, goParent, section, notice } from './common.js';
 import { imageErrorMessage, gridSection, pendingGridSections } from './lessons.js';
 import { mediaShareSection } from './media-share.js';
@@ -62,8 +62,9 @@ export function jobsAdminView(app) {
         svg: p.svg, url: people.get(p.id), prompt: p.prompt, lessonId: JOB_PEOPLE_IMAGES, word: p.id, done: reload,
       })),
       ...JOB_BACKGROUNDS.map((job) => jobSection(job, bg.get(job.id))),
-      itemsSection('👨‍🍳 Món của Đầu bếp nhí', 'chef', items),
-      itemsSection('👩‍🌾 Thức ăn ở Nông trại', 'farm', items),
+      itemsSection('👨‍🍳 Món của Đầu bếp nhí', JOB_ITEMS.chef, items),
+      itemsSection('👩‍🌾 Thức ăn ở Nông trại', JOB_ITEMS.farm, items),
+      itemsSection('🐮 Con vật ở Nông trại (đói / no)', FARM_ANIMAL_ITEMS, items, { group: 12, note: FARM_ANIMAL_PROMPT_NOTE }),
       gearSection(gear),
       h('div.actions', {},
         h('button.btn', { type: 'button', text: '🩺 Ảnh Bác sĩ nhí…', onclick: () => goParent(app, 'doctor') }),
@@ -106,9 +107,8 @@ export function jobsAdminView(app) {
       }));
   }
 
-  /** Ảnh món một nghề: ảnh lưới AI (3 × 3, app cắt ô và bỏ nền trắng); món chưa có ảnh vẫn dùng emoji / hình vẽ sẵn. */
-  function itemsSection(title, job, items) {
-    const list = JOB_ITEMS[job];
+  /** Ảnh món / con vật một nghề: ảnh lưới AI (app cắt ô và bỏ nền trắng); chưa có ảnh thì vẫn dùng emoji / hình vẽ sẵn. */
+  function itemsSection(title, list, items, { group = 9, note = JOB_ITEM_PROMPT_NOTE } = {}) {
     const have = list.filter((it) => items.has(it.id));
     return h('div', {},
       section(`${title} — ${have.length ? `có ảnh ${have.length}/${list.length} món` : 'đang dùng hình sẵn'}`,
@@ -123,9 +123,9 @@ export function jobsAdminView(app) {
           },
         })) : null),
       ...pendingGridSections(app, {
-        id: JOB_ITEM_IMAGES, what: 'món', urls, has: (w) => items.has(w.en),
+        id: JOB_ITEM_IMAGES, what: 'hình', group, urls, has: (w) => items.has(w.en),
         words: list.map((it) => ({ en: it.id, label: it.en, imagePrompt: it.draw })),
-        promptNote: `\n${JOB_ITEM_PROMPT_NOTE}`, process: (tile) => cutOutSticker(tile.blob), onSaved: reload, previewClass: 'checker',
+        promptNote: `\n${note}`, process: (tile) => cutOutSticker(tile.blob), onSaved: reload, previewClass: 'checker',
       }));
   }
 
