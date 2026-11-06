@@ -59,6 +59,10 @@ test('Nông trại mức 1: cho ăn ("Hay, please!"), nhầm → "That\'s … . 
   const wrong = await page.locator(`.jb-tray [data-item]:not([data-item="${FOOD[animal]}"])`).first().getAttribute('data-item');
   await tapTray(page, wrong);
   await expect.poll(async () => (await spoken(page)).some((t) => /^(That's|Those are) .+\. \w+, please!$/.test(t))).toBe(true);
+  // Cho ăn đúng: con vật no, hết bong bóng 💭 — không được hiện chữ "null" (replaceChildren biến null thành chữ).
+  await tapTray(page, FOOD[animal]);
+  await expect(page.locator('.fm-animal .fm-tummy')).toHaveCount(0);
+  await expect(page.locator('.fm-animal')).not.toContainText('null');
   for (let i = 0; i < 40 && !(await page.locator('.jb-play.jb-done').count()); i++) {
     if (/door|feed|eggs|count|pick/.test(await play(page).getAttribute('data-state'))) await solveFarm(page);
     await page.waitForTimeout(150);

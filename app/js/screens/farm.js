@@ -200,7 +200,7 @@ export function farmScreen(app, params = {}) {
   }
   function renderAnimal(id, mood = 'hungry') {
     const a = ANIMAL_BY_ID.get(id);
-    animalEl.replaceChildren(h('span.fm-animal-face', { html: farmAnimalSvg(id, mood, a.name) }), mood === 'hungry' ? h('span.fm-tummy', { text: '💭' }) : null);
+    animalEl.replaceChildren(h('span.fm-animal-face', { html: farmAnimalSvg(id, mood, a.name) }), ...(mood === 'hungry' ? [h('span.fm-tummy', { text: '💭' })] : []));
     animalEl.dataset.animal = id;
     animalEl.dataset.mood = mood;
   }
