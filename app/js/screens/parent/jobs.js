@@ -9,8 +9,9 @@ import { applyBackup, BackupError } from '../../backup.js';
 import { JOBS_BG_IMAGES, JOB_BACKGROUNDS } from '../../jobs/backgrounds.js';
 import { FIRE_GEAR_IMAGES, FIRE_GEAR_FRAMES, FIRE_GEAR_FRAME_VI, FIRE_GEAR_PROMPT } from '../../jobs/fire.js';
 import { JOB_PEOPLE_IMAGES, JOB_PEOPLE } from '../../jobs/people.js';
+import { JOB_ITEM_IMAGES, JOB_ITEMS, JOB_ITEM_PROMPT_NOTE } from '../../jobs/items.js';
 import { parentLayout, goParent, section, notice } from './common.js';
-import { imageErrorMessage, gridSection } from './lessons.js';
+import { imageErrorMessage, gridSection, pendingGridSections } from './lessons.js';
 import { mediaShareSection } from './media-share.js';
 
 /** Nhận ảnh nền Đóng vai từ file của máy khác (ảnh mới hơn thắng). Dùng chung cho trang này và Quản lý bài. */
@@ -27,7 +28,13 @@ export function jobsAdminView(app) {
   const reload = () => goParent(app, 'jobs');
   const urls = [];
 
-  Promise.all([JOBS_BG_IMAGES, FIRE_GEAR_IMAGES, JOB_PEOPLE_IMAGES].map((id) => app.db.getAllByIndex('images', 'lessonId', id).catch(() => []))).then(([rows, gearRows, peopleRows]) => {
+  Promise.all([JOBS_BG_IMAGES, FIRE_GEAR_IMAGES, JOB_PEOPLE_IMAGES, JOB_ITEM_IMAGES].map((id) => app.db.getAllByIndex('images', 'lessonId', id).catch(() => []))).then(([rows, gearRows, peopleRows, itemRows]) => {
+    const items = new Map();
+    for (const img of itemRows) {
+      const url = URL.createObjectURL(mediaBlob(img));
+      urls.push(url);
+      items.set(img.word, url);
+    }
     const people = new Map();
     for (const img of peopleRows) {
       const url = URL.createObjectURL(mediaBlob(img));
@@ -55,6 +62,8 @@ export function jobsAdminView(app) {
         svg: p.svg, url: people.get(p.id), prompt: p.prompt, lessonId: JOB_PEOPLE_IMAGES, word: p.id, done: reload,
       })),
       ...JOB_BACKGROUNDS.map((job) => jobSection(job, bg.get(job.id))),
+      itemsSection('👨‍🍳 Món của Đầu bếp nhí', 'chef', items),
+      itemsSection('👩‍🌾 Thức ăn ở Nông trại', 'farm', items),
       gearSection(gear),
       h('div.actions', {},
         h('button.btn', { type: 'button', text: '🩺 Ảnh Bác sĩ nhí…', onclick: () => goParent(app, 'doctor') }),
@@ -62,8 +71,8 @@ export function jobsAdminView(app) {
       mediaShareSection(app, {
         what: 'ảnh Đóng vai',
         intro: 'Gửi ảnh nền các nghề sang máy khác (ảnh nằm trong file). Trên máy kia: Góc bố mẹ → Ảnh Đóng vai → "Nhập từ file" (hoặc Quản lý bài → "Nhập bài từ file").',
-        canMake: bg.size > 0 || gear.size > 0 || people.size > 0,
-        backup: { lessonIds: [JOBS_BG_IMAGES, FIRE_GEAR_IMAGES, JOB_PEOPLE_IMAGES], settingsKeys: [], filename: `dong-vai-${dayKey()}.zip` },
+        canMake: bg.size > 0 || gear.size > 0 || people.size > 0 || items.size > 0,
+        backup: { lessonIds: [JOBS_BG_IMAGES, FIRE_GEAR_IMAGES, JOB_PEOPLE_IMAGES, JOB_ITEM_IMAGES], settingsKeys: [], filename: `dong-vai-${dayKey()}.zip` },
         accept: async (payload) => {
           const got = await acceptJobsPayload(app, payload);
           if (!got.images) throw new BackupError('File này không có ảnh Đóng vai.');
@@ -94,6 +103,29 @@ export function jobsAdminView(app) {
       gridSection(app, { id: FIRE_GEAR_IMAGES, words: FIRE_GEAR_FRAMES.map((f) => ({ en: f, label: `${FIRE_GEAR_FRAMES.indexOf(f) + 1}. ${FIRE_GEAR_FRAME_VI[f]}` })) }, urls, '🧑‍🚒 Ảnh lưới chú lính cứu hỏa', {
         prompt: FIRE_GEAR_PROMPT, shape: { cols: 3, rows: 2 }, trim: true, onSaved: reload,
         process: (tile) => cutOutSticker(tile.blob), previewClass: 'checker',
+      }));
+  }
+
+  /** Ảnh món một nghề: ảnh lưới AI (3 × 3, app cắt ô và bỏ nền trắng); món chưa có ảnh vẫn dùng emoji / hình vẽ sẵn. */
+  function itemsSection(title, job, items) {
+    const list = JOB_ITEMS[job];
+    const have = list.filter((it) => items.has(it.id));
+    return h('div', {},
+      section(`${title} — ${have.length ? `có ảnh ${have.length}/${list.length} món` : 'đang dùng hình sẵn'}`,
+        h('p.muted', { text: 'Copy prompt để nhờ AI vẽ ảnh lưới các món, rồi chọn ảnh đó: app tự cắt từng ô và bỏ nền trắng. Món chưa có ảnh vẫn dùng hình sẵn.' }),
+        have.length ? h('div.dr-wash-admin', {}, ...have.map((it) => h('figure', {},
+          h('img.checker', { src: items.get(it.id), alt: it.vi }), h('figcaption', { text: it.vi })))) : null,
+        have.length ? h('div.actions', {}, h('button.btn.danger', {
+          type: 'button', text: 'Dùng hình sẵn',
+          onclick: async () => {
+            for (const it of have) await removeWordImage(app.db, JOB_ITEM_IMAGES, it.id);
+            reload();
+          },
+        })) : null),
+      ...pendingGridSections(app, {
+        id: JOB_ITEM_IMAGES, what: 'món', urls, has: (w) => items.has(w.en),
+        words: list.map((it) => ({ en: it.id, label: it.en, imagePrompt: it.draw })),
+        promptNote: `\n${JOB_ITEM_PROMPT_NOTE}`, process: (tile) => cutOutSticker(tile.blob), onSaved: reload, previewClass: 'checker',
       }));
   }
 

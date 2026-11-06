@@ -195,3 +195,25 @@ test('JOBS3-11 / 21: ra nền giữa ca rồi quay lại → đúng ca, đúng b
   await expect(page.locator('.jb-count')).toHaveText(count);
   await expect(page.locator('.fm-basket-in .fm-in')).toHaveCount(inBasket);
 });
+
+test('Ảnh món (Góc bố mẹ → Ảnh Đóng vai): món có ảnh hiện ảnh thay emoji ở khay Đầu bếp; món chưa có ảnh vẫn là emoji', async ({ page }) => {
+  await fakeSpeech(page);
+  await startApp(page);
+  await page.evaluate(async () => {
+    const { setWordImage } = await import('/js/db.js');
+    const c = new OffscreenCanvas(40, 40);
+    c.getContext('2d').fillRect(0, 0, 40, 40);
+    const blob = await c.convertToBlob({ type: 'image/png' });
+    await setWordImage(window.kidEnglish.db, { lessonId: 'jobs:items', word: 'cheese', blob, width: 40, height: 40 });
+  });
+  await page.evaluate(() => window.kidEnglish.setSetting('chefGame', { level: 1, rounds: 0, lock: 1, seen: {} }));
+  await page.getByRole('button', { name: 'Trò chơi' }).click();
+  await page.getByRole('button', { name: 'Đóng vai' }).click();
+  await page.locator('.jb-job-chef').click();
+  await stateIs(page, 'wash');
+  await page.locator('.cf-sink').click();
+  await stateIs(page, 'layer');
+  await expect(page.locator('.jb-tray [data-item="cheese"] .jb-pic img')).toHaveCount(1);
+  await expect(page.locator('.jb-tray [data-item="bread"] img')).toHaveCount(0);
+  await expect(page.locator('.jb-tray [data-item="bread"]')).toContainText('🍞');
+});

@@ -11,6 +11,7 @@ import { PATIENT_BY_ID } from '../doctor.js';
 import { cleanJobState, afterJobRound, afterSeen, claims } from '../jobs/levels.js';
 import { JOBS_BG_IMAGES } from '../jobs/backgrounds.js';
 import { CHEF_SVG, loadPersonImage } from '../jobs/people.js';
+import { loadJobItemImages, itemFace } from '../jobs/items.js';
 import { SOUND_BY_ID } from '../animal-sounds.js';
 import { playSoundFile } from './animal-sounds.js';
 import { jobScreen, saveSnap, takeSnap, clearSnap, restartAnim, center, wait, WRONG_LOCK_MS, MAX_NUDGES } from '../jobs/kit.js';
@@ -49,11 +50,16 @@ export function chefScreen(app, params = {}) {
   let recorded = new Set();
   let washed = false;
   let lastWrong = { key: '', at: 0 };
+  let pics = null; // ảnh món của bố mẹ (Góc bố mẹ → Ảnh Đóng vai); chưa có thì emoji
 
   const cur = () => plan?.cases[caseIdx];
   const customer = () => PATIENT_BY_ID.get(plan?.customers?.[caseIdx] ?? 'teddy');
   const C = (line) => ({ who: 'chef', line });
   const K = (line) => ({ who: 'customer', line });
+  // Trứng ốp (lớp bánh mì kẹp) và quả trứng (làm bánh) là hai ảnh khác nhau.
+  const layerFace = (id, tag, props = {}) => itemFace(pics, id === 'egg' ? 'fried-egg' : id, tag, { ...props, text: LAYERS[id].emoji });
+  const decorFace = (id, tag, props = {}) => itemFace(pics, id, tag, { ...props, text: DECOR[id].emoji });
+  const toolFace = (id, tag) => itemFace(pics, id, tag, { text: TOOLS[id].emoji });
 
   const custEl = h('div.cf-customer');
   const sink = h('button.cf-sink', { type: 'button', 'aria-label': 'Vòi nước', onclick: () => tapSink() },
@@ -93,7 +99,7 @@ export function chefScreen(app, params = {}) {
       },
     },
     tray: {
-      face: (id) => h('span.cf-item', { text: (LAYERS[id] ?? DECOR[id]).emoji }),
+      face: (id) => (LAYERS[id] ? layerFace(id, 'span.cf-item') : decorFace(id, 'span.cf-item')),
       label: (id) => (LAYERS[id]?.name ?? DECOR[id].one),
       canGive: () => state === 'layer' || state === 'decor',
       dropOk: (x, y) => {
@@ -191,9 +197,9 @@ export function chefScreen(app, params = {}) {
     const c = cur();
     card.replaceChildren(h('span.cf-card-title', { text: '🥪' }), ...[...c.layers].reverse().map((id, k) => {
       const i = c.layers.length - 1 - k;
-      return h('span.cf-card-row', { class: `${i < si ? 'done' : ''}${i === si && level <= 1 ? ' next' : ''}`, text: LAYERS[id].emoji });
-    }), ...(c.no ? [h('span.cf-card-no', { text: `🚫${LAYERS[c.no].emoji}` })] : []));
-    stack.replaceChildren(...c.layers.slice(0, si).map((id) => h('span.cf-layer', { dataset: { layer: id }, text: LAYERS[id].emoji })));
+      return h('span.cf-card-row', { class: `${i < si ? 'done' : ''}${i === si && level <= 1 ? ' next' : ''}`, }, layerFace(id, 'span'));
+    }), ...(c.no ? [h('span.cf-card-no', {}, '🚫', layerFace(c.no, 'span'))] : []));
+    stack.replaceChildren(...c.layers.slice(0, si).map((id) => layerFace(id, 'span.cf-layer', { dataset: { layer: id } })));
     plate.dataset.next = c.layers[si] ?? ''; // cho test; bé không thấy
   }
   function renderBake() {
@@ -202,15 +208,15 @@ export function chefScreen(app, params = {}) {
     tools.replaceChildren(...c.tools.map((id) => h('button.cf-tool', {
       type: 'button', 'aria-label': TOOLS[id].vi, dataset: { tool: id }, class: done.has(stepOf(id)) ? 'used' : '',
       onclick: () => tapTool(id),
-    }, h('span', { text: TOOLS[id].emoji }))));
+    }, toolFace(id, 'span'))));
     bowl.dataset.fill = done.has('pour') ? 'milk' : '';
     bowl.dataset.egg = String(done.has('crack'));
     bowl.dataset.mixed = String(done.has('mix'));
     bowl.hidden = done.has('bake');
     oven.classList.remove('on');
     card.replaceChildren(...(c.ordered ? c.steps.filter((s) => s !== 'bake').map((s, k) => h('span.cf-card-row', {
-      class: k < si ? 'done' : '', text: `${k + 1}. ${TOOLS[BAKE_STEPS[s].tool].emoji}`,
-    })) : []));
+      class: k < si ? 'done' : '',
+    }, `${k + 1}. `, toolFace(BAKE_STEPS[s].tool, 'span'))) : []));
     tools.dataset.want = c.steps[si] ?? ''; // cho test
     // Mức 1: chỉ đồ của bước đang làm sáng (làm quen động từ, không có nhầm).
     for (const t of tools.children) t.classList.toggle('lit', level <= 1 && BAKE_STEPS[c.steps[si]]?.tool === t.dataset.tool);
@@ -222,7 +228,7 @@ export function chefScreen(app, params = {}) {
     let k = 0;
     tops.replaceChildren(...c.want.flatMap((w) => Array.from({ length: placed(w.id) }, () => {
       const [left, top] = DECOR_SPOTS[k++ % DECOR_SPOTS.length];
-      return h('span.cf-top', { text: DECOR[w.id].emoji, style: { left: `${left}%`, top: `${top}%` } });
+      return decorFace(w.id, 'span.cf-top', { style:{ left: `${left}%`, top: `${top}%` } });
     })));
     cake.dataset.want = c.want.map((w) => `${w.id}:${w.n}`).join(','); // cho test
     for (const w of c.want) kit.trayItem(w.id)?.classList.toggle('full', placed(w.id) >= w.n);
@@ -303,7 +309,7 @@ export function chefScreen(app, params = {}) {
     setState('busy');
     snap();
     const to = center(stack.getBoundingClientRect());
-    const g = await kit.flyTo(h('span.cf-item.cf-fly', { text: LAYERS[id].emoji }), from, { x: to.x, y: to.y - 10 });
+    const g = await kit.flyTo(layerFace(id, 'span.cf-item.cf-fly'), from, { x: to.x, y: to.y - 10 });
     kit.removeGhost(g);
     if (e !== kit.epoch) return;
     play('pop');
@@ -498,7 +504,7 @@ export function chefScreen(app, params = {}) {
       // Loại này đủ rồi: không nhận, không tính nhầm (quả thừa bay tới bánh rồi bay về khay); loại kia vẫn đặt được.
       talk([C(ENOUGH_LINE)]);
       const to = center(cake.getBoundingClientRect());
-      const g = await kit.flyTo(h('span.cf-item.cf-fly', { text: DECOR[id].emoji }), from, { x: to.x, y: to.y - 30 });
+      const g = await kit.flyTo(decorFace(id, 'span.cf-item.cf-fly'), from, { x: to.x, y: to.y - 30 });
       await kit.flyBack(g, id);
       return;
     }
@@ -509,7 +515,7 @@ export function chefScreen(app, params = {}) {
     const done = !missing().length;
     if (done) setState('busy');
     snap();
-    const g = await kit.flyTo(h('span.cf-item.cf-fly', { text: DECOR[id].emoji }), from, center(cake.getBoundingClientRect()));
+    const g = await kit.flyTo(decorFace(id, 'span.cf-item.cf-fly'), from, center(cake.getBoundingClientRect()));
     kit.removeGhost(g);
     if (e !== kit.epoch) return;
     play('pop');
@@ -525,6 +531,7 @@ export function chefScreen(app, params = {}) {
     seen('decor');
     for (const w of cur().want) seen(w.id);
     kit.renderTray([]);
+    cake.classList.add('ready');
     await talk([C(READY_LINE)]);
     if (e !== kit.epoch) return;
     // Bánh trang trí tự mang ra cho khách (không thêm thao tác — mục 2.5).
@@ -572,22 +579,31 @@ export function chefScreen(app, params = {}) {
   });
 
   const s = takeSnap(JOB, { level, continueDirectly: params.continueDirectly });
-  if (s) {
-    plan = s.plan;
-    caseIdx = s.caseIdx;
-    recorded = new Set(s.recorded ?? []);
-    washed = s.washed;
-    if (!washed) startWash();
-    else if (caseIdx >= plan.cases.length) {
-      caseIdx = plan.cases.length - 1;
-      count.textContent = `${plan.cases.length}/${plan.cases.length}`;
-      finishRound();
-    } else startCase(s);
-  } else {
-    plan = planRound(level, { seen: progress.seen });
-    caseIdx = 0;
-    startWash();
-  }
+  // Nạp ảnh món trước khi dựng khay / đĩa (đọc máy rất nhanh), để món không đổi từ emoji sang ảnh giữa chừng.
+  loadJobItemImages(app).then((loaded) => {
+    if (kit.signal.aborted) {
+      loaded.revoke();
+      return;
+    }
+    pics = loaded;
+    kit.onCleanup(loaded.revoke);
+    if (s) {
+      plan = s.plan;
+      caseIdx = s.caseIdx;
+      recorded = new Set(s.recorded ?? []);
+      washed = s.washed;
+      if (!washed) startWash();
+      else if (caseIdx >= plan.cases.length) {
+        caseIdx = plan.cases.length - 1;
+        count.textContent = `${plan.cases.length}/${plan.cases.length}`;
+        finishRound();
+      } else startCase(s);
+    } else {
+      plan = planRound(level, { seen: progress.seen });
+      caseIdx = 0;
+      startWash();
+    }
+  });
 
   return kit.cleanup;
 }

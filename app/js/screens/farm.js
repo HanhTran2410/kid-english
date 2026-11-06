@@ -11,6 +11,7 @@ import { cleanJobState, afterJobRound, afterSeen, claims } from '../jobs/levels.
 import { JOBS_BG_IMAGES } from '../jobs/backgrounds.js';
 import { FARMER_SVG, loadPersonImage } from '../jobs/people.js';
 import { farmAnimalSvg } from '../jobs/farm-animals.js';
+import { loadJobItemImages, itemFace } from '../jobs/items.js';
 import { jobScreen, saveSnap, takeSnap, clearSnap, restartAnim, center, wait, WRONG_LOCK_MS, MAX_NUDGES } from '../jobs/kit.js';
 import {
   MAX_LEVEL, planRound, FOODS, ANIMAL_BY_ID, eggMatches, pickMatches,
@@ -57,8 +58,10 @@ export function farmScreen(app, params = {}) {
   let recorded = new Set();
   let shown = false; // bong bóng thức ăn (mức 2–3) đã hiện sau lần nhầm / nhắc đầu
   let lastWrong = { key: '', at: 0 };
+  let pics = null; // ảnh thức ăn của bố mẹ (Góc bố mẹ → Ảnh Đóng vai); chưa có thì hình vẽ sẵn
 
   const cur = () => plan?.cases[caseIdx];
+  const foodFace = (id, tag) => itemFace(pics, id, tag, { html: foodSvg(id) });
   const F = (line) => ({ who: 'farmer', line });
   const A = (line) => ({ who: 'animal', line });
 
@@ -97,7 +100,7 @@ export function farmScreen(app, params = {}) {
       },
     },
     tray: {
-      face: (id) => h('span.fm-food', { html: foodSvg(id) }),
+      face: (id) => foodFace(id, 'span.fm-food'),
       label: (id) => FOODS[id].name,
       canGive: () => state === 'feed',
       dropOk: (x, y) => {
@@ -195,7 +198,7 @@ export function farmScreen(app, params = {}) {
       shown = true;
       snap();
     }
-    wish.innerHTML = foodSvg(ANIMAL_BY_ID.get(c.animal).food);
+    wish.replaceChildren(foodFace(ANIMAL_BY_ID.get(c.animal).food, 'span.fm-wish-food'));
     wish.hidden = false;
   }
   function renderAnimal(id, mood = 'hungry') {
@@ -329,7 +332,7 @@ export function farmScreen(app, params = {}) {
     seen(food);
     saveSnap(JOB, { level, plan, caseIdx: caseIdx + 1, wrongs: 0, nudges: 0, taken: [], recorded: [...recorded], shown: false });
     kit.renderTray(c.tray.filter((f) => f !== id));
-    const g = await kit.flyTo(h('span.fm-food.fm-fly', { html: foodSvg(id) }), from, center(animalEl.getBoundingClientRect()));
+    const g = await kit.flyTo(foodFace(id, 'span.fm-food.fm-fly'), from, center(animalEl.getBoundingClientRect()));
     kit.removeGhost(g);
     if (e !== kit.epoch) return;
     wish.hidden = true;
@@ -347,7 +350,7 @@ export function farmScreen(app, params = {}) {
     nests.replaceChildren(...c.hens.map((hen) => {
       const up = taken.has(`hen:${hen.id}`);
       return h('div.fm-nest', { dataset: { hen: hen.id } },
-        h('button.fm-hen', { type: 'button', 'aria-label': 'Con gà mái', class: up ? 'up' : '', onclick: () => tapHen(hen.id) }, h('span', { text: '🐔' })),
+        h('button.fm-hen', { type: 'button', 'aria-label': 'Con gà mái', class: up ? 'up' : '', onclick: () => tapHen(hen.id) }, h('span.fm-hen-art', { html: farmAnimalSvg('chicken', 'happy') })),
         h('div.fm-eggs', {}, ...hen.eggs.map((egg) => h('button.fm-egg', {
           type: 'button', 'aria-label': `${egg.color} egg`, dataset: { id: egg.id, color: egg.color },
           class: taken.has(egg.id) ? 'taken' : '',
@@ -592,20 +595,29 @@ export function farmScreen(app, params = {}) {
   }
 
   const s = takeSnap(JOB, { level, continueDirectly: params.continueDirectly });
-  if (s) {
-    plan = s.plan;
-    caseIdx = s.caseIdx;
-    recorded = new Set(s.recorded ?? []);
-    if (caseIdx >= plan.cases.length) {
-      caseIdx = plan.cases.length - 1;
-      count.textContent = `${plan.cases.length}/${plan.cases.length}`;
-      finishRound();
-    } else startCase(s);
-  } else {
-    plan = planRound(level, { seen: progress.seen });
-    caseIdx = 0;
-    begin();
-  }
+  // Nạp ảnh thức ăn trước khi dựng khay, để món không đổi từ hình vẽ sang ảnh giữa chừng.
+  loadJobItemImages(app).then((loaded) => {
+    if (kit.signal.aborted) {
+      loaded.revoke();
+      return;
+    }
+    pics = loaded;
+    kit.onCleanup(loaded.revoke);
+    if (s) {
+      plan = s.plan;
+      caseIdx = s.caseIdx;
+      recorded = new Set(s.recorded ?? []);
+      if (caseIdx >= plan.cases.length) {
+        caseIdx = plan.cases.length - 1;
+        count.textContent = `${plan.cases.length}/${plan.cases.length}`;
+        finishRound();
+      } else startCase(s);
+    } else {
+      plan = planRound(level, { seen: progress.seen });
+      caseIdx = 0;
+      begin();
+    }
+  });
 
   return kit.cleanup;
 }
