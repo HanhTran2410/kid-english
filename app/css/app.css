@@ -3485,8 +3485,12 @@ img.dr-admin-face { width: 100%; height: 100%; object-fit: contain; }
 .cf-card-no { font-size: clamp(16px, 3vmin, 26px); }
 .cf-plate { position: absolute; left: 50%; bottom: 10%; transform: translateX(-50%); width: min(30%, 260px); height: 46%; padding: 0; border: 0; background: none; display: flex; flex-direction: column; justify-content: flex-end; align-items: center; }
 .cf-plate-art, .cf-plate-art svg { display: block; width: 100%; }
-.cf-stack { display: flex; flex-direction: column-reverse; align-items: center; margin-bottom: -10px; }
-.cf-layer { font-family: var(--emoji); font-size: clamp(46px, 9vmin, 84px); line-height: 0.62; animation: pop 0.3s ease-out; }
+.cf-stack { display: flex; flex-direction: column-reverse; align-items: center; width: 72%; margin-bottom: -6%; flex-shrink: 0; }
+.cf-layer { display: block; width: 100%; line-height: 0; flex-shrink: 0; }
+.cf-layer:last-child { animation: cf-drop 0.3s ease-out; } /* chỉ lớp vừa đặt rơi xuống */
+.cf-layer svg { display: block; width: 100%; height: auto; overflow: visible; }
+.cf-layer + .cf-layer { margin-bottom: -11%; } /* lớp sau đè lên mép lớp dưới */
+@keyframes cf-drop { from { transform: translateY(-30%); opacity: 0.4; } }
 /* Món xong: lấp lánh (ánh vàng + ✨ nhấp nháy quanh món) tới khi bé bưng ra. */
 .cf-plate.ready, .cf-cake.ready { filter: drop-shadow(0 0 12px #ffe066); }
 .cf-plate.ready::before, .cf-plate.ready::after, .cf-cake.ready::before, .cf-cake.ready::after {
@@ -3500,7 +3504,6 @@ img.dr-admin-face { width: 100%; height: 100%; object-fit: contain; }
 .jb-item.full { opacity: 0.35; }
 /* Ảnh món của bố mẹ (jobs/items.js) thay emoji: ô vuông cỡ theo chữ của chỗ đặt. */
 .cf-item.jb-pic, .cf-top.jb-pic, .cf-card-row .jb-pic, .cf-card-no .jb-pic, .cf-tool .jb-pic { display: inline-block; width: 1.25em; height: 1.25em; vertical-align: middle; }
-.cf-layer.jb-pic { display: block; width: 1.7em; height: 0.9em; margin-top: -0.3em; }
 .jb-pic > img { display: block; width: 100%; height: 100%; object-fit: contain; pointer-events: none; }
 .cf-fly { font-size: 64px; }
 .cf-tools { position: absolute; left: 24%; bottom: 12%; display: flex; gap: 12px; }
@@ -3546,7 +3549,7 @@ img.dr-admin-face { width: 100%; height: 100%; object-fit: contain; }
   .cf-oven { left: auto; right: 4%; width: 30%; bottom: 8%; }
 }
 @media (prefers-reduced-motion: reduce) {
-  .cf-customer.enter, .cf-customer.hop, .cf-sink.nudge, .cf-layer, .cf-plate.ready::before, .cf-plate.ready::after, .cf-cake.ready::before, .cf-cake.ready::after,
+  .cf-customer.enter, .cf-customer.hop, .cf-sink.nudge, .cf-layer:last-child, .cf-plate.ready::before, .cf-plate.ready::after, .cf-cake.ready::before, .cf-cake.ready::after,
   .cf-plate.nudge, .cf-cake.nudge, .cf-tool.nudge, .cf-bowl.nudge, .cf-tool.shake, .cf-tool.pour span, .cf-tool.crack span,
   .cf-tool.stir span, .cf-top, .cf-cake.hot .cf-steam, .cf-cake.enter, .cf-cake.shake { animation: none; }
   .cf-customer.leave { animation: dr-fade 0.3s forwards; }

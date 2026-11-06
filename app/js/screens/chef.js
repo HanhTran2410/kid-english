@@ -36,6 +36,20 @@ const CAKE_SVG = `<svg viewBox="0 0 160 110" aria-hidden="true"><ellipse cx="80"
 const PLATE_SVG = `<svg viewBox="0 0 160 40" aria-hidden="true"><ellipse cx="80" cy="22" rx="76" ry="15" fill="#fff" stroke="${INK}" stroke-width="5"/><ellipse cx="80" cy="20" rx="50" ry="8" fill="none" stroke="#dee2e6" stroke-width="3"/></svg>`;
 /** Chỗ đặt đồ trang trí trên mặt bánh (phần trăm khung bánh). */
 const DECOR_SPOTS = [[20, 34], [38, 28], [56, 26], [74, 28], [88, 36]];
+/**
+ * Lớp bánh mì kẹp trên đĩa: vẽ nằm ngang nhìn từ bên cạnh (lát mỏng đè lên nhau như bánh thật), không dùng emoji / ảnh
+ * nhìn từ trên xuống (chồng lên thành cái tháp). Bánh mì dưới cùng phẳng, bánh mì phía trên vòm.
+ */
+const side = (body) => `<svg viewBox="0 0 200 44" aria-hidden="true" preserveAspectRatio="xMidYMax meet">${body}</svg>`;
+const LAYER_SIDE = {
+  breadBottom: side(`<rect x="12" y="10" width="176" height="30" rx="10" fill="#d9944a" stroke="${INK}" stroke-width="4"/><rect x="20" y="14" width="160" height="18" rx="6" fill="#ffe8b8"/>`),
+  breadTop: side(`<path d="M12 40 V24 Q12 4 44 6 H156 Q188 4 188 24 V40 Z" fill="#d9944a" stroke="${INK}" stroke-width="4" stroke-linejoin="round"/><path d="M20 34 V25 Q20 12 46 13 H154 Q180 12 180 25 V34 Z" fill="#ffe8b8"/>`),
+  cheese: side(`<path d="M8 24 H192 V32 L182 42 L174 32 H118 L110 40 L102 32 H40 L32 42 L24 32 H8 Z" fill="#ffd43b" stroke="${INK}" stroke-width="4" stroke-linejoin="round"/><circle cx="70" cy="28" r="2.5" fill="#f59f00"/><circle cx="150" cy="28" r="2.5" fill="#f59f00"/>`),
+  tomato: side(`<g stroke="${INK}" stroke-width="4"><ellipse cx="52" cy="30" rx="42" ry="12" fill="#ff6b6b"/><ellipse cx="148" cy="30" rx="42" ry="12" fill="#ff6b6b"/><ellipse cx="100" cy="28" rx="42" ry="13" fill="#fa5252"/></g><g fill="#ffe066"><circle cx="88" cy="30" r="2.5"/><circle cx="100" cy="28" r="2.5"/><circle cx="112" cy="30" r="2.5"/></g>`),
+  lettuce: side(`<path d="M2 30 Q14 16 26 28 Q38 16 50 28 Q62 16 74 28 Q86 16 98 28 Q110 16 122 28 Q134 16 146 28 Q158 16 170 28 Q182 16 198 30 Q186 42 170 38 Q150 44 128 38 Q100 44 72 38 Q50 44 30 38 Q14 42 2 30 Z" fill="#69db7c" stroke="#2b8a3e" stroke-width="4" stroke-linejoin="round"/>`),
+  egg: side(`<path d="M10 34 Q12 24 34 26 Q50 18 70 24 Q100 18 130 24 Q150 18 168 26 Q190 24 190 34 Q190 42 100 42 Q10 42 10 34 Z" fill="#fff" stroke="${INK}" stroke-width="4" stroke-linejoin="round"/><path d="M76 26 Q100 6 124 26 Z" fill="#ffd43b" stroke="${INK}" stroke-width="4" stroke-linejoin="round"/>`),
+};
+const layerSide = (id, i) => (id === 'bread' ? (i === 0 ? LAYER_SIDE.breadBottom : LAYER_SIDE.breadTop) : LAYER_SIDE[id]);
 
 export function chefScreen(app, params = {}) {
   let progress = cleanJobState(app.settings.chefGame, { maxLevel: MAX_LEVEL });
@@ -199,7 +213,7 @@ export function chefScreen(app, params = {}) {
       const i = c.layers.length - 1 - k;
       return h('span.cf-card-row', { class: `${i < si ? 'done' : ''}${i === si && level <= 1 ? ' next' : ''}`, }, layerFace(id, 'span'));
     }), ...(c.no ? [h('span.cf-card-no', {}, '🚫', layerFace(c.no, 'span'))] : []));
-    stack.replaceChildren(...c.layers.slice(0, si).map((id) => layerFace(id, 'span.cf-layer', { dataset: { layer: id } })));
+    stack.replaceChildren(...c.layers.slice(0, si).map((id, i) => h('span.cf-layer', { dataset: { layer: id }, html: layerSide(id, i) })));
     plate.dataset.next = c.layers[si] ?? ''; // cho test; bé không thấy
   }
   function renderBake() {
