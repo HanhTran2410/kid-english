@@ -398,6 +398,28 @@
       "size": 109155
     },
     {
+      "file": "46-vegetables.zip",
+      "kind": "words",
+      "kindVi": "Từ vựng",
+      "emoji": "🥕",
+      "title": "Vegetables",
+      "titleVi": "Các loại rau củ",
+      "lessons": 1,
+      "images": 6,
+      "size": 62387
+    },
+    {
+      "file": "47-things-at-home.zip",
+      "kind": "words",
+      "kindVi": "Từ vựng",
+      "emoji": "🏠",
+      "title": "Things at Home",
+      "titleVi": "Đồ vật trong nhà",
+      "lessons": 1,
+      "images": 8,
+      "size": 92136
+    },
+    {
       "file": "48-actions-tidy-up.zip",
       "kind": "phrases",
       "kindVi": "Câu nói",
@@ -407,6 +429,17 @@
       "lessons": 1,
       "images": 0,
       "size": 271653
+    },
+    {
+      "file": "49-bedtime-2.zip",
+      "kind": "phrases",
+      "kindVi": "Câu nói",
+      "emoji": "🌙",
+      "title": "Bedtime 2",
+      "titleVi": "Giờ đi ngủ",
+      "lessons": 1,
+      "images": 0,
+      "size": 279519
     },
     {
       "file": "bac-si-nhi-2026-10-26.zip",
