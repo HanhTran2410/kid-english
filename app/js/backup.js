@@ -30,6 +30,9 @@ const editedAt = (lesson) => lesson.updatedAt ?? lesson.createdAt ?? 0;
 /** "Chữ ký" của bài theo danh sách từ (không phân biệt thứ tự, hoa/thường). */
 const wordSignature = (lesson) => (Array.isArray(lesson.turns)
   ? `tk:${lesson.builtin ?? lesson.title}`
+  // Bài Toán (SPEC-math): theo mã bài có sẵn.
+  : lesson.kind === 'math'
+  ? `m:${lesson.builtin ?? lesson.title}`
   : Array.isArray(lesson.letters)
   ? `ph:${lesson.letters.map((l) => l.letter).join('')}`
   : Array.isArray(lesson.slots)
@@ -178,7 +181,9 @@ export async function readBackup(input, { JSZip = globalThis.JSZip } = {}) {
   const lessons = [];
   for (const file of zip.file(/^lessons\/[^/]+\.json$/)) {
     const lesson = await readJson(file.name);
-    if (!lesson?.id || !lesson.title || !(Array.isArray(lesson.words) || Array.isArray(lesson.phrases) || Array.isArray(lesson.numbers) || Array.isArray(lesson.letters) || Array.isArray(lesson.turns) || Array.isArray(lesson.slots) || Array.isArray(lesson.actions))) {
+    // Bài Toán (SPEC-math mục 7.1) chỉ có cấu hình, không có danh sách từ / câu / số.
+    const isMath = lesson?.kind === 'math' && typeof lesson.skill === 'string' && Array.isArray(lesson.config?.itemIds);
+    if (!lesson?.id || !lesson.title || !(isMath || Array.isArray(lesson.words) || Array.isArray(lesson.phrases) || Array.isArray(lesson.numbers) || Array.isArray(lesson.letters) || Array.isArray(lesson.turns) || Array.isArray(lesson.slots) || Array.isArray(lesson.actions))) {
       throw new BackupError(`File sao lưu bị hỏng (${file.name}).`);
     }
     lessons.push(lesson);

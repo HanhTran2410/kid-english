@@ -14,6 +14,7 @@ import { normalizeWord } from '../text.js';
 import { groupByTopic } from '../lesson.js';
 import { lessonKind, PHRASE_KIND, WORDS_KIND } from '../phrase.js';
 import { NUMBER_KIND } from '../numbers.js';
+import { MATH_KIND, isMathKey, lessonItems } from '../math.js';
 import { PHONICS_KIND } from '../phonics.js';
 import { TALK_KIND } from '../talk.js';
 import { PATTERN_KIND } from '../patterns.js';
@@ -111,6 +112,8 @@ export function homeScreen(app) {
       // Mẫu câu (SPEC-patterns.md): nút thứ 9 — lưới 5 + 4 trên màn rộng, 3 × 3 trên iPhone/iPad dọc.
       big('🌸', 'Sentences', 'Mẫu câu', () => app.go('patterns'), '.patterns'),
       big('🔢', 'Numbers', 'Số đếm', () => app.go('numbers'), '.numbers'),
+      // Toán (SPEC-math.md): nút thứ 10 — lưới 5 × 2 trên màn rộng, 2 × 5 trên màn dọc.
+      big('🧮', 'Math', 'Toán', () => app.go('math'), '.math'),
       // Chữ cái và âm (SPEC-phonics.md): nút thứ 8, lưới 2 × 4 / 4 × 2 vừa khít.
       big('🔤', 'Phonics', 'Chữ cái', () => app.go('phonics'), '.phonics'),
       reviewBtn,
@@ -126,7 +129,7 @@ export function homeScreen(app) {
 
   app.db.getAll('progress').then((list) => {
     // Ôn tập chung từ, câu, số (SPEC-mix mục 2): sáng khi bé đã học bất kỳ loại nào.
-    if (!list.some(isLearned)) reviewBtn.classList.add('disabled');
+    if (!list.some((r) => isLearned(r) && !isMathKey(r.word))) reviewBtn.classList.add('disabled');
   });
   return () => bunny.destroy();
 }
@@ -138,7 +141,7 @@ export function homeScreen(app) {
  */
 export function lessonsScreen(app, { kind = WORDS_KIND } = {}) {
   const playScreen = {
-    [PHRASE_KIND]: 'phrase-lesson', [NUMBER_KIND]: 'number-lesson', [PHONICS_KIND]: 'phonics-lesson', [TALK_KIND]: 'talk-lesson', [PATTERN_KIND]: 'pattern-lesson',
+    [PHRASE_KIND]: 'phrase-lesson', [NUMBER_KIND]: 'number-lesson', [MATH_KIND]: 'math-lesson', [PHONICS_KIND]: 'phonics-lesson', [TALK_KIND]: 'talk-lesson', [PATTERN_KIND]: 'pattern-lesson',
   }[kind] ?? 'lesson';
   app.lessonTabs ??= {};
   app.root.className = `child-screen lessons ${kind}`;
@@ -180,7 +183,7 @@ export function lessonsScreen(app, { kind = WORDS_KIND } = {}) {
   grid.before(tabs);
 
   const card = async (lesson) => {
-    const items = lesson.words ?? lesson.phrases ?? lesson.numbers ?? lesson.slots ?? lesson.actions ?? [];
+    const items = lesson.words ?? lesson.phrases ?? lesson.numbers ?? lesson.slots ?? lesson.actions ?? (lesson.kind === MATH_KIND ? lessonItems(lesson) : []);
     let cover = null;
     if (lesson.slots?.length) {
       // Bài mẫu câu: ảnh hình đầu tiên (bố mẹ thêm ở bài này), không có thì ảnh mới nhất của `concept` đó ở bài khác.
@@ -251,7 +254,7 @@ export function lessonsScreen(app, { kind = WORDS_KIND } = {}) {
   (async () => {
     const lessons = (await listLessons(app.db)).filter((l) => lessonKind(l) === kind);
     // Bài số: theo thứ tự bài (Đếm 1–10 trước Đếm 11–20), không theo bài mới nhất.
-    if ([NUMBER_KIND, PHONICS_KIND, TALK_KIND, PATTERN_KIND].includes(kind)) lessons.sort((a, b) => (a.no ?? 0) - (b.no ?? 0));
+    if ([NUMBER_KIND, MATH_KIND, PHONICS_KIND, TALK_KIND, PATTERN_KIND].includes(kind)) lessons.sort((a, b) => (a.no ?? 0) - (b.no ?? 0));
     // Nói chuyện với Bông: thẻ cuối là "Ôn từ đã học" (màn Học cùng Bông cũ, giữ nguyên).
     const extra = kind === TALK_KIND ? [h('button.lesson-card.review-card', {
       type: 'button', 'aria-label': 'Ôn từ đã học', onclick: () => { play('tap'); app.go('learn-review'); },

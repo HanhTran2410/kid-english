@@ -3762,3 +3762,73 @@ img.dr-admin-face { width: 100%; height: 100%; object-fit: contain; }
   .dg-windows { grid-auto-flow: row; grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .dg-win { aspect-ratio: 1; }
 }
+
+/* ---------- Màn hình chính 10 nút (SPEC-math mục 2): 5 × 2 trên màn rộng, 2 × 5 trên màn dọc; nút ≥ 72 px, không cuộn ---------- */
+.home-btn.math { background: #4c9f38; }
+.home-grid .home-btn:nth-child(6) { grid-column: span 2; }
+@media (max-width: 900px) and (orientation: portrait), (max-width: 760px) {
+  .home-grid {
+    --btn-w: clamp(72px, min(40vw, calc((100vh - 190px) / 5.4)), 180px);
+    --btn-w: clamp(72px, min(40vw, calc((100dvh - 190px) / 5.4)), 180px);
+    --gap: clamp(8px, 1.4vh, 12px);
+    grid-template-columns: repeat(4, calc((var(--btn-w) - var(--gap)) / 2));
+  }
+  .home-grid .home-btn:nth-child(n) { grid-column: span 2; border-radius: 26px; gap: 2px; }
+  .home-grid .home-btn .home-emoji, .home-grid .home-btn.stickers .home-emoji { font-size: clamp(32px, calc(var(--btn-w) * 0.38), 72px); }
+  .home-grid .home-bong { width: clamp(32px, calc(var(--btn-w) * 0.38), 72px); height: clamp(32px, calc(var(--btn-w) * 0.38), 72px); }
+  .home-grid .home-en { font-size: clamp(16px, calc(var(--btn-w) * 0.15), 26px); }
+  .home-grid .home-vi { font-size: clamp(11px, calc(var(--btn-w) * 0.1), 16px); }
+}
+
+/* ---------- Toán (SPEC-math.md) ---------- */
+.lessons.math .lesson-card { background: #e9f7e4; }
+.mt-question { display: grid; place-items: center; width: min(96vw, 1000px); }
+/* To – nhỏ: hai đồ chung đường đáy; cỡ theo --s; vùng chạm ≥ 64 px dù hình nhỏ. */
+.mt-pair { display: flex; align-items: flex-end; justify-content: center; gap: clamp(24px, 8vw, 120px); --u: min(11vmin, 84px); }
+.mt-thing {
+  display: grid; place-items: end center; min-width: max(64px, calc(var(--u) * 1.2)); min-height: max(64px, calc(var(--u) * 1.2));
+  padding: 8px; border-radius: 28px; background: rgba(255, 255, 255, 0.7); box-shadow: var(--shadow);
+}
+.mt-emoji { display: block; font-family: var(--emoji); font-size: calc(var(--u) * var(--s, 1)); line-height: 1; }
+.mt-thing.mt-grow .mt-emoji { animation: mt-grow 0.5s ease-out; }
+.mt-thing.mt-shrink .mt-emoji { animation: mt-shrink 0.5s ease-out; }
+@keyframes mt-grow { 50% { transform: scale(1.12); } }
+@keyframes mt-shrink { 50% { transform: scale(0.85); } }
+/* Nhiều – ít: hai đĩa (iPhone dọc: trên – dưới); đồ trong đĩa chạm để đếm; nền đĩa / 👆 để chọn đĩa. */
+.mt-plates { display: flex; align-items: center; justify-content: center; gap: clamp(14px, 4vw, 48px); }
+.mt-plate-box { display: grid; justify-items: center; gap: 6px; padding: 8px; border-radius: 32px; cursor: pointer; }
+.mt-plate {
+  display: grid; align-content: center; justify-items: center; gap: 6px; width: min(40vw, 380px); min-height: min(30vh, 240px);
+  padding: 18px; border-radius: 50%; background: #fff; box-shadow: inset 0 0 0 10px #f1f3f5, var(--shadow);
+}
+.mt-plate-row { display: flex; gap: 6px; justify-content: center; }
+.mt-plate.scatter { grid-template-columns: repeat(4, minmax(44px, 1fr)); grid-template-rows: repeat(3, minmax(44px, auto)); width: min(42vw, 400px); border-radius: 40%; }
+.mt-count { position: relative; display: grid; place-items: center; min-width: 44px; min-height: 44px; padding: 2px; border-radius: 14px; background: none; }
+.mt-count-emoji { font-family: var(--emoji); font-size: clamp(28px, 5.2vmin, 52px); line-height: 1; }
+.mt-count-no { position: absolute; bottom: -6px; right: -2px; font-size: 18px; font-weight: 900; color: var(--ink); text-shadow: 0 0 3px #fff, 0 0 3px #fff; }
+.mt-count.counted { background: #fff3bf; }
+.mt-count.counted .mt-count-emoji { animation: mt-grow 0.3s ease-out; }
+.mt-count.nudge { animation: hint-hop 0.4s; }
+.mt-pick { font-family: var(--emoji); font-size: 36px; line-height: 1; padding: 6px 22px; border-radius: 999px; background: #fff; box-shadow: var(--shadow); }
+.mt-same { display: grid; place-items: center; gap: 2px; min-width: 96px; min-height: 96px; padding: 10px 14px; border-radius: 28px; background: #fff; box-shadow: var(--shadow); font-weight: 900; color: var(--ink); }
+.mt-same-sign { font-size: 44px; font-weight: 900; line-height: 1; color: #1971c2; }
+.mt-plate-box.mt-focus .mt-plate { outline: 5px solid #74c0fc; }
+/* Đúng / sai / hiện đáp án: luôn có đổi viền + nền (không chỉ chuyển động). */
+.mt-right, .mt-glow { outline: 6px solid var(--yellow); outline-offset: 2px; background-color: #fff3bf; }
+.mt-plate-box.mt-right, .mt-plate-box.mt-glow { border-radius: 36px; }
+.mt-wrong { outline: 5px solid #ff922b; outline-offset: 2px; animation: shake 0.45s; }
+.next-btn.mt-next-hint { animation: mt-next 1.2s ease-in-out 3; }
+@keyframes mt-next { 50% { transform: scale(1.1); } }
+@media (max-width: 760px) and (orientation: portrait) {
+  .mt-plates { flex-direction: column; gap: 8px; }
+  .mt-plates.has-same { gap: 6px; }
+  .mt-plate { width: min(68vw, 360px); min-height: 0; border-radius: 36%; padding: 10px 14px; }
+  .mt-plate.scatter { width: min(68vw, 360px); grid-template-columns: repeat(4, minmax(40px, 1fr)); }
+  .mt-plate-box { grid-auto-flow: column; align-items: center; padding: 4px; }
+  .mt-pick { padding: 6px 12px; }
+  .mt-same { min-height: 64px; min-width: 160px; grid-auto-flow: column; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .mt-thing.mt-grow .mt-emoji, .mt-thing.mt-shrink .mt-emoji, .mt-count.counted .mt-count-emoji, .mt-count.nudge, .next-btn.mt-next-hint { animation: none; }
+  .mt-wrong { animation: none; }
+}

@@ -3,7 +3,7 @@
 // Thêm/bớt file trong app/ thì cập nhật ASSETS (test tests/unit/sw.test.js sẽ báo nếu thiếu).
 // Thư viện bài app/shared/ (file .zip + index.json) KHÔNG lưu offline: tải từ mạng khi bố mẹ mở Thư viện bài.
 
-const VERSION = '0.65.4';
+const VERSION = '0.66.0';
 const CACHE = `kid-english-${VERSION}`;
 
 const ASSETS = [
@@ -31,12 +31,15 @@ const ASSETS = [
   'js/match.js',
   'js/phrase.js',
   'js/numbers.js',
+  'js/math.js',
   'js/player/completion-stage.js',
   'js/player/conversation-stage.js',
   'js/player/flipbook.js',
   'js/player/phrase-player.js',
   'js/player/phrase-stages.js',
   'js/player/number-player.js',
+  'js/player/math-player.js',
+  'js/player/math-stages.js',
   'js/player/number-stages.js',
   'js/player/layout.js',
   'js/player/lesson-player.js',

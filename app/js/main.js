@@ -9,6 +9,7 @@ import { startScreen, homeScreen, lessonsScreen, stickersScreen, sleepScreen } f
 import { lessonScreen } from './player/lesson-player.js';
 import { phraseLessonScreen } from './player/phrase-player.js';
 import { numberLessonScreen } from './player/number-player.js';
+import { mathLessonScreen } from './player/math-player.js';
 import { patternLessonScreen } from './player/pattern-player.js';
 import { doingLessonScreen } from './player/doing-player.js';
 import { phonicsLessonScreen } from './player/phonics-player.js';
@@ -114,6 +115,9 @@ async function boot() {
   app.register('doing-lesson', doingLessonScreen);
   app.register('numbers', (a) => lessonsScreen(a, { kind: 'numbers' }));
   app.register('number-lesson', numberLessonScreen);
+  // Toán (SPEC-math.md): so sánh to – nhỏ, nhiều – ít.
+  app.register('math', (a) => lessonsScreen(a, { kind: 'math' }));
+  app.register('math-lesson', mathLessonScreen);
   app.register('phonics', (a) => lessonsScreen(a, { kind: 'phonics' }));
   app.register('phonics-lesson', phonicsLessonScreen);
   app.register('review', (a) => mixScreen(a, { mode: 'review' }));

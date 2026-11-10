@@ -9,6 +9,8 @@ import { uniqueTitle, topicOf, formatLessonNo, lessonFileName } from '../../less
 import { isPhraseLesson, lessonKind, MOTION_NAMES, frameGroups, frameSteps, defaultFrameMapping, collectFrames, singlePhraseGroup } from '../../phrase.js';
 import { buildFramesPrompt } from '../../prompts.js';
 import { isNumberLesson, numberKey, countPhrase } from '../../numbers.js';
+import { isMathLesson, mathKey, TYPE_VI, MAX_LEVEL, clampLevel, typesFor } from '../../math.js';
+import { getProgress } from '../../db.js';
 import { isPhonicsLesson, letterKey } from '../../phonics.js';
 import { isJollyLesson, soundKey, BLEND_BY } from '../../jolly.js';
 import { isTalkLesson, talkKey, talkPictures } from '../../talk.js';
@@ -240,6 +242,11 @@ export function lessonDetailView(app, { lessonId }) {
       // Ảnh đồ vật (SPEC-numbers mục 14.2): dùng lại phần ảnh lưới của bài từ vựng, mỗi ô là MỘT đồ vật.
       if (!['game', 'shapes'].includes(lesson.mode)) body.append(...lessonGrid(app, numberImageLesson(lesson), urls, imageOf, { prefix: 'Ảnh đồ vật', what: 'đồ vật' }));
       body.append(shareSection(app, lesson), section(null, deleteButton(app, lesson)));
+      return;
+    }
+    if (isMathLesson(lesson)) {
+      // Bài Toán (SPEC-math mục 8): sao, mức, kiểu câu hay sai; đặt mức, đặt lại tiến độ. Không có ảnh, không chia sẻ.
+      body.append(rename, await mathDetailSection(app, lesson), section(null, deleteButton(app, lesson)));
       return;
     }
     if (isDoingLesson(lesson)) {
@@ -550,6 +557,7 @@ function shareSection(app, lesson) {
 
 /** Đổi số bài, tên bài, chủ đề (dùng chung cho bài từ vựng và bài câu). */
 export function kindLabel(lesson) {
+  if (isMathLesson(lesson)) return '🧮 Toán';
   if (isPatternLesson(lesson)) return '🌸 Mẫu câu';
   if (isTalkLesson(lesson)) return '🗨️ Hội thoại';
   if (isJollyLesson(lesson)) return '🐍 Âm & ghép vần';
@@ -559,6 +567,7 @@ export function kindLabel(lesson) {
 }
 
 function sizeLabel(lesson) {
+  if (isMathLesson(lesson)) return `${lesson.rounds ?? 6} câu`;
   if (isDoingLesson(lesson)) return `${lesson.actions.length} hành động`;
   if (isPatternLesson(lesson)) return `${lesson.slots.length} câu`;
   if (isTalkLesson(lesson)) return `${lesson.turns.length} lượt`;
@@ -566,6 +575,45 @@ function sizeLabel(lesson) {
   if (isPhonicsLesson(lesson)) return `${lesson.letters.length} chữ`;
   if (isNumberLesson(lesson)) return `${lesson.numbers.length} số`;
   return isPhraseLesson(lesson) ? `${lesson.phrases.length} câu` : `${lesson.words.length} từ`;
+}
+
+/**
+ * Trang bài Toán (SPEC-math mục 8): ⭐ và mức của bài, tỉ lệ đúng ngay theo kiểu câu (kiểu hay sai lên đầu),
+ * nút đặt mức (lượt sau mới dùng) và đặt lại tiến độ (0⭐, mức 1, xóa thống kê). Tiến độ gắn với mã bài: xóa bài vẫn giữ.
+ */
+async function mathDetailSection(app, lesson) {
+  const key = mathKey(lesson);
+  const rec = await getProgress(app.db, key, lesson.emoji);
+  const level = clampLevel(rec.level);
+  const types = Object.entries(rec.types ?? {}).sort((a, b) => a[1].first / a[1].asked - b[1].first / b[1].asked);
+  const rows = types.map(([t, s]) => h('li', {},
+    h('span.p-word', { text: TYPE_VI[t] ?? t }),
+    h('span.p-meta', { text: `${s.first}/${s.asked} đúng ngay${s.wrong ? ` · chạm sai ${s.wrong} lần` : ''}` })));
+  const setLevel = async (n) => {
+    const fresh = await getProgress(app.db, key, lesson.emoji);
+    await app.db.put('progress', { ...fresh, level: n });
+    toast(`Đã đặt mức ${n}. Lượt sau sẽ dùng mức này.`);
+    goParent(app, 'lesson', { lessonId: lesson.id });
+  };
+  const levelBtns = Array.from({ length: MAX_LEVEL }, (_, i) => h(`button.btn.small${i + 1 === level ? '.primary' : ''}`, {
+    type: 'button', text: `Mức ${i + 1}`, 'aria-pressed': String(i + 1 === level), onclick: () => setLevel(i + 1),
+  }));
+  const reset = h('button.btn.small', {
+    type: 'button',
+    text: 'Đặt lại tiến độ',
+    onclick: async () => {
+      if (!await confirmDialog(`Đặt lại tiến độ bài "${lesson.title}"? Sao về 0, mức về 1, xóa thống kê kiểu câu.`, { okText: 'Đặt lại', danger: true })) return;
+      await app.db.delete('progress', key);
+      toast('Đã đặt lại tiến độ.');
+      goParent(app, 'lesson', { lessonId: lesson.id });
+    },
+  });
+  return section('Tiến độ',
+    h('p', {}, h('b', { text: rec.mastery ? '⭐'.repeat(rec.mastery) : 'Chưa có sao' }), ` · Mức ${level} / ${MAX_LEVEL} · chơi xong ${rec.practiceCount ?? 0} lượt`),
+    h('p.muted', { text: `Mức này hỏi: ${typesFor(lesson.skill, level).map((t) => TYPE_VI[t]).join(', ')}.` }),
+    h('p.muted', { text: 'Xong một lượt 6 câu: +1 sao; ≥ 5 câu đúng ngay: +1 nữa (tối đa +2 sao mỗi ngày). Lên mức 2 khi có 2⭐, mức 3 khi có 4⭐, và lượt vừa chơi có ≥ 4 câu đúng ngay. Không bao giờ trừ sao.' }),
+    rows.length ? h('ul.progress-list', {}, ...rows) : h('p.muted', { text: 'Chưa có câu nào.' }),
+    h('div.actions', {}, ...levelBtns, reset));
 }
 
 /** Trang bài mẫu câu (SPEC-patterns mục 5): sao từng câu (chỉ "cả câu" mới có sao), mức cao nhất bé đạt, sao khung. */

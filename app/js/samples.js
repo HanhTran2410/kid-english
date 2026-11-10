@@ -3,6 +3,7 @@
 import { parseLesson, createLessonRecord, baseTitle } from './lesson.js';
 import { ensureLessonNumbers } from './db.js';
 import { builtInNumberLessons } from './numbers.js';
+import { builtInMathLessons, isMathLesson } from './math.js';
 import { builtInPhonicsLessons } from './phonics.js';
 import { builtInJollyLessons } from './jolly.js';
 
@@ -75,10 +76,25 @@ async function addPhonicsLessons(app, only = null) {
   return list.length;
 }
 
-/** Nút "Thêm lại bài mẫu": thêm lại bài từ vựng, bài câu, bài số và bài phonics mẫu. */
+/**
+ * Bài Toán có sẵn (SPEC-math mục 7.4). `only`: chỉ thêm các bài có mã này. Không bao giờ tạo bản trùng: bài đã có trên máy
+ * (cùng mã `builtin`) thì bỏ qua.
+ */
+async function addMathLessons(app, only = null) {
+  const have = new Set((await app.db.getAll('lessons')).filter(isMathLesson).map((l) => l.builtin));
+  const now = Date.now();
+  const list = builtInMathLessons().filter((l) => (!only || only.includes(l.builtin)) && !have.has(l.builtin));
+  for (const [i, lesson] of list.entries()) {
+    await app.db.put('lessons', createLessonRecord(lesson, now - list.length + i));
+  }
+  await ensureLessonNumbers(app.db);
+  return list.length;
+}
+
+/** Nút "Thêm lại bài mẫu": thêm lại bài từ vựng, bài câu, bài số, bài phonics mẫu và bài Toán còn thiếu. */
 export async function addSampleLessons(app) {
   return (await addFrom(app, SAMPLE_FILES)) + (await addFrom(app, MORE_VOCAB_FILES)) + (await addFrom(app, PHRASE_SAMPLE_FILES)) + (await addNumberLessons(app))
-    + (await addPhonicsLessons(app)) + (await addPatternLessons(app));
+    + (await addPhonicsLessons(app)) + (await addPatternLessons(app)) + (await addMathLessons(app));
 }
 
 /** Lần chạy đầu: thêm bài mẫu. Bài câu mẫu có cờ riêng để máy đã dùng bản cũ vẫn nhận được. */
@@ -111,6 +127,18 @@ export async function seedSamplesOnce(app) {
       await app.setSetting('numberLessonsSeeded', [...seeded, ...missing]);
     } catch (err) {
       console.error('Không thêm được bài số', err);
+    }
+  }
+  // Bài Toán (SPEC-math mục 7.4): mỗi bài có sẵn chỉ tự thêm MỘT lần (bố mẹ xóa rồi thì không tự thêm lại); bản cập nhật
+  // có bài mới thì chỉ thêm mã mới.
+  const mathSeeded = app.settings.mathLessonsSeeded ?? [];
+  const newMath = builtInMathLessons().map((l) => l.builtin).filter((id) => !mathSeeded.includes(id));
+  if (newMath.length) {
+    try {
+      await addMathLessons(app, newMath);
+      await app.setSetting('mathLessonsSeeded', [...mathSeeded, ...newMath]);
+    } catch (err) {
+      console.error('Không thêm được bài Toán', err);
     }
   }
   // Bài mẫu câu (SPEC-patterns): mỗi bài có sẵn chỉ tự thêm MỘT lần (bố mẹ xóa rồi thì không tự thêm lại).

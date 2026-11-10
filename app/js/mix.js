@@ -7,6 +7,7 @@ import { NUMBER_KIND, numberKey } from './numbers.js';
 import { PHONICS_KIND, letterKey } from './phonics.js';
 import { isJollyLesson } from './jolly.js';
 import { TALK_KIND } from './talk.js';
+import { MATH_KIND } from './math.js';
 
 export const REVIEW_COUNT = 8;
 export const PLAY_COUNT = 10;
@@ -29,6 +30,7 @@ export function collectItems(lessons, records = new Map()) {
   for (const lesson of lessons) {
     const kind = lessonKind(lesson);
     if (kind === TALK_KIND) continue; // hội thoại chưa vào Ôn tập / Trò chơi (SPEC-talk T-b3)
+    if (kind === MATH_KIND) continue; // bài Toán chưa vào Ôn tập / Trò chơi (SPEC-math mục 1)
     if (kind === PHONICS_KIND) {
       // Bài âm kiểu Jolly (SPEC-jolly.md): âm rời chỉ phát từ file, chưa có câu hỏi Ôn tập — không đưa vào (tránh hỏi tên chữ).
       if (isJollyLesson(lesson)) continue;
