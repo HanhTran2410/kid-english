@@ -3477,12 +3477,13 @@ img.dr-admin-face { width: 100%; height: 100%; object-fit: contain; }
 /* Gợi ý / nhắc trong bếp: viền vàng sáng lên (không nhún, không lắc — nhiều thứ cùng nhảy làm bé rối). */
 .cf-sink.nudge, .cf-plate.nudge, .cf-cake.nudge, .cf-tool.nudge, .cf-bowl.nudge { animation: cf-glow 0.6s ease-in-out 3; }
 @keyframes cf-glow { 50% { filter: drop-shadow(0 0 14px #fcc419) brightness(1.08); } }
-.cf-card { position: absolute; left: 50%; top: 5%; transform: translateX(-50%); display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 8px 14px; border-radius: 16px; background: #fff; border: 4px solid #3d2c5e; box-shadow: var(--shadow); z-index: 2; }
+.cf-card { position: absolute; left: 50%; top: 5%; transform: translateX(-50%); display: flex; flex-direction: row; align-items: center; gap: 4px; padding: 6px 12px; border-radius: 16px; background: #fff; border: 4px solid #3d2c5e; box-shadow: var(--shadow); z-index: 2; }
 .cf-card-title, .cf-card-row, .cf-card-no { font-family: var(--emoji); font-size: clamp(22px, 4vmin, 36px); line-height: 1.1; }
-.cf-card-row { padding: 0 6px; border-radius: 8px; }
+.cf-card-row { padding: 2px 6px; border-radius: 8px; white-space: nowrap; }
+.cf-card-title { padding-right: 8px; margin-right: 2px; border-right: 3px solid #e9e2f5; }
 .cf-card-row.done { opacity: 0.35; }
 .cf-card-row.next { background: #fff3bf; outline: 3px solid #fcc419; }
-.cf-card-no { font-size: clamp(16px, 3vmin, 26px); }
+.cf-card-no { font-size: clamp(16px, 3vmin, 26px); padding-left: 8px; margin-left: 2px; border-left: 3px solid #e9e2f5; white-space: nowrap; }
 .cf-plate { position: absolute; left: 50%; bottom: 10%; transform: translateX(-50%); width: min(30%, 260px); height: 46%; padding: 0; border: 0; background: none; display: flex; flex-direction: column; justify-content: flex-end; align-items: center; }
 .cf-plate-art, .cf-plate-art svg { display: block; width: 100%; }
 .cf-stack { display: flex; flex-direction: column-reverse; align-items: center; width: 72%; margin-bottom: -6%; flex-shrink: 0; }
@@ -3506,7 +3507,7 @@ img.dr-admin-face { width: 100%; height: 100%; object-fit: contain; }
 .cf-item.jb-pic, .cf-top.jb-pic, .cf-card-row .jb-pic, .cf-card-no .jb-pic, .cf-tool .jb-pic { display: inline-block; width: 1.25em; height: 1.25em; vertical-align: middle; }
 .jb-pic > img { display: block; width: 100%; height: 100%; object-fit: contain; pointer-events: none; }
 .cf-fly { font-size: 64px; }
-.cf-tools { position: absolute; left: 24%; bottom: 12%; display: flex; gap: 12px; }
+.cf-tools { position: absolute; left: 24%; bottom: 43%; display: flex; gap: 12px; padding: 0 12px 6px; border-bottom: 10px solid #c2855a; border-radius: 0 0 6px 6px; } /* kệ trên tường */
 .cf-tool { width: clamp(64px, 11vmin, 100px); aspect-ratio: 1; border-radius: 22px; border: 4px solid #3d2c5e; background: #fff; padding: 0; font-family: var(--emoji); font-size: clamp(38px, 7vmin, 62px); line-height: 1; box-shadow: var(--shadow); }
 .cf-tool.lit, .cf-bowl.lit { outline: 5px solid #fcc419; outline-offset: 3px; }
 .cf-tool.used { opacity: 0.35; }
@@ -3517,15 +3518,15 @@ img.dr-admin-face { width: 100%; height: 100%; object-fit: contain; }
 @keyframes cf-pour { 30%, 80% { transform: translate(60%, -20%) rotate(100deg); } }
 @keyframes cf-crack { 40% { transform: translate(50%, 10%) rotate(-20deg); } 55% { transform: translate(50%, 10%) scale(1.2, 0.8); } }
 @keyframes cf-stir { 0% { transform: rotate(0); } 100% { transform: rotate(360deg); } }
-.cf-bowl { position: absolute; left: 58%; bottom: 12%; transform: translateX(-50%); width: min(20%, 180px); aspect-ratio: 120 / 80; padding: 0; border: 0; background: none; }
+.cf-bowl { position: absolute; left: 40%; bottom: 12%; transform: translateX(-50%); width: min(20%, 180px); aspect-ratio: 120 / 80; padding: 0; border: 0; background: none; }
 .cf-bowl svg { display: block; width: 100%; height: 100%; }
 .cf-bowl .cf-batter, .cf-bowl .cf-yolk { opacity: 0; transition: opacity 0.4s, fill 0.4s; }
 .cf-bowl[data-fill="milk"] .cf-batter { opacity: 1; fill: #fff; }
 .cf-bowl[data-egg="true"] .cf-yolk { opacity: 1; }
 .cf-bowl[data-mixed="true"] .cf-batter { fill: #ffe066; opacity: 1; }
 .cf-bowl[data-mixed="true"] .cf-yolk { opacity: 0; }
-.cf-bowl.in-oven { transition: transform 0.45s ease-in, opacity 0.45s; transform: translate(60%, -30%) scale(0.5); opacity: 0; }
-.cf-oven { position: absolute; left: 66%; bottom: 10%; width: min(18%, 170px); aspect-ratio: 1; padding: 0; border: 0; background: none; }
+.cf-bowl.in-oven { transition: transform 0.45s ease-in, opacity 0.45s; transform: translate(120%, -20%) scale(0.5); opacity: 0; }
+.cf-oven { position: absolute; left: 54%; bottom: 10%; width: min(17%, 170px); aspect-ratio: 1; padding: 0; border: 0; background: none; }
 .cf-oven svg { display: block; width: 100%; height: 100%; }
 .cf-oven.on .cf-oven-lamp { fill: #ff922b; }
 .cf-oven.on .cf-oven-door { fill: #ffa94d; filter: drop-shadow(0 0 10px #ff922b); }

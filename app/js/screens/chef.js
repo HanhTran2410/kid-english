@@ -209,10 +209,10 @@ export function chefScreen(app, params = {}) {
   }
   function renderSandwich() {
     const c = cur();
-    card.replaceChildren(h('span.cf-card-title', { text: '🥪' }), ...[...c.layers].reverse().map((id, k) => {
-      const i = c.layers.length - 1 - k;
-      return h('span.cf-card-row', { class: `${i < si ? 'done' : ''}${i === si && level <= 1 ? ' next' : ''}`, }, layerFace(id, 'span'));
-    }), ...(c.no ? [h('span.cf-card-no', {}, '🚫', layerFace(c.no, 'span'))] : []));
+    // Thẻ công thức nằm ngang: trái → phải theo thứ tự đặt (lớp dưới cùng trước), món "No …" ở cuối.
+    card.replaceChildren(h('span.cf-card-title', { text: '🥪' }), ...c.layers.map((id, i) =>
+      h('span.cf-card-row', { class: `${i < si ? 'done' : ''}${i === si && level <= 1 ? ' next' : ''}` }, layerFace(id, 'span')),
+    ), ...(c.no ? [h('span.cf-card-no', {}, '🚫', layerFace(c.no, 'span'))] : []));
     stack.replaceChildren(...c.layers.slice(0, si).map((id, i) => h('span.cf-layer', { dataset: { layer: id }, html: layerSide(id, i) })));
     plate.dataset.next = c.layers[si] ?? ''; // cho test; bé không thấy
   }
