@@ -43,7 +43,7 @@ export function mathLessonScreen(app, { lessonId, start = 'begin', continueDirec
     let st = (start === 'resume' || continueDirectly) && lesson.resume?.stage === 'math' ? lesson.resume : null;
     if (!st) {
       const level = clampLevel(rec.level);
-      const weak = weakType(rec, typesFor(lesson.skill, level));
+      const weak = weakType(rec, typesFor(lesson, level));
       st = { stage: 'math', phase: 'demo', demoIndex: 0, index: 0, level, questions: makeMathRound(lesson, level, { weak }), results: [] };
     }
     const total = DEMO_STEPS + st.questions.length;

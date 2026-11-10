@@ -254,7 +254,9 @@ export function lessonsScreen(app, { kind = WORDS_KIND } = {}) {
   (async () => {
     const lessons = (await listLessons(app.db)).filter((l) => lessonKind(l) === kind);
     // Bài số: theo thứ tự bài (Đếm 1–10 trước Đếm 11–20), không theo bài mới nhất.
-    if ([NUMBER_KIND, MATH_KIND, PHONICS_KIND, TALK_KIND, PATTERN_KIND].includes(kind)) lessons.sort((a, b) => (a.no ?? 0) - (b.no ?? 0));
+    if ([NUMBER_KIND, PHONICS_KIND, TALK_KIND, PATTERN_KIND].includes(kind)) lessons.sort((a, b) => (a.no ?? 0) - (b.no ?? 0));
+    // Bài Toán: theo mã bài (L1 … L6) — bài thêm ở bản sau (L2, L3, L5, L6) vẫn đứng đúng chỗ.
+    if (kind === MATH_KIND) lessons.sort((a, b) => String(a.builtin ?? '~').localeCompare(String(b.builtin ?? '~')) || (a.no ?? 0) - (b.no ?? 0));
     // Nói chuyện với Bông: thẻ cuối là "Ôn từ đã học" (màn Học cùng Bông cũ, giữ nguyên).
     const extra = kind === TALK_KIND ? [h('button.lesson-card.review-card', {
       type: 'button', 'aria-label': 'Ôn từ đã học', onclick: () => { play('tap'); app.go('learn-review'); },

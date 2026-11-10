@@ -1,7 +1,7 @@
 # SPEC — Mục mới "🧮 Toán" (Math): so sánh to – nhỏ, nhiều – ít bằng tiếng Anh
 
 > Phiên bản spec: **draft3** · Ngày: 2026-11-10 · Dựa trên app 0.65.4
-> Trạng thái: **đã làm đợt M-a trong app 0.66.0** (nút 🧮, L1 To – nhỏ, L4 Nhiều – ít, sao, mức, Góc bố mẹ). M-b chưa làm.
+> Trạng thái: **đã làm đợt M-a trong app 0.66.0** (nút 🧮, L1 To – nhỏ, L4 Nhiều – ít, sao, mức, Góc bố mẹ) và **đợt M-b trong app 0.67.0** (L2 Cao – thấp, L3 Dài – ngắn, L5 Nhỏ – vừa – to, L6 Nặng – nhẹ).
 >
 > **Ghi chú khi code (0.66.0):**
 > - Mã bài có tiền tố như các loại bài khác: `math-l1`, `math-l4`. Khóa tiến độ vẫn là `math:l1`, `math:l4` (chữ thường, vì khóa tiến độ được chuẩn hóa).
@@ -10,6 +10,14 @@
 > - Sao lưu: `readBackup` cũ coi bài không có danh sách từ / câu / số là file hỏng. 0.66.0 nhận thêm bài `kind: "math"`. **App bản cũ (≤ 0.65.x) vẫn báo hỏng** khi khôi phục file sao lưu có bài Toán: cập nhật app trên máy kia trước rồi mới khôi phục (mục 7.5).
 > - Dấu bằng của nút *The same* viết bằng chữ "=" (emoji 🟰 không có trên một số máy).
 > - "Thêm lại bài mẫu" vẫn thêm lại các bài mẫu **khác** như trước (có thể trùng); chỉ bài Toán là không bao giờ trùng.
+>
+> **Ghi chú khi code (0.67.0, đợt M-b):**
+> - Mã bài `math-l2`, `math-l3`, `math-l5`, `math-l6`; máy đã có L1, L4 chỉ nhận thêm 4 bài mới. Danh sách bài Toán xếp theo mã bài (L1 → L6), không theo ngày thêm.
+> - L2, L3 dùng chung bộ sinh `size` theo chiều (`config.dimension`: `tall` / `long`). Hình vẽ SVG chỉ kéo dài thân, phần đầu / ngọn giữ nguyên: cây, hoa, nến (cao – thấp); bút chì, rắn, tàu (dài – ngắn).
+> - **L3 luôn xếp trên – dưới, thẳng đầu trái**, trên mọi màn (không chỉ iPhone dọc): đặt trái – phải thì không thẳng đầu trái được.
+> - Lượt mẫu 3: To – nhỏ là con voi – con chuột, Cao – thấp là hươu cao cổ – con chuột, Dài – ngắn là đồ thứ ba của bài nói dạng *-er*.
+> - **L6 đổi đồ vì emoji:** lông vũ 🪶 và hòn đá 🪨 không có trên một số máy, nên dùng bóng bay 🎈, chiếc lá 🍃, quả nho 🍇, quả dâu 🍓 (nhẹ) với con voi 🐘, quả dưa hấu 🍉, quả bí ngô 🎃 (nặng). Chỉ ghép đồ hạng nặng ≥ 4 với đồ hạng 1. Lượt mẫu: voi – bóng bay, dưa hấu – nho, bí ngô – lá.
+> - L5 kéo bằng pointer (chuột, ngón tay). Thả ra ngoài các ô thì đồ chỉ bay về, **không tính sai**; thả vào ô sai hoặc ô đã có đồ mới tính sai. Hết giờ chờ (15 + 10 giây) tính lại sau mỗi lần đặt đúng một đồ, không hỏi lại câu.
 >
 > Spec chỉ dành cho bé **3–5 tuổi** của app này. Phần toán cho bé 6 tuổi (so sánh số, dấu > < =) làm riêng trong **Olly English** (`C:\kid-english-6\SPEC-math.md`). App này **không có** phần đó.
 >
@@ -214,8 +222,8 @@ Mỗi bài **khoảng** 4 phút. Đây là mục tiêu khi soạn, **không ph�
 
 ### 4.6 L6 — Nặng và nhẹ
 - Hai đồ đặt lên **bập bênh**, bập bênh **nghiêng hẳn về bên nặng**, góc nghiêng **luôn như nhau**, không theo cỡ hình.
-- Bông giới thiệu trước (*"The rock is heavy. The feather is light."*), bé quan sát bập bênh dừng hẳn thì Bông mới hỏi.
-- **Chỉ dùng cặp rõ ràng:** voi – lông vũ, dưa hấu – quả nho, hòn đá – lông vũ, quả bí ngô – quả dâu. Bỏ cặp phụ thuộc loại đồ (xe tải – quả bóng).
+- Bông giới thiệu trước (*"The elephant is heavy. The balloon is light."*), bé quan sát bập bênh dừng hẳn thì Bông mới hỏi.
+- **Chỉ dùng cặp rõ ràng:** một đồ rất nặng (voi, dưa hấu, bí ngô) với một đồ rất nhẹ (bóng bay, chiếc lá, quả nho, quả dâu). Bỏ cặp phụ thuộc loại đồ (xe tải – quả bóng).
 - Đổi bên ngẫu nhiên: đồ nặng có lúc bên trái, có lúc bên phải; bập bênh luôn nghiêng đúng bên nặng.
 
 ### 4.7 Sinh câu hỏi (chung)
@@ -248,7 +256,7 @@ Mỗi bài **khoảng** 4 phút. Đây là mục tiêu khi soạn, **không ph�
   - vùng chạm của hai đồ **không chồng nhau**;
   - chỉ đồ được chọn mới có hiệu ứng.
 - **Bố cục:**
-  - hai đồ đặt trái – phải, trừ L3 và L4 trên iPhone dọc (trên – dưới);
+  - hai đồ đặt trái – phải; L3 luôn trên – dưới (thẳng đầu trái); L4 trên – dưới ở iPhone dọc;
   - Bông ở góc, **không đè lên đồ**: kiểm tra iPad ngang / dọc như bài Đầu bếp nhí.
 - **Giảm chuyển động** (cài đặt của máy, `prefers-reduced-motion`):
   - bỏ nhún và phóng to;
@@ -324,7 +332,7 @@ Mỗi đồ khai báo **dùng được ở bài nào**. Mỗi bài chỉ lấy �
 ```json
 { "id": "apple", "en": "apple", "plural": "apples", "vi": "quả táo", "emoji": "🍎", "uses": ["size", "count", "order"] }
 { "id": "tree", "en": "tree", "plural": "trees", "vi": "cái cây", "svg": "tree", "uses": ["tall"] }
-{ "id": "rock", "en": "rock", "vi": "hòn đá", "emoji": "🪨", "uses": ["weight"], "weight": 3 }
+{ "id": "watermelon", "en": "watermelon", "vi": "quả dưa hấu", "emoji": "🍉", "uses": ["weight"], "weight": 4 }
 ```
 
 - `weight`: hạng nặng tương đối (1 nhẹ … 5 nặng) để bộ sinh L6 chỉ ghép cặp chênh ≥ 2 hạng.

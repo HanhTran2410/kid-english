@@ -610,7 +610,7 @@ async function mathDetailSection(app, lesson) {
   });
   return section('Tiến độ',
     h('p', {}, h('b', { text: rec.mastery ? '⭐'.repeat(rec.mastery) : 'Chưa có sao' }), ` · Mức ${level} / ${MAX_LEVEL} · chơi xong ${rec.practiceCount ?? 0} lượt`),
-    h('p.muted', { text: `Mức này hỏi: ${typesFor(lesson.skill, level).map((t) => TYPE_VI[t]).join(', ')}.` }),
+    h('p.muted', { text: `Mức này hỏi: ${typesFor(lesson, level).map((t) => TYPE_VI[t]).join(', ')}.` }),
     h('p.muted', { text: 'Xong một lượt 6 câu: +1 sao; ≥ 5 câu đúng ngay: +1 nữa (tối đa +2 sao mỗi ngày). Lên mức 2 khi có 2⭐, mức 3 khi có 4⭐, và lượt vừa chơi có ≥ 4 câu đúng ngay. Không bao giờ trừ sao.' }),
     rows.length ? h('ul.progress-list', {}, ...rows) : h('p.muted', { text: 'Chưa có câu nào.' }),
     h('div.actions', {}, ...levelBtns, reset));

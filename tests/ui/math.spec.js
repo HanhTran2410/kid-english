@@ -194,7 +194,10 @@ test('MATH-02/03/04: bài mẫu thêm một lần; xóa rồi mở lại không 
   await fakeSpeech(page);
   await startApp(page);
   const mathTitles = () => page.evaluate(async () => (await window.kidEnglish.db.getAll('lessons')).filter((l) => l.kind === 'math').map((l) => l.title).sort());
-  expect(await mathTitles()).toEqual(['Big and small', 'More or fewer']);
+  expect(await mathTitles()).toEqual(['Big and small', 'Heavy and light', 'Long and short', 'More or fewer', 'Small, medium, big', 'Tall and short']);
+  // Danh sách bài Toán xếp theo mã bài L1 → L6.
+  await page.getByRole('button', { name: 'Toán' }).click();
+  await expect(page.locator('.lesson-card .lesson-title')).toHaveText(['Big and small', 'Tall and short', 'Long and short', 'More or fewer', 'Small, medium, big', 'Heavy and light']);
   await page.evaluate(async () => {
     const db = window.kidEnglish.db;
     const l1 = (await db.getAll('lessons')).find((l) => l.builtin === 'math-l1');
@@ -204,7 +207,7 @@ test('MATH-02/03/04: bài mẫu thêm một lần; xóa rồi mở lại không 
   await page.reload();
   await page.getByRole('button', { name: 'Bắt đầu' }).click();
   await page.getByRole('button', { name: 'Toán' }).waitFor();
-  expect(await mathTitles()).toEqual(['More or fewer']);
+  expect(await mathTitles()).toEqual(['Big and small', 'Heavy and light', 'Long and short', 'More or fewer', 'Small, medium, big', 'Tall and short'].filter((t) => t !== 'Big and small'));
   await openParent(page);
   await page.getByRole('button', { name: 'Quản lý bài' }).click();
   // "Thêm lại bài mẫu" thêm cả các bài mẫu khác rồi vẽ lại trang: chờ số bài đứng yên.
@@ -222,11 +225,115 @@ test('MATH-02/03/04: bài mẫu thêm một lần; xóa rồi mở lại không 
     await page.getByRole('button', { name: 'Thêm lại bài mẫu' }).click();
     await settle();
   }
-  expect(await mathTitles()).toEqual(['Big and small', 'More or fewer']);
+  expect(await mathTitles()).toEqual(['Big and small', 'Heavy and light', 'Long and short', 'More or fewer', 'Small, medium, big', 'Tall and short']);
   // Góc bố mẹ: trang bài Toán có sao cũ (gắn với mã bài), mức, nút đặt mức.
   await page.locator('.lesson-row', { hasText: 'Big and small' }).click();
   await expect(page.getByText('⭐⭐⭐')).toBeVisible();
   await expect(page.getByText(/Mức 2 \/ 3/)).toBeVisible();
   await page.getByRole('button', { name: 'Mức 3' }).click();
   await expect.poll(async () => (await progressOf(page, 'math:l1')).level).toBe(3);
+});
+
+// ---------- Đợt M-b ----------
+
+const boxesOf = (page) => question(page).locator('.mt-thing').evaluateAll((els) => els.map((e) => e.getBoundingClientRect().toJSON()));
+
+test('Cao – thấp: xem mẫu (hươu cao cổ), hai đồ chung đường đáy, 6 câu đúng → Hoan hô', async ({ page }) => {
+  await openMath(page, 'Tall and short');
+  await skipDemo(page, async (i) => {
+    if (i === 2) await expect.poll(() => spoken(page)).toContain('The giraffe is taller than the mouse!');
+  });
+  await expect(question(page)).toHaveAttribute('data-type', 'tall'); // mức 1 chỉ hỏi "tall"
+  const [a, b] = await boxesOf(page);
+  expect(Math.abs(a.bottom - b.bottom)).toBeLessThan(2); // chung đường đáy
+  for (let i = 0; i < 6; i++) await answerRight(page);
+  await expect(page.locator('.done-btn')).toBeVisible({ timeout: 15000 });
+  expect(await spoken(page)).toContain('Which one is tall?');
+  expect((await spoken(page)).some((t) => /^Yes! This [a-z]+ is tall\. That [a-z]+ is short\.$/.test(t))).toBe(true);
+  expect((await progressOf(page, 'math:l2')).mastery).toBe(2);
+});
+
+test('Dài – ngắn mức 3: xếp trên – dưới, thẳng đầu trái; hỏi dạng -er; sai lần 1 mô tả đúng đồ bé chọn', async ({ page }) => {
+  await page.setViewportSize({ width: 375, height: 667 });
+  await openMath(page, 'Long and short', { progress: { word: 'math:l3', mastery: 4, level: 3 } });
+  await skipDemo(page);
+  const [a, b] = await boxesOf(page);
+  expect(Math.abs(a.left - b.left)).toBeLessThan(2); // thẳng đầu trái
+  expect(b.top).toBeGreaterThanOrEqual(a.bottom - 1); // trên – dưới
+  expect(Math.max(a.right, b.right)).toBeLessThanOrEqual(375);
+  const type = await question(page).getAttribute('data-type');
+  expect(['longer', 'shorter']).toContain(type);
+  await pickWrong(page);
+  await expect.poll(() => spoken(page)).toContain(type === 'longer' ? 'That one is shorter.' : 'That one is longer.');
+});
+
+test('Nặng – nhẹ mức 2: bập bênh nghiêng về bên nặng rồi Bông mới hỏi; sai lần 1 → "The … is light / heavy."', async ({ page }) => {
+  await openMath(page, 'Heavy and light', { progress: { word: 'math:l6', mastery: 2, level: 2 } });
+  await skipDemo(page, async (i) => {
+    if (i === 0) await expect.poll(() => spoken(page)).toContain('The balloon is light.');
+  });
+  const lesson = await lessonRecord(page, 'Heavy and light');
+  const q = lesson.resume.questions[0];
+  const heavySide = q.left.item === q.heavy ? 'left' : 'right';
+  await expect(page.locator('.mt-seesaw')).toHaveAttribute('data-tilt', heavySide);
+  const ask = q.type === 'heavy' ? 'Which one is heavy?' : 'Which one is light?';
+  await expect.poll(() => spoken(page)).toContain(ask);
+  // Bên nặng thấp hơn bên nhẹ (ván đã nghiêng xong).
+  const heavyBox = await question(page).locator(`[data-pick="${heavySide}"]`).boundingBox();
+  const lightBox = await question(page).locator(`[data-pick="${heavySide === 'left' ? 'right' : 'left'}"]`).boundingBox();
+  expect(heavyBox.y).toBeGreaterThan(lightBox.y + 10);
+  await pickWrong(page);
+  const pickedId = q.answer === 'left' ? q.right.item : q.left.item;
+  const name = { elephant: 'elephant', watermelon: 'watermelon', pumpkin: 'pumpkin', balloon: 'balloon', leaf: 'leaf', grape: 'grape', strawberry: 'strawberry' }[pickedId];
+  await expect.poll(() => spoken(page)).toContain(`The ${name} is ${pickedId === q.heavy ? 'heavy' : 'light'}.`);
+  await answerRight(page);
+  expect((await lessonRecord(page, 'Heavy and light')).resume.results[0]).toEqual({ first: false, wrong: 1, revealed: false, skipped: false });
+});
+
+/** Kéo một đồ (chuột thật: pointerdown → move → up) vào ô đích. */
+async function drag(page, item, slot) {
+  const a = await item.boundingBox();
+  const b = await slot.boundingBox();
+  await page.mouse.move(a.x + a.width / 2, a.y + a.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(b.x + b.width / 2, b.y + b.height / 2, { steps: 6 });
+  await page.mouse.up();
+}
+
+test('Nhỏ – vừa – to: kéo sai ô → đồ bay về, Bông mô tả đồ đó; kéo đúng cả 3 → Hoan hô từng bộ; một ô không có 2 đồ', async ({ page }) => {
+  await openMath(page, 'Small, medium, big');
+  await skipDemo(page, async (i) => {
+    if (i === 0) await expect.poll(() => spoken(page)).toContain('Small, medium, big!');
+  });
+  const q = question(page);
+  await expect.poll(() => spoken(page)).toContain('Put them in order: small, medium, big!');
+  await expect(q.locator('.mt-ghost')).toHaveCount(3); // mức 1: bóng mờ đúng cỡ
+  // Kéo cái to vào ô nhỏ: bay về khay, "That one is big."
+  await drag(page, q.locator('.mt-tray [data-rank="2"]'), q.locator('.mt-slot[data-slot="0"]'));
+  await expect.poll(() => spoken(page)).toContain('That one is big.');
+  await expect(q.locator('.mt-tray [data-rank="2"]')).toHaveCount(1);
+  await expect(q.locator('.mt-slot .mt-drag')).toHaveCount(0);
+  // Đặt đúng cái nhỏ, rồi thử kéo cái vừa vào ô đã có đồ (ô nhỏ): không được, bay về (lần sai thứ 2 → Bông xếp nốt).
+  await drag(page, q.locator('.mt-tray [data-rank="0"]'), q.locator('.mt-slot[data-slot="0"]'));
+  await expect(q.locator('.mt-slot[data-slot="0"] [data-rank="0"]')).toHaveCount(1);
+  await expect.poll(() => spoken(page)).toContain('Small!');
+  await drag(page, q.locator('.mt-tray [data-rank="1"]'), q.locator('.mt-slot[data-slot="0"]'));
+  for (const s of [0, 1, 2]) await expect(q.locator(`.mt-slot[data-slot="${s}"] .mt-drag`)).toHaveCount(1); // Bông xếp nốt, mỗi ô 1 đồ
+  await expect.poll(() => spoken(page)).toContain('Look! Small, medium, big!');
+  await expect.poll(async () => (await lessonRecord(page, 'Small, medium, big')).resume.results[0]).toEqual({ first: false, wrong: 2, revealed: true, skipped: false });
+  // Các bộ sau: kéo đúng cả 3.
+  for (let set = 1; set < 6; set++) {
+    await expect.poll(async () => (await lessonRecord(page, 'Small, medium, big'))?.resume?.index ?? 6).toBe(set);
+    const cur = question(page);
+    await expect(cur.locator('.mt-tray .mt-drag')).toHaveCount(3);
+    for (const rank of [0, 1, 2]) {
+      await drag(page, cur.locator(`.mt-tray [data-rank="${rank}"]`), cur.locator(`.mt-slot[data-slot="${rank}"]`));
+      await expect(cur.locator(`.mt-slot[data-slot="${rank}"] [data-rank="${rank}"]`)).toHaveCount(1);
+    }
+  }
+  await expect(page.locator('.done-btn')).toBeVisible({ timeout: 15000 });
+  expect(await spoken(page)).toContain('Yes! Small, medium, big!');
+  const p = await progressOf(page, 'math:l5');
+  expect(p.mastery).toBe(2); // 5/6 bộ đúng ngay → +2
+  expect(p.types.order).toEqual({ asked: 6, first: 5, wrong: 2 });
 });

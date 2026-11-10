@@ -3782,9 +3782,42 @@ img.dr-admin-face { width: 100%; height: 100%; object-fit: contain; }
 
 /* ---------- Toán (SPEC-math.md) ---------- */
 .lessons.math .lesson-card { background: #e9f7e4; }
-.mt-question { display: grid; place-items: center; width: min(96vw, 1000px); }
+.mt-question { display: grid; place-items: center; width: min(96vw, 1000px); --u: min(11vmin, 84px); }
 /* To – nhỏ: hai đồ chung đường đáy; cỡ theo --s; vùng chạm ≥ 64 px dù hình nhỏ. */
-.mt-pair { display: flex; align-items: flex-end; justify-content: center; gap: clamp(24px, 8vw, 120px); --u: min(11vmin, 84px); }
+.mt-pair { display: flex; align-items: flex-end; justify-content: center; gap: clamp(24px, 8vw, 120px); }
+/* Cao – thấp / dài – ngắn: hình SVG kéo giãn một chiều; dài – ngắn xếp trên – dưới, thẳng đầu trái (mục 4.3). */
+.mt-pair.tall, .mt-pair.long { --u: min(14vmin, 84px); }
+.mt-pair.long { flex-direction: column; align-items: flex-start; gap: clamp(14px, 3vh, 32px); }
+.mt-svg { place-items: end start; }
+.mt-shape { display: block; line-height: 0; }
+.mt-shape svg { display: block; overflow: visible; }
+.mt-svg.tall .mt-shape svg { height: calc(var(--u) * 1.7 * var(--s, 1)); width: auto; }
+.mt-svg.long .mt-shape svg { width: calc(var(--u) * 2.5 * var(--s, 1)); height: auto; }
+.mt-svg.mt-grow .mt-shape, .mt-svg.mt-shrink .mt-shape { animation: mt-grow 0.5s ease-out; transform-origin: 50% 100%; }
+/* Bập bênh (mục 4.6): ván nghiêng hẳn về bên nặng, góc luôn như nhau; hai đồ cùng cỡ hình. */
+.mt-seesaw { position: relative; display: grid; justify-items: center; width: min(86vw, 640px); padding-bottom: 8px; }
+.mt-plank {
+  position: relative; display: flex; align-items: flex-end; justify-content: space-between; width: 100%; padding: 0 2%;
+  border-bottom: 14px solid #c2855a; border-radius: 0 0 8px 8px; transform-origin: 50% 100%; transition: transform 0.6s ease-in-out;
+}
+.mt-seesaw[data-tilt="left"] .mt-plank { transform: rotate(-11deg); }
+.mt-seesaw[data-tilt="right"] .mt-plank { transform: rotate(11deg); }
+.mt-on-plank { --s: 1.5; margin-bottom: 6px; }
+.mt-fulcrum { width: 0; height: 0; border-left: 34px solid transparent; border-right: 34px solid transparent; border-bottom: 56px solid #8d5a2b; }
+/* Nhỏ – vừa – to (mục 4.5): kệ 3 ô (nhỏ → to) và khay 3 đồ để kéo. */
+.mt-order { display: grid; justify-items: center; gap: clamp(16px, 4vh, 40px); --u: min(8.5vmin, 66px); }
+.mt-shelf { display: flex; align-items: flex-end; justify-content: center; gap: clamp(10px, 3vw, 28px); padding: 0 12px 6px; border-bottom: 12px solid #c2855a; border-radius: 0 0 6px 6px; }
+.mt-slot {
+  display: grid; place-items: end center; min-width: max(64px, calc(var(--u) * var(--s) + 20px)); min-height: max(64px, calc(var(--u) * var(--s) + 20px));
+  border: 4px dashed #adb5bd; border-radius: 24px; background: rgba(255, 255, 255, 0.5);
+}
+.mt-slot:has(.mt-drag) { border-style: solid; border-color: #69db7c; }
+.mt-ghost { opacity: 0.22; filter: grayscale(1); font-size: calc(var(--u) * var(--s, 1)); padding-bottom: 8px; }
+.mt-tray { display: flex; align-items: flex-end; justify-content: center; gap: clamp(14px, 4vw, 40px); min-height: calc(var(--u) * 2.2 + 20px); }
+.mt-drag { touch-action: none; cursor: grab; user-select: none; -webkit-user-select: none; }
+.mt-drag.dragging { position: relative; z-index: 10; cursor: grabbing; box-shadow: 0 12px 24px rgba(61, 44, 94, 0.25); }
+.mt-drag.mt-return { transition: translate 0.3s ease-out; }
+.mt-slot .mt-drag { background: none; box-shadow: none; padding: 4px; }
 .mt-thing {
   display: grid; place-items: end center; min-width: max(64px, calc(var(--u) * 1.2)); min-height: max(64px, calc(var(--u) * 1.2));
   padding: 8px; border-radius: 28px; background: rgba(255, 255, 255, 0.7); box-shadow: var(--shadow);
@@ -3831,4 +3864,6 @@ img.dr-admin-face { width: 100%; height: 100%; object-fit: contain; }
 @media (prefers-reduced-motion: reduce) {
   .mt-thing.mt-grow .mt-emoji, .mt-thing.mt-shrink .mt-emoji, .mt-count.counted .mt-count-emoji, .mt-count.nudge, .next-btn.mt-next-hint { animation: none; }
   .mt-wrong { animation: none; }
+  .mt-plank, .mt-drag.mt-return { transition: none; }
+  .mt-svg.mt-grow .mt-shape, .mt-svg.mt-shrink .mt-shape { animation: none; }
 }

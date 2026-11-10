@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import { IDBFactory } from 'fake-indexeddb';
 import JSZip from 'jszip';
 import {
-  MATH_ITEMS, MATH_ITEM, builtInMathLessons, isMathLesson, mathKey, isMathKey, lessonItems, typesFor, makeMathRound,
+  MATH_ITEMS, MATH_ITEM, ORDER_WORDS, useOf, builtInMathLessons, isMathLesson, mathKey, isMathKey, lessonItems, typesFor, makeMathRound,
   pickSides, pickTypes, askLine, answerLine, wrongLine, applyMathRound, addMathType, weakType, SIZE_RATIO, COUNT_RANGE, SCATTER_CELLS,
 } from '../../app/js/math.js';
 import { lessonKind, isWordLesson } from '../../app/js/phrase.js';
@@ -21,7 +21,7 @@ function seeded(seed = 1) {
     return (s - 1) / 2147483646;
   };
 }
-const [L1, L4] = builtInMathLessons();
+const [L1, L2, L3, L4, L5, L6] = builtInMathLessons();
 const longestRun = (list) => list.reduce((acc, x, i) => {
   acc.run = i && x === list[i - 1] ? acc.run + 1 : 1;
   acc.best = Math.max(acc.best, acc.run);
@@ -30,13 +30,15 @@ const longestRun = (list) => list.reduce((acc, x, i) => {
 const DAY = 24 * 60 * 60 * 1000;
 const NOW = Date.UTC(2026, 10, 10, 3);
 
-test('MATH-07: bài có sẵn L1, L4; mọi itemIds có trong MATH_ITEMS và đúng `uses`', () => {
-  assert.deepEqual(builtInMathLessons().map((l) => l.builtin), ['math-l1', 'math-l4']);
+test('MATH-07: bài có sẵn L1–L6; mọi itemIds có trong MATH_ITEMS và đúng `uses`', () => {
+  assert.deepEqual(builtInMathLessons().map((l) => l.builtin), ['math-l1', 'math-l2', 'math-l3', 'math-l4', 'math-l5', 'math-l6']);
+  assert.deepEqual(builtInMathLessons().map(useOf), ['size', 'tall', 'long', 'count', 'order', 'weight']);
   for (const lesson of builtInMathLessons()) {
     assert.ok(isMathLesson(lesson));
     for (const id of lesson.config.itemIds) {
       assert.ok(MATH_ITEM.has(id), id);
-      assert.ok(MATH_ITEM.get(id).uses.includes(lesson.skill), `${id} dùng được cho ${lesson.skill}`);
+      assert.ok(MATH_ITEM.get(id).uses.includes(useOf(lesson)), `${id} dùng được cho ${useOf(lesson)}`);
+      if (['tall', 'long'].includes(useOf(lesson))) assert.ok(MATH_ITEM.get(id).svg, `${id} có hình kéo giãn`);
     }
     assert.equal(lessonItems(lesson).length, lesson.config.itemIds.length);
   }
@@ -60,10 +62,10 @@ for (const level of [1, 2, 3]) {
       assert.ok(sides.filter((s) => s === 'left').length <= 4 && sides.filter((s) => s === 'right').length <= 4, 'tối đa 4/6 cùng một bên');
       assert.ok(longestRun(sides) <= 3, 'tối đa 3 câu liền cùng bên');
       const types = qs.map((q) => q.type);
-      for (const t of types) assert.ok(typesFor('size', level).includes(t));
+      for (const t of types) assert.ok(typesFor(L1, level).includes(t));
       if (level === 1) assert.ok(types.every((t) => t === 'big'), 'mức 1 chỉ hỏi big');
       if (level === 3) assert.ok(types.every((t) => t === 'bigger' || t === 'smaller'), 'mức 3 chỉ dạng -er');
-      if (typesFor('size', level).length > 1) assert.ok(longestRun(types) <= 2, 'một kiểu câu không quá 2 lần liền');
+      if (typesFor(L1, level).length > 1) assert.ok(longestRun(types) <= 2, 'một kiểu câu không quá 2 lần liền');
       const pairs = new Map();
       for (const [i, q] of qs.entries()) {
         const ratio = Math.max(q.left.scale, q.right.scale) / Math.min(q.left.scale, q.right.scale);
@@ -254,4 +256,100 @@ test('MATH-06: sao lưu → khôi phục (gộp và thay toàn bộ) giữ nguy�
     assert.equal(p.level, 2);
     assert.deepEqual(p.types.more, { asked: 4, first: 3, wrong: 1 });
   }
+});
+
+// ---------- Đợt M-b: Cao – thấp, Dài – ngắn, Nhỏ – vừa – to, Nặng – nhẹ ----------
+
+for (const [lesson, pos, er] of [[L2, 'tall', ['taller', 'shorter']], [L3, 'long', ['longer', 'shorter']]]) {
+  test(`MATH-15: ${lesson.title} — 500 lượt mỗi mức: kiểu câu theo mức, chênh lệch, cái "hơn" đúng bên`, () => {
+    for (const level of [1, 2, 3]) {
+      const rng = seeded(level * 31);
+      const [lo, hi] = SIZE_RATIO[level];
+      for (let run = 0; run < 500; run++) {
+        const qs = makeMathRound(lesson, level, { rng });
+        assert.ok(longestRun(qs.map((q) => q.answer)) <= 3);
+        for (const q of qs) {
+          assert.equal(q.dim, useOf(lesson));
+          assert.ok(typesFor(lesson, level).includes(q.type));
+          if (level === 1) assert.equal(q.type, pos);
+          if (level === 3) assert.ok(er.includes(q.type));
+          const ratio = Math.max(q.left.scale, q.right.scale) / Math.min(q.left.scale, q.right.scale);
+          assert.ok(ratio >= lo - 1e-9 && ratio <= hi + 1e-9);
+          const bigSide = q.left.scale > q.right.scale ? 'left' : 'right';
+          assert.equal(q.answer === bigSide, [pos, er[0]].includes(q.type));
+          assert.ok(MATH_ITEM.get(q.item).svg);
+        }
+      }
+    }
+  });
+}
+
+test('L5 Nhỏ – vừa – to — khay không bao giờ xếp sẵn đúng, đổi đồ giữa các câu, một bộ không lặp quá 2 lần', () => {
+  for (const level of [1, 2, 3]) {
+    const rng = seeded(level * 41);
+    for (let run = 0; run < 500; run++) {
+      const qs = makeMathRound(L5, level, { rng });
+      assert.equal(qs.length, 6);
+      const seen = new Map();
+      for (const [i, q] of qs.entries()) {
+        assert.equal(q.type, 'order');
+        assert.equal(q.answer, 'order');
+        assert.deepEqual([...q.tray].sort(), [0, 1, 2]);
+        assert.notEqual(q.tray.join(), '0,1,2');
+        if (i) assert.notEqual(q.item, qs[i - 1].item);
+        const key = `${q.item}|${q.tray}`;
+        seen.set(key, (seen.get(key) ?? 0) + 1);
+      }
+      assert.ok(Math.max(...seen.values()) <= 2);
+    }
+  }
+});
+
+test('MATH-14: L6 Nặng – nhẹ — luôn ghép đồ rất nặng với đồ rất nhẹ; đáp án đúng bên; đổi bên; kiểu câu theo mức', () => {
+  for (const level of [1, 2, 3]) {
+    const rng = seeded(level * 53);
+    for (let run = 0; run < 500; run++) {
+      const qs = makeMathRound(L6, level, { rng });
+      const sides = qs.map((q) => q.answer);
+      assert.ok(longestRun(sides) <= 3);
+      assert.ok(sides.filter((s) => s === 'left').length <= 4 && sides.filter((s) => s === 'right').length <= 4);
+      for (const q of qs) {
+        assert.ok(typesFor(L6, level).includes(q.type));
+        const heavy = MATH_ITEM.get(q.heavy);
+        const light = MATH_ITEM.get(q.light);
+        assert.ok(heavy.weight >= 4 && light.weight <= 1, `${heavy.id} – ${light.id}`);
+        const heavySide = q.left.item === q.heavy ? 'left' : 'right';
+        assert.equal(q[heavySide === 'left' ? 'right' : 'left'].item, q.light);
+        assert.equal(q.answer === heavySide, ['heavy', 'heavier'].includes(q.type));
+      }
+    }
+  }
+});
+
+test('câu Bông nói — cao / dài / nặng / xếp cỡ: đúng từ, câu sai mô tả đồ bé chọn', () => {
+  const tall = { type: 'short', dim: 'tall', level: 2, item: 'tree', left: { scale: 1 }, right: { scale: 1.6 }, answer: 'left' };
+  assert.equal(askLine(tall).en, 'Which one is short?');
+  assert.equal(askLine(tall).vi, 'Cái nào thấp?');
+  assert.equal(answerLine(tall).en, 'This tree is short. That tree is tall.');
+  assert.equal(wrongLine(tall, 'right').en, 'That one is tall.');
+  const long = { type: 'longer', dim: 'long', level: 3, item: 'snake', left: { scale: 1.4 }, right: { scale: 1 }, answer: 'left' };
+  assert.equal(askLine(long).en, 'Which one is longer?');
+  assert.equal(askLine(long).vi, 'Cái nào dài hơn?');
+  assert.equal(answerLine(long).en, 'This snake is longer.');
+  assert.equal(wrongLine(long, 'right').en, 'That one is shorter.');
+  const w = { type: 'light', dim: 'weight', level: 2, heavy: 'watermelon', light: 'grape', left: { item: 'grape' }, right: { item: 'watermelon' }, answer: 'left' };
+  assert.equal(askLine(w).en, 'Which one is light?');
+  assert.equal(answerLine(w).en, 'The grape is light. The watermelon is heavy.');
+  assert.equal(wrongLine(w, 'right').en, 'The watermelon is heavy.');
+  const w3 = { ...w, type: 'heavier', level: 3, answer: 'right' };
+  assert.equal(answerLine(w3).en, 'The watermelon is heavier than the grape.');
+  assert.equal(wrongLine(w3, 'left').en, 'The grape is lighter.');
+  const o = { type: 'order', level: 1, item: 'teddy', tray: [2, 0, 1], answer: 'order' };
+  assert.equal(askLine(o).en, 'Put them in order: small, medium, big!');
+  assert.equal(answerLine(o).en, 'Small, medium, big!');
+  assert.deepEqual(ORDER_WORDS.map((_, r) => wrongLine(o, r).en), ['That one is small.', 'That one is medium.', 'That one is big.']);
+  // Câu To – nhỏ lưu từ 0.66.0 (chưa có `dim`) vẫn ra câu đúng.
+  const old = { type: 'big', level: 1, item: 'apple', left: { scale: 2.2 }, right: { scale: 1 }, answer: 'left' };
+  assert.equal(wrongLine(old, 'right').en, 'That one is small.');
+  assert.equal(answerLine(old).en, 'This apple is big. That apple is small.');
 });
