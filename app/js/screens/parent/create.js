@@ -5,7 +5,11 @@ import { buildLessonPrompt, DURATIONS, MAX_AVOID_WORDS, buildPhraseLessonPrompt,
   buildPatternLessonPrompt, PATTERN_FRAMES, PATTERN_COUNTS } from '../../prompts.js';
 import { isPhraseLesson, phraseOverlap, lessonKind } from '../../phrase.js';
 import { isPatternLesson, sentenceOf, sentenceViOf } from '../../patterns.js';
-import { isDoingLesson, personOf, statement, statementVi, whoQuestion, DOING_TOPIC, DOING_TOPIC_EMOJI } from '../../patterns2.js';
+import {
+  isDoingLesson, personOf, statement, statementVi, whoQuestion, DOING_TOPIC, DOING_TOPIC_EMOJI,
+  isNearFarLesson, pairItems, nearSentence, nearSentenceVi, NEAR_TOPIC, NEAR_TOPIC_EMOJI,
+} from '../../patterns2.js';
+import { SCENE_BY_ID } from '../../sticker-scenes.js';
 import { createScene } from '../../player/scene.js';
 import { pickWordsForPrompt, markUsedInPrompt, isUnknown, KNOWN_MASTERY, wordRecords } from '../../progress.js';
 import { parseLesson, createLessonRecord, overlapWithLessons, uniqueTitle, baseTitle, nextLessonNo, topicOf } from '../../lesson.js';
@@ -229,8 +233,10 @@ export function pasteView(app) {
         const record = createLessonRecord({ ...parsed.lesson, title: finalTitle });
         // Chủ đề (để chia tab): chủ đề đã chọn lúc tạo prompt, không có thì theo tên bài.
         // Bài "Ai đang làm gì?" luôn ở tab riêng của Mẫu câu (SPEC-patterns2 mục 2).
-        record.topic = isDoingLesson(parsed.lesson) ? DOING_TOPIC : app.settings.lastPromptTopic || baseTitle(parsed.lesson.title);
+        record.topic = isDoingLesson(parsed.lesson) ? DOING_TOPIC : isNearFarLesson(parsed.lesson) ? NEAR_TOPIC
+          : app.settings.lastPromptTopic || baseTitle(parsed.lesson.title);
         if (isDoingLesson(parsed.lesson)) record.topicEmoji = DOING_TOPIC_EMOJI;
+        if (isNearFarLesson(parsed.lesson)) record.topicEmoji = NEAR_TOPIC_EMOJI;
         record.no = nextLessonNo(await listLessons(app.db));
         await app.db.put('lessons', record);
         await markNewLesson(app, record.id);
@@ -345,9 +351,27 @@ function doingPreview(app, lesson) {
           h('div.muted', { text: `${statementVi(personOf('me'), a)} · ${whoQuestion(a)} · motion: ${a.motion}` })))))));
 }
 
+/** Xem trước bài "Gần – xa" (SPEC-patterns2 mục 4): tranh + từng cặp This / That (🔊), câu tiếng Việt. */
+function nearFarPreview(app, lesson) {
+  const scene = SCENE_BY_ID.get(lesson.scene);
+  return h('div.preview', {},
+    h('h2.preview-title', {}, `${lesson.emoji} ${lesson.title}`, lesson.titleVi ? h('span.muted', { text: ` — ${lesson.titleVi}` }) : null),
+    section(`Tranh: ${scene?.emoji ?? ''} ${scene?.vi ?? lesson.scene}`,
+      h('ul.phrase-admin-list', {}, ...lesson.pairs.map((p) => {
+        const { near, far } = pairItems(p);
+        return h('li.phrase-admin', {},
+          h('span.p-emoji', { text: `${near.emoji} ${far.emoji}` }),
+          h('div.grow', {},
+            h('div', {}, h('b', { text: nearSentence('this', near) }), speakButton(app, nearSentence('this', near))),
+            h('div', {}, h('b', { text: nearSentence('that', far) }), speakButton(app, nearSentence('that', far))),
+            h('div.muted', { text: `${nearSentenceVi('this', near)} · ${nearSentenceVi('that', far)}` })));
+      }))));
+}
+
 /** Xem trước bài mẫu câu: khung + từng câu đầy đủ (🔊), câu tiếng Việt. */
 export function patternPreview(app, lesson) {
   if (isDoingLesson(lesson)) return doingPreview(app, lesson);
+  if (isNearFarLesson(lesson)) return nearFarPreview(app, lesson);
   return h('div.preview', {},
     h('h2.preview-title', {}, `${lesson.emoji} ${lesson.title}`, lesson.titleVi ? h('span.muted', { text: ` — ${lesson.titleVi}` }) : null),
     section('Khung câu', h('p', {}, h('b', { text: lesson.frame }), lesson.frameVi ? h('span.muted', { text: ` — ${lesson.frameVi}` }) : null),

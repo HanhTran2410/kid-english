@@ -5,7 +5,7 @@ import { cleanSound, MAX_SOUND_WORDS, MAX_SOUND_CHARS } from './word-play.js';
 import { normalizeWord, wordCount } from './text.js';
 import { validatePhraseLesson } from './phrase.js';
 import { validatePatternLesson, PATTERN_KIND } from './patterns.js';
-import { validateDoingLesson, DOING_STYLE } from './patterns2.js';
+import { validateDoingLesson, DOING_STYLE, validateNearFarLesson, NEAR_FAR_STYLE } from './patterns2.js';
 
 export const LIMITS = {
   minWords: 2,
@@ -279,6 +279,8 @@ export function parseLesson(text, options) {
   const raw = extracted.value;
   // Bài "Ai đang làm gì?" (SPEC-patterns2): mẫu câu kiểu `doing`, có danh sách hành động.
   if (raw && typeof raw === 'object' && raw.style === DOING_STYLE) return validateDoingLesson(raw);
+  // Bài "Gần – xa" (SPEC-patterns2 mục 4): mẫu câu kiểu `nearFar`, 3 cặp đồ trên nền tranh.
+  if (raw && typeof raw === 'object' && raw.style === NEAR_FAR_STYLE) return validateNearFarLesson(raw);
   // Bài mẫu câu (SPEC-patterns): có khung câu + danh sách từ điền vào.
   if (raw && typeof raw === 'object' && (raw.kind === PATTERN_KIND || (typeof raw.frame === 'string' && Array.isArray(raw.slots ?? raw.words) && !raw.conversation))) {
     return validatePatternLesson(raw);

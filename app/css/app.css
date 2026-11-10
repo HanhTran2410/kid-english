@@ -3823,6 +3823,8 @@ img.dr-admin-face { width: 100%; height: 100%; object-fit: contain; }
   padding: 8px; border-radius: 28px; background: rgba(255, 255, 255, 0.7); box-shadow: var(--shadow);
 }
 .mt-emoji { display: block; font-family: var(--emoji); font-size: calc(var(--u) * var(--s, 1)); line-height: 1; }
+/* Ảnh đồ vật của bố mẹ (Góc bố mẹ → Ảnh Toán): cỡ theo font-size như emoji. */
+.mt-pic img { display: block; width: 1.1em; height: 1.1em; object-fit: contain; pointer-events: none; -webkit-user-drag: none; }
 .mt-thing.mt-grow .mt-emoji { animation: mt-grow 0.5s ease-out; }
 .mt-thing.mt-shrink .mt-emoji { animation: mt-shrink 0.5s ease-out; }
 @keyframes mt-grow { 50% { transform: scale(1.12); } }
@@ -3867,3 +3869,50 @@ img.dr-admin-face { width: 100%; height: 100%; object-fit: contain; }
   .mt-plank, .mt-drag.mt-return { transition: none; }
   .mt-svg.mt-grow .mt-shape, .mt-svg.mt-shrink .mt-shape { animation: none; }
 }
+
+/* ---------- Mẫu câu "Gần – xa" (SPEC-patterns2 mục 4): This (gần, cam) / That (xa, xanh) ---------- */
+.nf-wrap { display: grid; justify-items: center; gap: 8px; width: 100%; }
+.nf-scene {
+  position: relative; width: min(94vw, calc((100vh - 260px) * 4 / 3)); width: min(94vw, calc((100dvh - 260px) * 4 / 3));
+  aspect-ratio: 4 / 3; border-radius: 26px; overflow: hidden; background: #fff; box-shadow: var(--shadow); container-type: inline-size;
+}
+.nf-item { position: absolute; z-index: 2; translate: -50% -50%; display: grid; place-items: center; font-family: var(--emoji); font-size: 13cqw; line-height: 1; }
+.nf-far { font-size: calc(13cqw * var(--far, 0.4)); }
+.nf-item .sp-img { width: 1.15em; height: 1.15em; object-fit: contain; }
+.nf-item.nf-pop { animation: hint-hop 0.5s ease-in-out; }
+.nf-ring {
+  position: absolute; z-index: 1; translate: -50% -50%; width: 22cqw; height: 6cqw; border-radius: 50%;
+  background: radial-gradient(closest-side, rgba(255, 146, 43, 0.55), rgba(255, 146, 43, 0)); border: 3px solid #ff922b; opacity: 0; transition: opacity 0.3s;
+}
+.nf-scene[data-mode="this"] .nf-ring { opacity: 1; }
+.nf-dash { position: absolute; inset: 0; z-index: 1; pointer-events: none; opacity: 0; transition: opacity 0.3s; }
+.nf-dash svg { width: 100%; height: 100%; display: block; }
+.nf-dash line { stroke: #1c7ed6; stroke-width: 4; stroke-dasharray: 2 9; stroke-linecap: round; vector-effect: non-scaling-stroke; }
+.nf-scene[data-mode="that"] .nf-dash { opacity: 1; }
+.nf-dash.nf-draw line { animation: nf-dash 0.9s linear; }
+@keyframes nf-dash { from { stroke-dashoffset: 160; } to { stroke-dashoffset: 0; } }
+.nf-hand { position: absolute; z-index: 4; font-family: var(--emoji); font-size: 8cqw; line-height: 1; pointer-events: none; }
+.nf-scene[data-mode="this"] .nf-hand { translate: -50% -80%; }
+.nf-scene[data-mode="that"] .nf-hand { translate: -50% -50%; }
+/* Bông trong tranh: chính con thỏ ở góc màn được chuyển vào (giữ trạng thái nói / nghe / vỗ tay). */
+.nf-scene .bunny.nf-bong {
+  position: absolute; z-index: 3; right: auto; bottom: auto; translate: -50% -50%; width: 15cqw;
+  transition: left 0.85s ease-in-out, top 0.85s ease-in-out;
+}
+.nf-say { display: grid; justify-items: center; gap: 2px; min-height: 3.6em; text-align: center; }
+.nf-line { margin: 0; font-size: clamp(22px, 3.6vmin, 36px); font-weight: 900; color: var(--ink); }
+.nf-line[data-which="this"] .nf-word { color: #e8590c; }
+.nf-line[data-which="that"] .nf-word { color: #1971c2; }
+.nf-line.ghost { opacity: 0.4; }
+.nf-vi { margin: 0; font-size: clamp(14px, 2.2vmin, 20px); font-weight: 700; color: var(--ink-soft); }
+@media (prefers-reduced-motion: reduce) {
+  .nf-scene .bunny.nf-bong, .nf-ring, .nf-dash { transition: none; }
+  .nf-item.nf-pop, .nf-dash.nf-draw line { animation: none; }
+}
+
+/* Góc bố mẹ → Ảnh Toán: lưới ô nhỏ (ảnh của bố mẹ, hoặc emoji đang dùng). */
+.mt-admin-pics { display: grid; grid-template-columns: repeat(auto-fill, minmax(84px, 1fr)); gap: 10px; margin: 8px 0; }
+.mt-admin-pics figure { display: grid; justify-items: center; gap: 4px; margin: 0; }
+.mt-admin-pics img, .mt-admin-emoji { display: grid; place-items: center; width: 72px; height: 72px; object-fit: contain; border-radius: 14px; background: #f8f9fa; }
+.mt-admin-emoji { font-family: var(--emoji); font-size: 40px; opacity: 0.5; }
+.mt-admin-pics figcaption { font-size: 12px; font-weight: 700; text-align: center; color: var(--ink-soft); }

@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import { IDBFactory } from 'fake-indexeddb';
 import JSZip from 'jszip';
 import {
-  MATH_ITEMS, MATH_ITEM, ORDER_WORDS, useOf, builtInMathLessons, isMathLesson, mathKey, isMathKey, lessonItems, typesFor, makeMathRound,
+  MATH_ITEMS, MATH_ITEM, MATH_PICTURE_ITEMS, MATH_ITEM_IMAGES, ORDER_WORDS, useOf, builtInMathLessons, isMathLesson, mathKey, isMathKey, lessonItems, typesFor, makeMathRound,
   pickSides, pickTypes, askLine, answerLine, wrongLine, applyMathRound, addMathType, weakType, SIZE_RATIO, COUNT_RANGE, SCATTER_CELLS,
 } from '../../app/js/math.js';
 import { lessonKind, isWordLesson } from '../../app/js/phrase.js';
@@ -352,4 +352,17 @@ test('câu Bông nói — cao / dài / nặng / xếp cỡ: đúng từ, câu sa
   const old = { type: 'big', level: 1, item: 'apple', left: { scale: 2.2 }, right: { scale: 1 }, answer: 'left' };
   assert.equal(wrongLine(old, 'right').en, 'That one is small.');
   assert.equal(answerLine(old).en, 'This apple is big. That apple is small.');
+});
+
+test('ảnh Toán: 16 đồ dùng emoji có mô tả vẽ (một ảnh lưới 4 × 4); hình kéo giãn (cây, bút chì…) không có trong lưới', () => {
+  assert.equal(MATH_ITEM_IMAGES, 'math:items');
+  assert.equal(MATH_PICTURE_ITEMS.length, 16);
+  for (const it of MATH_PICTURE_ITEMS) {
+    assert.ok(it.draw && it.vi && MATH_ITEM.get(it.id).emoji, it.id);
+    assert.ok(!MATH_ITEM.get(it.id).svg, `${it.id} không phải hình kéo giãn`);
+  }
+  // Mọi đồ dùng emoji của các bài đều có thể thay ảnh.
+  for (const lesson of builtInMathLessons()) {
+    for (const it of lessonItems(lesson)) if (!it.svg) assert.ok(MATH_PICTURE_ITEMS.some((p) => p.id === it.id), it.id);
+  }
 });

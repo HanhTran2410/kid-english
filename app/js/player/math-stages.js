@@ -5,9 +5,10 @@
 import { h } from '../ui.js';
 import { play } from '../speech/sfx.js';
 import { scaled, abortError, isAbort } from '../timing.js';
+import { mediaBlob } from '../db.js';
 import { numberWord } from '../numbers.js';
 import {
-  MATH_ITEM, DIMS, ORDER_SCALES, ORDER_WORDS, lessonItems, useOf, askLine, answerLine, wrongLine,
+  MATH_ITEM, MATH_ITEM_IMAGES, DIMS, ORDER_SCALES, ORDER_WORDS, lessonItems, useOf, askLine, answerLine, wrongLine,
 } from '../math.js';
 
 const ASK_WAIT_MS = 15_000; // chờ 15 giây từ khi Bông đọc xong câu hỏi (mục 3.4)
@@ -22,31 +23,84 @@ const Word = (n) => cap(numberWord(n));
 
 // ---------- Hình ----------
 
+/** Ảnh đồ vật bố mẹ đã thêm (Góc bố mẹ → Ảnh Toán), theo mã đồ; trình chơi nạp lúc mở bài. */
+let pics = new Map();
+/** Nạp ảnh đồ vật; trả về hàm thu hồi URL (gọi khi rời bài). */
+export async function loadMathPictures(db) {
+  const urls = new Map();
+  for (const img of await db.getAllByIndex('images', 'lessonId', MATH_ITEM_IMAGES).catch(() => [])) {
+    urls.set(img.word, URL.createObjectURL(mediaBlob(img)));
+  }
+  pics = urls;
+  return () => {
+    urls.forEach((u) => URL.revokeObjectURL(u));
+    if (pics === urls) pics = new Map();
+  };
+}
+/** Hình một đồ: ảnh của bố mẹ nếu có (cỡ theo font-size như emoji), không thì emoji. */
+function face(item, tag, props = {}) {
+  const url = pics.get(item.id);
+  if (!url) return h(tag, { ...props, text: item.emoji });
+  return h(`${tag}.mt-pic`, props, h('img', { src: url, alt: '', draggable: false }));
+}
+
 const INK = '#3d2c5e';
 /**
  * Hình kéo giãn được (mục 4.3): chỉ thân dài ra, phần đầu / ngọn giữ nguyên. Cao – thấp: khung rộng 60, cao 100 × s
  * (chung đường đáy); dài – ngắn: khung cao 30, dài 100 × s (thẳng đầu trái).
  */
+const range = (n) => Array.from({ length: Math.max(0, n) }, (_, i) => i);
 const SHAPES = {
-  tree: (H) => `<rect x="23" y="44" width="14" height="${H - 46}" rx="3" fill="#a0673a" stroke="${INK}" stroke-width="3"/>
-    <ellipse cx="30" cy="27" rx="28" ry="25" fill="#51cf66" stroke="${INK}" stroke-width="3"/>
-    <circle cx="20" cy="22" r="4" fill="#8ce99a"/>`,
-  flower: (H) => `<rect x="27" y="30" width="6" height="${H - 32}" fill="#40c057" stroke="${INK}" stroke-width="2"/>
-    <ellipse cx="40" cy="${Math.max(48, H * 0.6)}" rx="10" ry="5" fill="#69db7c" stroke="${INK}" stroke-width="2"/>
-    <circle cx="30" cy="20" r="18" fill="#ffd43b" stroke="${INK}" stroke-width="3"/><circle cx="30" cy="20" r="7" fill="#a0673a"/>`,
-  candle: (H) => `<rect x="17" y="24" width="26" height="${H - 26}" rx="4" fill="#74c0fc" stroke="${INK}" stroke-width="3"/>
-    <line x1="30" y1="24" x2="30" y2="16" stroke="${INK}" stroke-width="3"/>
-    <ellipse cx="30" cy="10" rx="6" ry="9" fill="#ff922b" stroke="${INK}" stroke-width="2"/>`,
-  pencil: (W) => `<rect x="2" y="5" width="12" height="20" rx="3" fill="#faa2c1" stroke="${INK}" stroke-width="2.5"/>
-    <rect x="14" y="5" width="${W - 34}" height="20" fill="#ffd43b" stroke="${INK}" stroke-width="2.5"/>
-    <polygon points="${W - 20},5 ${W - 2},15 ${W - 20},25" fill="#ffe8cc" stroke="${INK}" stroke-width="2.5" stroke-linejoin="round"/>
-    <polygon points="${W - 8},12 ${W - 2},15 ${W - 8},18" fill="${INK}"/>`,
-  snake: (W) => `<rect x="2" y="9" width="${W - 18}" height="13" rx="6.5" fill="#69db7c" stroke="${INK}" stroke-width="2.5"/>
+  // Cây: thân có vân, tán ba chùm có chỗ sáng, vài quả; bóng dưới gốc. Chỉ thân dài ra.
+  tree: (H) => `<ellipse cx="30" cy="${H - 2}" rx="17" ry="2.5" fill="#000" opacity="0.12"/>
+    <path d="M24 44 V${H - 5} q-3 3 -7 3 h26 q-4 0 -7 -3 V44 Z" fill="#a0673a" stroke="${INK}" stroke-width="3" stroke-linejoin="round"/>
+    ${range(Math.floor((H - 56) / 18)).map((i) => `<path d="M27 ${56 + i * 18} q3 4 0 8" fill="none" stroke="#7a4a24" stroke-width="2" stroke-linecap="round"/>`).join('')}
+    <circle cx="14" cy="34" r="13" fill="#40c057" stroke="${INK}" stroke-width="3"/><circle cx="46" cy="34" r="13" fill="#40c057" stroke="${INK}" stroke-width="3"/>
+    <circle cx="30" cy="24" r="21" fill="#51cf66" stroke="${INK}" stroke-width="3"/>
+    <path d="M14 34 a13 13 0 0 1 32 0" fill="#51cf66"/>
+    <ellipse cx="22" cy="17" rx="6" ry="4" fill="#8ce99a" transform="rotate(-25 22 17)"/>
+    <circle cx="38" cy="30" r="3.2" fill="#ff6b6b" stroke="${INK}" stroke-width="1.5"/><circle cx="18" cy="38" r="3" fill="#ff6b6b" stroke="${INK}" stroke-width="1.5"/>`,
+  // Hoa hướng dương: thân có hai lá, tám cánh, nhị có hạt. Chỉ thân dài ra.
+  flower: (H) => `<ellipse cx="30" cy="${H - 2}" rx="12" ry="2" fill="#000" opacity="0.12"/>
+    <rect x="27.5" y="30" width="5" height="${H - 32}" rx="2" fill="#40c057" stroke="${INK}" stroke-width="2"/>
+    <path d="M30 ${Math.max(46, H * 0.62)} q14 -10 22 -4 q-8 10 -22 4 Z" fill="#69db7c" stroke="${INK}" stroke-width="2" stroke-linejoin="round"/>
+    <path d="M30 ${Math.max(58, H * 0.8)} q-14 -10 -22 -4 q8 10 22 4 Z" fill="#69db7c" stroke="${INK}" stroke-width="2" stroke-linejoin="round"/>
+    ${range(8).map((i) => `<ellipse cx="30" cy="7" rx="5" ry="9" fill="#ffd43b" stroke="${INK}" stroke-width="2" transform="rotate(${i * 45} 30 20)"/>`).join('')}
+    <circle cx="30" cy="20" r="8.5" fill="#a0673a" stroke="${INK}" stroke-width="2"/>
+    <g fill="#5c3a1e"><circle cx="27" cy="18" r="1.4"/><circle cx="32" cy="17" r="1.4"/><circle cx="30" cy="22" r="1.4"/><circle cx="34" cy="21.5" r="1.2"/><circle cx="26" cy="22.5" r="1.2"/></g>`,
+  // Nến: thân có sọc, giọt sáp, bấc, ngọn lửa hai màu và quầng sáng. Chỉ thân dài ra.
+  candle: (H) => `<ellipse cx="30" cy="${H - 2}" rx="16" ry="2.5" fill="#000" opacity="0.12"/>
+    <circle cx="30" cy="11" r="11" fill="#ffe066" opacity="0.35"/>
+    <rect x="17" y="24" width="26" height="${H - 27}" rx="4" fill="#74c0fc" stroke="${INK}" stroke-width="3"/>
+    ${range(Math.floor((H - 34) / 14)).map((i) => `<path d="M18 ${36 + i * 14} L42 ${30 + i * 14}" stroke="#d0ebff" stroke-width="4"/>`).join('')}
+    <path d="M17 28 q0 -4 4 -4 h18 q4 0 4 4 v2 q-3 0 -3 5 q-3 0 -3 -4 q-3 0 -4 7 q-3 0 -3 -7 q-4 0 -5 3 q-3 0 -4 -3 q-4 0 -4 -3 Z" fill="#fff" stroke="${INK}" stroke-width="2" stroke-linejoin="round"/>
+    <line x1="30" y1="24" x2="30" y2="17" stroke="${INK}" stroke-width="2.5" stroke-linecap="round"/>
+    <path d="M30 1 q8 9 4 15 q-4 4 -8 0 q-4 -6 4 -15 Z" fill="#ff922b" stroke="${INK}" stroke-width="2" stroke-linejoin="round"/>
+    <path d="M30 8 q3 4 1.5 7 q-1.5 2 -3 0 q-1.5 -3 1.5 -7 Z" fill="#ffe066"/>`,
+  // Bút chì: tẩy hồng, đai kim loại, thân vàng có sọc, đầu gỗ, ruột chì. Chỉ thân dài ra.
+  pencil: (W) => `<rect x="2" y="5" width="11" height="20" rx="4" fill="#f783ac" stroke="${INK}" stroke-width="2.5"/>
+    <rect x="12" y="5" width="8" height="20" fill="#ced4da" stroke="${INK}" stroke-width="2.5"/>
+    <path d="M15 5 V25 M17.5 5 V25" stroke="#868e96" stroke-width="1.2"/>
+    <rect x="20" y="5" width="${W - 40}" height="20" fill="#ffd43b" stroke="${INK}" stroke-width="2.5"/>
+    <rect x="21.5" y="11.5" width="${W - 43}" height="7" fill="#fab005"/>
+    <polygon points="${W - 20},5 ${W - 3},15 ${W - 20},25" fill="#ffe8cc" stroke="${INK}" stroke-width="2.5" stroke-linejoin="round"/>
+    <polygon points="${W - 9},11.5 ${W - 3},15 ${W - 9},18.5" fill="${INK}"/>`,
+  // Rắn: thân có đốm và bụng sáng, đầu có mắt và lưỡi đỏ. Chỉ thân dài ra.
+  snake: (W) => `<rect x="2" y="9" width="${W - 20}" height="14" rx="7" fill="#69db7c" stroke="${INK}" stroke-width="2.5"/>
+    <rect x="6" y="17" width="${W - 28}" height="3.5" rx="1.75" fill="#d3f9d8"/>
+    ${range(Math.floor((W - 30) / 16)).map((i) => `<ellipse cx="${12 + i * 16}" cy="13" rx="3.5" ry="2" fill="#2f9e44"/>`).join('')}
+    <path d="M${W - 2} 15 l4 -2 M${W - 2} 15 l4 2" stroke="#e03131" stroke-width="1.6" stroke-linecap="round"/>
     <ellipse cx="${W - 14}" cy="15" rx="12" ry="10" fill="#69db7c" stroke="${INK}" stroke-width="2.5"/>
-    <circle cx="${W - 10}" cy="12" r="2" fill="${INK}"/>`,
-  train: (W) => `<rect x="2" y="6" width="${W - 40}" height="16" rx="3" fill="#ff6b6b" stroke="${INK}" stroke-width="2.5"/>
-    <rect x="${W - 38}" y="2" width="34" height="20" rx="4" fill="#4dabf7" stroke="${INK}" stroke-width="2.5"/>
-    ${Array.from({ length: Math.max(2, Math.floor((W - 8) / 22)) }, (_, i) => `<circle cx="${10 + i * 22}" cy="25" r="4" fill="${INK}"/>`).join('')}`,
+    <circle cx="${W - 10}" cy="11.5" r="2.6" fill="#fff" stroke="${INK}" stroke-width="1"/><circle cx="${W - 9.5}" cy="11.5" r="1.3" fill="${INK}"/>
+    <path d="M${W - 13} 19 q3 2 6 0" fill="none" stroke="${INK}" stroke-width="1.5" stroke-linecap="round"/>`,
+  // Tàu: toa dài có cửa sổ, đầu máy có ống khói và khói, bánh xe. Chỉ toa dài ra.
+  train: (W) => `<rect x="2" y="7" width="${W - 41}" height="15" rx="3" fill="#ff6b6b" stroke="${INK}" stroke-width="2.5"/>
+    ${range(Math.floor((W - 48) / 14)).map((i) => `<rect x="${7 + i * 14}" y="10" width="8" height="6" rx="1.5" fill="#fff3bf" stroke="${INK}" stroke-width="1.2"/>`).join('')}
+    <rect x="${W - 38}" y="5" width="34" height="17" rx="4" fill="#4dabf7" stroke="${INK}" stroke-width="2.5"/>
+    <rect x="${W - 34}" y="8" width="11" height="7" rx="1.5" fill="#fff3bf" stroke="${INK}" stroke-width="1.2"/>
+    <rect x="${W - 16}" y="0" width="7" height="6" fill="#495057" stroke="${INK}" stroke-width="1.5"/>
+    <circle cx="${W - 9}" cy="-2" r="3" fill="#dee2e6" opacity="0.9"/><circle cx="${W - 4}" cy="-4" r="2.2" fill="#dee2e6" opacity="0.8"/>
+    ${range(Math.max(2, Math.floor((W - 8) / 20))).map((i) => `<circle cx="${9 + i * 20}" cy="25" r="4" fill="${INK}"/><circle cx="${9 + i * 20}" cy="25" r="1.5" fill="#adb5bd"/>`).join('')}`,
 };
 function shapeSvg(item, scale, dim) {
   const len = Math.round(100 * scale);
@@ -60,7 +114,7 @@ function thing(item, side, scale, dim = 'size') {
   const shaped = (dim === 'tall' || dim === 'long') && item.svg;
   return h(`button.mt-thing${shaped ? `.mt-svg.${dim}` : ''}`, {
     type: 'button', 'aria-label': `${item.en} ${where}`, dataset: { pick: side }, style: { '--s': String(scale) },
-  }, shaped ? h('span.mt-shape', { html: shapeSvg(item, scale, dim) }) : h('span.mt-emoji', { text: item.emoji }));
+  }, shaped ? h('span.mt-shape', { html: shapeSvg(item, scale, dim) }) : face(item, 'span.mt-emoji'));
 }
 
 /** Hai đồ: chung đường đáy (to – nhỏ, cao – thấp); dài – ngắn xếp trên – dưới, thẳng đầu trái. */
@@ -79,7 +133,7 @@ function sizeView(q) {
 function weightView(q) {
   const at = (side) => h('button.mt-thing.mt-on-plank', {
     type: 'button', 'aria-label': `${MATH_ITEM.get(q[side].item).en} ${side === 'left' ? 'bên trái' : 'bên phải'}`, dataset: { pick: side },
-  }, h('span.mt-emoji', { text: MATH_ITEM.get(q[side].item).emoji }));
+  }, face(MATH_ITEM.get(q[side].item), 'span.mt-emoji'));
   const left = at('left');
   const right = at('right');
   const plank = h('div.mt-plank', {}, left, right);
@@ -104,10 +158,10 @@ function orderView(q) {
   const item = MATH_ITEM.get(q.item);
   const slots = ORDER_SCALES.map((s, i) => h('div.mt-slot', {
     dataset: { slot: String(i) }, style: { '--s': String(q.level >= 3 ? ORDER_SCALES[2] : s) },
-  }, q.level <= 1 ? h('span.mt-ghost.mt-emoji', { text: item.emoji, style: { '--s': String(s) }, 'aria-hidden': 'true' }) : null));
+  }, q.level <= 1 ? face(item, 'span.mt-ghost.mt-emoji', { style: { '--s': String(s) }, 'aria-hidden': 'true' }) : null));
   const items = q.tray.map((rank) => h('button.mt-thing.mt-drag', {
     type: 'button', 'aria-label': `${item.en} ${ORDER_WORDS[rank]}`, dataset: { rank: String(rank) }, style: { '--s': String(ORDER_SCALES[rank]) },
-  }, h('span.mt-emoji', { text: item.emoji })));
+  }, face(item, 'span.mt-emoji')));
   const tray = h('div.mt-tray', {}, ...items);
   const el = h(`div.mt-order${q.level >= 2 ? '.no-ghost' : ''}${q.level >= 3 ? '.even' : ''}`, {}, h('div.mt-shelf', {}, ...slots), tray);
   const view = {
@@ -177,7 +231,7 @@ function plate(ctx, item, side, data) {
   const things = Array.from({ length: data.count }, (_, k) => h('button.mt-count', {
     type: 'button', 'aria-label': item.en,
     style: data.cells ? { gridArea: `${Math.floor(data.cells[k] / 4) + 1} / ${(data.cells[k] % 4) + 1}` } : null,
-  }, h('span.mt-count-emoji', { text: item.emoji }), h('span.mt-count-no')));
+  }, face(item, 'span.mt-count-emoji'), h('span.mt-count-no')));
   let counted = 0;
   const mark = (t) => {
     counted++;

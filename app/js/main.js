@@ -12,6 +12,7 @@ import { numberLessonScreen } from './player/number-player.js';
 import { mathLessonScreen } from './player/math-player.js';
 import { patternLessonScreen } from './player/pattern-player.js';
 import { doingLessonScreen } from './player/doing-player.js';
+import { nearFarLessonScreen } from './player/nearfar-player.js';
 import { phonicsLessonScreen } from './player/phonics-player.js';
 import { mixScreen } from './player/mix-player.js';
 import { learnScreen } from './screens/learn.js';
@@ -113,6 +114,8 @@ async function boot() {
   app.register('pattern-lesson', patternLessonScreen);
   // Mẫu câu "Ai đang làm gì?" (SPEC-patterns2.md): ngôi nhà nhiều ô cửa, bé nói "I am …".
   app.register('doing-lesson', doingLessonScreen);
+  // Mẫu câu "Gần – xa" (SPEC-patterns2 mục 4): This is … / That is … trên nền tranh của Dán tranh.
+  app.register('nearfar-lesson', nearFarLessonScreen);
   app.register('numbers', (a) => lessonsScreen(a, { kind: 'numbers' }));
   app.register('number-lesson', numberLessonScreen);
   // Toán (SPEC-math.md): so sánh to – nhỏ, nhiều – ít.

@@ -18,7 +18,7 @@ import { MATH_KIND, isMathKey, lessonItems } from '../math.js';
 import { PHONICS_KIND } from '../phonics.js';
 import { TALK_KIND } from '../talk.js';
 import { PATTERN_KIND } from '../patterns.js';
-import { isDoingLesson } from '../patterns2.js';
+import { isDoingLesson, isNearFarLesson, pairItems } from '../patterns2.js';
 
 const ALL = '__all__';
 import { bongElement } from '../bong.js';
@@ -151,8 +151,8 @@ export function lessonsScreen(app, { kind = WORDS_KIND } = {}) {
 
   const open = (lesson) => {
     play('tap');
-    // Mẫu câu kiểu "Ai đang làm gì?" (SPEC-patterns2) có màn chơi riêng.
-    const screen = isDoingLesson(lesson) ? 'doing-lesson' : playScreen;
+    // Mẫu câu kiểu "Ai đang làm gì?" và "Gần – xa" (SPEC-patterns2) có màn chơi riêng.
+    const screen = isDoingLesson(lesson) ? 'doing-lesson' : isNearFarLesson(lesson) ? 'nearfar-lesson' : playScreen;
     if (!lesson.resume) {
       app.go(screen, { lessonId: lesson.id, start: 'begin' });
       return;
@@ -183,7 +183,10 @@ export function lessonsScreen(app, { kind = WORDS_KIND } = {}) {
   grid.before(tabs);
 
   const card = async (lesson) => {
-    const items = lesson.words ?? lesson.phrases ?? lesson.numbers ?? lesson.slots ?? lesson.actions ?? (lesson.kind === MATH_KIND ? lessonItems(lesson) : []);
+    const items = lesson.words ?? lesson.phrases ?? lesson.numbers ?? lesson.slots ?? lesson.actions
+      // Bài Gần – xa: hàng emoji là các cặp (gần, xa).
+      ?? (isNearFarLesson(lesson) ? lesson.pairs.flatMap((p) => Object.values(pairItems(p))).filter(Boolean) : null)
+      ?? (lesson.kind === MATH_KIND ? lessonItems(lesson) : []);
     let cover = null;
     if (lesson.slots?.length) {
       // Bài mẫu câu: ảnh hình đầu tiên (bố mẹ thêm ở bài này), không có thì ảnh mới nhất của `concept` đó ở bài khác.
@@ -241,7 +244,8 @@ export function lessonsScreen(app, { kind = WORDS_KIND } = {}) {
     h('span.lesson-title', { text: lesson.title }),
     // Bài mẫu câu: khung câu ("It is ___.") ngay dưới tên bài.
     lesson.slots ? h('span.lesson-frame', { text: lesson.frame.replace(/\{a\}\s*/g, '').replace(/_{2,}/, '___') })
-      : isDoingLesson(lesson) ? h('span.lesson-frame', { text: 'I am ___ing.' }) : null,
+      : isDoingLesson(lesson) ? h('span.lesson-frame', { text: 'I am ___ing.' })
+        : isNearFarLesson(lesson) ? h('span.lesson-frame', { text: 'This · That' }) : null,
     // Hàng emoji các từ trong bài: bé chưa biết đọc vẫn phân biệt được "Animals" và "Animals 2".
     // Bài phonics: hàng chữ cái của bài ("A B C D E F").
     // Dòng chữ (tên tiếng Việt của bài hội thoại, chữ cái phonics) dùng font Nunito như cả app; chỉ hàng emoji dùng font emoji.

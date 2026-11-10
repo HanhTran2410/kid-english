@@ -19,6 +19,12 @@
 > - **L6 đổi đồ vì emoji:** lông vũ 🪶 và hòn đá 🪨 không có trên một số máy, nên dùng bóng bay 🎈, chiếc lá 🍃, quả nho 🍇, quả dâu 🍓 (nhẹ) với con voi 🐘, quả dưa hấu 🍉, quả bí ngô 🎃 (nặng). Chỉ ghép đồ hạng nặng ≥ 4 với đồ hạng 1. Lượt mẫu: voi – bóng bay, dưa hấu – nho, bí ngô – lá.
 > - L5 kéo bằng pointer (chuột, ngón tay). Thả ra ngoài các ô thì đồ chỉ bay về, **không tính sai**; thả vào ô sai hoặc ô đã có đồ mới tính sai. Hết giờ chờ (15 + 10 giây) tính lại sau mỗi lần đặt đúng một đồ, không hỏi lại câu.
 >
+> **Ảnh đồ vật bằng AI (0.68.0, bố mẹ yêu cầu 2026-11-10 — trước đây "không cần ảnh AI" ở mục 1):**
+> - Góc bố mẹ → **🧮 Ảnh Toán**: một ảnh lưới 4 × 4 cho 16 đồ dùng emoji (táo, bóng, gấu bông, sao, vịt, xe, dâu, bánh quy, voi, dưa hấu, bí ngô, bóng bay, lá, nho, chuột, hươu cao cổ). Bố mẹ copy prompt, chọn ảnh AI vẽ → app cắt ô, bỏ nền trắng, lưu kho `math:items` theo mã đồ. Đồ chưa có ảnh vẫn dùng emoji; nút "Dùng emoji (xóa ảnh)".
+> - Ảnh dùng ở mọi chỗ trước đây là emoji: To – nhỏ, Nhiều – ít (đồ trong đĩa), Nhỏ – vừa – to (cả bóng mờ), Nặng – nhẹ, phần xem mẫu. Cỡ ảnh theo cỡ emoji (`--s`), nên to – nhỏ vẫn đúng tỉ lệ.
+> - **Cây, hoa, nến, bút chì, rắn, tàu không thay bằng ảnh:** app chỉ kéo dài phần thân, ảnh thì phải kéo giãn cả hình nên sẽ méo. Thay vào đó, 6 hình này được vẽ lại chi tiết hơn (tán nhiều lớp, vân thân, cánh hoa, sọc nến + giọt sáp + lửa hai màu, đai kim loại bút chì, đốm rắn + lưỡi, cửa sổ tàu + khói).
+> - Ảnh nằm trong file sao lưu như mọi ảnh khác.
+>
 > Spec chỉ dành cho bé **3–5 tuổi** của app này. Phần toán cho bé 6 tuổi (so sánh số, dấu > < =) làm riêng trong **Olly English** (`C:\kid-english-6\SPEC-math.md`). App này **không có** phần đó.
 >
 > **Draft3 sửa theo review draft2.** Giữ nguyên cấu trúc, sửa các điểm sau.

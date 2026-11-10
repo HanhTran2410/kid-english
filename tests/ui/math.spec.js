@@ -337,3 +337,30 @@ test('Nhỏ – vừa – to: kéo sai ô → đồ bay về, Bông mô tả đ�
   expect(p.mastery).toBe(2); // 5/6 bộ đúng ngay → +2
   expect(p.types.order).toEqual({ asked: 6, first: 5, wrong: 2 });
 });
+
+test('ảnh Toán: bố mẹ thêm ảnh đồ vật → bài dùng ảnh thay emoji; đồ chưa có ảnh vẫn là emoji; Góc bố mẹ có ảnh lưới 16 ô', async ({ page }) => {
+  await fakeSpeech(page);
+  await startApp(page);
+  await page.evaluate(async () => {
+    const cv = document.createElement('canvas');
+    cv.width = cv.height = 32;
+    cv.getContext('2d').fillRect(4, 4, 24, 24);
+    const data = await (await new Promise((r) => cv.toBlob(r, 'image/png'))).arrayBuffer();
+    for (const w of ['apple', 'ball', 'teddy', 'star', 'duck', 'car']) {
+      await window.kidEnglish.db.put('images', { id: `t-${w}`, lessonId: 'math:items', word: w, data, mimeType: 'image/png', width: 32, height: 32, createdAt: 1 });
+    }
+  });
+  await page.getByRole('button', { name: 'Toán' }).click();
+  await page.getByRole('button', { name: 'Big and small' }).click();
+  await skipDemo(page);
+  await expect(question(page).locator('.mt-pic img')).toHaveCount(2);
+  await expect(question(page).locator('.mt-emoji:not(.mt-pic)')).toHaveCount(0);
+  // Nhiều – ít: dâu / bánh quy chưa có ảnh → vẫn emoji.
+  await page.getByRole('button', { name: 'Về màn hình chính' }).click();
+  await openParent(page);
+  await page.getByRole('button', { name: /Ảnh Toán/ }).click();
+  await expect(page.getByText('có ảnh 6/16 đồ')).toBeVisible();
+  await expect(page.locator('.mt-admin-pics img')).toHaveCount(6);
+  await expect(page.locator('.mt-admin-pics .mt-admin-emoji')).toHaveCount(10);
+  await expect(page.getByText(/Ảnh lưới — 10 đồ vật chưa có ảnh/)).toBeVisible();
+});

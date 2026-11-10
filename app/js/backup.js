@@ -38,6 +38,9 @@ const wordSignature = (lesson) => (Array.isArray(lesson.turns)
   : Array.isArray(lesson.slots)
   ? `pt:${frameKeyOf(lesson)}:${lesson.slots.map((s) => normalizeWord(s.concept || s.word)).sort().join('|')}`
   // Mẫu câu "Ai đang làm gì?" (SPEC-patterns2): theo các hành động.
+  // Mẫu câu "Gần – xa": theo tranh và các cặp đồ.
+  : Array.isArray(lesson.pairs)
+  ? `nf:${lesson.scene}:${lesson.pairs.map((p) => `${p.near}>${p.far}`).join('|')}`
   : Array.isArray(lesson.actions)
   ? `do:${lesson.actions.map((a) => normalizeWord(a.base)).sort().join('|')}`
   : Array.isArray(lesson.numbers)
@@ -183,7 +186,7 @@ export async function readBackup(input, { JSZip = globalThis.JSZip } = {}) {
     const lesson = await readJson(file.name);
     // Bài Toán (SPEC-math mục 7.1) chỉ có cấu hình, không có danh sách từ / câu / số.
     const isMath = lesson?.kind === 'math' && typeof lesson.skill === 'string' && Array.isArray(lesson.config?.itemIds);
-    if (!lesson?.id || !lesson.title || !(isMath || Array.isArray(lesson.words) || Array.isArray(lesson.phrases) || Array.isArray(lesson.numbers) || Array.isArray(lesson.letters) || Array.isArray(lesson.turns) || Array.isArray(lesson.slots) || Array.isArray(lesson.actions))) {
+    if (!lesson?.id || !lesson.title || !(isMath || Array.isArray(lesson.words) || Array.isArray(lesson.phrases) || Array.isArray(lesson.numbers) || Array.isArray(lesson.letters) || Array.isArray(lesson.turns) || Array.isArray(lesson.slots) || Array.isArray(lesson.actions) || Array.isArray(lesson.pairs))) {
       throw new BackupError(`File sao lưu bị hỏng (${file.name}).`);
     }
     lessons.push(lesson);

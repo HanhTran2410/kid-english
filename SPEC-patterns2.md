@@ -1,6 +1,6 @@
 # SPEC — 🌸 Mẫu câu mở rộng: "Ai đang làm gì?" và "Gần – xa"
 
-> Phiên bản spec: **draft2 (đã chốt)** · Ngày: 2026-11-04 · **Đã làm P1 trong app 0.64.0** (ghi chú khi code ở mục 11).
+> Phiên bản spec: **draft2 (đã chốt)** · Ngày: 2026-11-04 · **Đã làm P1 trong app 0.64.0** (ghi chú khi code ở mục 11), **P2 Gần – xa trong app 0.68.0** (mục 12).
 > Mở rộng mục **🌸 Sentences / Mẫu câu** (SPEC-patterns.md). Hai kiểu bài mới, **cách chơi khác** tấm tranh khung câu hiện có. Điểm chung: dạy qua **câu hỏi** — Bông hỏi, bé trả lời bằng cả câu.
 >
 > | Kiểu bài | Chỗ thay đổi trong câu | Ví dụ |
@@ -485,3 +485,14 @@ Góc bố mẹ → **Tạo bài mẫu câu** thêm lựa chọn kiểu bài: *Kh
 - Tiến độ `doing:` không lẫn vào danh sách từ vựng (`wordRecords`). Trang bài ở Quản lý bài: sao từng hành động theo *I am / he is / she is* và từng người.
 - Ảnh bìa bài Morning dùng 🌅 (🪥 không hiện trên Windows 10; hành động đánh răng vẫn dùng 🪥).
 - Chưa làm (P2, P3): Gần – xa; phần C "Who is…?"; kết thúc *We are…*; tạo bài bằng prompt (dán bài JSON kiểu `doing` thì đã nhận và có xem trước).
+
+## 12. Ghi chú khi code (P2, app 0.68.0)
+- Tab thứ ba của Mẫu câu: 👉 **This and that** (`topic: "This and that"`), thẻ bài hiện *This · That* và emoji các cặp. Bài dán vào kiểu `nearFar` cũng tự vào tab này.
+- Màn `player/nearfar-player.js`: mỗi lần hiện **một cặp** (đồ gần ở vùng gần, đồ xa ở vùng xa), không hiện cả 6 đồ cùng lúc cho đỡ rối. Kết thúc là phần đọc nhanh các cặp (*Let's sing!*) rồi Hoan hô.
+- **Bông trong tranh** là chính con thỏ ở góc màn được chuyển vào tranh: vẫn giữ trạng thái nói / nghe (sóng nghe) / vỗ tay; xong bài thì về góc. "This": Bông đi tới đứng bên phải đồ gần, 👇 trên đồ, vòng sáng cam; "That": Bông về chỗ đứng, 👉 / 👈 xoay theo hướng đồ xa, đường chấm xanh. Chữ This (cam) / That (xanh) trùng màu.
+- Vùng của 5 tranh (`NEAR_FAR_ZONES`) chọn theo hình vẽ sẵn của tranh; tranh bố mẹ đã thay ảnh thì dùng ảnh nhưng vùng vẫn theo khung 400 × 300.
+- **Bài In the street đổi cặp:** vùng xa của tranh đường phố là bầu trời trên dãy cửa hàng, nên dùng đồ bay — *bicycle → helicopter · dog → plane · balloon → bird* (thay cho *bicycle → bus · dog → helicopter · balloon → plane*).
+- Sticker chưa có tên tiếng Việt: thêm bảng `NEAR_VI` cho mọi sticker của 5 tranh. Bảng `ARTICLES` ghi mọi sticker của 5 tranh (trừ *sunglasses*): *apple, egg, octopus, ambulance, ant → an*; *corn, ice cream → none*.
+- Đồ thêm (`EXTRA_ITEMS`) dùng emoji; ảnh sticker bố mẹ đã thay ở Dán tranh dùng chung cho đồ là sticker.
+- Kế hoạch phần B lưu trong `lesson.nearPlan` cùng `lesson.resume`. Tiến độ `near:` không lẫn vào từ vựng (`wordRecords`); tên đồ vẫn ghi "đã luyện" ở kho từ chung. Trang bài ở Quản lý bài: sao từng câu This / That.
+- Chưa làm (P3): trò "Bring it close!" (chạm / kéo đồ đổi vùng), tạo bài Gần – xa bằng prompt (dán JSON thì đã nhận, có xem trước), sao khung *This is / That is* ở Tiến độ.

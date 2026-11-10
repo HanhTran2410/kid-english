@@ -15,7 +15,11 @@ import { isPhonicsLesson, letterKey } from '../../phonics.js';
 import { isJollyLesson, soundKey, BLEND_BY } from '../../jolly.js';
 import { isTalkLesson, talkKey, talkPictures } from '../../talk.js';
 import { isPatternLesson, patternKey, frameKeyOf, frameStars, sentenceOf } from '../../patterns.js';
-import { isDoingLesson, personOf, statement, doingKey, doingRecords, FAMILY_ORDER } from '../../patterns2.js';
+import {
+  isDoingLesson, personOf, statement, doingKey, doingRecords, FAMILY_ORDER, isNearFarLesson, pairItems, nearSentence, nearSentenceVi,
+  nearKey, nearRecords,
+} from '../../patterns2.js';
+import { SCENE_BY_ID } from '../../sticker-scenes.js';
 import { characterName } from '../child.js';
 import { patternRecords } from '../../progress.js';
 import { getFrameSets, setFrameSet, removeFrameSet, frameBlobs } from '../../db.js';
@@ -247,6 +251,11 @@ export function lessonDetailView(app, { lessonId }) {
     if (isMathLesson(lesson)) {
       // Bài Toán (SPEC-math mục 8): sao, mức, kiểu câu hay sai; đặt mức, đặt lại tiến độ. Không có ảnh, không chia sẻ.
       body.append(rename, await mathDetailSection(app, lesson), section(null, deleteButton(app, lesson)));
+      return;
+    }
+    if (isNearFarLesson(lesson)) {
+      // Bài "Gần – xa" (SPEC-patterns2 mục 5): sao từng câu This / That. Ảnh đồ dùng chung với sticker của Dán tranh.
+      body.append(rename, await nearFarDetailSection(app, lesson), shareSection(app, lesson), section(null, deleteButton(app, lesson)));
       return;
     }
     if (isDoingLesson(lesson)) {
@@ -569,6 +578,7 @@ export function kindLabel(lesson) {
 function sizeLabel(lesson) {
   if (isMathLesson(lesson)) return `${lesson.rounds ?? 6} câu`;
   if (isDoingLesson(lesson)) return `${lesson.actions.length} hành động`;
+  if (isNearFarLesson(lesson)) return `${lesson.pairs.length} cặp`;
   if (isPatternLesson(lesson)) return `${lesson.slots.length} câu`;
   if (isTalkLesson(lesson)) return `${lesson.turns.length} lượt`;
   if (isJollyLesson(lesson)) return lesson.blendOnly ? `${lesson.blends.length} từ ghép` : `${lesson.letters.length} âm`;
@@ -633,6 +643,32 @@ async function patternDetailSection(app, lesson) {
   return section('Tiến độ từng câu',
     h('p', {}, 'Bé nói được khung ', h('b', { text: lesson.frame.replace(/\{a\}\s*/g, '') }), ` với ${n} từ (gộp mọi bài cùng khung).`),
     h('p.muted', { text: 'Sao chỉ tăng khi bé nói CẢ CÂU (tối đa một sao mỗi ngày cho mỗi câu). Nói một phần câu hoặc chỉ từ khóa vẫn được khen và ghi lần luyện. Không bao giờ trừ sao.' }),
+    h('ul.progress-list', {}, ...rows));
+}
+
+/**
+ * Trang bài "Gần – xa" (SPEC-patterns2 mục 5): mỗi cặp hai câu This (gần) / That (xa), sao câu (chỉ cả câu mới có sao).
+ * Ảnh đồ là ảnh sticker của Dán tranh (Góc bố mẹ → Dán tranh), dùng chung.
+ */
+async function nearFarDetailSection(app, lesson) {
+  const LEVEL_VI = { full: 'nói cả câu', partial: 'nói một phần câu', keyword: 'nói từ khóa' };
+  const byKey = new Map(nearRecords(await app.db.getAll('progress')).map((r) => [r.word, r]));
+  const row = (which, item) => {
+    const rec = byKey.get(normalizeWord(nearKey(which, item)));
+    return h('li', {},
+      h('span.p-emoji', { text: item.emoji }),
+      h('span.p-word', {}, nearSentence(which, item), speakButton(app, nearSentence(which, item)), h('span.muted', { text: ` ${nearSentenceVi(which, item)}` })),
+      h('span.p-stars', { text: rec?.mastery ? '⭐'.repeat(rec.mastery) : '—' }),
+      h('span.p-meta', { text: rec ? `luyện ${rec.practiceCount} lần${rec.bestLevel ? ` · tốt nhất: ${LEVEL_VI[rec.bestLevel]}` : ''}` : 'chưa học' }));
+  };
+  const rows = lesson.pairs.flatMap((p) => {
+    const { near, far } = pairItems(p);
+    return [row('this', near), row('that', far)];
+  });
+  const scene = SCENE_BY_ID.get(lesson.scene);
+  return section('Tiến độ từng câu',
+    h('p', {}, 'Tranh: ', h('b', { text: `${scene?.emoji ?? ''} ${scene?.vi ?? lesson.scene}` }), ' · Đồ gần (This) to, đồ xa (That) nhỏ.'),
+    h('p.muted', { text: 'Sao chỉ tăng khi bé nói CẢ CÂU (This / That + is + tên đồ; tối đa một sao mỗi ngày cho mỗi câu). Nói "It is …", nói nhầm this / that hoặc chỉ nói tên đồ vẫn được khen. Không bao giờ trừ sao. Ảnh của đồ: Góc bố mẹ → Dán tranh (ảnh sticker).' }),
     h('ul.progress-list', {}, ...rows));
 }
 

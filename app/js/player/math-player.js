@@ -10,7 +10,7 @@ import { activityLayout } from './layout.js';
 import { Teacher } from './teacher.js';
 import { runSkippable, endSkippable } from './stage-kit.js';
 import { runCompletion } from './completion-stage.js';
-import { runDemo, runQuestion, revealAnswer } from './math-stages.js';
+import { runDemo, runQuestion, revealAnswer, loadMathPictures } from './math-stages.js';
 
 /**
  * @param {{ lessonId: string, start?: 'begin'|'resume', continueDirectly?: boolean }} params
@@ -19,6 +19,7 @@ import { runDemo, runQuestion, revealAnswer } from './math-stages.js';
 export function mathLessonScreen(app, { lessonId, start = 'begin', continueDirectly = false }) {
   const layout = activityLayout(app, 'math-lesson');
   const signal = app.startActivity();
+  let revokePics = null;
 
   const saveLesson = async (lesson) => {
     try {
@@ -36,6 +37,7 @@ export function mathLessonScreen(app, { lessonId, start = 'begin', continueDirec
       return;
     }
     const key = mathKey(lesson);
+    revokePics = await loadMathPictures(app.db); // ảnh đồ vật bố mẹ đã thêm; chưa có thì emoji
     const rec = await getProgress(app.db, key, lesson.emoji);
     const teacher = new Teacher(app, { signal, bunny: layout.bunny, stage: layout.stage, replayBtn: layout.replayBtn });
 
@@ -118,5 +120,8 @@ export function mathLessonScreen(app, { lessonId, start = 'begin', continueDirec
     app.go('home');
   });
 
-  return () => layout.bunny.destroy();
+  return () => {
+    layout.bunny.destroy();
+    revokePics?.();
+  };
 }

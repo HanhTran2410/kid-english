@@ -3,7 +3,7 @@
 // Thêm/bớt file trong app/ thì cập nhật ASSETS (test tests/unit/sw.test.js sẽ báo nếu thiếu).
 // Thư viện bài app/shared/ (file .zip + index.json) KHÔNG lưu offline: tải từ mạng khi bố mẹ mở Thư viện bài.
 
-const VERSION = '0.67.0';
+const VERSION = '0.68.0';
 const CACHE = `kid-english-${VERSION}`;
 
 const ASSETS = [
@@ -74,6 +74,7 @@ const ASSETS = [
   'js/player/pattern-player.js',
   'js/patterns2.js',
   'js/player/doing-player.js',
+  'js/player/nearfar-player.js',
   'js/player/pattern-stages.js',
   'js/player/shape-stages.js',
   'js/missing.js',
@@ -122,6 +123,7 @@ const ASSETS = [
   'js/screens/parent/feed.js',
   'js/screens/parent/doctor.js',
   'js/screens/parent/jobs.js',
+  'js/screens/parent/math-images.js',
   'js/screens/parent/library.js',
   'js/screens/parent/github.js',
   'js/screens/parent/hide.js',

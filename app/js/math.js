@@ -55,6 +55,45 @@ export const MATH_ITEMS = [
   { id: 'giraffe', en: 'giraffe', plural: 'giraffes', vi: 'con hươu cao cổ', emoji: '🦒', uses: ['demo'] },
 ];
 export const MATH_ITEM = new Map(MATH_ITEMS.map((x) => [x.id, x]));
+
+// ---------- Ảnh đồ vật bằng AI (Góc bố mẹ → Ảnh Toán) ----------
+
+/** Kho ảnh đồ vật của mục Toán (theo mã đồ). Đồ chưa có ảnh vẫn dùng emoji. */
+export const MATH_ITEM_IMAGES = 'math:items';
+/**
+ * Cách vẽ từng đồ cho prompt ảnh lưới. Chỉ đồ dùng emoji mới thay bằng ảnh; cây / hoa / nến / bút chì / rắn / tàu là hình
+ * vẽ kéo giãn thân (ảnh kéo giãn cả hình sẽ méo) nên không có ở đây.
+ */
+const MATH_DRAW = {
+  apple: 'One shiny red apple with a small green leaf.',
+  ball: 'One round colorful beach ball with red, yellow and blue stripes.',
+  teddy: 'One cute brown teddy bear sitting and facing the viewer.',
+  star: 'One bright yellow five-pointed star with a happy little smile.',
+  duck: 'One yellow duck standing, side view facing right.',
+  car: 'One small red toy car, side view facing right.',
+  strawberry: 'One red strawberry with a green leafy top.',
+  cookie: 'One round golden cookie with chocolate chips.',
+  elephant: 'One friendly grey elephant standing, side view facing right, full body.',
+  watermelon: 'One big whole green striped watermelon.',
+  pumpkin: 'One big round orange pumpkin with a short green stem (no face).',
+  balloon: 'One red balloon on a curly string.',
+  leaf: 'One single green leaf.',
+  grape: 'One single round purple grape with a tiny stem.',
+  mouse: 'One small grey mouse sitting, side view facing left, full body.',
+  giraffe: 'One tall yellow giraffe with brown spots, standing, full body.',
+};
+/** Đồ có ảnh lưới (thứ tự ô trong prompt): { id, en, vi, draw }. */
+export const MATH_PICTURE_ITEMS = MATH_ITEMS.filter((x) => !x.svg && MATH_DRAW[x.id]).map((x) => ({ id: x.id, en: x.en, vi: x.vi, draw: MATH_DRAW[x.id] }));
+/** Thêm vào prompt ảnh lưới: nền trắng để app tự cắt nền; chỉ vẽ một đồ, cùng một phong cách. */
+export const MATH_ITEM_PROMPT_NOTE = [
+  '',
+  'MATH GAME RULES (the app cuts each picture out of its white background and shows it big, small, on plates and on a seesaw)',
+  '- Draw ONLY the single object itself: no hands, no people, no plate, no table, no ground, no text, no numbers.',
+  '- Every cell has the SAME cute flat cartoon style and a continuous thick dark outline all around the object.',
+  '- The object fills most of its cell, centered, fully visible (never cropped).',
+  '- Pure flat white (#FFFFFF) background: no shadow, no scenery, no frame.',
+].join('\n');
+
 const HEAVY_MIN = 4;
 const LIGHT_MAX = 1;
 

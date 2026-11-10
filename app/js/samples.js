@@ -11,10 +11,10 @@ import { builtInJollyLessons } from './jolly.js';
 const allPhonicsLessons = () => [...builtInPhonicsLessons(), ...builtInJollyLessons()];
 import { builtInTalkLessons } from './talk.js';
 import { builtInPatternLessons } from './patterns.js';
-import { builtInDoingLessons } from './patterns2.js';
+import { builtInDoingLessons, builtInNearFarLessons } from './patterns2.js';
 
-/** Bài mẫu câu có sẵn: Khung câu (SPEC-patterns) + Ai đang làm gì? (SPEC-patterns2). */
-const allPatternLessons = () => [...builtInPatternLessons(), ...builtInDoingLessons()];
+/** Bài mẫu câu có sẵn: Khung câu (SPEC-patterns) + Ai đang làm gì? + Gần – xa (SPEC-patterns2). */
+const allPatternLessons = () => [...builtInPatternLessons(), ...builtInDoingLessons(), ...builtInNearFarLessons()];
 
 /** Bài mẫu câu có sẵn (SPEC-patterns mục 4.3). `only`: chỉ thêm các bài có mã này. */
 async function addPatternLessons(app, only = null) {

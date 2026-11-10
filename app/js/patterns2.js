@@ -1,11 +1,13 @@
-// Mẫu câu mở rộng (SPEC-patterns2.md): kiểu bài "Ai đang làm gì?" (`style: 'doing'`).
-// Bài chỉ ghi các hành động; app tự ghép câu theo người (is / am, his / her / my), chọn người trong nhà, nhận câu bé nói.
+// Mẫu câu mở rộng (SPEC-patterns2.md): kiểu bài "Ai đang làm gì?" (`style: 'doing'`) và "Gần – xa" (`style: 'nearFar'`).
+// "Ai đang làm gì?": bài chỉ ghi các hành động; app tự ghép câu theo người (is / am, his / her / my), chọn người trong
+// nhà, nhận câu bé nói. "Gần – xa": 3 cặp đồ (gần, xa) trên nền tranh của Dán tranh; This is … / That is ….
 // Không phụ thuộc DOM để chạy được trong Node (test).
 
 import { normalizeWord, tokenize } from './text.js';
 import { matches } from './match.js';
 import { PATTERN_KIND, LEVEL, betterLevel, expandSpeech } from './patterns.js';
 import { MOTION_NAMES } from './phrase.js';
+import { SCENE_BY_ID, ITEM_BY_ID } from './sticker-scenes.js';
 
 export const DOING_STYLE = 'doing';
 /** Tab riêng trong danh sách Mẫu câu (SPEC-patterns2 mục 2). */
@@ -313,5 +315,248 @@ export function builtInDoingLessons() {
   return BUILTIN.map((l) => ({
     version: 1, kind: PATTERN_KIND, style: DOING_STYLE, topic: DOING_TOPIC, topicEmoji: DOING_TOPIC_EMOJI,
     ...l, actions: l.actions.map((a) => ({ ...a })),
+  }));
+}
+
+// ======================================================================================================
+// 👉 Gần – xa (`nearFar`, mục 4): This is … (gần, Bông chạm) / That is … (xa, Bông chỉ tay).
+// ======================================================================================================
+
+export const NEAR_FAR_STYLE = 'nearFar';
+/** Tab riêng trong danh sách Mẫu câu (mục 2). */
+export const NEAR_TOPIC = 'This and that';
+export const NEAR_TOPIC_EMOJI = '👉';
+export const NEAR_PAIRS = 3;
+export const NEAR_ASK_ROUNDS = 4; // phần B: 2 câu "this", 2 câu "that"
+export const FAR_SCALE = 0.4; // đồ ở vùng xa nhỏ bằng ~40% đồ ở vùng gần (mục 4.1)
+
+export const isNearFarLesson = (lesson) => lesson?.kind === PATTERN_KIND && lesson.style === NEAR_FAR_STYLE;
+
+/**
+ * Hai vùng đặt đồ và chỗ đứng của Bông theo từng tranh (khung 400 × 300, [x, y, rộng, cao]) — mục 4.1:
+ * vùng xa ở nửa trên (chân trời / trên đồi), vùng gần ở phần ba dưới cùng, chọn ở chỗ trống của tranh; chỗ đứng của Bông
+ * ngoài cả hai vùng.
+ */
+export const NEAR_FAR_ZONES = {
+  park: { far: [200, 92, 60, 52], near: [14, 214, 140, 56], bong: [318, 206, 72, 56] },
+  farm: { far: [150, 96, 90, 52], near: [12, 214, 120, 56], bong: [306, 206, 84, 56] },
+  beach: { far: [158, 118, 60, 54], near: [166, 214, 112, 56], bong: [310, 206, 84, 56] },
+  garden: { far: [150, 96, 90, 52], near: [12, 214, 140, 56], bong: [300, 206, 90, 56] },
+  street: { far: [252, 18, 120, 64], near: [16, 222, 140, 56], bong: [300, 214, 90, 56] },
+};
+
+/**
+ * Mạo từ của sticker dùng được ở Gần – xa (mọi sticker của các tranh trong NEAR_FAR_ZONES) — mục 4.4, không tự đoán.
+ * 'none': This is ice cream. Đồ số nhiều (sunglasses…) không có trong bảng: chưa dùng được (these / those để sau).
+ */
+export const ARTICLES = {
+  // farm
+  cow: 'a', pig: 'a', horse: 'a', sheep: 'a', goat: 'a', chicken: 'a', chick: 'a', duck: 'a', dog: 'a', cat: 'a', rabbit: 'a',
+  tractor: 'a', carrot: 'a', corn: 'none', apple: 'an', egg: 'an',
+  // beach
+  fish: 'a', crab: 'a', shell: 'a', octopus: 'an', dolphin: 'a', whale: 'a', shark: 'a', turtle: 'a', seal: 'a', shrimp: 'a',
+  lobster: 'a', boat: 'a', ball: 'a', 'ice cream': 'none', 'palm tree': 'a',
+  // park
+  bird: 'a', butterfly: 'a', bee: 'a', ladybug: 'a', squirrel: 'a', snail: 'a', kite: 'a', balloon: 'a', bicycle: 'a', scooter: 'a',
+  flower: 'a', leaf: 'a',
+  // street
+  car: 'a', bus: 'a', taxi: 'a', 'police car': 'a', 'fire truck': 'a', ambulance: 'an', truck: 'a', motorbike: 'a', helicopter: 'a',
+  plane: 'a', 'traffic light': 'a',
+  // garden
+  caterpillar: 'a', ant: 'an', hedgehog: 'a', sunflower: 'a', rose: 'a', mushroom: 'a', strawberry: 'a',
+};
+
+/** Tên tiếng Việt của sticker (phụ đề "Đây là … / Kia là …"). */
+export const NEAR_VI = {
+  cow: 'con bò', pig: 'con lợn', horse: 'con ngựa', sheep: 'con cừu', goat: 'con dê', chicken: 'con gà', chick: 'con gà con',
+  duck: 'con vịt', dog: 'con chó', cat: 'con mèo', rabbit: 'con thỏ', tractor: 'máy cày', carrot: 'củ cà rốt', corn: 'bắp ngô',
+  apple: 'quả táo', egg: 'quả trứng', fish: 'con cá', crab: 'con cua', shell: 'vỏ ốc', octopus: 'con bạch tuộc', dolphin: 'cá heo',
+  whale: 'cá voi', shark: 'cá mập', turtle: 'con rùa', seal: 'hải cẩu', shrimp: 'con tôm', lobster: 'tôm hùm', boat: 'con thuyền',
+  ball: 'quả bóng', 'ice cream': 'kem', 'palm tree': 'cây dừa', bird: 'con chim', butterfly: 'con bướm', bee: 'con ong',
+  ladybug: 'bọ rùa', squirrel: 'con sóc', snail: 'con ốc sên', kite: 'con diều', balloon: 'quả bóng bay', bicycle: 'xe đạp',
+  scooter: 'xe trượt', flower: 'bông hoa', leaf: 'chiếc lá', car: 'ô tô', bus: 'xe buýt', taxi: 'xe taxi', 'police car': 'xe cảnh sát',
+  'fire truck': 'xe cứu hỏa', ambulance: 'xe cứu thương', truck: 'xe tải', motorbike: 'xe máy', helicopter: 'trực thăng',
+  plane: 'máy bay', 'traffic light': 'đèn giao thông', caterpillar: 'con sâu', ant: 'con kiến', hedgehog: 'con nhím',
+  sunflower: 'hoa hướng dương', rose: 'hoa hồng', mushroom: 'cây nấm', strawberry: 'quả dâu',
+};
+
+/** Đồ thêm (mục 4.3): đồ xa hay gặp nhưng không phải sticker, dùng cho mọi tranh. */
+export const EXTRA_ITEMS = {
+  tree: { en: 'tree', vi: 'cái cây', emoji: '🌳', article: 'a' },
+  house: { en: 'house', vi: 'ngôi nhà', emoji: '🏠', article: 'a' },
+  mountain: { en: 'mountain', vi: 'ngọn núi', emoji: '⛰️', article: 'a' },
+  sun: { en: 'sun', vi: 'mặt trời', emoji: '☀️', article: 'the' },
+  cloud: { en: 'cloud', vi: 'đám mây', emoji: '☁️', article: 'a' },
+  rainbow: { en: 'rainbow', vi: 'cầu vồng', emoji: '🌈', article: 'a' },
+};
+
+/**
+ * Một đồ của bài Gần – xa theo mã (sticker của tranh hoặc đồ thêm): { id, en, vi, emoji, article, sticker }.
+ * `article` riêng của bài (bố mẹ ghi) thắng bảng ARTICLES. Không có thì null.
+ */
+export function nearItem(id, article = null) {
+  const extra = EXTRA_ITEMS[id];
+  if (extra) return { id, ...extra, article: article || extra.article, sticker: false };
+  const it = ITEM_BY_ID.get(id);
+  if (!it) return null;
+  return { id, en: it.name, vi: NEAR_VI[it.name] ?? it.name, emoji: it.emoji, article: article || ARTICLES[it.name] || null, sticker: true };
+}
+
+const withArticle = (item) => (item.article === 'none' ? item.en : `${item.article} ${item.en}`);
+const NEAR_WORD = { this: 'This', that: 'That' };
+const NEAR_WORD_VI = { this: 'Đây', that: 'Kia' };
+
+/** "This is a flower." / "That is the sun." / "This is ice cream." */
+export const nearSentence = (which, item) => `${NEAR_WORD[which]} is ${withArticle(item)}.`;
+/** "Đây là bông hoa." / "Kia là cái cây." */
+export const nearSentenceVi = (which, item) => `${NEAR_WORD_VI[which]} là ${item.vi}.`;
+/** Câu hỏi phần B. */
+export const nearQuestion = (which) => `What is ${which}?`;
+
+/** Khóa sao câu: near:<this|that>|<tên đồ>. */
+export const nearKey = (which, item) => `near:${which}|${normalizeWord(item.en)}`;
+export const isNearKey = (key) => String(key).startsWith('near:');
+export const nearRecords = (records) => records.filter((r) => isNearKey(r.word));
+
+/** Đồ của một cặp: { near, far } (đã có mạo từ). */
+export const pairItems = (pair) => ({ near: nearItem(pair.near, pair.nearArticle), far: nearItem(pair.far, pair.farArticle) });
+
+/**
+ * Bốn câu hỏi phần B: 2 "this" (đồ gần), 2 "that" (đồ xa), xen kẽ this – that; ưu tiên đồ chưa có sao, ít sao, luyện lâu rồi.
+ * @returns {{ which: 'this'|'that', pair: number }[]}
+ */
+export function planNearQuestions(lesson, records = new Map(), rng = Math.random) {
+  const pick = (which) => lesson.pairs.map((p, pair) => {
+    const item = pairItems(p)[which === 'this' ? 'near' : 'far'];
+    const r = records.get(nearKey(which, item));
+    return { which, pair, stars: r?.mastery ?? 0, at: r?.lastPracticedAt ?? 0, tie: rng() };
+  }).sort((a, b) => (a.stars > 0) - (b.stars > 0) || a.stars - b.stars || a.at - b.at || a.tie - b.tie).slice(0, NEAR_ASK_ROUNDS / 2);
+  const [t, f] = [pick('this'), pick('that')];
+  return [t[0], f[0], t[1], f[1]].filter(Boolean).map(({ which, pair }) => ({ which, pair }));
+}
+
+/** Các bước: A xem và nói theo (3 cặp) → B hỏi – đáp (4 câu) → đọc nhanh các cặp như bài hát. */
+export function buildNearSteps(lesson) {
+  return [
+    ...lesson.pairs.map((_, index) => ({ stage: 'watch', index })),
+    ...Array.from({ length: NEAR_ASK_ROUNDS }, (_, index) => ({ stage: 'ask', index })),
+    { stage: 'song', index: 0 },
+  ];
+}
+
+/** Kế hoạch lượt (câu hỏi phần B), lưu cùng chỗ dừng; kế hoạch đã lưu còn hợp lệ thì dùng lại (Học tiếp không chọn lại). */
+export function nearPlan(lesson, { records = new Map(), saved = null, rng = Math.random } = {}) {
+  const n = lesson.pairs.length;
+  if (saved?.questions?.length === NEAR_ASK_ROUNDS
+    && saved.questions.every((q) => (q.which === 'this' || q.which === 'that') && q.pair >= 0 && q.pair < n)) return saved;
+  return { questions: planNearQuestions(lesson, records, rng) };
+}
+
+/**
+ * Mức câu bé nói (mục 4.5), lấy phương án nhận dạng tốt nhất:
+ * cả câu = đúng this / that + is + tên đồ (mạo từ không bắt buộc); một phần = tên đồ + is / it, hoặc nói nhầm this / that
+ * (`swapped`: Bông làm mẫu lại kèm động tác); từ khóa = chỉ có tên đồ.
+ * @returns {{ level: string, swapped: boolean }}
+ */
+export function nearLevel(alternatives, which, item) {
+  const other = which === 'this' ? 'that' : 'this';
+  const name = normalizeWord(item.en);
+  const keys = [...new Set([name, name.split(' ').at(-1)])];
+  const mainWords = new Set(['this', 'that', 'is', 'it', 'a', 'an', 'the', 'its']);
+  let best = LEVEL.NONE;
+  let swapped = false;
+  for (const alt of alternatives ?? []) {
+    const words = tokenize(expandSpeech(String(alt).replace(/\b(this|that|it)['’]s\b/gi, '$1 is')));
+    const rest = words.filter((t) => !mainWords.has(t));
+    if (!rest.length || !matches([rest.join(' ')], keys)) continue;
+    const has = new Set(words);
+    let level;
+    if (has.has(which) && has.has('is')) level = LEVEL.FULL;
+    else if (has.has(other) || has.has('is') || has.has('it') || has.has(which)) level = LEVEL.PARTIAL;
+    else level = LEVEL.KEYWORD;
+    const nowSwapped = has.has(other) && !has.has(which);
+    if (betterLevel(best, level) !== best) {
+      best = level;
+      swapped = nowSwapped;
+    } else if (level === best && nowSwapped) {
+      swapped = true;
+    }
+  }
+  return { level: best, swapped: best === LEVEL.FULL ? false : swapped };
+}
+
+/**
+ * Kiểm tra bài Gần – xa (bài có sẵn, bài dán vào, bài khôi phục): đúng 3 cặp; tranh có hai vùng; đồ có trong tranh hoặc
+ * là đồ thêm; có mạo từ; không trùng đồ; không đồ số nhiều. Báo lỗi rõ, không tự sửa.
+ * @returns {{ ok: boolean, lesson: object|null, errors: string[], warnings: string[] }}
+ */
+export function validateNearFarLesson(raw) {
+  const errors = [];
+  const warnings = [];
+  if (!raw || typeof raw !== 'object') return { ok: false, lesson: null, errors: ['Bài "Gần – xa" không hợp lệ.'], warnings };
+  const title = str(raw.title);
+  if (!title) errors.push('Thiếu tên bài.');
+  const sceneId = str(raw.scene);
+  const scene = SCENE_BY_ID.get(sceneId);
+  if (!NEAR_FAR_ZONES[sceneId]) {
+    errors.push(`Tranh "${sceneId}" chưa dùng được cho Gần – xa. Chọn một trong: ${Object.keys(NEAR_FAR_ZONES).join(', ')}.`);
+  }
+  const list = Array.isArray(raw.pairs) ? raw.pairs : [];
+  if (list.length !== NEAR_PAIRS) errors.push(`Bài có ${list.length} cặp. Mỗi bài đúng ${NEAR_PAIRS} cặp (gần, xa).`);
+  const seen = new Set();
+  const pairs = [];
+  for (const [i, p] of list.entries()) {
+    const out = {};
+    for (const side of ['near', 'far']) {
+      const id = str(p?.[side]).toLowerCase().replace(/\s+/g, '-');
+      const name = id.replace(/-/g, ' ');
+      if (!id) {
+        errors.push(`Cặp thứ ${i + 1} thiếu đồ ${side === 'near' ? 'gần' : 'xa'}.`);
+        continue;
+      }
+      if (['grapes', 'socks', 'sunglasses', 'scissors'].includes(name)) {
+        errors.push(`"${name}" là số nhiều — chưa dùng được ở Gần – xa.`);
+        continue;
+      }
+      if (!(scene?.items.some((it) => it.id === id) || EXTRA_ITEMS[id])) {
+        errors.push(`Sticker "${name}" không có trong tranh ${scene?.en ?? sceneId} (và không phải đồ thêm).`);
+        continue;
+      }
+      const article = str(p?.[`${side}Article`]);
+      if (article && !['a', 'an', 'the', 'none'].includes(article)) errors.push(`"${name}": article "${article}" không hợp lệ (a, an, the, none).`);
+      if (!nearItem(id, article || null)?.article) errors.push(`"${name}" chưa có mạo từ (article: a / an / the / none).`);
+      if (seen.has(id)) errors.push(`"${name}" có ở 2 cặp. Mỗi đồ chỉ dùng một lần.`);
+      seen.add(id);
+      out[side] = id;
+      if (article) out[`${side}Article`] = article;
+    }
+    pairs.push(out);
+  }
+  if (errors.length) return { ok: false, lesson: null, errors, warnings };
+  const lesson = { version: 1, kind: PATTERN_KIND, style: NEAR_FAR_STYLE, title, scene: sceneId, pairs, emoji: str(raw.emoji) || scene.emoji };
+  for (const k of ['titleVi', 'topic', 'topicEmoji', 'builtin']) if (str(raw[k])) lesson[k] = str(raw[k]);
+  return { ok: true, lesson, errors, warnings };
+}
+
+/** Các bài "Gần – xa" có sẵn (mục 4.3): đồ ở vùng xa là đồ to / ở xa thật, đồ ở vùng gần là đồ nhỏ cầm được. */
+const NEAR_BUILTIN = [
+  { builtin: 'near-park', title: 'In the park', titleVi: 'Ở công viên', emoji: '🌳', scene: 'park',
+    pairs: [['flower', 'tree'], ['ball', 'kite'], ['dog', 'bird']] },
+  { builtin: 'near-farm', title: 'On the farm', titleVi: 'Ở nông trại', emoji: '🚜', scene: 'farm',
+    pairs: [['chick', 'cow'], ['egg', 'tractor'], ['rabbit', 'horse']] },
+  { builtin: 'near-beach', title: 'At the beach', titleVi: 'Ở bãi biển', emoji: '🏖️', scene: 'beach',
+    pairs: [['shell', 'boat'], ['crab', 'dolphin'], ['ball', 'palm-tree']] },
+  { builtin: 'near-garden', title: 'In the garden', titleVi: 'Trong vườn', emoji: '🌻', scene: 'garden',
+    pairs: [['ladybug', 'butterfly'], ['strawberry', 'sunflower'], ['snail', 'bird']] },
+  // Đường phố: vùng xa là bầu trời trên dãy cửa hàng — dùng đồ bay (trực thăng, máy bay, chim) thay cho xe buýt.
+  { builtin: 'near-street', title: 'In the street', titleVi: 'Trên đường phố', emoji: '🚦', scene: 'street',
+    pairs: [['bicycle', 'helicopter'], ['dog', 'plane'], ['balloon', 'bird']] },
+];
+
+/** Các bài "Gần – xa" có sẵn (tab riêng trong Mẫu câu). `builtin`: mã cố định để tự thêm một lần. */
+export function builtInNearFarLessons() {
+  return NEAR_BUILTIN.map((l) => ({
+    version: 1, kind: PATTERN_KIND, style: NEAR_FAR_STYLE, topic: NEAR_TOPIC, topicEmoji: NEAR_TOPIC_EMOJI,
+    ...l, pairs: l.pairs.map(([near, far]) => ({ near, far })),
   }));
 }
