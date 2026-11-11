@@ -210,21 +210,16 @@ test('MATH-02/03/04: bài mẫu thêm một lần; xóa rồi mở lại không 
   expect(await mathTitles()).toEqual(['Big and small', 'Heavy and light', 'Long and short', 'More or fewer', 'Small, medium, big', 'Tall and short'].filter((t) => t !== 'Big and small'));
   await openParent(page);
   await page.getByRole('button', { name: 'Quản lý bài' }).click();
-  // "Thêm lại bài mẫu" thêm cả các bài mẫu khác rồi vẽ lại trang: chờ số bài đứng yên.
-  const settle = async () => {
-    let last = -1;
-    for (;;) {
-      const n = await page.evaluate(async () => (await window.kidEnglish.db.getAll('lessons')).length);
-      if (n === last) break;
-      last = n;
-      await page.waitForTimeout(700);
-    }
-    await page.getByRole('heading', { name: 'Quản lý bài' }).waitFor();
-  };
-  for (let i = 0; i < 2; i++) {
-    await page.getByRole('button', { name: 'Thêm lại bài mẫu' }).click();
-    await settle();
-  }
+  // "Thêm lại bài mẫu" chỉ thêm bài mẫu còn thiếu (ở đây chỉ bài Toán vừa xóa), rồi vẽ lại trang.
+  const total = () => page.evaluate(async () => (await window.kidEnglish.db.getAll('lessons')).length);
+  const before = await total();
+  await page.getByRole('button', { name: 'Thêm lại bài mẫu' }).click();
+  await expect(page.getByText('Đã thêm 1 bài mẫu còn thiếu.')).toBeVisible();
+  await page.getByRole('heading', { name: 'Quản lý bài' }).waitFor();
+  expect(await total()).toBe(before + 1);
+  await page.getByRole('button', { name: 'Thêm lại bài mẫu' }).click();
+  await expect(page.getByText('Đã có đủ bài mẫu.')).toBeVisible();
+  expect(await total()).toBe(before + 1); // bấm lại: không tạo bản trùng
   expect(await mathTitles()).toEqual(['Big and small', 'Heavy and light', 'Long and short', 'More or fewer', 'Small, medium, big', 'Tall and short']);
   // Góc bố mẹ: trang bài Toán có sao cũ (gắn với mã bài), mức, nút đặt mức.
   await page.locator('.lesson-row', { hasText: 'Big and small' }).click();

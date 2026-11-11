@@ -1,9 +1,12 @@
-// Bài mẫu có sẵn (SPEC mục 4.6, SPEC-v1.0 mục 11). Mỗi nhóm chỉ thêm một lần; có nút "Thêm lại bài mẫu".
+// Bài mẫu có sẵn (SPEC mục 4.6, SPEC-v1.0 mục 11). Mỗi nhóm chỉ thêm một lần; có nút "Thêm lại bài mẫu" — chỉ thêm bài
+// mẫu đang THIẾU trên máy, không bao giờ tạo bản trùng.
 
 import { parseLesson, createLessonRecord, baseTitle } from './lesson.js';
 import { ensureLessonNumbers } from './db.js';
+import { normalizeWord } from './text.js';
+import { lessonKind } from './phrase.js';
 import { builtInNumberLessons } from './numbers.js';
-import { builtInMathLessons, isMathLesson } from './math.js';
+import { builtInMathLessons } from './math.js';
 import { builtInPhonicsLessons } from './phonics.js';
 import { builtInJollyLessons } from './jolly.js';
 
@@ -16,85 +19,82 @@ import { builtInDoingLessons, builtInNearFarLessons } from './patterns2.js';
 /** Bài mẫu câu có sẵn: Khung câu (SPEC-patterns) + Ai đang làm gì? + Gần – xa (SPEC-patterns2). */
 const allPatternLessons = () => [...builtInPatternLessons(), ...builtInDoingLessons(), ...builtInNearFarLessons()];
 
-/** Bài mẫu câu có sẵn (SPEC-patterns mục 4.3). `only`: chỉ thêm các bài có mã này. */
-async function addPatternLessons(app, only = null) {
+/**
+ * Thêm các bài có sẵn trong code (mỗi bài có mã `builtin` cố định, không trùng giữa các loại bài). `only`: chỉ thêm các
+ * bài có mã này. Bài đã có trên máy (cùng mã `builtin`) thì bỏ qua — không bao giờ tạo bản trùng. Trả về số bài đã thêm.
+ */
+async function addBuiltins(app, lessons, only = null) {
+  const existing = await app.db.getAll('lessons');
+  const have = new Set(existing.map((l) => l.builtin).filter(Boolean));
+  // Bài thêm từ bản rất cũ (chưa ghi mã `builtin`): nhận ra bằng loại bài + tên bài.
+  const named = (l) => `${lessonKind(l)}|${l.title}`;
+  const haveNamed = new Set(existing.filter((l) => !l.builtin).map(named));
   const now = Date.now();
-  const list = allPatternLessons().filter((l) => !only || only.includes(l.builtin));
+  const list = lessons.filter((l) => (!only || only.includes(l.builtin)) && !have.has(l.builtin) && !haveNamed.has(named(l)));
   for (const [i, lesson] of list.entries()) {
     await app.db.put('lessons', createLessonRecord(lesson, now - list.length + i));
   }
-  await ensureLessonNumbers(app.db);
+  if (list.length) await ensureLessonNumbers(app.db);
   return list.length;
 }
+
+/** Bài mẫu câu có sẵn (SPEC-patterns mục 4.3). `only`: chỉ thêm các bài có mã này. */
+const addPatternLessons = (app, only = null) => addBuiltins(app, allPatternLessons(), only);
 
 export const SAMPLE_FILES = ['lessons/animals.json', 'lessons/colors.json'];
 export const PHRASE_SAMPLE_FILES = ['lessons/morning.json', 'lessons/actions.json'];
 /** Bài từ vựng có sẵn thêm ở 0.25.0 (SPEC-content mục 3): máy đã dùng bản cũ cũng nhận được. */
 export const MORE_VOCAB_FILES = ['lessons/body.json', 'lessons/family.json', 'lessons/food.json', 'lessons/vehicles.json', 'lessons/feelings.json', 'lessons/weather.json'];
 
-/** Thêm các bài mẫu trong danh sách file. Trả về số bài đã thêm. */
+/** Nội dung của bài (loại bài + các từ / câu): bài mẫu đã có trên máy từ bản cũ (chưa có `sampleFile`) nhận ra bằng cái này. */
+const contentKey = (lesson) => `${lessonKind(lesson)}:${(lesson.words ?? lesson.phrases ?? []).map((w) => normalizeWord(w.en)).sort().join('|')}`;
+
+/**
+ * Thêm các bài mẫu trong danh sách file. Bài đã có trên máy thì bỏ qua: cùng file (`sampleFile`, ghi khi thêm), hoặc — bài
+ * thêm từ bản cũ chưa có dấu này — cùng loại bài và cùng các từ / câu. Trả về số bài đã thêm.
+ */
 async function addFrom(app, files) {
+  const existing = await app.db.getAll('lessons');
+  const haveFiles = new Set(existing.map((l) => l.sampleFile).filter(Boolean));
+  const haveContent = new Set(existing.map(contentKey));
   let added = 0;
   const now = Date.now();
   for (const [i, file] of files.entries()) {
+    if (haveFiles.has(file)) continue;
     try {
       const res = await fetch(file);
       const parsed = parseLesson(await res.text());
-      if (!parsed.ok) continue;
+      if (!parsed.ok || haveContent.has(contentKey(parsed.lesson))) continue;
       // Đánh số theo thứ tự tạo: Animals #01, Colors #02…
       const record = createLessonRecord(parsed.lesson, now - files.length + i);
       record.topic = baseTitle(parsed.lesson.title);
+      record.sampleFile = file;
       await app.db.put('lessons', record);
+      haveFiles.add(file);
+      haveContent.add(contentKey(record));
       added++;
     } catch (err) {
       console.error('Không thêm được bài mẫu', file, err);
     }
   }
-  await ensureLessonNumbers(app.db);
+  if (added) await ensureLessonNumbers(app.db);
   return added;
 }
 
 /** Bài số có sẵn trong app (SPEC-numbers mục 7, 14), không cần tải file. `only`: chỉ thêm các bài có mã này. */
-async function addNumberLessons(app, only = null) {
-  const now = Date.now();
-  const list = builtInNumberLessons().filter((l) => !only || only.includes(l.builtin));
-  for (const [i, lesson] of list.entries()) {
-    await app.db.put('lessons', createLessonRecord(lesson, now - list.length + i));
-  }
-  await ensureLessonNumbers(app.db);
-  return list.length;
-}
-
+const addNumberLessons = (app, only = null) => addBuiltins(app, builtInNumberLessons(), only);
 /** Bài phonics có sẵn (SPEC-phonics mục 4). `only`: chỉ thêm các bài có mã này. */
-async function addPhonicsLessons(app, only = null) {
-  const now = Date.now();
-  const list = allPhonicsLessons().filter((l) => !only || only.includes(l.builtin));
-  for (const [i, lesson] of list.entries()) {
-    await app.db.put('lessons', createLessonRecord(lesson, now - list.length + i));
-  }
-  await ensureLessonNumbers(app.db);
-  return list.length;
-}
+const addPhonicsLessons = (app, only = null) => addBuiltins(app, allPhonicsLessons(), only);
+/** Bài Toán có sẵn (SPEC-math mục 7.4). `only`: chỉ thêm các bài có mã này. */
+const addMathLessons = (app, only = null) => addBuiltins(app, builtInMathLessons(), only);
 
 /**
- * Bài Toán có sẵn (SPEC-math mục 7.4). `only`: chỉ thêm các bài có mã này. Không bao giờ tạo bản trùng: bài đã có trên máy
- * (cùng mã `builtin`) thì bỏ qua.
+ * Nút "Thêm lại bài mẫu": thêm lại các bài mẫu đang THIẾU trên máy (bài từ vựng, bài câu, bài số, phonics, mẫu câu, Toán,
+ * hội thoại) — bài đã có thì bỏ qua, bấm bao nhiêu lần cũng không tạo bản trùng. Trả về số bài đã thêm.
  */
-async function addMathLessons(app, only = null) {
-  const have = new Set((await app.db.getAll('lessons')).filter(isMathLesson).map((l) => l.builtin));
-  const now = Date.now();
-  const list = builtInMathLessons().filter((l) => (!only || only.includes(l.builtin)) && !have.has(l.builtin));
-  for (const [i, lesson] of list.entries()) {
-    await app.db.put('lessons', createLessonRecord(lesson, now - list.length + i));
-  }
-  await ensureLessonNumbers(app.db);
-  return list.length;
-}
-
-/** Nút "Thêm lại bài mẫu": thêm lại bài từ vựng, bài câu, bài số, bài phonics mẫu và bài Toán còn thiếu. */
 export async function addSampleLessons(app) {
   return (await addFrom(app, SAMPLE_FILES)) + (await addFrom(app, MORE_VOCAB_FILES)) + (await addFrom(app, PHRASE_SAMPLE_FILES)) + (await addNumberLessons(app))
-    + (await addPhonicsLessons(app)) + (await addPatternLessons(app)) + (await addMathLessons(app));
+    + (await addPhonicsLessons(app)) + (await addPatternLessons(app)) + (await addMathLessons(app)) + (await addBuiltins(app, builtInTalkLessons()));
 }
 
 /** Lần chạy đầu: thêm bài mẫu. Bài câu mẫu có cờ riêng để máy đã dùng bản cũ vẫn nhận được. */

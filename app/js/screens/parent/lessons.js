@@ -164,7 +164,7 @@ export function lessonsView(app) {
       text: 'Thêm lại bài mẫu',
       onclick: async () => {
         const n = await addSampleLessons(app);
-        toast(`Đã thêm ${n} bài mẫu.`);
+        toast(n ? `Đã thêm ${n} bài mẫu còn thiếu.` : 'Đã có đủ bài mẫu.');
         goParent(app, 'lessons');
       },
     })),

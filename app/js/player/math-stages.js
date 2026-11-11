@@ -13,6 +13,7 @@ import {
 
 const ASK_WAIT_MS = 15_000; // chờ 15 giây từ khi Bông đọc xong câu hỏi (mục 3.4)
 const AGAIN_WAIT_MS = 10_000; // nhắc lại một lần, chờ thêm 10 giây rồi hiện đáp án
+const MIN_WAIT_MS = 1500;
 const REVEAL_HOLD_MS = 1500; // hiện đáp án: giữ 1,5 giây sau khi Bông nói xong (mục 3.5)
 const RIGHT_HOLD_MS = 700;
 const TILT_MS = 900; // bập bênh nghiêng xong (0,6 giây) rồi mới hỏi (mục 4.6)
@@ -314,10 +315,11 @@ function eventWaiter(ctx, targets, type = 'click', value = (e) => e.currentTarge
   return {
     promise,
     arm(ms) {
+      // ?fast (test): không ngắn hơn 1,5 giây, để test kịp chạm trước khi app tự hiện đáp án (bình thường 10–15 giây).
       timer = setTimeout(() => {
         cleanup();
         resolve(null);
-      }, scaled(ms));
+      }, Math.max(scaled(ms), MIN_WAIT_MS));
     },
   };
 }
