@@ -1,5 +1,6 @@
-// Mẫu câu "Ai đang làm gì?" (SPEC-patterns2.md, P1): ngôi nhà nhiều ô cửa — mỗi người trong nhà một ô, ô cuối là bé (Me).
-// A. Xem và nói theo (từng hành động: 2 người làm mẫu → bé nói "I am …") → B. Hỏi – đáp (3 câu) → Hoan hô.
+// Mẫu câu "Ai đang làm gì?" (SPEC-patterns2.md): ngôi nhà nhiều ô cửa — mỗi người trong nhà một ô, ô cuối là bé (Me).
+// A. Xem và nói theo (từng hành động: 2 người làm mẫu → bé nói "I am …") → B. Hỏi – đáp (3 câu) → C. "Who is…?" (2 câu,
+// bé chạm đúng người) → Kết thúc: cả nhà cùng làm, "We are …!" (không chấm) → Hoan hô.
 // Kế hoạch lượt (người có mặt, cặp người, câu hỏi) lưu cùng chỗ dừng: Học tiếp không chọn lại.
 
 import { h } from '../ui.js';
@@ -10,7 +11,8 @@ import { mediaBlob, getWordImage, hasRecordingToday } from '../db.js';
 import { LEVEL, betterLevel } from '../patterns.js';
 import {
   isDoingLesson, personOf, statement, statementVi, whatQuestion, chunkedMe, youLine, actionText, actionKeywords,
-  doingPlan, doingLevel, doingKey, doingRecords, buildDoingSteps,
+  doingPlan, doingLevel, doingKey, doingRecords, buildDoingSteps, whoQuestion, thatsName, togetherAction, everybodyLine,
+  togetherLine, togetherVi,
 } from '../patterns2.js';
 import { normalizeProfile, PROFILE_IMAGES, familyPhotoKey } from '../talk.js';
 import { familySvg } from '../jobs/family.js';
@@ -22,7 +24,7 @@ import { Teacher } from './teacher.js';
 import { startIndexFor, resumeAfter } from './plan.js';
 import { runSkippable, endSkippable } from './stage-kit.js';
 import { runCompletion } from './completion-stage.js';
-import { markSentence, saveRecording } from './track.js';
+import { markSentence, saveRecording, markPhrasePick } from './track.js';
 
 const HINT_MS = 4000; // phần B: 4 giây chưa nói → chữ mờ của hành động
 
@@ -85,10 +87,41 @@ async function createHouse(app, cast, urls) {
     },
     clear() {
       for (const w of wins.values()) {
-        w.win.classList.remove('active');
+        w.win.classList.remove('active', 'dim', 'pick');
         w.thing.textContent = '';
         w.thing.dataset.motion = '';
       }
+    },
+    /**
+     * Phần C: mỗi người trong cast đang làm một việc khác nhau (đồ vật trong ô, không ô nào sáng để không lộ đáp án);
+     * ô Me mờ đi, không chạm được. `assign`: [{ person, action }].
+     */
+    actMany(assign) {
+      for (const [pid, w] of wins) {
+        const a = assign.find((x) => x.person === pid);
+        w.win.classList.remove('active');
+        w.win.classList.toggle('dim', pid === 'me');
+        w.win.classList.toggle('pick', Boolean(a));
+        w.thing.textContent = a ? a.action.emoji : '';
+        w.thing.dataset.motion = a ? a.action.motion : '';
+      }
+    },
+    /** Kết thúc: cả nhà (cast + Me) cùng làm một việc, mọi ô sáng. */
+    actAll(action) {
+      for (const w of wins.values()) {
+        w.win.classList.remove('dim', 'pick');
+        w.win.classList.add('active');
+        w.thing.textContent = action.emoji;
+        w.thing.dataset.motion = action.motion;
+      }
+    },
+    /** Người bé chạm nhầm nảy nhẹ. */
+    bounce(id) {
+      const win = wins.get(id)?.win;
+      if (!win) return;
+      win.classList.remove('dg-bounce');
+      void win.offsetWidth;
+      win.classList.add('dg-bounce');
     },
     show(text, textVi = '', { ghost = false } = {}) {
       line.textContent = text;
@@ -138,7 +171,9 @@ export function doingLessonScreen(app, { lessonId, start = 'begin', continueDire
     const teacher = new Teacher(app, { signal, bunny: layout.bunny, stage: layout.stage, replayBtn: layout.replayBtn });
     const ctx = { app, teacher, lesson, signal, house, plan, stage: layout.stage, nextBtn: layout.nextBtn };
 
-    const run1 = (step) => (step.stage === 'watch' ? runWatch(ctx, step.index) : runAsk(ctx, plan.questions[step.index % plan.questions.length]));
+    const run1 = (step) => (step.stage === 'watch' ? runWatch(ctx, step.index)
+      : step.stage === 'ask' ? runAsk(ctx, plan.questions[step.index % plan.questions.length])
+        : step.stage === 'who' ? runWho(ctx, plan.who[step.index % plan.who.length], step.index) : runTogether(ctx));
     for (; i < steps.length; i++) {
       layout.setProgress(i / steps.length);
       const step = steps[i];
@@ -286,4 +321,73 @@ export async function runAsk(ctx, question) {
   });
   house.show(statement(p, action), statementVi(p, action));
   await teacher.pause(500);
+}
+
+// ---------- C. Trò chơi "Who is…?" ----------
+
+/**
+ * Mỗi người trong cast làm một việc khác nhau; Bông hỏi "Who is sleeping?", bé chạm đúng người. Chạm nhầm lần 1 → người đó
+ * nảy, "That's Mummy. Mummy is cooking! Who is sleeping?"; lần 2 → Bông chỉ đáp án rồi đi tiếp. Chạm lại cùng một người sai
+ * không tính là lần 2; chạm lúc Bông đang nói thì bỏ qua (waitTap); ô Me mờ, không chạm được. Đúng ngay lần đầu → +1 sao câu.
+ */
+export async function runWho(ctx, round, index) {
+  const { teacher, house, app } = ctx;
+  const bongName = characterName(app);
+  const target = round.assign.find((a) => a.person === round.target);
+  const tp = personOf(round.target, bongName);
+  const question = whoQuestion(target.action);
+  house.actMany(round.assign);
+  house.el.dataset.whoTarget = round.target; // cho test
+  if (index === 0) await teacher.say("Let's play! Listen and touch!");
+  house.show(question, 'Ai đang ' + target.action.vi + '?');
+  await teacher.ask(question);
+  const wins = round.assign.map((a) => house.win(a.person)).filter(Boolean);
+  const wrongs = new Set();
+  for (;;) {
+    const tapped = await teacher.waitTap(wins);
+    const id = tapped.dataset.person;
+    if (id === round.target) {
+      await markPhrasePick(app, doingKey(target.action, id), target.action.emoji, { firstTry: wrongs.size === 0, award: wrongs.size === 0 });
+      tapped.classList.add('active');
+      play('ding');
+      teacher.celebrate(tapped);
+      teacher.bunny.set('clap');
+      house.show(statement(tp, target.action), statementVi(tp, target.action));
+      await teacher.say(`Yes! ${sayIt(statement(tp, target.action))}`);
+      teacher.bunny.set('idle');
+      break;
+    }
+    if (wrongs.has(id)) continue; // chạm lại cùng người sai: không tính lần 2
+    wrongs.add(id);
+    house.bounce(id);
+    if (wrongs.size >= 2) {
+      house.win(round.target)?.classList.add('active');
+      house.show(statement(tp, target.action), statementVi(tp, target.action));
+      await teacher.say(`Look! ${sayIt(statement(tp, target.action))}`);
+      break;
+    }
+    const p = personOf(id, bongName);
+    const act = round.assign.find((a) => a.person === id).action;
+    await teacher.say(`That's ${thatsName(p)}. ${sayIt(statement(p, act))} ${question}`);
+  }
+  teacher.endQuestion();
+  await teacher.pause(700);
+}
+
+// ---------- Kết thúc: cả nhà cùng làm ----------
+
+/** "Everybody is dancing! We are dancing!" — bé nói theo, không chấm. */
+export async function runTogether(ctx) {
+  const { teacher, house, lesson } = ctx;
+  const action = togetherAction(lesson);
+  house.actAll(action);
+  house.show(togetherLine(action), togetherVi(action));
+  await teacher.say(everybodyLine(action));
+  await teacher.say('Say it with me!');
+  const { result } = await teacher.hear(actionKeywords(action), { maxMs: 4500 });
+  play(result === RESULT.MATCH || result === RESULT.VOICE ? 'ding' : 'pop');
+  teacher.bunny.set('clap');
+  await teacher.say(`Yay! ${togetherLine(action)}`);
+  teacher.bunny.set('idle');
+  await teacher.pause(400);
 }

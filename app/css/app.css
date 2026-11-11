@@ -3916,3 +3916,24 @@ img.dr-admin-face { width: 100%; height: 100%; object-fit: contain; }
 .mt-admin-pics img, .mt-admin-emoji { display: grid; place-items: center; width: 72px; height: 72px; object-fit: contain; border-radius: 14px; background: #f8f9fa; }
 .mt-admin-emoji { font-family: var(--emoji); font-size: 40px; opacity: 0.5; }
 .mt-admin-pics figcaption { font-size: 12px; font-weight: 700; text-align: center; color: var(--ink-soft); }
+
+/* "Ai đang làm gì?" phần C "Who is…?" (SPEC-patterns2 P3): ô chạm được, ô Me mờ, người chạm nhầm nảy nhẹ. */
+.dg-win.pick { cursor: pointer; }
+.dg-win.dim { opacity: 0.35; pointer-events: none; filter: grayscale(0.6); }
+.dg-win.dg-bounce { animation: hint-hop 0.45s ease-in-out; }
+@media (prefers-reduced-motion: reduce) { .dg-win.dg-bounce { animation: none; outline: 4px solid #ff922b; } }
+
+/* Gần – xa phần C "Bring it close!" (SPEC-patterns2 P3): đồ bay / kéo giữa hai vùng, to ở gần, nhỏ ở xa. */
+.nf-mover {
+  --near: 13cqw; --farSize: calc(13cqw * 0.4);
+  cursor: grab; touch-action: none; user-select: none; -webkit-user-select: none; pointer-events: auto;
+  transition: left 0.75s ease-in-out, top 0.75s ease-in-out, font-size 0.75s ease-in-out;
+}
+.nf-mover[data-zone="near"] { font-size: var(--near); }
+.nf-mover[data-zone="far"] { font-size: var(--farSize); }
+/* Kéo: cỡ theo độ cao (--t: 0 ở vùng xa → 1 ở vùng gần). */
+.nf-mover.dragging { transition: none; cursor: grabbing; font-size: calc(var(--farSize) + (var(--near) - var(--farSize)) * var(--t, 0)); z-index: 5; }
+.nf-mover.nf-still { transition: none; }
+.nf-mover::after { content: ''; position: absolute; inset: -16px; } /* vùng chạm rộng hơn hình (đồ ở xa nhỏ) */
+.nf-mover.nf-pop { animation: hint-hop 0.5s ease-in-out; }
+@media (prefers-reduced-motion: reduce) { .nf-mover { transition: none; } .nf-mover.nf-pop { animation: none; } }

@@ -195,7 +195,7 @@ function draggable(view, it) {
   it.addEventListener('pointerdown', (e) => {
     if (it.classList.contains('placed') || start) return;
     e.preventDefault();
-    it.setPointerCapture?.(e.pointerId);
+    try { it.setPointerCapture(e.pointerId); } catch { /* sự kiện giả lập: không có con trỏ thật */ }
     start = { x: e.clientX, y: e.clientY, id: e.pointerId };
     it.classList.remove('mt-return', 'mt-wrong');
     it.classList.add('dragging');

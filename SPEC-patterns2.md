@@ -1,6 +1,6 @@
 # SPEC — 🌸 Mẫu câu mở rộng: "Ai đang làm gì?" và "Gần – xa"
 
-> Phiên bản spec: **draft2 (đã chốt)** · Ngày: 2026-11-04 · **Đã làm P1 trong app 0.64.0** (ghi chú khi code ở mục 11), **P2 Gần – xa trong app 0.68.0** (mục 12).
+> Phiên bản spec: **draft2 (đã chốt)** · Ngày: 2026-11-04 · **Đã làm P1 trong app 0.64.0** (ghi chú khi code ở mục 11), **P2 Gần – xa trong app 0.68.0** (mục 12), **P3 trong app 0.69.0** (mục 13) — spec đã làm xong.
 > Mở rộng mục **🌸 Sentences / Mẫu câu** (SPEC-patterns.md). Hai kiểu bài mới, **cách chơi khác** tấm tranh khung câu hiện có. Điểm chung: dạy qua **câu hỏi** — Bông hỏi, bé trả lời bằng cả câu.
 >
 > | Kiểu bài | Chỗ thay đổi trong câu | Ví dụ |
@@ -495,4 +495,14 @@ Góc bố mẹ → **Tạo bài mẫu câu** thêm lựa chọn kiểu bài: *Kh
 - Sticker chưa có tên tiếng Việt: thêm bảng `NEAR_VI` cho mọi sticker của 5 tranh. Bảng `ARTICLES` ghi mọi sticker của 5 tranh (trừ *sunglasses*): *apple, egg, octopus, ambulance, ant → an*; *corn, ice cream → none*.
 - Đồ thêm (`EXTRA_ITEMS`) dùng emoji; ảnh sticker bố mẹ đã thay ở Dán tranh dùng chung cho đồ là sticker.
 - Kế hoạch phần B lưu trong `lesson.nearPlan` cùng `lesson.resume`. Tiến độ `near:` không lẫn vào từ vựng (`wordRecords`); tên đồ vẫn ghi "đã luyện" ở kho từ chung. Trang bài ở Quản lý bài: sao từng câu This / That.
-- Chưa làm (P3): trò "Bring it close!" (chạm / kéo đồ đổi vùng), tạo bài Gần – xa bằng prompt (dán JSON thì đã nhận, có xem trước), sao khung *This is / That is* ở Tiến độ.
+- Chưa làm (P3): trò "Bring it close!" (chạm / kéo đồ đổi vùng), tạo bài Gần – xa bằng prompt (dán JSON thì đã nhận, có xem trước), sao khung *This is / That is* ở Tiến độ. → Đã làm ở P3 (mục 13).
+
+## 13. Ghi chú khi code (P3, app 0.69.0)
+- **"Ai đang làm gì?" phần C "Who is…?"** (2 câu): kế hoạch `doingPlan.who` lưu cùng chỗ dừng — mỗi câu, mỗi người trong cast làm một hành động khác nhau (bài ít hành động hơn số người thì mượn hành động của bài có sẵn khác), người được hỏi luôn làm hành động của bài này, hai câu hỏi hai người khác nhau. Ô của người không sáng (đồ vật trong ô là gợi ý duy nhất); ô Me mờ, không chạm được. Đúng ngay lần đầu → +1 sao câu `doing:<base>|<người>`. Kế hoạch lưu từ P1 (chưa có phần C) được thêm phần C, giữ nguyên người và câu hỏi.
+- **Kết thúc** *"Everybody is … ! We are … !"*: mọi ô (cả Me) cùng làm hành động `together`; Bông mời "Say it with me!", nghe một lần, không chấm, rồi "Yay! We are …!".
+- **"Gần – xa" phần C "Bring it close!"** (2 câu: một câu *this*, một câu *that*, thứ tự ngẫu nhiên, hai cặp khác nhau): chỉ hiện đồ cần đưa, ở sai vùng. Câu *this*: Bông đứng ở vùng gần (👇, vòng sáng) — *"This is a cow! Bring it close!"*; câu *that*: Bông chỉ ra vùng xa (đường chấm) — *"That is a dog! Put it far away!"*.
+  - Kéo: đồ to / nhỏ dần theo độ cao giữa hai vùng; thả trong vùng (có lề 14 / 400) mới tính. Kéo dưới 8 px là **chạm**.
+  - Thả lại chính vùng đang ở (vùng sai) → trôi về, tính sai; thả chỗ khác → trôi về, không tính. Sai lần 2 → Bông tự đưa đồ tới.
+  - Đồ tới vùng đích do bé đưa → +1 sao câu `near:<this|that>|<đồ>`. `done` lưu ngay trong `nearPlan.bring` (ra nền rồi vào lại thì đồ vẫn ở đích, Bông chỉ đọc lại câu).
+- **Tạo bài bằng prompt:** Góc bố mẹ → Tạo bài mẫu câu có chọn **Kiểu bài** (🌸 Khung câu · 👨‍👩‍👧 Ai đang làm gì? · 👉 Gần – xa). "Ai đang làm gì?": chủ đề gợi ý + 3 / 4 hành động, prompt gửi kèm danh sách `motion` và các `base` đã có để tránh trùng. "Gần – xa": chọn một trong 5 tranh có vùng (chưa phải 14 tranh — tranh khác cần thêm `NEAR_FAR_ZONES`), prompt gửi mã sticker kèm mạo từ + đồ thêm. Bài AI trả về dán ở "Dán bài" như mọi bài (kiểm tra mục 7, xem trước).
+- **Sao khung** (`frameSummary`): Góc bố mẹ → Bé đã học có mục "Mẫu câu — bé nói được khung câu": *I am …ing* / *He is …ing* / *She is …ing* (theo giới của người; Bông là nữ) / *This is …* / *That is …* — số hành động / đồ khác nhau đã có ít nhất một sao câu, tính lại từ sao câu (không lưu riêng).

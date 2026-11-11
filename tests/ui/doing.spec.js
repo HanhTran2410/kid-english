@@ -48,6 +48,15 @@ async function openDoing(page, title) {
 }
 
 const lessonByTitle = (page, title) => page.evaluate(async (t) => (await window.kidEnglish.db.getAll('lessons')).find((l) => l.title === t && l.style === 'doing'), title);
+/** Phần C "Who is…?": tự chạm đúng người (cho các test chạy hết bài). */
+async function autoWho(page) {
+  await page.evaluate(() => setInterval(() => {
+    if (document.querySelector('.stage')?.dataset.stage !== 'doing-who') return;
+    const id = document.querySelector('.dg-scene')?.dataset.whoTarget;
+    document.querySelector(`.dg-win[data-person="${id}"]`)?.click();
+  }, 150));
+}
+
 const people = (page) => page.locator('.dg-win').evaluateAll((els) => els.map((e) => e.dataset.person));
 
 test('tab "Who is doing?" trong Mẫu câu: 4 bài, thẻ hiện "I am ___ing."', async ({ page }) => {
@@ -77,6 +86,7 @@ test('DO-01: Hồ sơ mặc định → nhà có Mummy, Daddy, Me; phần A: Dad
   expect(at('brushing my teeth!')).toBeGreaterThan(at('I am…'));
   expect(at('Great job!')).toBeGreaterThan(at('brushing my teeth!'));
   // Hết bài: phần B có câu hỏi về bé + câu hỏi về người trong nhà; Hoan hô.
+  await autoWho(page);
   await expect(page.locator('.done-btn')).toBeVisible({ timeout: 60_000 });
   const all = await spoken(page);
   expect(all).toContain('What are you doing?');
@@ -107,6 +117,7 @@ test('DO-11: Hồ sơ chỉ tích Mummy → Bông vào làm người thứ hai (
   // Ô Me: chưa có ảnh, Hồ sơ "bé trai" → hình bé trai vẽ sẵn.
   await expect(page.locator('.dg-me .dg-kid svg')).toHaveCount(1);
   await expect.poll(() => spoken(page), { timeout: 20_000 }).toContain('Look! My brother is playing ball.');
+  await autoWho(page);
   await expect(page.locator('.done-btn')).toBeVisible({ timeout: 60_000 });
   expect((await lessonByTitle(page, 'Play time')).resume).toBeNull();
 });
@@ -160,4 +171,26 @@ test('DO-09 / DO-12: ra khỏi bài sau hành động 1 → Học tiếp: cùng 
   await expect.poll(() => spoken(page), { timeout: 20_000 }).toContain(`Look! ${name} is drinking milk.`);
   expect((await lessonByTitle(page, 'Bedtime')).doingPlan).toEqual(before.doingPlan);
   expect((await spoken(page)).some((t) => t.includes('taking a bath'))).toBe(false);
+});
+
+test('DO-14: phần C "Who is…?" — mỗi người một việc, ô Me mờ; chạm nhầm lần 1 → "That\'s …"; đúng → "Yes! …"; kết thúc "Everybody is … We are …"', async ({ page }) => {
+  await fakeSpeech(page, { recognition: true });
+  await startApp(page);
+  await fakeRecognizer(page);
+  await openDoing(page, 'At home');
+  await page.waitForFunction(() => document.querySelector('.stage')?.dataset.stage === 'doing-who', null, { timeout: 60_000 });
+  // Mỗi người trong cast có một đồ vật khác nhau; ô Me mờ.
+  await expect(page.locator('.dg-win.dim[data-person="me"]')).toHaveCount(1);
+  const things = await page.locator('.dg-win.pick .dg-thing').allTextContents();
+  expect(new Set(things).size).toBe(things.length);
+  await expect.poll(async () => (await spoken(page)).some((t) => /^Who is .+\?$/.test(t))).toBe(true);
+  const target = await page.locator('.dg-scene').getAttribute('data-who-target');
+  const wrong = await page.locator('.dg-win.pick').evaluateAll((els, t) => els.map((e) => e.dataset.person).find((id) => id !== t), target);
+  await page.locator(`.dg-win[data-person="${wrong}"]`).click();
+  await expect.poll(async () => (await spoken(page)).some((t) => /^That's (Daddy|Mummy)\. (Daddy|Mummy) is .+! Who is .+\?$/.test(t))).toBe(true);
+  await page.locator(`.dg-win[data-person="${target}"]`).click();
+  await expect.poll(async () => (await spoken(page)).some((t) => /^Yes! (Daddy|Mummy) is .+!$/.test(t))).toBe(true);
+  await autoWho(page);
+  await expect(page.locator('.done-btn')).toBeVisible({ timeout: 60_000 });
+  expect(await spoken(page)).toContain('Everybody is cooking! We are cooking!');
 });

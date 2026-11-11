@@ -93,9 +93,13 @@ test('phần B: 4 câu — 2 this (đồ gần), 2 that (đồ xa), xen kẽ; ư
     assert.notEqual(qs[0].pair, qs[2].pair);
   }
   const saved = { questions: [{ which: 'this', pair: 2 }, { which: 'that', pair: 2 }, { which: 'this', pair: 1 }, { which: 'that', pair: 0 }] };
-  assert.equal(nearPlan(park, { saved }), saved, 'Học tiếp dùng lại kế hoạch đã lưu');
+  // Kế hoạch lưu từ P2 (chưa có phần C): giữ câu hỏi, thêm phần C; đã đủ thì dùng lại y nguyên.
+  const upgraded = nearPlan(park, { saved });
+  assert.deepEqual(upgraded.questions, saved.questions);
+  assert.equal(upgraded.bring.length, 2);
+  assert.equal(nearPlan(park, { saved: upgraded }), upgraded, 'Học tiếp dùng lại kế hoạch đã lưu');
   assert.notEqual(nearPlan(park, { saved: { questions: [{ which: 'here', pair: 9 }] } }), null);
-  assert.deepEqual(buildNearSteps(park).map((s) => s.stage), ['watch', 'watch', 'watch', 'ask', 'ask', 'ask', 'ask', 'song']);
+  assert.deepEqual(buildNearSteps(park).map((s) => s.stage), ['watch', 'watch', 'watch', 'ask', 'ask', 'ask', 'ask', 'bring', 'bring', 'song']);
 });
 
 test('DATA-02 / DATA-05: báo lỗi rõ — sticker không có trong tranh, trùng đồ, số nhiều, sai số cặp, tranh chưa có vùng', () => {

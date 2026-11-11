@@ -1,6 +1,7 @@
 // Mẫu câu "Gần – xa" (SPEC-patterns2.md mục 4, P2): nền tranh của Dán tranh, mỗi lần một cặp đồ — đồ gần to ở vùng gần,
 // đồ xa nhỏ ở vùng xa. "This" → Bông đi tới đứng sát đồ gần, bàn tay 👇 chạm, vòng sáng; "That" → Bông đứng ở chỗ của
-// mình, tay chỉ 👉, đường chấm chạy tới đồ xa. A. Xem và nói theo (3 cặp) → B. Hỏi – đáp (4 câu) → đọc nhanh như bài hát.
+// mình, tay chỉ 👉, đường chấm chạy tới đồ xa. A. Xem và nói theo (3 cặp) → B. Hỏi – đáp (4 câu) → C. "Bring it close!"
+// (2 câu: bé chạm hoặc kéo đồ sang đúng vùng) → đọc nhanh như bài hát.
 // Câu hỏi phần B lưu cùng chỗ dừng (`lesson.nearPlan`): Học tiếp không chọn lại.
 
 import { h } from '../ui.js';
@@ -12,7 +13,7 @@ import { LEVEL, betterLevel } from '../patterns.js';
 import { SCENE_BY_ID } from '../sticker-scenes.js';
 import {
   isNearFarLesson, NEAR_FAR_ZONES, FAR_SCALE, pairItems, nearSentence, nearSentenceVi, nearQuestion, nearKey, nearRecords,
-  nearPlan, nearLevel, buildNearSteps,
+  nearPlan, nearLevel, buildNearSteps, bringItem, bringCommand, bringCommandVi,
 } from '../patterns2.js';
 import { loadSceneImages, itemFace, sceneArt } from '../screens/sticker-scene.js';
 import { activityLayout } from './layout.js';
@@ -20,10 +21,12 @@ import { Teacher } from './teacher.js';
 import { startIndexFor, resumeAfter } from './plan.js';
 import { runSkippable, endSkippable } from './stage-kit.js';
 import { runCompletion } from './completion-stage.js';
-import { markSentence, markPracticed, saveRecording } from './track.js';
+import { markSentence, markPracticed, saveRecording, markPhrasePick } from './track.js';
 
 const HINT_MS = 4000; // phần B: 4 giây chưa nói → chữ mờ của câu trả lời
 const WALK_MS = 850; // Bông đi tới / đi về (khớp transition trong CSS)
+const FLY_MS = 750; // đồ bay sang vùng kia (khớp transition .nf-mover)
+const ZONE_PAD = 14; // thả gần mép vùng (khung 400 × 300) vẫn tính là trong vùng
 
 const reducedMotion = () => globalThis.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
 const W = 400;
@@ -52,7 +55,9 @@ function createNearScene(lesson, images, bunny) {
   const hand = h('div.nf-hand', { 'aria-hidden': 'true' });
   const dash = h('div.nf-dash', { 'aria-hidden': 'true', html: `<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none"><line x1="${pointFrom.x}" y1="${pointFrom.y}" x2="${far.x}" y2="${far.y}"/></svg>` });
   bunny.el.classList.add('nf-bong');
-  const sceneEl = h('div.nf-scene', { dataset: { scene: lesson.scene }, 'aria-label': scene.vi }, sceneArt(scene, images), ring, dash, farEl, nearEl, hand, bunny.el);
+  // Phần C: đồ di chuyển được — cỡ theo vùng (gần to, xa nhỏ), kéo thì to / nhỏ dần theo độ cao.
+  const mover = h('div.nf-item.nf-mover', { hidden: true, role: 'button', tabindex: '0' });
+  const sceneEl = h('div.nf-scene', { dataset: { scene: lesson.scene }, 'aria-label': scene.vi }, sceneArt(scene, images), ring, dash, farEl, nearEl, mover, hand, bunny.el);
   const word = h('b.nf-word');
   const rest = h('span.nf-rest');
   const line = h('p.nf-line', { 'aria-live': 'polite' }, word, rest);
@@ -60,6 +65,53 @@ function createNearScene(lesson, images, bunny) {
   const el = h('div.nf-wrap', {}, sceneEl, h('div.nf-say', {}, line, vi));
 
   const placeBong = (p) => Object.assign(bunny.el.style, pct(p));
+  const placeMover = (zone) => {
+    mover.dataset.zone = zone;
+    mover.style.removeProperty('--t');
+    Object.assign(mover.style, pct(zone === 'near' ? near : far));
+  };
+  // Kéo đồ (pointer): đồ đi theo ngón tay, to / nhỏ dần theo độ cao giữa hai vùng; thả ra → sự kiện `nfdrop` với vùng dưới
+  // ngón tay ('near' | 'far' | null). Không ai nhận (đang bay / Bông đang nói) thì đồ trôi về chỗ cũ.
+  let drag = null;
+  const unitsAt = (e) => {
+    const r = sceneEl.getBoundingClientRect();
+    return { x: ((e.clientX - r.left) / r.width) * W, y: ((e.clientY - r.top) / r.height) * H };
+  };
+  const inZone = (pt, [x, y, w, hh]) => pt.x >= x - ZONE_PAD && pt.x <= x + w + ZONE_PAD && pt.y >= y - ZONE_PAD && pt.y <= y + hh + ZONE_PAD;
+  mover.addEventListener('pointerdown', (e) => {
+    if (drag || mover.hidden) return;
+    e.preventDefault();
+    try { mover.setPointerCapture(e.pointerId); } catch { /* sự kiện giả lập: không có con trỏ thật */ }
+    drag = { id: e.pointerId, x: e.clientX, y: e.clientY, moved: false, zone: mover.dataset.zone };
+  });
+  mover.addEventListener('pointermove', (e) => {
+    if (!drag || e.pointerId !== drag.id) return;
+    if (!drag.moved && Math.hypot(e.clientX - drag.x, e.clientY - drag.y) < 8) return;
+    drag.moved = true;
+    mover.classList.add('dragging');
+    const pt = unitsAt(e);
+    Object.assign(mover.style, pct(pt));
+    // Cỡ đồ theo độ cao: ở chân trời nhỏ (vùng xa), ở tiền cảnh to (vùng gần).
+    const t = Math.min(1, Math.max(0, (pt.y - far.y) / (near.y - far.y)));
+    mover.style.setProperty('--t', t.toFixed(3));
+  });
+  const endDrag = (e, cancelled = false) => {
+    if (!drag || e.pointerId !== drag.id) return;
+    const d = drag;
+    drag = null;
+    mover.classList.remove('dragging');
+    let detail;
+    if (!d.moved && !cancelled) detail = { kind: 'tap', handled: false };
+    else {
+      const pt = unitsAt(e);
+      const zone = cancelled ? null : inZone(pt, zones.near) ? 'near' : inZone(pt, zones.far) ? 'far' : null;
+      detail = { kind: 'drop', zone, handled: false };
+    }
+    mover.dispatchEvent(new CustomEvent('nfmove', { detail }));
+    if (!detail.handled) placeMover(d.zone);
+  };
+  mover.addEventListener('pointerup', (e) => endDrag(e));
+  mover.addEventListener('pointercancel', (e) => endDrag(e, true));
   placeBong(stand);
   const face = (item) => (item.sticker ? itemFace({ name: item.en, emoji: item.emoji }, images) : document.createTextNode(item.emoji));
   const walk = (teacher) => (reducedMotion() ? Promise.resolve() : teacher.pause(WALK_MS));
@@ -106,6 +158,38 @@ function createNearScene(lesson, images, bunny) {
       void dash.offsetWidth;
       dash.classList.add('nf-draw');
       bounce(farEl);
+    },
+    mover,
+    /** Phần C: chỉ hiện đồ cần đưa, đặt ở vùng `zone` ('near' | 'far'). */
+    bringStart(item, zone) {
+      nearEl.hidden = true;
+      farEl.hidden = true;
+      mover.hidden = false;
+      mover.replaceChildren(face(item));
+      mover.setAttribute('aria-label', item.en);
+      mover.classList.add('nf-still');
+      placeMover(zone);
+      void mover.offsetWidth;
+      mover.classList.remove('nf-still');
+    },
+    /** Đồ bay sang vùng `zone` (to lên / nhỏ lại theo vùng). */
+    async flyTo(teacher, zone) {
+      placeMover(zone);
+      await (reducedMotion() ? Promise.resolve() : teacher.pause(FLY_MS));
+      bounce(mover);
+    },
+    bringEnd() {
+      mover.hidden = true;
+      nearEl.hidden = false;
+      farEl.hidden = false;
+    },
+    /** Dòng chữ tự do (câu lệnh phần C). */
+    sayText(which, en, viText) {
+      line.dataset.which = which;
+      line.classList.remove('ghost');
+      word.textContent = en.split(' ')[0];
+      rest.textContent = ` ${en.split(' ').slice(1).join(' ')}`;
+      vi.textContent = viText;
     },
     /** Về chỗ, không chạm / chỉ gì. */
     rest() {
@@ -168,10 +252,18 @@ export function nearFarLessonScreen(app, { lessonId, start = 'begin', continueDi
     const scene = createNearScene(lesson, images, layout.bunny);
     layout.stage.replaceChildren(scene.el);
     const teacher = new Teacher(app, { signal, bunny: layout.bunny, stage: layout.stage, replayBtn: layout.replayBtn });
-    const ctx = { app, teacher, lesson, signal, scene, plan, stage: layout.stage, nextBtn: layout.nextBtn };
+    const ctx = {
+      app, teacher, lesson, signal, scene, plan, stage: layout.stage, nextBtn: layout.nextBtn,
+      // Phần C: lưu ngay khi đồ tới vùng đích (ra nền rồi quay lại thì đồ vẫn ở đó).
+      savePlan: async () => {
+        lesson.nearPlan = plan;
+        await saveLesson(lesson);
+      },
+    };
 
     const runStep = (step) => (step.stage === 'watch' ? runWatch(ctx, step.index)
-      : step.stage === 'ask' ? runAsk(ctx, plan.questions[step.index % plan.questions.length]) : runSong(ctx));
+      : step.stage === 'ask' ? runAsk(ctx, plan.questions[step.index % plan.questions.length])
+        : step.stage === 'bring' ? runBring(ctx, plan.bring[step.index % plan.bring.length], step.index) : runSong(ctx));
     for (; i < steps.length; i++) {
       layout.setProgress(i / steps.length);
       const step = steps[i];
@@ -320,6 +412,97 @@ export async function runAsk(ctx, question) {
   scene.say(question.which, item);
   await teacher.pause(500);
   scene.rest();
+}
+
+// ---------- C. Trò chơi "Bring it close!" ----------
+
+/** Chờ bé chạm / thả đồ (sự kiện `nfmove`); rời bước (▶, 🏠) thì dừng. Chỉ nhận lúc đang chờ. */
+function waitMove(ctx) {
+  const { mover } = ctx.scene;
+  return new Promise((resolve, reject) => {
+    const onMove = (e) => {
+      e.detail.handled = true;
+      cleanup();
+      resolve(e.detail);
+    };
+    const onAbort = () => {
+      cleanup();
+      reject(new DOMException('Đã dừng', 'AbortError'));
+    };
+    const cleanup = () => {
+      mover.removeEventListener('nfmove', onMove);
+      ctx.signal.removeEventListener('abort', onAbort);
+    };
+    mover.addEventListener('nfmove', onMove);
+    ctx.signal.addEventListener('abort', onAbort, { once: true });
+  });
+}
+
+/**
+ * Đồ đang ở SAI vùng; Bông nói "This is a bird! Bring it close!" (hoặc "That is a cat! Put it far away!") kèm động tác.
+ * Chạm đồ → đồ tự bay tới vùng đích; kéo → chỉ xong khi thả trong vùng đích. Thả vào vùng sai → trôi về, tính một lần
+ * sai; thả chỗ khác → trôi về, không tính. Sai lần 1 → Bông nói mẫu lại kèm động tác; lần 2 → Bông tự đưa đồ tới.
+ * Đồ tới vùng đích do bé đưa → +1 sao câu (một lần mỗi lượt). Đồ đã tới (Học tiếp) → chỉ đọc lại câu.
+ */
+export async function runBring(ctx, round, index) {
+  const { teacher, scene, lesson, app } = ctx;
+  const item = bringItem(lesson, round);
+  const from = round.which === 'this' ? 'far' : 'near';
+  const to = round.which === 'this' ? 'near' : 'far';
+  const praise = async (prefix) => {
+    await gesture(ctx, round.which);
+    scene.say(round.which, item);
+    await teacher.say(`${prefix}${sayIt(nearSentence(round.which, item))}`);
+  };
+  scene.bringStart(item, round.done ? to : from);
+  try {
+    if (round.done) {
+      await praise('');
+      return;
+    }
+    if (index === 0) await teacher.say("Let's play! Bring it close or put it far away!");
+    const command = bringCommand(round.which, item);
+    await gesture(ctx, round.which);
+    scene.sayText(round.which, command, bringCommandVi(round.which, item));
+    await teacher.ask(command, { vi: bringCommandVi(round.which, item) });
+    let wrong = 0;
+    for (;;) {
+      const move = await waitMove(ctx);
+      if (move.kind === 'tap' || move.zone === to) {
+        // Bé đưa tới đúng vùng (chạm thì đồ tự bay; kéo thả đúng chỗ thì đặt vào giữa vùng).
+        teacher.endQuestion();
+        await scene.flyTo(teacher, to);
+        round.done = true;
+        await ctx.savePlan();
+        await markPhrasePick(app, nearKey(round.which, item), item.emoji, { firstTry: wrong === 0, award: true });
+        play('ding');
+        teacher.celebrate(scene.mover);
+        teacher.bunny.set('clap');
+        await praise('Yes! ');
+        teacher.bunny.set('idle');
+        break;
+      }
+      await scene.flyTo(teacher, from); // trôi về chỗ cũ
+      if (move.zone !== from) continue; // thả giữa hai vùng / ngoài tranh: không tính sai
+      wrong++;
+      if (wrong >= 2) {
+        teacher.endQuestion();
+        await teacher.say('Look!');
+        await scene.flyTo(teacher, to);
+        round.done = true;
+        await ctx.savePlan();
+        await praise('');
+        break;
+      }
+      await gesture(ctx, round.which);
+      await teacher.say(command);
+    }
+    await teacher.pause(500);
+  } finally {
+    teacher.endQuestion();
+    scene.bringEnd();
+    scene.rest();
+  }
 }
 
 // ---------- Kết thúc: đọc nhanh các cặp như bài hát ----------

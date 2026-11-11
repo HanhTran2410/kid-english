@@ -8,6 +8,7 @@ import { isPatternLesson, sentenceOf, sentenceViOf } from '../../patterns.js';
 import {
   isDoingLesson, personOf, statement, statementVi, whoQuestion, DOING_TOPIC, DOING_TOPIC_EMOJI,
   isNearFarLesson, pairItems, nearSentence, nearSentenceVi, NEAR_TOPIC, NEAR_TOPIC_EMOJI,
+  DOING_TOPICS, buildDoingLessonPrompt, buildNearFarLessonPrompt, NEAR_FAR_SCENES,
 } from '../../patterns2.js';
 import { SCENE_BY_ID } from '../../sticker-scenes.js';
 import { createScene } from '../../player/scene.js';
@@ -384,7 +385,10 @@ export function patternPreview(app, lesson) {
           h('div.muted', { text: `${sentenceViOf(lesson, s)}${s.concept !== s.word ? ` · hình: ${s.concept}` : ''}` })))))));
 }
 
-/** Tạo bài mẫu câu (SPEC-patterns mục 4.6): chủ đề + khung câu + số từ → Copy prompt. */
+/**
+ * Tạo bài mẫu câu (SPEC-patterns mục 4.6, SPEC-patterns2 mục 6): chọn kiểu bài — Khung câu (chủ đề + khung + số hình),
+ * Ai đang làm gì? (chủ đề + 3–4 hành động), Gần – xa (chọn tranh) → Copy prompt → dán bài AI trả về ở "Dán bài".
+ */
 export function patternCreateView(app) {
   const body = parentLayout(app, { title: 'Tạo bài mẫu câu', back: () => goParent(app) });
   const topic = h('input', { type: 'text', placeholder: 'Ví dụ: Toys, Fruits, At the zoo…', value: 'Toys' });
@@ -393,9 +397,13 @@ export function patternCreateView(app) {
   const frameChips = h('div.chips', {}, ...PATTERN_FRAMES.map((f) => h('button.chip', {
     type: 'button', text: f, onclick: () => { frame.value = f; },
   })));
+  const doingTopic = h('input', { type: 'text', placeholder: 'Ví dụ: At school, In the kitchen…', value: DOING_TOPICS[0] });
+  const doingChips = h('div.chips', {}, ...DOING_TOPICS.map((t) => h('button.chip', { type: 'button', text: t, onclick: () => { doingTopic.value = t; } })));
   let avoidWords = [];
+  let avoidActions = [];
   listLessons(app.db).then((lessons) => {
-    avoidWords = lessons.filter(isPatternLesson).flatMap((l) => (l.slots ?? []).map((s) => s.word));
+    avoidWords = lessons.filter(isPatternLesson).flatMap((l) => (l.slots ?? []).map((sl) => sl.word));
+    avoidActions = lessons.filter(isDoingLesson).flatMap((l) => l.actions.map((a) => a.base));
   });
 
   const promptArea = h('textarea.prompt-area', { rows: '8', readonly: true, 'aria-label': 'Prompt' });
@@ -407,15 +415,44 @@ export function patternCreateView(app) {
       h('a.btn', { href: 'https://gemini.google.com/app', target: '_blank', rel: 'noopener', text: 'Mở Gemini' })),
     h('button.btn.primary.big', { type: 'button', text: 'Đã có bài từ AI → Dán bài', onclick: () => goParent(app, 'paste') }));
 
+  // Phần của từng kiểu bài: chỉ hiện phần của kiểu đang chọn.
+  const frameParts = [
+    section('🧸 Chủ đề', patternChips, field('Hoặc tự gõ', topic)),
+    section('🌸 Khung câu', frameChips, field('Hoặc tự gõ (một chỗ trống ___; {a} là chỗ "a / an")', frame)),
+    section('Bài mẫu câu', field('🖼️ Số hình', radios('count', PATTERN_COUNTS.map((n) => [n, `${n} hình`]), 6))),
+  ];
+  const doingParts = [
+    section('👨‍👩‍👧 Chủ đề', doingChips, field('Hoặc tự gõ', doingTopic)),
+    section('Bài "Ai đang làm gì?"', field('Số hành động', radios('actions', [[3, '3 hành động'], [4, '4 hành động']], 4)),
+      h('p.muted', { text: 'App tự ghép câu theo người trong nhà của bé (Hồ sơ của bé → Gia đình): Daddy is cooking… I am cooking!' })),
+  ];
+  const nearParts = [
+    section('🖼️ Tranh', field('Chọn tranh (tranh của Dán tranh có vùng gần / xa)', radios('scene', NEAR_FAR_SCENES().map((sc) => [sc.id, `${sc.emoji} ${sc.vi}`]), 'park')),
+      h('p.muted', { text: 'AI chọn 3 cặp (gần, xa) trong sticker của tranh. Đồ gần hiện to, đồ xa hiện nhỏ: This is … / That is ….' })),
+  ];
+  const style = () => radioValue(form, 'style');
+  const showStyle = () => {
+    for (const el of frameParts) el.hidden = style() !== 'frame';
+    for (const el of doingParts) el.hidden = style() !== 'doing';
+    for (const el of nearParts) el.hidden = style() !== 'nearFar';
+  };
+
   const form = h('form.form', {
     onsubmit: (e) => {
       e.preventDefault();
-      const f = frame.value.trim() || 'It is ___.';
-      if ((f.match(/_{2,}/g) ?? []).length !== 1) {
-        toast('Khung câu cần đúng một chỗ trống ___ (ví dụ: I like ___.)', 3500);
-        return;
+      let prompt;
+      if (style() === 'doing') {
+        prompt = buildDoingLessonPrompt({ topic: doingTopic.value.trim() || DOING_TOPICS[0], count: Number(radioValue(form, 'actions')), avoid: avoidActions });
+      } else if (style() === 'nearFar') {
+        prompt = buildNearFarLessonPrompt({ sceneId: radioValue(form, 'scene') });
+      } else {
+        const f = frame.value.trim() || 'It is ___.';
+        if ((f.match(/_{2,}/g) ?? []).length !== 1) {
+          toast('Khung câu cần đúng một chỗ trống ___ (ví dụ: I like ___.)', 3500);
+          return;
+        }
+        prompt = buildPatternLessonPrompt({ topic: topic.value.trim() || 'Toys', frame: f, count: Number(radioValue(form, 'count')), avoidWords });
       }
-      const prompt = buildPatternLessonPrompt({ topic: topic.value.trim() || 'Toys', frame: f, count: Number(radioValue(form, 'count')), avoidWords });
       const copied = copyText(prompt); // copy NGAY trong lúc chạm (iOS)
       promptArea.value = prompt;
       result.hidden = false;
@@ -426,13 +463,16 @@ export function patternCreateView(app) {
       app.setSetting('lastPromptReviewWords', []);
       app.setSetting('lastPromptTopic', 'Sentences');
     },
+    onchange: (e) => {
+      if (e.target.name === 'style') showStyle();
+    },
   },
-  section('🧸 Chủ đề', patternChips,field('Hoặc tự gõ', topic)),
-  section('🌸 Khung câu', frameChips, field('Hoặc tự gõ (một chỗ trống ___; {a} là chỗ "a / an")', frame)),
-  section('Bài mẫu câu', field('🖼️ Số hình', radios('count', PATTERN_COUNTS.map((n) => [n, `${n} hình`]), 6))),
+  section('Kiểu bài', field('Chọn kiểu', radios('style', [['frame', '🌸 Khung câu'], ['doing', '👨‍👩‍👧 Ai đang làm gì?'], ['nearFar', '👉 Gần – xa']], 'frame'))),
+  ...frameParts, ...doingParts, ...nearParts,
   h('div.actions', {}, h('button.btn.primary.big', { type: 'submit', text: 'Copy prompt' })));
+  showStyle();
 
   body.append(
-    notice('info', 'Bài mẫu câu dạy bé MỘT khung câu với nhiều từ (It is sunny / It is rainy…), giống tranh khung câu: bé chạm hình, nghe rồi nói cả câu.'),
+    notice('info', 'Bài mẫu câu dạy bé nói câu trọn vẹn. Khung câu: MỘT khung với nhiều từ (It is sunny / It is rainy…). Ai đang làm gì?: người trong nhà đang làm gì (Mummy is cooking → I am cooking!). Gần – xa: This is … (gần) / That is … (xa) trên tranh.'),
     form, result);
 }

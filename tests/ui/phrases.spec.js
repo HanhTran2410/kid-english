@@ -178,7 +178,7 @@ test('khung hình (flipbook): ảnh lưới 3×4 → cắt → xem trước → 
   await expect(page.getByText('🎞️ 3 khung hình')).toHaveCount(4);
 
   const stored = await page.evaluate(async () => {
-    const lesson = (await window.kidEnglish.db.getAll('lessons')).find((l) => l.title === 'Morning');
+    const lesson = (await window.kidEnglish.db.getAll('lessons')).find((l) => l.title === 'Morning' && Array.isArray(l.phrases)); // bài Câu nói (bài "Ai đang làm gì?" cũng tên Morning)
     const sets = await window.kidEnglish.db.getAllByIndex('frameSets', 'lessonId', lesson.id);
     return sets.map((s) => [s.phraseId, s.frames.length]).sort();
   });

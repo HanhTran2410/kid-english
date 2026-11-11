@@ -179,8 +179,54 @@ export function buildDoingSteps(lesson) {
   return [
     ...lesson.actions.map((_, index) => ({ stage: 'watch', index })),
     ...Array.from({ length: ASK_ROUNDS }, (_, index) => ({ stage: 'ask', index })),
+    ...Array.from({ length: WHO_ROUNDS }, (_, index) => ({ stage: 'who', index })),
+    { stage: 'together', index: 0 },
   ];
 }
+
+export const WHO_ROUNDS = 2; // phần C "Who is…?"
+
+/**
+ * Phần C "Who is…?" (mục 3.2 C): mỗi câu, mỗi người trong cast làm một hành động KHÁC nhau (bài ít hành động hơn số người
+ * thì mượn hành động của bài có sẵn khác); người được hỏi luôn làm một hành động của bài này, hai câu hỏi hai người khác
+ * nhau (cast có từ 2 người). Hành động lưu bản sao trong kế hoạch để Học tiếp không đổi.
+ * @returns {{ assign: { person: string, action: object }[], target: string }[]}
+ */
+export function planWho(lesson, cast, rng = Math.random) {
+  const own = lesson.actions;
+  const bases = new Set(own.map((a) => normalizeWord(a.base)));
+  const borrowed = BUILTIN.flatMap((l) => l.actions).filter((a) => !bases.has(a.base));
+  const out = [];
+  let lastTarget = null;
+  for (let k = 0; k < WHO_ROUNDS; k++) {
+    const mine = shuffleList(own, rng);
+    const extra = shuffleList(borrowed, rng);
+    const acts = [...mine, ...extra].slice(0, cast.length);
+    const choices = cast.filter((id) => id !== lastTarget);
+    const target = (choices.length ? choices : cast)[Math.floor(rng() * (choices.length || cast.length))];
+    // Người được hỏi nhận hành động đầu tiên (luôn là hành động của bài); người khác nhận phần còn lại.
+    const others = cast.filter((id) => id !== target);
+    const assign = [{ person: target, action: { ...acts[0] } }, ...others.map((id, i) => ({ person: id, action: { ...acts[i + 1] } }))];
+    out.push({ assign: cast.map((id) => assign.find((a) => a.person === id)), target });
+    lastTarget = target;
+  }
+  return out;
+}
+const shuffleList = (list, rng) => {
+  const a = [...list];
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(rng() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+};
+
+/** Kết thúc: "Everybody is dancing! We are dancing!" — hành động `together` của bài (hoặc hành động đầu). */
+export const togetherAction = (lesson) => lesson.actions.find((a) => normalizeWord(a.base) === normalizeWord(lesson.together)) ?? lesson.actions[0];
+export const everybodyLine = (action) => `Everybody is ${actionText(action, 'their')}! ${togetherLine(action)}`;
+export const togetherVi = (action) => `Cả nhà đang ${action.vi}.`;
+/** Người trong câu "That's …": anh / chị dùng "your brother" (như câu hỏi), người khác dùng tên. */
+export const thatsName = (p) => (p.ask.startsWith('your ') ? p.ask : p.name);
 
 /**
  * Kế hoạch của một lượt (cast, cặp người phần A, câu hỏi phần B): lưu cùng chỗ dừng để Học tiếp không chọn lại.
@@ -192,11 +238,13 @@ export function doingPlan(lesson, { family, records = new Map(), saved = null, r
   if (saved && Array.isArray(saved.cast) && saved.cast.every(known) && saved.pairs?.length === n
     && saved.pairs.every((p) => p.length === 2 && p.every((id) => saved.cast.includes(id)))
     && saved.questions?.length && saved.questions.every((q) => (q.person === 'me' || saved.cast.includes(q.person)) && q.action >= 0 && q.action < n)) {
-    return saved;
+    // Kế hoạch lưu từ bản trước (P1) chưa có phần C: thêm vào, giữ nguyên phần còn lại.
+    const whoOk = saved.who?.length === WHO_ROUNDS && saved.who.every((w) => saved.cast.includes(w.target) && w.assign?.length === saved.cast.length);
+    return whoOk ? saved : { ...saved, who: planWho(lesson, saved.cast, rng) };
   }
   const score = (id) => lesson.actions.reduce((s, a) => s + (records.get(doingKey(a, id))?.mastery ?? 0), 0);
   const cast = castFor(family, { score });
-  return { cast, pairs: pickPairs(cast, n, rng), questions: planQuestions(cast, lesson.actions, records, rng) };
+  return { cast, pairs: pickPairs(cast, n, rng), questions: planQuestions(cast, lesson.actions, records, rng), who: planWho(lesson, cast, rng) };
 }
 
 // ---------- Nhận câu bé nói (mục 3.5) ----------
@@ -440,16 +488,38 @@ export function buildNearSteps(lesson) {
   return [
     ...lesson.pairs.map((_, index) => ({ stage: 'watch', index })),
     ...Array.from({ length: NEAR_ASK_ROUNDS }, (_, index) => ({ stage: 'ask', index })),
+    ...Array.from({ length: BRING_ROUNDS }, (_, index) => ({ stage: 'bring', index })),
     { stage: 'song', index: 0 },
   ];
 }
+
+export const BRING_ROUNDS = 2; // phần C "Bring it close!" / "Put it far away!"
+
+/**
+ * Phần C (mục 4.2 C): đồ đang ở SAI vùng so với câu Bông nói. Một câu "this" — đồ xa của một cặp đang ở vùng xa,
+ * bé đưa về gần ("This is a bird! Bring it close!"); một câu "that" — đồ gần của cặp khác đang ở vùng gần, bé đưa ra xa.
+ * Thứ tự hai câu ngẫu nhiên; `done`: đồ đã tới vùng đích (ra nền rồi quay lại thì đồ vẫn ở đó).
+ * @returns {{ which: 'this'|'that', pair: number, done: boolean }[]}
+ */
+export function planBring(lesson, rng = Math.random) {
+  const order = shuffleList(lesson.pairs.map((_, i) => i), rng);
+  const rounds = [{ which: 'this', pair: order[0], done: false }, { which: 'that', pair: order[1 % order.length], done: false }];
+  return rng() < 0.5 ? rounds : rounds.reverse();
+}
+/** Đồ của câu "Bring it close!": câu "this" dùng đồ xa của cặp, câu "that" dùng đồ gần (đồ đang ở sai vùng). */
+export const bringItem = (lesson, round) => pairItems(lesson.pairs[round.pair])[round.which === 'this' ? 'far' : 'near'];
+export const bringCommand = (which, item) => `${nearSentence(which, item).replace(/\.$/, '!')} ${which === 'this' ? 'Bring it close!' : 'Put it far away!'}`;
+export const bringCommandVi = (which, item) => `${nearSentenceVi(which, item).replace(/\.$/, '!')} ${which === 'this' ? 'Đưa lại gần nào!' : 'Đưa ra xa nào!'}`;
 
 /** Kế hoạch lượt (câu hỏi phần B), lưu cùng chỗ dừng; kế hoạch đã lưu còn hợp lệ thì dùng lại (Học tiếp không chọn lại). */
 export function nearPlan(lesson, { records = new Map(), saved = null, rng = Math.random } = {}) {
   const n = lesson.pairs.length;
   if (saved?.questions?.length === NEAR_ASK_ROUNDS
-    && saved.questions.every((q) => (q.which === 'this' || q.which === 'that') && q.pair >= 0 && q.pair < n)) return saved;
-  return { questions: planNearQuestions(lesson, records, rng) };
+    && saved.questions.every((q) => (q.which === 'this' || q.which === 'that') && q.pair >= 0 && q.pair < n)) {
+    const bringOk = saved.bring?.length === BRING_ROUNDS && saved.bring.every((b) => b.pair >= 0 && b.pair < n);
+    return bringOk ? saved : { ...saved, bring: planBring(lesson, rng) };
+  }
+  return { questions: planNearQuestions(lesson, records, rng), bring: planBring(lesson, rng) };
 }
 
 /**
@@ -559,4 +629,115 @@ export function builtInNearFarLessons() {
     version: 1, kind: PATTERN_KIND, style: NEAR_FAR_STYLE, topic: NEAR_TOPIC, topicEmoji: NEAR_TOPIC_EMOJI,
     ...l, pairs: l.pairs.map(([near, far]) => ({ near, far })),
   }));
+}
+
+// ======================================================================================================
+// Sao khung (mục 5): số hành động / đồ khác nhau đã có ít nhất một sao câu thuộc khung — tính lại từ sao câu.
+// ======================================================================================================
+
+/**
+ * @param {object[]} records mọi bản ghi tiến độ
+ * @returns {{ key: string, frame: string, count: number, what: string }[]} I am / he is / she is ___ing, This is / That is ___
+ */
+export function frameSummary(records) {
+  const sets = { me: new Set(), he: new Set(), she: new Set(), this: new Set(), that: new Set() };
+  for (const r of records) {
+    if (!(r.mastery > 0)) continue;
+    const word = String(r.word);
+    if (isDoingKey(word)) {
+      const [base, personId] = word.slice('doing:'.length).split('|');
+      const group = personId === 'me' ? 'me' : personOf(personId).gender === 'm' ? 'he' : 'she';
+      sets[group].add(base);
+    } else if (isNearKey(word)) {
+      const [which, item] = word.slice('near:'.length).split('|');
+      sets[which]?.add(item);
+    }
+  }
+  return [
+    { key: 'frame:i am ___ing', frame: 'I am …ing', group: 'me', what: 'hành động' },
+    { key: 'frame:he is ___ing', frame: 'He is …ing', group: 'he', what: 'hành động' },
+    { key: 'frame:she is ___ing', frame: 'She is …ing', group: 'she', what: 'hành động' },
+    { key: 'frame:this is {a} ___', frame: 'This is …', group: 'this', what: 'đồ' },
+    { key: 'frame:that is {a} ___', frame: 'That is …', group: 'that', what: 'đồ' },
+  ].map(({ group, ...f }) => ({ ...f, count: sets[group].size }));
+}
+
+// ======================================================================================================
+// Bố mẹ tạo bài bằng prompt (mục 6)
+// ======================================================================================================
+
+/** Chủ đề gợi ý cho bài "Ai đang làm gì?". */
+export const DOING_TOPICS = ['At school', 'In the kitchen', 'At the park', 'Helping at home', 'Bath time', 'At the beach'];
+
+/** Prompt tạo bài "Ai đang làm gì?": 3–4 hành động bé làm theo được; app tự ghép tên người. */
+export function buildDoingLessonPrompt({ topic, count = 4, age = 3, avoid = [] }) {
+  const shape = `{
+  "kind": "patterns",
+  "style": "doing",
+  "title": "Morning",
+  "titleVi": "Buổi sáng",
+  "emoji": "🌅",
+  "together": "brush",
+  "actions": [
+    { "en": "brushing {pos} teeth", "base": "brush", "vi": "đánh răng", "emoji": "🪥", "motion": "brush" },
+    { "en": "eating breakfast", "base": "eat", "vi": "ăn sáng", "emoji": "🍞", "motion": "eat" }
+  ]
+}`;
+  return [
+    `You are an English teacher for a ${age}-year-old Vietnamese child who is learning present continuous sentences about the family ("Daddy is cooking. I am cooking!").`,
+    `Create one lesson about the topic "${topic}" with exactly ${count} everyday actions.`,
+    '',
+    'Reply with ONLY one JSON object in exactly this format. No explanation, no greeting, no markdown:',
+    shape,
+    '',
+    'Rules:',
+    `- "actions": exactly ${count} different actions a ${age}-year-old can see at home and copy with their body (no dangerous actions).`,
+    '- "en": the -ing phrase WITHOUT any person, spelled correctly (running, making). Write {pos} where a possessive goes ("brushing {pos} teeth", "washing {pos} hands"); the app fills his / her / my. Never write a name or he / she.',
+    '- "base": ONE word the child will most likely say, usually the plain verb (brush, cook, read); all different.',
+    '- "vi": the action in natural Vietnamese (đánh răng); "emoji": one emoji showing the object of the action.',
+    `- "motion": exactly one of: ${MOTION_NAMES.join(', ')} (use "none" when nothing fits).`,
+    '- "together": the "base" of the action the whole family can do together at the end (the easiest to copy).',
+    '- "title": 1–3 English words; "titleVi": Vietnamese title; "emoji": one emoji for the lesson.',
+    avoid.length ? `- Avoid these actions (already in other lessons): ${avoid.join(', ')}.` : null,
+  ].filter((line) => line !== null).join('\n');
+}
+
+/** Tranh dùng được cho bài "Gần – xa" (có hai vùng gần / xa). */
+export const NEAR_FAR_SCENES = () => Object.keys(NEAR_FAR_ZONES).map((id) => SCENE_BY_ID.get(id));
+
+/** Prompt tạo bài "Gần – xa": AI chọn 3 cặp (gần, xa) từ sticker của tranh + đồ thêm (app gửi danh sách mã kèm mạo từ). */
+export function buildNearFarLessonPrompt({ sceneId, age = 3 }) {
+  const scene = SCENE_BY_ID.get(sceneId);
+  const stickers = scene.items.filter((it) => ARTICLES[it.name]).map((it) => `${it.id} (${it.name}, ${ARTICLES[it.name]})`);
+  const extras = Object.entries(EXTRA_ITEMS).map(([id, x]) => `${id} (${x.en}, ${x.article})`);
+  const shape = `{
+  "kind": "patterns",
+  "style": "nearFar",
+  "title": "In the park",
+  "titleVi": "Ở công viên",
+  "emoji": "${scene.emoji}",
+  "scene": "${scene.id}",
+  "pairs": [
+    { "near": "flower", "far": "tree" },
+    { "near": "ball", "far": "kite" },
+    { "near": "dog", "far": "bird" }
+  ]
+}`;
+  return [
+    `You are an English teacher for a ${age}-year-old Vietnamese child who is learning "This is …" (near, can touch) and "That is …" (far, must point).`,
+    `Create one lesson on the picture "${scene.en}" (${scene.setting}).`,
+    '',
+    'Reply with ONLY one JSON object in exactly this format. No explanation, no greeting, no markdown:',
+    shape,
+    '',
+    'Rules:',
+    `- "scene": exactly "${scene.id}".`,
+    '- "pairs": exactly 3 pairs. "near" and "far" are item CODES chosen ONLY from these lists (code (name, article)):',
+    `  stickers of this picture: ${stickers.join('; ')}`,
+    `  extra items for any picture: ${extras.join('; ')}`,
+    '- "far" items are things that are big or really far away in real life (tree, bus, plane, cow, boat…); "near" items are small things a child can hold or touch (flower, ball, shell…).',
+    '- The app shows the near item BIG in front and the far item SMALL (about 40%) far away, so you do not write sizes.',
+    '- Every item is used only ONCE in the lesson. Do not use plural items.',
+    '- "title": 2–4 English words; "titleVi": Vietnamese title; "emoji": one emoji for the lesson.',
+  ].join('\n');
 }

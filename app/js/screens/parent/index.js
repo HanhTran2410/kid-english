@@ -28,6 +28,7 @@ import { soundsAdminView } from './sounds.js';
 import { doctorAdminView } from './doctor.js';
 import { jobsAdminView } from './jobs.js';
 import { mathImagesView } from './math-images.js';
+import { frameSummary } from '../../patterns2.js';
 
 const VIEWS = {
   menu: menuView,
@@ -168,7 +169,16 @@ function progressView(app) {
     const numbers = numberRecords(list).filter(isLearned).sort((a, b) => Number(a.word.split(':')[1]) - Number(b.word.split(':')[1]));
     const letters = letterRecords(list).filter(isLearned).sort((a, b) => a.word.localeCompare(b.word));
     const sounds = soundRecords(list).filter(isLearned).sort((a, b) => a.word.localeCompare(b.word));
-    if (!words.length && !phrases.length && !numbers.length && !letters.length && !sounds.length) {
+    // Sao khung của Mẫu câu mở rộng (SPEC-patterns2 mục 5): số hành động / đồ khác nhau bé đã nói được CẢ CÂU (có sao).
+    const frames = frameSummary(list);
+    if (frames.some((f) => f.count)) {
+      body.append(section('Mẫu câu — bé nói được khung câu',
+        h('p.muted', { text: 'Gộp mọi bài "Ai đang làm gì?" và "Gần – xa": đếm số hành động / đồ khác nhau đã có ít nhất một sao câu (bé nói cả câu, hoặc chạm / đưa đúng ở trò chơi).' }),
+        h('ul.progress-list', {}, ...frames.map((f) => h('li', {},
+          h('span.p-word', {}, h('b', { text: f.frame })),
+          h('span.p-meta', { text: f.count ? `với ${f.count} ${f.what}` : 'chưa có' }))))));
+    }
+    if (!words.length && !phrases.length && !numbers.length && !letters.length && !sounds.length && !frames.some((f) => f.count)) {
       body.append(section(null, h('p', { text: 'Bé chưa học từ, câu, số hay chữ cái nào.' })));
       return;
     }

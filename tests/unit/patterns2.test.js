@@ -25,7 +25,7 @@ test('4 bài có sẵn hợp lệ, kiểu doing thuộc Mẫu câu; tab riêng "
     assert.equal(l.topic, 'Who is doing?');
     assert.equal(l.actions.length, 4);
   }
-  assert.deepEqual(buildDoingSteps(morning).map((s) => s.stage), ['watch', 'watch', 'watch', 'watch', 'ask', 'ask', 'ask']);
+  assert.deepEqual(buildDoingSteps(morning).map((s) => s.stage), ['watch', 'watch', 'watch', 'watch', 'ask', 'ask', 'ask', 'who', 'who', 'together']);
 });
 
 test('DO-13: ghép câu is / am, his / her / my / our / their; câu hỏi; tiếng Việt', () => {
@@ -113,7 +113,11 @@ test('DO-16: tiến độ theo từng người — sao của Daddy không làm G
 
 test('DO-12 / học tiếp: kế hoạch đã lưu còn hợp lệ thì dùng lại, hỏng thì lập lại', () => {
   const saved = { cast: ['daddy', 'grandma'], pairs: [['daddy', 'grandma'], ['daddy', 'grandma'], ['daddy', 'grandma'], ['daddy', 'grandma']], questions: [{ person: 'daddy', action: 1 }, { person: 'me', action: 0 }, { person: 'grandma', action: 3 }] };
-  assert.equal(doingPlan(morning, { family: ['sister', 'brother'], saved }), saved);
+  // Kế hoạch lưu từ P1 (chưa có phần C): giữ nguyên người / câu hỏi, chỉ thêm phần C; đã đủ thì dùng lại y nguyên.
+  const upgraded = doingPlan(morning, { family: ['sister', 'brother'], saved });
+  assert.deepEqual({ ...upgraded, who: undefined }, { ...saved, who: undefined });
+  assert.equal(upgraded.who.length, 2);
+  assert.equal(doingPlan(morning, { family: ['sister', 'brother'], saved: upgraded }), upgraded);
   const fresh = doingPlan(morning, { family: ['sister', 'brother'], saved: { ...saved, pairs: [['daddy', 'nobody']] } });
   assert.deepEqual(fresh.cast, ['brother', 'sister']);
   assert.equal(fresh.pairs.length, 4);
