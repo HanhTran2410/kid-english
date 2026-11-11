@@ -391,6 +391,17 @@ export const NEAR_FAR_ZONES = {
   beach: { far: [158, 118, 60, 54], near: [166, 214, 112, 56], bong: [310, 206, 84, 56] },
   garden: { far: [150, 96, 90, 52], near: [12, 214, 140, 56], bong: [300, 206, 90, 56] },
   street: { far: [252, 18, 120, 64], near: [16, 222, 140, 56], bong: [300, 214, 90, 56] },
+  // Trong nhà: vùng xa là khoảng tường trống phía sau, vùng gần là sàn phía trước.
+  bedroom: { far: [158, 100, 60, 50], near: [134, 236, 84, 56], bong: [300, 218, 90, 52] },
+  kitchen: { far: [160, 80, 72, 50], near: [20, 238, 120, 54], bong: [330, 216, 64, 56] },
+  party: { far: [170, 80, 70, 52], near: [20, 240, 120, 52], bong: [190, 216, 100, 56] },
+  bathroom: { far: [270, 70, 80, 50], near: [40, 236, 120, 50], bong: [200, 218, 90, 52] },
+  classroom: { far: [170, 46, 80, 50], near: [100, 236, 96, 54], bong: [300, 216, 90, 56] },
+  // Ngoài trời / dưới nước: vùng xa ở trời / nước phía trên, vùng gần ở mặt đất / bãi cát phía trước.
+  space: { far: [160, 108, 70, 48], near: [40, 236, 130, 54], bong: [250, 216, 90, 56] },
+  jungle: { far: [190, 90, 70, 52], near: [150, 202, 120, 46], bong: [300, 216, 90, 56] },
+  snow: { far: [190, 64, 80, 50], near: [16, 228, 130, 56], bong: [300, 216, 90, 56] },
+  sea: { far: [250, 70, 80, 50], near: [150, 240, 120, 52], bong: [24, 216, 100, 56] },
 };
 
 /**
@@ -412,6 +423,29 @@ export const ARTICLES = {
   plane: 'a', 'traffic light': 'a',
   // garden
   caterpillar: 'a', ant: 'an', hedgehog: 'a', sunflower: 'a', rose: 'a', mushroom: 'a', strawberry: 'a',
+  // bedroom
+  'teddy bear': 'a', doll: 'a', train: 'a', robot: 'a', book: 'a', clock: 'a', shirt: 'a', cap: 'a', shoe: 'a', drum: 'a', puzzle: 'a',
+  crayon: 'a',
+  // kitchen
+  banana: 'a', milk: 'none', bread: 'none', cheese: 'none', tomato: 'a', cake: 'a', cookie: 'a', pizza: 'a', cup: 'a', spoon: 'a',
+  watermelon: 'a',
+  // space
+  astronaut: 'an', rocket: 'a', alien: 'an', star: 'a', comet: 'a', satellite: 'a', 'flying saucer': 'a', telescope: 'a',
+  earth: 'the', sun: 'the', moon: 'the',
+  // jungle
+  monkey: 'a', lion: 'a', tiger: 'a', elephant: 'an', giraffe: 'a', zebra: 'a', snake: 'a', parrot: 'a', crocodile: 'a', hippo: 'a',
+  gorilla: 'a', sloth: 'a', frog: 'a', flamingo: 'a',
+  // party
+  'birthday cake': 'a', cupcake: 'a', gift: 'a', 'party popper': 'a', candy: 'none', lollipop: 'a', juice: 'none', donut: 'a', candle: 'a',
+  // snow
+  snowman: 'a', penguin: 'a', 'polar bear': 'a', fox: 'a', owl: 'an', deer: 'a', sled: 'a', snowflake: 'a', scarf: 'a',
+  'ice skate': 'an', 'pine tree': 'a',
+  // sea
+  blowfish: 'a', squid: 'a', mermaid: 'a', anchor: 'an', diamond: 'a', 'diving mask': 'a',
+  // bathroom
+  soap: 'none', sponge: 'a', toothbrush: 'a', 'toilet paper': 'none', bottle: 'a',
+  // classroom
+  notebook: 'a', pencil: 'a', ruler: 'a', backpack: 'a', globe: 'a', computer: 'a', bell: 'a',
 };
 
 /** Tên tiếng Việt của sticker (phụ đề "Đây là … / Kia là …"). */
@@ -426,6 +460,21 @@ export const NEAR_VI = {
   'fire truck': 'xe cứu hỏa', ambulance: 'xe cứu thương', truck: 'xe tải', motorbike: 'xe máy', helicopter: 'trực thăng',
   plane: 'máy bay', 'traffic light': 'đèn giao thông', caterpillar: 'con sâu', ant: 'con kiến', hedgehog: 'con nhím',
   sunflower: 'hoa hướng dương', rose: 'hoa hồng', mushroom: 'cây nấm', strawberry: 'quả dâu',
+  'teddy bear': 'gấu bông', doll: 'búp bê', train: 'tàu hỏa', robot: 'người máy', book: 'quyển sách', clock: 'đồng hồ',
+  shirt: 'áo', cap: 'mũ lưỡi trai', shoe: 'chiếc giày', drum: 'cái trống', puzzle: 'đồ ghép hình', crayon: 'bút sáp',
+  banana: 'quả chuối', milk: 'sữa', bread: 'bánh mì', cheese: 'phô mai', tomato: 'quả cà chua', cake: 'bánh ngọt', cookie: 'bánh quy',
+  pizza: 'bánh pizza', cup: 'cái cốc', spoon: 'cái thìa', watermelon: 'quả dưa hấu',
+  astronaut: 'nhà du hành vũ trụ', rocket: 'tên lửa', alien: 'người ngoài hành tinh', star: 'ngôi sao', comet: 'sao chổi',
+  satellite: 'vệ tinh', 'flying saucer': 'đĩa bay', telescope: 'kính thiên văn', earth: 'trái đất', sun: 'mặt trời', moon: 'mặt trăng',
+  monkey: 'con khỉ', lion: 'sư tử', tiger: 'con hổ', elephant: 'con voi', giraffe: 'hươu cao cổ', zebra: 'ngựa vằn', snake: 'con rắn',
+  parrot: 'con vẹt', crocodile: 'cá sấu', hippo: 'hà mã', gorilla: 'khỉ đột', sloth: 'con lười', frog: 'con ếch', flamingo: 'hồng hạc',
+  'birthday cake': 'bánh sinh nhật', cupcake: 'bánh cupcake', gift: 'hộp quà', 'party popper': 'pháo giấy', candy: 'kẹo',
+  lollipop: 'kẹo mút', juice: 'nước ép', donut: 'bánh donut', candle: 'cây nến',
+  snowman: 'người tuyết', penguin: 'chim cánh cụt', 'polar bear': 'gấu Bắc Cực', fox: 'con cáo', owl: 'con cú', deer: 'con hươu',
+  sled: 'xe trượt tuyết', snowflake: 'bông tuyết', scarf: 'khăn quàng', 'ice skate': 'giày trượt băng', 'pine tree': 'cây thông',
+  blowfish: 'cá nóc', squid: 'con mực', mermaid: 'nàng tiên cá', anchor: 'mỏ neo', diamond: 'viên kim cương', 'diving mask': 'kính lặn',
+  soap: 'xà phòng', sponge: 'miếng bọt biển', toothbrush: 'bàn chải đánh răng', 'toilet paper': 'giấy vệ sinh', bottle: 'cái chai',
+  notebook: 'quyển vở', pencil: 'bút chì', ruler: 'thước kẻ', backpack: 'ba lô', globe: 'quả địa cầu', computer: 'máy tính', bell: 'cái chuông',
 };
 
 /** Đồ thêm (mục 4.3): đồ xa hay gặp nhưng không phải sticker, dùng cho mọi tranh. */
@@ -621,6 +670,25 @@ const NEAR_BUILTIN = [
   // Đường phố: vùng xa là bầu trời trên dãy cửa hàng — dùng đồ bay (trực thăng, máy bay, chim) thay cho xe buýt.
   { builtin: 'near-street', title: 'In the street', titleVi: 'Trên đường phố', emoji: '🚦', scene: 'street',
     pairs: [['bicycle', 'helicopter'], ['dog', 'plane'], ['balloon', 'bird']] },
+  // 9 tranh còn lại của Dán tranh. Trong nhà: đồ xa ở phía tường bên kia phòng; ngoài trời: đồ to / ở xa thật.
+  { builtin: 'near-bedroom', title: 'In my bedroom', titleVi: 'Trong phòng ngủ', emoji: '🛏️', scene: 'bedroom',
+    pairs: [['ball', 'clock'], ['crayon', 'train'], ['book', 'balloon']] },
+  { builtin: 'near-kitchen', title: 'In the kitchen', titleVi: 'Trong bếp', emoji: '🍳', scene: 'kitchen',
+    pairs: [['spoon', 'cake'], ['egg', 'watermelon'], ['cookie', 'cat']] },
+  { builtin: 'near-space', title: 'In space', titleVi: 'Trong vũ trụ', emoji: '🚀', scene: 'space',
+    pairs: [['telescope', 'moon'], ['robot', 'rocket'], ['alien', 'earth']] },
+  { builtin: 'near-jungle', title: 'In the jungle', titleVi: 'Trong rừng', emoji: '🌴', scene: 'jungle',
+    pairs: [['frog', 'elephant'], ['butterfly', 'giraffe'], ['banana', 'monkey']] },
+  { builtin: 'near-party', title: 'At the party', titleVi: 'Ở bữa tiệc', emoji: '🎂', scene: 'party',
+    pairs: [['cupcake', 'balloon'], ['lollipop', 'gift'], ['donut', 'birthday-cake']] },
+  { builtin: 'near-snow', title: 'In the snow', titleVi: 'Trong tuyết', emoji: '⛄', scene: 'snow',
+    pairs: [['scarf', 'snowman'], ['rabbit', 'polar-bear'], ['gift', 'pine-tree']] },
+  { builtin: 'near-sea', title: 'Under the sea', titleVi: 'Dưới biển', emoji: '🐠', scene: 'sea',
+    pairs: [['shell', 'whale'], ['crab', 'shark'], ['shrimp', 'dolphin']] },
+  { builtin: 'near-bathroom', title: 'In the bathroom', titleVi: 'Trong phòng tắm', emoji: '🛁', scene: 'bathroom',
+    pairs: [['duck', 'boat'], ['toothbrush', 'whale'], ['sponge', 'teddy-bear']] },
+  { builtin: 'near-classroom', title: 'In the classroom', titleVi: 'Trong lớp học', emoji: '🏫', scene: 'classroom',
+    pairs: [['pencil', 'clock'], ['crayon', 'globe'], ['apple', 'computer']] },
 ];
 
 /** Các bài "Gần – xa" có sẵn (tab riêng trong Mẫu câu). `builtin`: mã cố định để tự thêm một lần. */

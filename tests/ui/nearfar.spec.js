@@ -59,14 +59,15 @@ async function autoBring(page) {
 
 const centerOf = (b) => ({ x: b.x + b.width / 2, y: b.y + b.height / 2 });
 
-test('tab "This and that" trong Mẫu câu: 5 bài, thẻ hiện "This · That"', async ({ page }) => {
+test('tab "This and that" trong Mẫu câu: 14 bài (mỗi tranh một bài), thẻ hiện "This · That"', async ({ page }) => {
   await fakeSpeech(page);
   await startApp(page);
   await page.getByRole('button', { name: 'Mẫu câu' }).click();
   await page.locator('.topic-tab[data-topic="This and that"]').click();
   const cards = page.locator('.lesson-card');
-  await expect(cards).toHaveCount(5);
-  await expect(cards.locator('.lesson-title')).toHaveText(['In the park', 'On the farm', 'At the beach', 'In the garden', 'In the street']);
+  await expect(cards).toHaveCount(14);
+  await expect(cards.locator('.lesson-title')).toHaveText(['In the park', 'On the farm', 'At the beach', 'In the garden', 'In the street',
+    'In my bedroom', 'In the kitchen', 'In space', 'In the jungle', 'At the party', 'In the snow', 'Under the sea', 'In the bathroom', 'In the classroom']);
   await expect(cards.first().locator('.lesson-frame')).toHaveText('This · That');
 });
 

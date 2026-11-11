@@ -13,8 +13,8 @@ import { wordRecords, emptyProgress } from '../../app/js/progress.js';
 const box = ([x, y, w, h]) => ({ l: x, t: y, r: x + w, b: y + h });
 const overlap = (a, b) => a.l < b.r && b.l < a.r && a.t < b.b && b.t < a.b;
 
-test('NF-02: vùng của 5 tranh — trong tranh, không chồng nhau, vùng xa ở nửa trên, vùng gần ở phần ba dưới, chỗ Bông ngoài hai vùng', () => {
-  assert.deepEqual(Object.keys(NEAR_FAR_ZONES).sort(), ['beach', 'farm', 'garden', 'park', 'street']);
+test('NF-02: vùng của 14 tranh — trong tranh, không chồng nhau, vùng xa ở nửa trên, vùng gần ở phần ba dưới, chỗ Bông ngoài hai vùng', () => {
+  assert.deepEqual(Object.keys(NEAR_FAR_ZONES).sort(), [...SCENE_BY_ID.keys()].sort(), 'mọi tranh của Dán tranh đều dùng được');
   for (const [id, z] of Object.entries(NEAR_FAR_ZONES)) {
     assert.ok(SCENE_BY_ID.has(id), id);
     const [near, far, bong] = [box(z.near), box(z.far), box(z.bong)];
@@ -26,19 +26,20 @@ test('NF-02: vùng của 5 tranh — trong tranh, không chồng nhau, vùng xa 
   }
 });
 
-test('mạo từ và tiếng Việt: mọi sticker của 5 tranh đều có trong bảng (trừ đồ số nhiều)', () => {
+test('mạo từ và tiếng Việt: mọi sticker của 14 tranh đều có trong bảng (trừ đồ số nhiều)', () => {
   for (const id of Object.keys(NEAR_FAR_ZONES)) {
     for (const it of SCENE_BY_ID.get(id).items) {
-      if (it.name === 'sunglasses') continue;
+      if (['sunglasses', 'socks', 'grapes', 'scissors'].includes(it.name)) continue;
       assert.ok(['a', 'an', 'the', 'none'].includes(ARTICLES[it.name]), `${it.name} có mạo từ`);
       assert.ok(NEAR_VI[it.name], `${it.name} có tiếng Việt`);
     }
   }
 });
 
-test('DATA-07: 5 bài có sẵn hợp lệ — đồ có trong tranh hoặc đồ thêm, có mạo từ, không trùng, tab "This and that"', () => {
+test('DATA-07: 14 bài có sẵn hợp lệ — đồ có trong tranh hoặc đồ thêm, có mạo từ, không trùng, tab "This and that"', () => {
   const lessons = builtInNearFarLessons();
-  assert.equal(lessons.length, 5);
+  assert.equal(lessons.length, 14);
+  assert.deepEqual(lessons.map((l) => l.scene).sort(), Object.keys(NEAR_FAR_ZONES).sort(), 'mỗi tranh một bài');
   for (const l of lessons) {
     assert.ok(isNearFarLesson(l));
     assert.equal(l.topic, NEAR_TOPIC);
@@ -109,7 +110,7 @@ test('DATA-02 / DATA-05: báo lỗi rõ — sticker không có trong tranh, trù
   assert.match(errs({ pairs: [{ near: 'flower', far: 'tree' }, { near: 'flower', far: 'kite' }, { near: 'dog', far: 'bird' }] }), /"flower" có ở 2 cặp/);
   assert.match(errs({ scene: 'beach', pairs: [{ near: 'sunglasses', far: 'boat' }, { near: 'crab', far: 'dolphin' }, { near: 'shell', far: 'whale' }] }), /số nhiều/);
   assert.match(errs({ pairs: [{ near: 'flower', far: 'tree' }] }), /Bài có 1 cặp\. Mỗi bài đúng 3 cặp/);
-  assert.match(errs({ scene: 'space', pairs: [] }), /Tranh "space" chưa dùng được/);
+  assert.match(errs({ scene: 'zoo', pairs: [] }), /Tranh "zoo" chưa dùng được/);
   assert.match(errs({ pairs: [{ near: 'flower', far: 'tree', farArticle: 'some' }, { near: 'ball', far: 'kite' }, { near: 'dog', far: 'bird' }] }), /article "some" không hợp lệ/);
 });
 
