@@ -39,6 +39,13 @@ async function solveFarm(page) {
   }
   if (s === 'count') return page.locator(`.fm-card[data-n="${await page.locator('.fm-basket-in .fm-in').count()}"]`).click();
   if (s === 'pick') return page.locator('.fm-apple.match:not(.taken)').first().click();
+  // Nhiệm vụ mới (SPEC-jobs4 2.1, 2.2): ca D trời hôm nay, Good night cuối lượt.
+  if (s === 'wcard') return page.locator(`.fm-wcard[data-w="${await page.locator('.fm-wcards').getAttribute('data-target')}"]`).click();
+  if (s === 'help') return page.locator(`.fm-help[data-item="${await page.locator('.fm-helps').getAttribute('data-target')}"]`).click();
+  if (s === 'night') {
+    const target = await page.locator('.fm-yard').getAttribute('data-target');
+    return page.locator(target ? `.fm-sleep[data-animal="${target}"]` : '.fm-sleep:not(.in)').first().click();
+  }
 }
 
 test('JOBS3-01: trang chọn nghề có đủ 10 nghề, điện thoại 390px không cuộn ngang', async ({ page }) => {
@@ -64,7 +71,7 @@ test('Nông trại mức 1: cho ăn ("Hay, please!"), nhầm → "That\'s … . 
   await expect(page.locator('.fm-animal .fm-tummy')).toHaveCount(0);
   await expect(page.locator('.fm-animal')).not.toContainText('null');
   for (let i = 0; i < 40 && !(await page.locator('.jb-play.jb-done').count()); i++) {
-    if (/door|feed|eggs|count|pick/.test(await play(page).getAttribute('data-state'))) await solveFarm(page);
+    if (/door|feed|eggs|count|pick|wcard|help|night/.test(await play(page).getAttribute('data-state'))) await solveFarm(page);
     await page.waitForTimeout(150);
   }
   await done(page);
@@ -179,7 +186,7 @@ test('JOBS3-11 / 21: ra nền giữa ca rồi quay lại → đúng ca, đúng b
   await openJob(page, 'farm', 2);
   for (let i = 0; i < 40; i++) {
     if ((await page.locator('.fm-basket-in .fm-in').count()) >= 1) break;
-    if (/door|feed|eggs|count|pick/.test(await play(page).getAttribute('data-state'))) await solveFarm(page);
+    if (/door|feed|eggs|count|pick|wcard|help|night/.test(await play(page).getAttribute('data-state'))) await solveFarm(page);
     await page.waitForTimeout(150);
   }
   test.skip(!(await page.locator('.fm-basket-in .fm-in').count()), 'ca trứng không ở đầu lượt');

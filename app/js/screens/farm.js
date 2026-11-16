@@ -1,6 +1,8 @@
-// Trò Nông trại (SPEC-jobs3.md mục 4): bác nông dân bên trái; ca A cho thú ăn (mức 3: nghe tiếng kêu, chạm đúng cửa
-// chuồng), ca B nhặt trứng (đếm, mức 2 thẻ số, mức 3 theo màu), ca C hái táo (màu, mức 3 màu + cỡ + số). 3 ca → sticker.
-// Trạng thái: start → enter → door | feed | eggs | count | pick ⇄ busy → leave → ca sau | done. Khung chung ở jobs/kit.js.
+// Trò Nông trại (SPEC-jobs3.md mục 4, SPEC-jobs4.md mục 2): bác nông dân bên trái; ca A cho thú ăn (mức 3: nghe tiếng kêu,
+// chạm đúng cửa chuồng), ca B nhặt trứng (đếm, mức 2 thẻ số, mức 3 theo màu), ca C hái táo (màu, mức 3 màu + cỡ + số),
+// ca D trời hôm nay (giúp thú theo thời tiết, mức 3 chọn thẻ thời tiết trước). 3 ca → Good night (đưa thú về chuồng) → sticker.
+// Trạng thái: start → enter → door | feed | eggs | count | pick | wcard | help ⇄ busy → leave → ca sau | night → done.
+// Khung chung ở jobs/kit.js.
 
 import { h } from '../ui.js';
 import { play } from '../speech/sfx.js';
@@ -17,12 +19,14 @@ import {
   MAX_LEVEL, planRound, FOODS, ANIMAL_BY_ID, eggMatches, pickMatches,
   MORNING_LINE, HUNGRY_ASK_LINE, NOT_ME_LINE, YUMMY_LINE, EGGS_INTRO_LINE, HOW_MANY_LINE, ENOUGH_LINE, GOOD_JOB_LINE, CLUCK_LINE,
   hungryLine, foodAskLine, foodWrongLine, foodNamesLine, eggCountLine, eggAskLine, eggWrongLine, cardWrongLine, pickAskLine, pickWrongLine, countLine,
+  WEATHER_HELP, HELPS, HELP_ORDER, WEATHER_EMOJI, WEATHER_VI, WHAT_WEATHER_LINE, THANK_YOU_LINE, NIGHT_LINE, GOOD_NIGHT_LINE,
+  weatherLine, helpAskLine, helpAnimalLine, helpWrongLine, weatherYesLine, weatherCardWrongLine, nightCallLine, nightWrongLine,
 } from '../jobs/farm.js';
 
 const JOB = 'farm';
 const ENTER_MS = 650;
 const LEAVE_MS = 600;
-const ACTIVE = ['door', 'feed', 'eggs', 'count', 'pick'];
+const ACTIVE = ['door', 'feed', 'eggs', 'count', 'pick', 'wcard', 'help', 'night'];
 const INK = '#3d2c5e';
 
 /** Thức ăn vẽ SVG (viewBox 100 × 100) — hay và grass khác nhau ở dáng: bó buộc dây ↔ cụm cỏ mọc từ đất (mục 4.1). */
@@ -45,6 +49,12 @@ const TREE_SVG = `<svg viewBox="0 0 300 300" aria-hidden="true" preserveAspectRa
 const APPLE_SPOTS = [[24, 34], [50, 20], [76, 34], [36, 56], [64, 56]];
 const BASKET_SVG = `<svg viewBox="0 0 120 100" aria-hidden="true"><path d="M30 40 Q60 -6 90 40" fill="none" stroke="#7a5230" stroke-width="7" stroke-linecap="round"/><path d="M8 40 H112 L100 94 H20 Z" fill="#d9a066" stroke="${INK}" stroke-width="5" stroke-linejoin="round"/><path d="M14 56 H106 M18 74 H102 M40 40 L44 94 M60 40 V94 M80 40 L76 94" stroke="#a9744a" stroke-width="4"/></svg>`;
 const COLOR_EMOJI = { red: '🔴', green: '🟢', yellow: '🟡' };
+/** Đồ giúp ca D (viewBox 100 × 100), khác dáng hẳn nhau: xô nước — chăn kẻ ô gấp — cửa chuồng gỗ chéo. */
+const HELP_SVG = {
+  water: `<svg viewBox="0 0 100 100" aria-hidden="true"><path d="M30 26 Q50 2 70 26" fill="none" stroke="${INK}" stroke-width="5"/><path d="M20 30 H80 L72 90 H28 Z" fill="#74c0fc" stroke="${INK}" stroke-width="5" stroke-linejoin="round"/><path d="M24 44 Q50 54 76 44" fill="none" stroke="#fff" stroke-width="5" stroke-linecap="round"/><path d="M50 58 Q42 70 50 74 Q58 70 50 58 Z" fill="#fff"/></svg>`,
+  blanket: `<svg viewBox="0 0 100 100" aria-hidden="true"><path d="M10 24 H90 V70 Q70 86 50 70 Q30 86 10 70 Z" fill="#ff8787" stroke="${INK}" stroke-width="5" stroke-linejoin="round"/><path d="M36 24 V74 M64 24 V74 M10 46 H90" stroke="#ffd8a8" stroke-width="7"/></svg>`,
+  barn: `<svg viewBox="0 0 100 100" aria-hidden="true"><path d="M14 36 L50 8 L86 36 V94 H14 Z" fill="#e03131" stroke="${INK}" stroke-width="5" stroke-linejoin="round"/><rect x="30" y="48" width="40" height="46" fill="#ffe8cc" stroke="${INK}" stroke-width="4"/><path d="M30 48 L70 94 M70 48 L30 94" stroke="#a9744a" stroke-width="5"/></svg>`,
+};
 
 export function farmScreen(app, params = {}) {
   let progress = cleanJobState(app.settings.farmGame, { maxLevel: MAX_LEVEL });
@@ -58,6 +68,7 @@ export function farmScreen(app, params = {}) {
   let recorded = new Set();
   let shown = false; // bong bóng thức ăn (mức 2–3) đã hiện sau lần nhầm / nhắc đầu
   let lastWrong = { key: '', at: 0 };
+  let nightOn = false; // đang ở Good night (bản lưu: quay lại không nói lại câu mở đầu)
   let pics = null; // ảnh thức ăn của bố mẹ (Góc bố mẹ → Ảnh Đóng vai); chưa có thì hình vẽ sẵn
 
   const cur = () => plan?.cases[caseIdx];
@@ -76,6 +87,10 @@ export function farmScreen(app, params = {}) {
   const tree = h('div.fm-tree', {}, h('span.fm-tree-art', { html: TREE_SVG }));
   const basket = h('div.fm-basket', { 'aria-hidden': 'true' }, h('span.fm-basket-in'), h('span.fm-basket-face', { html: BASKET_SVG }));
   const basketIn = basket.firstElementChild;
+  const sky = h('div.fm-sky', { hidden: true, 'aria-hidden': 'true' });
+  const helps = h('div.fm-helps', { hidden: true });
+  const wcards = h('div.fm-wcards', { hidden: true });
+  const yard = h('div.fm-yard', { hidden: true });
 
   const kit = jobScreen(app, {
     job: JOB, background: { lessonId: JOBS_BG_IMAGES, word: JOB }, className: 'fm-play', stageClass: 'fm-stage', title: '👩‍🌾 Farm',
@@ -112,7 +127,7 @@ export function farmScreen(app, params = {}) {
     },
   });
   const { stage, count, talk } = kit;
-  stage.append(barn, animalEl, wish, nests, cards, tree, basket);
+  stage.append(sky, barn, animalEl, wish, nests, cards, tree, basket, wcards, helps, yard);
   const stepKey = () => `${kit.epoch}:${caseIdx}:${state}:${taken.list().length}`;
 
   function setState(s) {
@@ -121,7 +136,7 @@ export function farmScreen(app, params = {}) {
     app.root.dataset.case = cur()?.kind ?? '';
   }
   const snap = (extra = {}) => saveSnap(JOB, {
-    level, plan, caseIdx, wrongs, nudges, taken: taken.list(), recorded: [...recorded], shown, ...extra,
+    level, plan, caseIdx, wrongs, nudges, taken: taken.list(), recorded: [...recorded], shown, nightOn, ...extra,
   });
   /** Một lần nhầm (gộp chạm nhầm cùng chỗ trong 0,4 giây). Trả về false nếu bị gộp. */
   function countWrong(key) {
@@ -134,11 +149,12 @@ export function farmScreen(app, params = {}) {
     play('boing');
     return true;
   }
-  /** Ghi "đã gặp" một lần mỗi ca (tập `recorded` giữ qua ra nền / 🧹). */
+  /** Ghi "đã gặp" một lần mỗi ca, và một từ chỉ một lần mỗi lượt (tập `recorded` giữ qua ra nền / 🧹). */
   function record(key, word, emoji) {
     const k = `${caseIdx}:${key}`;
-    if (recorded.has(k)) return;
+    if (recorded.has(k) || recorded.has(`w:${word}`)) return;
     recorded.add(k);
+    recorded.add(`w:${word}`);
     markPracticed(app, word, emoji);
   }
   function seen(id) {
@@ -156,6 +172,10 @@ export function farmScreen(app, params = {}) {
 
   // ---------- Câu hỏi của bước đang làm (nghe lại / nhắc) ----------
   function promptLines(short = false) {
+    if (state === 'night') {
+      const target = nightTarget();
+      return target ? [F(nightCallLine(target, level))] : [F(NIGHT_LINE)];
+    }
     const c = cur();
     if (!c) return [];
     if (state === 'door') return [F(HUNGRY_ASK_LINE)];
@@ -163,10 +183,12 @@ export function farmScreen(app, params = {}) {
     if (state === 'eggs') return [F(c.ask ? eggAskLine(c.ask) : EGGS_INTRO_LINE)];
     if (state === 'count') return [F(HOW_MANY_LINE)];
     if (state === 'pick') return [F(pickAskLine(c.ask))];
+    if (state === 'wcard') return [F(WHAT_WEATHER_LINE)];
+    if (state === 'help') return level >= 3 ? [F(helpAnimalLine(c.animal))] : short ? [A(helpAskLine(c.weather))] : [F(weatherLine(c.weather)), A(helpAskLine(c.weather))];
     return [];
   }
   function nudgeTarget() {
-    const c = cur();
+    const c = cur() ?? {};
     if (state === 'door') restartAnim(doors.querySelector(`[data-animal="${c.animal}"]`), 'nudge');
     else if (state === 'feed') {
       showWish();
@@ -177,20 +199,31 @@ export function farmScreen(app, params = {}) {
       restartAnim(egg ?? hen, 'nudge');
     } else if (state === 'count') restartAnim(cards.querySelector(`[data-n="${c.total}"]`), 'nudge');
     else if (state === 'pick') restartAnim(tree.querySelector('.fm-apple.match:not(.taken)'), 'nudge');
+    else if (state === 'wcard') restartAnim(wcards.querySelector(`[data-w="${c.weather}"]`), 'nudge');
+    else if (state === 'help') restartAnim(helps.querySelector(`[data-item="${WEATHER_HELP[c.weather]}"]`), 'nudge');
+    else if (state === 'night') restartAnim(yard.querySelector(`[data-animal="${nightTarget() ?? ''}"]`) ?? yard.querySelector('.fm-sleep:not(.in)'), 'nudge');
   }
 
   // ---------- Vẽ ----------
   function showScene(kind) {
     stage.dataset.scene = kind;
-    animalEl.hidden = kind !== 'feed';
-    barn.hidden = kind !== 'feed';
+    animalEl.hidden = kind !== 'feed' && kind !== 'weather';
+    animalEl.classList.remove('helped-hot', 'helped-cold', 'helped-rainy');
+    delete animalEl.dataset.feel;
+    nightOn = kind === 'night';
+    barn.hidden = !['feed', 'weather', 'night'].includes(kind);
+    barn.classList.remove('sleep');
     nests.hidden = kind !== 'eggs';
     cards.hidden = true;
     tree.hidden = kind !== 'pick';
-    basket.hidden = kind === 'feed';
+    basket.hidden = ['feed', 'weather', 'night'].includes(kind);
+    sky.hidden = true;
+    helps.hidden = kind !== 'weather';
+    wcards.hidden = true;
+    yard.hidden = kind !== 'night';
     wish.hidden = true;
     basketIn.replaceChildren();
-    count.textContent = `${caseIdx + 1}/${plan.cases.length}`;
+    count.textContent = `${Math.min(caseIdx + 1, plan.cases.length)}/${plan.cases.length}`;
   }
   function showWish() {
     const c = cur();
@@ -232,6 +265,7 @@ export function farmScreen(app, params = {}) {
     snap();
     if (c.kind === 'feed') return startFeed(resume, e);
     if (c.kind === 'eggs') return startEggs(resume, e);
+    if (c.kind === 'weather') return startWeather(resume, e);
     return startPick(resume, e);
   }
 
@@ -542,6 +576,198 @@ export function farmScreen(app, params = {}) {
     nextCase(e, tree);
   }
 
+// Ca D — trời hôm nay (SPEC-jobs4 2.1): mức 3 chọn thẻ thời tiết trước (bước 1 khóa khi đúng), rồi chọn việc giúp.
+  async function startWeather(resume, e) {
+    const c = cur();
+    sky.dataset.weather = c.weather;
+    sky.hidden = false;
+    renderAnimal(c.animal);
+    animalEl.querySelector('.fm-tummy')?.remove(); // không đói — chỉ khó chịu vì thời tiết
+    animalEl.dataset.feel = c.weather;
+    animalEl.hidden = false;
+    renderDoors({ doors: null });
+    renderHelps(c);
+    const cardDone = !c.cards || taken.has('wcard');
+    helps.hidden = !cardDone; // mức 3: đồ giúp hiện sau khi chọn đúng thẻ (một bước một lúc, không chồng lên thẻ)
+    wcards.replaceChildren(...(c.cards ?? []).map((w) => h('button.fm-wcard', {
+      type: 'button', 'aria-label': `Thẻ ${WEATHER_VI[w]}`, dataset: { w }, text: WEATHER_EMOJI[w],
+      onclick: () => tapWeatherCard(w),
+    })));
+    wcards.hidden = cardDone;
+    wcards.dataset.target = c.weather; // cho test; bé không thấy
+    if (!resume) {
+      play('whoosh');
+      restartAnim(animalEl, 'enter');
+      await wait(ENTER_MS);
+      if (e !== kit.epoch) return;
+    }
+    if (cardDone) return askHelp(e);
+    setState('wcard');
+    snap();
+    await talk([F(WHAT_WEATHER_LINE)]);
+    if (e === kit.epoch && state === 'wcard') kit.armNudge();
+  }
+  function renderHelps(c) {
+    const right = WEATHER_HELP[c.weather];
+    helps.replaceChildren(...HELP_ORDER.map((id) => h('button.fm-help', {
+      type: 'button', 'aria-label': HELPS[id].vi, dataset: { item: id },
+      class: level <= 1 && id === right ? 'glow' : '',
+      onclick: () => tapHelp(id),
+    }, h('span', { html: HELP_SVG[id] }))));
+    helps.dataset.target = right; // cho test; bé không thấy
+  }
+  async function askHelp(e) {
+    const c = cur();
+    wcards.hidden = true;
+    helps.hidden = false;
+    setState('help');
+    snap();
+    await talk(level >= 3 ? [F(helpAnimalLine(c.animal))] : [F(weatherLine(c.weather)), A(helpAskLine(c.weather))]);
+    if (e === kit.epoch && state === 'help') kit.armNudge();
+  }
+  async function tapWeatherCard(w) {
+    if (state !== 'wcard') return;
+    const e = kit.epoch;
+    const c = cur();
+    const el = wcards.querySelector(`[data-w="${w}"]`);
+    if (w !== c.weather) {
+      if (!countWrong(`w:${w}`)) return;
+      restartAnim(el, 'shake');
+      if (wrongs >= 2) restartAnim(wcards.querySelector(`[data-w="${c.weather}"]`), 'nudge');
+      const k = stepKey();
+      await talk([F(weatherCardWrongLine(w, c.weather))]);
+      if (k === stepKey()) kit.armNudge();
+      return;
+    }
+    if (!taken.take('wcard')) return;
+    setState('busy');
+    kit.clearNudge();
+    if (wrongs === 0) record(`weather:${c.weather}`, c.weather, WEATHER_EMOJI[c.weather]);
+    // Bước 1 xong: khóa, lần nhầm của bước 2 tính lại từ đầu.
+    wrongs = 0;
+    nudges = 0;
+    snap();
+    el.classList.add('right');
+    play('ding');
+    await talk([F(weatherYesLine(c.weather))]);
+    if (e !== kit.epoch) return;
+    askHelp(e);
+  }
+  async function tapHelp(id) {
+    if (state !== 'help') return;
+    const e = kit.epoch;
+    const c = cur();
+    const right = WEATHER_HELP[c.weather];
+    const el = helps.querySelector(`[data-item="${id}"]`);
+    if (id !== right) {
+      const target = helps.querySelector(`[data-item="${right}"]`);
+      // Mức 1 là khám phá: đồ đúng nhún, không tính nhầm.
+      if (level <= 1) {
+        restartAnim(target, 'nudge');
+        return;
+      }
+      if (!countWrong(`h:${id}`)) return;
+      restartAnim(el, 'shake');
+      if (wrongs >= 2) restartAnim(target, 'nudge');
+      const k = stepKey();
+      await talk([A(helpWrongLine(c.weather, id))]);
+      if (k === stepKey()) kit.armNudge();
+      return;
+    }
+    if (!taken.take('help')) return;
+    setState('busy');
+    kit.clearNudge();
+    if (level === 2 && wrongs === 0) record(`weather:${c.weather}`, c.weather, WEATHER_EMOJI[c.weather]);
+    if (level >= 2 && wrongs === 0 && c.weather === 'hot') record('water', 'water', '💧');
+    seen(`weather:${c.weather}`);
+    saveSnap(JOB, { level, plan, caseIdx: caseIdx + 1, wrongs: 0, nudges: 0, taken: [], recorded: [...recorded], shown: false });
+    el.classList.add('used');
+    play(c.weather === 'rainy' ? 'whoosh' : 'pop');
+    animalEl.classList.add(`helped-${c.weather}`);
+    await wait(700);
+    if (e !== kit.epoch) return;
+    sky.hidden = true;
+    renderAnimal(c.animal, 'happy');
+    play('sparkle');
+    await talk([A(THANK_YOU_LINE)]);
+    if (e !== kit.epoch) return;
+    nextCase(e, animalEl);
+  }
+
+  // Good night, farm! (SPEC-jobs4 2.2) — cuối lượt: đưa 3 con về chuồng.
+  const nightTarget = () => plan.night.calls?.find((id) => !taken.has(`in:${id}`)) ?? null;
+  async function startNight(resume = null) {
+    const e = kit.epoch;
+    caseIdx = plan.cases.length;
+    wrongs = resume?.wrongs ?? 0;
+    nudges = resume?.nudges ?? 0;
+    taken = claims(resume?.taken ?? []);
+    kit.renderTray([]);
+    setState('enter');
+    showScene('night');
+    renderDoors({ doors: null });
+    yard.replaceChildren(...plan.night.animals.map((id) => h('button.fm-sleep', {
+      type: 'button', 'aria-label': ANIMAL_BY_ID.get(id).name, dataset: { animal: id },
+      class: taken.has(`in:${id}`) ? 'in' : '',
+      onclick: () => tapSleep(id),
+    }, animalFace(id, 'happy', 'span.fm-sleep-face', ANIMAL_BY_ID.get(id).name))));
+    snap();
+    if (!resume) {
+      await talk([F(NIGHT_LINE)]);
+      if (e !== kit.epoch) return;
+    }
+    callNext(e);
+  }
+  async function callNext(e) {
+    const target = nightTarget();
+    yard.dataset.target = target ?? '';
+    setState('night');
+    snap();
+    if (target) {
+      if (level >= 3) await animalSound(target, 'farmer');
+      if (e !== kit.epoch) return;
+      await talk([F(nightCallLine(target, level))]);
+    }
+    if (e === kit.epoch && state === 'night') kit.armNudge();
+  }
+  async function tapSleep(id) {
+    if (state !== 'night' || taken.has(`in:${id}`)) return;
+    const e = kit.epoch;
+    const el = yard.querySelector(`[data-animal="${id}"]`);
+    const target = nightTarget();
+    if (target && id !== target) {
+      if (!countWrong(`n:${id}`)) return;
+      restartAnim(el, 'shake');
+      if (wrongs >= 2) restartAnim(yard.querySelector(`[data-animal="${target}"]`), 'nudge');
+      const k = stepKey();
+      await animalSound(id, 'farmer');
+      if (k !== stepKey()) return;
+      await talk([F(nightWrongLine(id, target, level))]);
+      if (k === stepKey()) kit.armNudge();
+      return;
+    }
+    if (!taken.take(`in:${id}`)) return;
+    setState('busy');
+    kit.clearNudge();
+    const a = ANIMAL_BY_ID.get(id);
+    if (level >= 2 && wrongs === 0 && a.lesson) record(`night:${id}`, a.name, a.emoji);
+    wrongs = 0;
+    nudges = 0;
+    const n = plan.night.animals.filter((x) => taken.has(`in:${x}`)).length;
+    const all = n >= plan.night.animals.length;
+    snap(all ? { nightDone: true } : {});
+    el.classList.add('in');
+    await animalSound(id);
+    if (e !== kit.epoch) return;
+    if (level <= 1) await talk([F(countLine(n))]);
+    if (e !== kit.epoch) return;
+    if (!all) return callNext(e);
+    barn.classList.add('sleep');
+    await talk([F(GOOD_NIGHT_LINE)]);
+    if (e !== kit.epoch) return;
+    finishRound();
+  }
+
   async function nextCase(e, el) {
     setState('leave');
     restartAnim(el, 'leave');
@@ -549,8 +775,9 @@ export function farmScreen(app, params = {}) {
     if (e !== kit.epoch) return;
     el.classList.remove('leave');
     caseIdx += 1;
-    if (caseIdx >= plan.cases.length) finishRound();
-    else startCase();
+    if (caseIdx < plan.cases.length) startCase();
+    else if (plan.night) startNight();
+    else finishRound();
   }
 
   function finishRound() {
@@ -608,13 +835,14 @@ export function farmScreen(app, params = {}) {
       plan = s.plan;
       caseIdx = s.caseIdx;
       recorded = new Set(s.recorded ?? []);
-      if (caseIdx >= plan.cases.length) {
+      if (caseIdx >= plan.cases.length && plan.night && !s.nightDone) startNight(s.nightOn ? s : null);
+      else if (caseIdx >= plan.cases.length) {
         caseIdx = plan.cases.length - 1;
         count.textContent = `${plan.cases.length}/${plan.cases.length}`;
         finishRound();
       } else startCase(s);
     } else {
-      plan = planRound(level, { seen: progress.seen });
+      plan = planRound(level, { seen: progress.seen, rounds: progress.rounds });
       caseIdx = 0;
       begin();
     }

@@ -1,5 +1,6 @@
-// Trò Nông trại (SPEC-jobs3.md mục 4): cho thú ăn (nghe tiếng kêu / tên thức ăn), nhặt trứng (đếm, mức 3 theo màu),
-// hái quả (theo màu, mức 3 màu + cỡ + số). File thuần: dữ liệu, kế hoạch lượt (có kiểm tra bất biến mục 2.2), câu nói.
+// Trò Nông trại (SPEC-jobs3.md mục 4, SPEC-jobs4.md mục 2): cho thú ăn (nghe tiếng kêu / tên thức ăn), nhặt trứng (đếm,
+// mức 3 theo màu), hái quả (theo màu, mức 3 màu + cỡ + số), trời hôm nay (giúp thú theo thời tiết), cuối lượt Good night
+// (đưa thú về chuồng). File thuần: dữ liệu, kế hoạch lượt (có kiểm tra bất biến mục 2.2), câu nói.
 
 import { planChecked, shuffle, pick, randInt, leastSeen, NUMBER_WORDS, cap } from './levels.js';
 
@@ -29,6 +30,20 @@ export const EGG_COLORS = ['white', 'brown'];
 export const APPLE_COLORS = ['red', 'green', 'yellow'];
 export const COLOR_VI = { red: 'đỏ', green: 'xanh lá', yellow: 'vàng', white: 'trắng', brown: 'nâu' };
 const HAY_GRASS = ['hay', 'grass'];
+/** Ca D (SPEC-jobs4 2.1): ba tình huống thời tiết, mỗi tình huống đúng một việc giúp. *sunny* chỉ là thẻ nhiễu ở mức 3. */
+export const WEATHERS = ['hot', 'cold', 'rainy'];
+export const WEATHER_CARDS = ['hot', 'cold', 'rainy', 'sunny'];
+export const WEATHER_HELP = { hot: 'water', cold: 'blanket', rainy: 'barn' };
+/** Đồ giúp (vẽ SVG, thứ tự cố định trên màn): `that` câu "That's …", `vi` phụ đề. */
+export const HELPS = {
+  water: { that: "That's the water.", vi: 'xô nước' },
+  blanket: { that: "That's the blanket.", vi: 'cái chăn' },
+  barn: { that: "That's the barn.", vi: 'cửa chuồng' },
+};
+export const HELP_ORDER = ['water', 'blanket', 'barn'];
+/** Hình thẻ thời tiết — cùng emoji của bài Weather. */
+export const WEATHER_EMOJI = { hot: '🥵', cold: '🥶', rainy: '🌧️', sunny: '☀️' };
+export const WEATHER_VI = { hot: 'nóng', cold: 'lạnh', rainy: 'mưa', sunny: 'nắng' };
 
 // ---------- Kế hoạch từng ca ----------
 /**
@@ -116,8 +131,39 @@ export const pickMatches = (c) => c.apples.filter((a) => a.color === c.ask.color
 /** Trứng khớp yêu cầu (mức 3) — mức 1–2: mọi quả. */
 export const eggMatches = (c) => c.hens.flatMap((h) => h.eggs).filter((e) => !c.ask || e.color === c.ask.color);
 
+/**
+ * Ca D — trời hôm nay: { kind: 'weather', animal, weather, cards: [3 thẻ thời tiết] | null }.
+ * Mức 3: thẻ đúng + 2 thẻ nhiễu khác nhau trong 3 từ còn lại (gồm *sunny*).
+ */
+export function makeWeatherCase(level, animal, weather, { rng = Math.random } = {}) {
+  const cards = level >= 3 ? shuffle([weather, ...shuffle(WEATHER_CARDS.filter((w) => w !== weather), rng).slice(0, 2)], rng) : null;
+  return { kind: 'weather', animal, weather, cards };
+}
+
+/**
+ * Good night (SPEC-jobs4 2.2): 3 con khác nhau (khác tiếng) ngoài sân, ưu tiên con đã gặp trong lượt; `calls`: thứ tự
+ * bác gọi (mức 2–3), mức 1 null (bé chạm con nào cũng được).
+ */
+export function makeNight(level, cases, { rng = Math.random } = {}) {
+  const met = [...new Set(cases.map((c) => c.animal).filter(Boolean))];
+  const rest = shuffle(FARM_ANIMALS.map((a) => a.id).filter((id) => !met.includes(id)), rng);
+  const animals = shuffle([...shuffle(met, rng), ...rest].slice(0, 3), rng);
+  return { animals, calls: level >= 2 ? shuffle(animals, rng) : null };
+}
+export function nightOk(n, level) {
+  if (!n || n.animals.length !== 3 || new Set(n.animals).size !== 3 || !n.animals.every((id) => ANIMAL_BY_ID.has(id))) return false;
+  if (new Set(n.animals.map((id) => ANIMAL_BY_ID.get(id).says)).size !== 3) return false;
+  if (level >= 2) return Boolean(n.calls) && n.calls.length === 3 && n.calls.every((id) => n.animals.includes(id)) && new Set(n.calls).size === 3;
+  return n.calls === null;
+}
+
 /** Bất biến của một ca (SPEC-jobs3 mục 2.2). */
 export function caseOk(c, level) {
+  if (c.kind === 'weather') {
+    if (!WEATHERS.includes(c.weather) || !ANIMAL_BY_ID.has(c.animal)) return false;
+    if (level >= 3) return Boolean(c.cards) && c.cards.length === 3 && new Set(c.cards).size === 3 && c.cards.includes(c.weather) && c.cards.every((w) => WEATHER_CARDS.includes(w));
+    return c.cards === null;
+  }
   if (c.kind === 'feed') {
     const food = ANIMAL_BY_ID.get(c.animal).food;
     if (c.tray.length !== 3 || new Set(c.tray).size !== 3 || c.tray.filter((f) => f === food).length !== 1) return false;
@@ -148,26 +194,34 @@ export function caseOk(c, level) {
   return false;
 }
 /** Số thao tác con của bé trong ca (không tính chạm gà để gà đứng dậy — khám phá). */
-export const caseActions = (c) => (c.kind === 'feed' ? (c.doors ? 2 : 1) : c.kind === 'eggs' ? (c.ask ? c.ask.count : c.total) + (c.cards ? 1 : 0) : c.ask.count);
+export const caseActions = (c) => (c.kind === 'weather' ? (c.cards ? 2 : 1) : c.kind === 'feed' ? (c.doors ? 2 : 1) : c.kind === 'eggs' ? (c.ask ? c.ask.count : c.total) + (c.cards ? 1 : 0) : c.ask.count);
+
+/** Ca B (trứng) và C (hái quả) luân phiên theo số lượt đã chơi ở mức 2–3 (SPEC-jobs4 2.1). */
+export const eggsOrPick = (rounds) => ((rounds ?? 0) % 2 === 0 ? 'eggs' : 'pick');
 
 /**
- * Kế hoạch một lượt (SPEC-jobs3 mục 4.4): mức 1 A + B + A, mức 2 A + B + C xáo, mức 3 A (cửa chuồng) + B + C.
- * Con vật ưu tiên ít gặp (`seen`), ba ca A khác con vật.
+ * Kế hoạch một lượt (SPEC-jobs4 2.1, thay SPEC-jobs3 4.4): mức 1 A + B + D, mức 2 A + D + (B / C luân phiên) xáo,
+ * mức 3 A (cửa chuồng) + D (thẻ thời tiết) + (B / C). Con vật ưu tiên ít gặp (`seen`), ca A và ca D khác con vật;
+ * thời tiết chọn tình huống ít gặp nhất (`seen` `weather:*`). Cuối lượt: Good night (`night`).
  */
-export function planRound(level, { rng = Math.random, seen = {} } = {}) {
+export function planRound(level, { rng = Math.random, seen = {}, rounds = 0 } = {}) {
   const make = () => {
     const animals = leastSeen(FARM_ANIMALS.map((a) => a.id), seen, rng);
-    const kinds = level <= 1 ? ['feed', 'eggs', 'feed'] : level === 2 ? shuffle(['feed', 'eggs', 'pick'], rng) : ['feed', 'eggs', 'pick'];
+    const weather = leastSeen(WEATHERS.map((w) => `weather:${w}`), seen, rng)[0].slice('weather:'.length);
+    const kinds = level <= 1 ? ['feed', 'eggs', 'weather'] : level === 2 ? shuffle(['feed', 'weather', eggsOrPick(rounds)], rng) : ['feed', 'weather', eggsOrPick(rounds)];
     let a = 0;
-    const cases = kinds.map((k) => (k === 'feed' ? makeFeedCase(level, animals[a++], { rng }) : k === 'eggs' ? makeEggsCase(level, { rng }) : makePickCase(level, { rng })));
-    return { cases };
+    const cases = kinds.map((k) => (k === 'feed' ? makeFeedCase(level, animals[a++], { rng })
+      : k === 'weather' ? makeWeatherCase(level, animals[a++], weather, { rng })
+        : k === 'eggs' ? makeEggsCase(level, { rng }) : makePickCase(level, { rng })));
+    return { cases, night: makeNight(level, cases, { rng }) };
   };
   const ok = (p) => p.cases.length === CASES_PER_ROUND && p.cases.every((c) => caseOk(c, level) && caseActions(c) <= 5)
-    && new Set(p.cases.filter((c) => c.kind === 'feed').map((c) => c.animal)).size === p.cases.filter((c) => c.kind === 'feed').length;
-  return planChecked(make, ok, () => fallbackPlan(level));
+    && new Set(p.cases.filter((c) => c.animal).map((c) => c.animal)).size === p.cases.filter((c) => c.animal).length
+    && nightOk(p.night, level);
+  return planChecked(make, ok, () => fallbackPlan(level, rounds));
 }
 /** Kế hoạch cố định của mức (khi bốc 50 lần vẫn không đạt — không xảy ra trong thực tế). */
-export function fallbackPlan(level) {
+export function fallbackPlan(level, rounds = 0) {
   const feed = (animal, tray, doors = null) => ({ kind: 'feed', animal, tray, doors });
   const eggs = {
     kind: 'eggs', hens: [{ id: 'h0', eggs: [{ id: 'e0', color: 'white' }, { id: 'e2', color: level >= 3 ? 'brown' : 'white' }] }, { id: 'h1', eggs: [{ id: 'e1', color: 'white' }] }],
@@ -177,8 +231,10 @@ export function fallbackPlan(level) {
     ? { kind: 'pick', apples: [{ id: 'a0', color: 'red', size: 'big' }, { id: 'a1', color: 'green', size: 'big' }, { id: 'a2', color: 'red', size: 'big' }, { id: 'a3', color: 'red', size: 'small' }], ask: { color: 'red', size: 'big', count: 2 } }
     : { kind: 'pick', apples: [{ id: 'a0', color: 'red', size: 'big' }, { id: 'a1', color: 'green', size: 'big' }, { id: 'a2', color: 'red', size: 'big' }, { id: 'a3', color: 'green', size: 'big' }], ask: { color: 'red', size: null, count: 2 } };
   const doors = level >= 3 ? ['cow', 'sheep', 'duck'] : null;
-  if (level <= 1) return { cases: [feed('cow', ['hay', 'carrot', 'corn']), eggs, feed('pig', ['apple', 'seeds', 'carrot'])] };
-  return { cases: [feed('cow', ['hay', 'carrot', 'corn'], doors), eggs, pickCase] };
+  const weather = { kind: 'weather', animal: 'pig', weather: 'cold', cards: level >= 3 ? ['hot', 'cold', 'sunny'] : null };
+  const night = { animals: ['cow', 'pig', 'duck'], calls: level >= 2 ? ['pig', 'duck', 'cow'] : null };
+  if (level <= 1) return { cases: [feed('cow', ['hay', 'carrot', 'corn']), eggs, weather], night };
+  return { cases: [feed('cow', ['hay', 'carrot', 'corn'], doors), weather, eggsOrPick(rounds) === 'eggs' ? eggs : pickCase], night };
 }
 
 // ---------- Câu nói ([en, vi]) ----------
@@ -219,3 +275,46 @@ export function pickWrongLine(ask, apple) {
 export const countLine = (n) => [`${cap(NUMBER_WORDS[n])}!`, `${n}!`];
 /** Bác nông dân đọc tên thức ăn mới (lần đầu gặp trong lượt) khi khay hiện: "Hay! Corn! Carrot!". */
 export const foodNamesLine = (ids) => [ids.map((f) => `${cap(FOODS[f].name)}!`).join(' '), ids.map((f) => `${cap(FOODS[f].vi)}!`).join(' ')];
+
+// ---------- Ca D — trời hôm nay (SPEC-jobs4 2.1) ----------
+const WEATHER_LINES = {
+  hot: ["It's hot!", 'Trời nóng quá!'],
+  cold: ["It's cold!", 'Trời lạnh quá!'],
+  rainy: ["It's rainy!", 'Trời mưa rồi!'],
+  sunny: ["It's sunny!", 'Trời nắng đẹp!'],
+};
+const HELP_ASK = {
+  hot: ['Water, please!', 'Cho tớ nước nhé!'],
+  cold: ['A blanket, please!', 'Cho tớ cái chăn nhé!'],
+  rainy: ['Go inside, please!', 'Cho tớ vào chuồng nhé!'],
+};
+const LOOK = {
+  hot: ['Look at the big red sun!', 'Nhìn ông mặt trời đỏ kìa!'],
+  cold: ['Look at the snow!', 'Nhìn tuyết rơi kìa!'],
+  rainy: ['Look at the rain!', 'Nhìn mưa kìa!'],
+};
+export const weatherLine = (w) => WEATHER_LINES[w];
+/** Con vật xin việc giúp (mức 1–2): "Water, please!". */
+export const helpAskLine = (w) => HELP_ASK[w];
+/** Mức 3: thú không xin, bác nông dân nhờ bé: "Help the cow!". */
+export const helpAnimalLine = (animal) => [`Help the ${ANIMAL_BY_ID.get(animal).name}!`, `Giúp ${ANIMAL_BY_ID.get(animal).vi} nào!`];
+export const helpWrongLine = (w, item) => [`${HELPS[item].that} ${WEATHER_LINES[w][0]} ${HELP_ASK[w][0]}`, `Đó là ${HELPS[item].vi}. ${WEATHER_LINES[w][1]} ${HELP_ASK[w][1]}`];
+export const WHAT_WEATHER_LINE = ["What's the weather?", 'Trời hôm nay thế nào?'];
+export const weatherYesLine = (w) => [`Yes! ${WEATHER_LINES[w][0]}`, `Đúng rồi! ${WEATHER_LINES[w][1]}`];
+/** Thẻ thời tiết sai: "That's sunny. Look at the snow!". */
+export const weatherCardWrongLine = (card, w) => [`That's ${card}. ${LOOK[w][0]}`, `Đó là trời ${WEATHER_VI[card]}. ${LOOK[w][1]}`];
+export const THANK_YOU_LINE = ['Thank you!', 'Cảm ơn bạn!'];
+
+// ---------- Good night, farm! (SPEC-jobs4 2.2) ----------
+export const NIGHT_LINE = ['Good night, farm! Time for bed!', 'Chúc nông trại ngủ ngon! Đi ngủ thôi!'];
+export const GOOD_NIGHT_LINE = ['Shh! Good night!', 'Suỵt! Ngủ ngon nhé!'];
+/** "moo" từ "Moo!". */
+const soundWord = (id) => ANIMAL_BY_ID.get(id).says.replace(/!$/, '').toLowerCase();
+/** Mức 2 gọi tên: "Cow, go in!"; mức 3 gọi bằng tiếng kêu: "Who says moo? Go in!". */
+export const nightCallLine = (id, level) => (level >= 3
+  ? [`Who says ${soundWord(id)}? Go in!`, `Bạn nào kêu "${soundWord(id)}"? Vào chuồng nào!`]
+  : [`${cap(ANIMAL_BY_ID.get(id).name)}, go in!`, `${cap(ANIMAL_BY_ID.get(id).vi)} ơi, vào chuồng nào!`]);
+/** Mức 2 chạm nhầm: "That's the pig. Cow, go in!"; mức 3: bác hỏi lại tiếng kêu. */
+export const nightWrongLine = (id, target, level) => (level >= 3
+  ? nightCallLine(target, level)
+  : [`That's the ${ANIMAL_BY_ID.get(id).name}. ${nightCallLine(target, level)[0]}`, `Đó là ${ANIMAL_BY_ID.get(id).vi}. ${nightCallLine(target, level)[1]}`]);
