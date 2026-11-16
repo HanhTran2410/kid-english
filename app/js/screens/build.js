@@ -1,7 +1,8 @@
 // Trò Thợ xây (SPEC-jobs3.md mục 6): chú thợ xây bên trái, bạn thú (khách) bên phải. Mở đầu đội mũ bảo hộ; ca A xây
 // nhà theo bản vẽ — mỗi lần một phần sáng lên, bé đưa hình trong khay vào (mức 1 bản vẽ lộ dáng + màu; mức 2–3 chỉ là ô
-// xám, phải nghe); ca B lấp ổ gà đúng dáng. Hình sai không nằm lên bản vẽ, bật về khay (tính nhầm).
-// Trạng thái: start → helmet → enter → part | hole ⇄ busy → leave → ca sau | done.
+// xám, phải nghe); ca B lấp ổ gà đúng dáng. Hình sai không nằm lên bản vẽ, bật về khay (tính nhầm). SPEC-jobs4 mục 4:
+// ca C sơn chính ngôi nhà ca A (thùng sơn → phần nhà), ca D xây tháp (đếm; mức 3 tiếp mẫu lặp màu). Lượt A + (B / D) + C.
+// Trạng thái: start → helmet → enter → part | hole | paint | tower ⇄ busy → leave → ca sau | done.
 
 import { h } from '../ui.js';
 import { play } from '../speech/sfx.js';
@@ -17,13 +18,15 @@ import {
   MAX_LEVEL, planRound, pieceFits, playedShapes2, SHAPES,
   HELMET_LINE, BUILD_LINE, HOUSE_LINE, MY_HOUSE_LINE, HOLE_LINE, ROAD_THANKS_LINE,
   partAskLine, partDoneLine, pieceWrongLine, holeAskLine, holeIntroLine, blockWrongLine,
+  bucketsOf, towerWant, PAINT_LINE, PAINT_DONE_LINE, TOWER_LINE, TOWER_DONE_LINE, NEXT_LINE, ENOUGH_LINE,
+  paintColorLine, paintAskLine, bucketWrongLine, partWrongLine, towerAskLine, blockColorWrongLine, patternLine, countLine,
 } from '../jobs/build.js';
 
 const JOB = 'build';
 const ENTER_MS = 650;
 const LEAVE_MS = 600;
 const DRIVE_MS = 900;
-const ACTIVE = ['helmet', 'part', 'hole'];
+const ACTIVE = ['helmet', 'part', 'hole', 'paint', 'tower'];
 const INK = '#3d2c5e';
 const HEX = { red: '#ff6b6b', blue: '#4dabf7', yellow: '#ffd43b', green: '#69db7c', grey: '#adb5bd', stone: '#ced4da' };
 const COLOR_EMOJI = { red: '🔴', blue: '🔵', yellow: '🟡', green: '🟢' };
@@ -57,6 +60,15 @@ const SLOT = {
   window: [{ left: 18, top: 50, width: 16, height: 22 }, { left: 66, top: 50, width: 16, height: 22 }],
 };
 
+/** Cửa sổ trên bản vẽ: cửa sổ to (mức 3) lớn hơn ô thường. */
+function windowRect(i, size) {
+  const r = SLOT.window[i % SLOT.window.length];
+  return size === 'big' ? { left: i % 2 ? r.left - 5 : r.left, top: r.top - 5, width: r.width + 5, height: r.height + 10 } : r;
+}
+const bucketSvg = (color) => `<svg viewBox="0 0 100 100" aria-hidden="true"><path d="M30 22 Q50 2 70 22" fill="none" stroke="${INK}" stroke-width="5"/><path d="M18 26 H82 L74 92 H26 Z" fill="#dee2e6" stroke="${INK}" stroke-width="5" stroke-linejoin="round"/><path d="M18 26 H82 L80 42 Q50 54 20 42 Z" fill="${HEX[color]}" stroke="${INK}" stroke-width="4" stroke-linejoin="round"/></svg>`;
+const brushSvg = (fill) => `<svg viewBox="0 0 60 120" aria-hidden="true"><rect x="24" y="44" width="12" height="72" rx="6" fill="#c2855a" stroke="${INK}" stroke-width="4"/><rect x="16" y="34" width="28" height="14" rx="3" fill="#adb5bd" stroke="${INK}" stroke-width="4"/><path d="M16 34 V14 Q30 2 44 14 V34 Z" fill="${fill}" stroke="${INK}" stroke-width="4" stroke-linejoin="round"/></svg>`;
+const blockSvg = (color) => `<svg viewBox="0 0 100 60" aria-hidden="true"><rect x="4" y="4" width="92" height="52" rx="8" fill="${HEX[color]}" stroke="${INK}" stroke-width="5"/><circle cx="30" cy="4" r="9" fill="${HEX[color]}" stroke="${INK}" stroke-width="4"/><circle cx="70" cy="4" r="9" fill="${HEX[color]}" stroke="${INK}" stroke-width="4"/></svg>`;
+
 export function buildScreen(app, params = {}) {
   let progress = cleanJobState(app.settings.buildGame, { maxLevel: MAX_LEVEL });
   const level = progress.level;
@@ -86,6 +98,15 @@ export function buildScreen(app, params = {}) {
   const blocks = h('div.bd-blocks');
   const smoke = h('span.bd-smoke', { 'aria-hidden': 'true', text: '💨' });
   const wave = h('div.bd-wave', { hidden: true, 'aria-hidden': 'true' });
+  const paints = h('div.bd-paints');
+  const brush = h('span.bd-brush', { hidden: true, 'aria-hidden': 'true' });
+  const tower = h('div.bd-tower');
+  const piles = h('div.bd-piles');
+  // Ca C: chạm phần nhà để sơn (các ô bản vẽ dựng lại mỗi lần vẽ — bắt chạm ở khung).
+  house.addEventListener('click', (ev) => {
+    const slot = ev.target.closest?.('.bd-slot');
+    if (slot && state === 'paint') tapPaintPart(slot.dataset.id);
+  });
 
   const kit = jobScreen(app, {
     job: JOB, background: { lessonId: JOBS_BG_IMAGES, word: JOB }, className: 'bd-play', stageClass: 'bd-stage', title: '👷 Builder',
@@ -128,7 +149,7 @@ export function buildScreen(app, params = {}) {
     },
   });
   const { stage, count, talk } = kit;
-  stage.append(helmetBtn, house, road, blocks, custEl, smoke, wave);
+  stage.append(helmetBtn, house, road, blocks, custEl, smoke, wave, paints, brush, tower, piles);
   const stepKey = () => `${kit.epoch}:${caseIdx}:${state}:${si}:${taken.list().length}`;
 
   function setState(s) {
@@ -148,10 +169,12 @@ export function buildScreen(app, params = {}) {
     play('boing');
     return true;
   }
+  /** Ghi "đã gặp" một lần mỗi ca, và một từ chỉ một lần mỗi lượt (SPEC-jobs3 2.7). */
   function record(key, word, emoji) {
     const k = `${caseIdx}:${key}`;
-    if (recorded.has(k)) return;
+    if (recorded.has(k) || recorded.has(`w:${word}`)) return;
     recorded.add(k);
+    recorded.add(`w:${word}`);
     markPracticed(app, word, emoji);
   }
   function seen(id) {
@@ -192,19 +215,29 @@ export function buildScreen(app, params = {}) {
     const c = cur();
     if (state === 'part') return [level <= 1 ? B(partAskLine(level, stepParts())) : K(partAskLine(level, stepParts()))];
     if (state === 'hole') return [B(holeAskLine(c.hole))];
+    if (state === 'paint') return [paintPrompt()];
+    if (state === 'tower') return [B(towerAskLine(c))];
     return [];
   }
   function nudgeTarget() {
     if (state === 'helmet') restartAnim(helmetBtn, 'nudge');
     else if (state === 'part') kit.setHint(rightPiece());
     else if (state === 'hole') restartAnim(blocks.querySelector(`[data-shape="${cur().hole}"]`), 'nudge');
+    else if (state === 'paint') {
+      const a = paintAsk();
+      restartAnim(dipped() ? house.querySelector(`.bd-slot[data-id="${a.id}"]`) : paints.querySelector(`[data-color="${a.color}"]`), 'nudge');
+    } else if (state === 'tower') restartAnim(piles.querySelector(`[data-color="${towerWant(cur(), towerPlaced())}"]`), 'nudge');
   }
 
   // ---------- Vẽ ----------
   function showScene(kind) {
     stage.dataset.scene = kind;
     helmetBtn.hidden = kind !== 'helmet';
-    house.hidden = kind !== 'house';
+    house.hidden = kind !== 'house' && kind !== 'paint';
+    paints.hidden = kind !== 'paint';
+    brush.hidden = true;
+    tower.hidden = kind !== 'tower';
+    piles.hidden = kind !== 'tower';
     road.hidden = kind !== 'road';
     blocks.hidden = kind !== 'road';
     custEl.hidden = kind === 'helmet';
@@ -222,7 +255,7 @@ export function buildScreen(app, params = {}) {
     const now = new Set(si < c.steps.length ? c.steps[si] : []);
     let w = 0;
     house.replaceChildren(...c.parts.map((p) => {
-      const r = p.part === 'window' ? SLOT.window[w++] : SLOT[p.part];
+      const r = p.part === 'window' ? windowRect(w++, p.size) : SLOT[p.part];
       const done = taken.has(`part:${p.id}`);
       const active = !done && now.has(p.id);
       const el = h('div.bd-slot', {
@@ -281,13 +314,15 @@ export function buildScreen(app, params = {}) {
     taken = claims(resume?.taken ?? []);
     setState('enter');
     showScene(c.kind);
-    renderCustomer(c.kind === 'house' ? 'happy' : 'sad');
+    renderCustomer(c.kind === 'road' ? 'sad' : 'happy');
     snap();
     if (!resume) {
       restartAnim(custEl, 'enter');
       await wait(ENTER_MS);
       if (e !== kit.epoch) return;
     }
+    if (c.kind === 'paint') return startPaint(resume, e);
+    if (c.kind === 'tower') return startTower(resume, e);
     if (c.kind === 'house') {
       house.classList.remove('built');
       renderHouse();
@@ -441,6 +476,212 @@ export function buildScreen(app, params = {}) {
     nextCase(e);
   }
 
+  // Ca C — sơn nhà (SPEC-jobs4 4.1): sơn chính ngôi nhà ca A. Mức 1 phần đang sơn sáng viền, chọn thùng là cọ tự quét;
+  // mức 2–3 chọn thùng (cọ nhúng màu — khóa bước) rồi chạm phần nhà.
+  const homeCase = () => plan.cases[0];
+  const homePart = (id) => homeCase().parts.find((p) => p.id === id);
+  const paintAsk = () => cur().asks[si];
+  const dipped = () => taken.has(`dip:${si}`);
+  function paintedColor(p) {
+    const done = cur().asks.slice(0, si).filter((a) => a.id === p.id).at(-1);
+    return done ? done.color : p.color;
+  }
+  function renderPaint() {
+    const c = cur();
+    const a = paintAsk();
+    let w = 0;
+    house.replaceChildren(...homeCase().parts.map((p) => {
+      const r = p.part === 'window' ? windowRect(w++, p.size) : SLOT[p.part];
+      const el = h('div.bd-slot.done', {
+        dataset: { part: p.part, id: p.id, size: p.size },
+        class: level <= 1 && a && a.id === p.id ? 'lit' : '',
+        style: { left: `${r.left}%`, top: `${r.top}%`, width: `${r.width}%`, height: `${r.height}%`, zIndex: p.part === 'wall' ? 1 : 2 },
+      });
+      el.innerHTML = shapeSvg(p.shape, HEX[paintedColor(p)], { box: true });
+      return el;
+    }));
+    house.dataset.want = a ? a.id : ''; // cho test; bé không thấy
+    paints.replaceChildren(...(a ? bucketsOf(c, si) : []).map((color) => h('button.bd-bucket', {
+      type: 'button', 'aria-label': `Thùng sơn ${color}`, dataset: { color }, onclick: () => tapBucket(color),
+    }, h('span', { html: bucketSvg(color) }))));
+    paints.dataset.want = a?.color ?? '';
+    brush.hidden = level <= 1 || !a;
+    brush.innerHTML = brushSvg(a && dipped() ? HEX[a.color] : '#fff');
+    brush.classList.toggle('dipped', Boolean(a && dipped()));
+  }
+  function paintPrompt() {
+    const a = paintAsk();
+    return level <= 1 ? B(paintColorLine(a.color)) : K(paintAskLine(homePart(a.id), a.color, level, si > 0));
+  }
+  async function startPaint(resume, e) {
+    house.classList.remove('built');
+    renderPaint();
+    if (si >= cur().asks.length) return paintDone(e);
+    await ask(resume ? [paintPrompt()] : [K(PAINT_LINE), paintPrompt()], 'paint');
+  }
+  async function tapBucket(color) {
+    if (state !== 'paint' || dipped()) return;
+    const e = kit.epoch;
+    const a = paintAsk();
+    const el = paints.querySelector(`[data-color="${color}"]`);
+    if (color !== a.color) {
+      if (!countWrong(`k:${si}:${color}`)) return;
+      restartAnim(el, 'shake');
+      if (wrongs >= 2) restartAnim(paints.querySelector(`[data-color="${a.color}"]`), 'nudge');
+      const k = stepKey();
+      await talk([B(bucketWrongLine(color, a.color))]);
+      if (k === stepKey()) kit.armNudge();
+      return;
+    }
+    if (!taken.take(`dip:${si}`)) return;
+    kit.clearNudge();
+    if (wrongs === 0) record(`paint:${si}`, a.color, COLOR_EMOJI[a.color]);
+    play('pop');
+    if (level <= 1) return paintPart(a.id, e); // mức 1: cọ tự quét phần đang sáng
+    // Bước chọn màu xong: khóa; lần nhầm của bước chọn phần tính lại từ đầu.
+    wrongs = 0;
+    nudges = 0;
+    snap();
+    renderPaint();
+    kit.armNudge();
+  }
+  async function tapPaintPart(id) {
+    if (state !== 'paint' || level <= 1) return;
+    const e = kit.epoch;
+    const a = paintAsk();
+    const slot = house.querySelector(`.bd-slot[data-id="${id}"]`);
+    if (!dipped()) {
+      // Cọ chưa có màu: cọ nhún (không tính nhầm).
+      restartAnim(brush, 'nudge');
+      return;
+    }
+    if (id !== a.id) {
+      if (!countWrong(`q:${si}:${id}`)) return;
+      restartAnim(slot, 'shake');
+      if (wrongs >= 2) restartAnim(house.querySelector(`.bd-slot[data-id="${a.id}"]`), 'nudge');
+      const k = stepKey();
+      await talk([B(partWrongLine(homePart(id), homePart(a.id), level))]);
+      if (k === stepKey()) kit.armNudge();
+      return;
+    }
+    const p = homePart(id);
+    if (wrongs === 0) {
+      seen(`part:${p.part}`);
+      if (level >= 3 && p.part === 'window') record(`psize:${si}`, p.size, p.size === 'big' ? '🐘' : '🐭');
+    }
+    paintPart(id, e);
+  }
+  async function paintPart(id, e) {
+    if (!taken.take(`painted:${si}`)) return;
+    setState('busy');
+    kit.clearNudge();
+    si += 1;
+    wrongs = 0;
+    nudges = 0;
+    const last = si >= cur().asks.length;
+    if (last) snapNext();
+    else snap();
+    play('whoosh');
+    renderPaint();
+    restartAnim(house.querySelector(`.bd-slot[data-id="${id}"]`), 'bd-swish');
+    await wait(450);
+    if (e !== kit.epoch) return;
+    if (last) return paintDone(e);
+    await ask([paintPrompt()], 'paint');
+  }
+  async function paintDone(e) {
+    setState('busy');
+    seen('paint');
+    paints.replaceChildren();
+    brush.hidden = true;
+    house.classList.add('built');
+    play('sparkle');
+    renderCustomer('happy');
+    restartAnim(custEl, 'hop');
+    await talk([K(PAINT_DONE_LINE)]);
+    if (e !== kit.epoch) return;
+    nextCase(e);
+  }
+
+  // Ca D — xây tháp (SPEC-jobs4 4.2): chạm đống khối, khối chồng lên đỉnh tháp. Mức 3: tiếp mẫu lặp.
+  const towerPlaced = () => taken.list().filter((k) => k.startsWith('t:')).length;
+  const towerSeq = () => {
+    const c = cur();
+    const put = Array.from({ length: towerPlaced() }, (_, k) => (c.next ? c.next[k] : c.color));
+    return [...(c.base ?? []), ...put];
+  };
+  function renderTower() {
+    const c = cur();
+    tower.replaceChildren(...towerSeq().map((color, i) => h('span.bd-tblock', { dataset: { color }, class: i < (c.base?.length ?? 0) ? 'base' : '' }, h('span', { html: blockSvg(color) }))));
+    piles.replaceChildren(...c.piles.map((color) => h('button.bd-pile', {
+      type: 'button', 'aria-label': `Khối ${color}`, dataset: { color }, onclick: () => tapPile(color),
+    }, h('span', { html: blockSvg(color) }), h('span', { html: blockSvg(color) }))));
+    const placed = towerPlaced();
+    tower.dataset.want = placed < c.n ? towerWant(c, placed) : ''; // cho test; bé không thấy
+    tower.classList.toggle('done', placed >= c.n); // cờ 🚩 trên đỉnh (CSS)
+  }
+  async function startTower(resume, e) {
+    tower.classList.remove('done');
+    renderTower();
+    if (towerPlaced() >= cur().n) return towerDone(e);
+    const c = cur();
+    const lines = resume ? [B(towerAskLine(c))] : [K(TOWER_LINE), ...(c.next ? [B(patternLine(c.base))] : []), B(towerAskLine(c))];
+    await ask(lines, 'tower');
+  }
+  async function tapPile(color) {
+    if (state !== 'tower') return;
+    const e = kit.epoch;
+    const c = cur();
+    const placed = towerPlaced();
+    const el = piles.querySelector(`[data-color="${color}"]`);
+    if (placed >= c.n) {
+      talk([B(ENOUGH_LINE)]); // đủ rồi: không nhận, không tính nhầm
+      return;
+    }
+    const want = towerWant(c, placed);
+    if (color !== want) {
+      if (!countWrong(`t:${placed}:${color}`)) return;
+      restartAnim(el, 'shake');
+      if (wrongs >= 2) restartAnim(piles.querySelector(`[data-color="${want}"]`), 'nudge');
+      const k = stepKey();
+      await talk(c.next ? [B(patternLine(towerSeq())), B(NEXT_LINE)] : [B(blockColorWrongLine(color, want))]);
+      if (k === stepKey()) kit.armNudge();
+      return;
+    }
+    if (!taken.take(`t:${placed}`)) return;
+    kit.clearNudge();
+    const n = placed + 1;
+    const done = n >= c.n;
+    if (c.next && wrongs === 0) record(`tower:${placed}`, color, COLOR_EMOJI[color]);
+    if (!c.next && c.piles.length > 1 && done && wrongs === 0) record('tower', color, COLOR_EMOJI[color]);
+    if (c.next) wrongs = 0; // mức 3: mỗi khối là một bước
+    if (done) setState('busy');
+    if (done) snapNext();
+    else snap();
+    const to = tower.getBoundingClientRect();
+    const g = await kit.flyTo(h('span.bd-piece.bd-fly', { html: blockSvg(color) }), center(el.getBoundingClientRect()), { x: to.left + to.width / 2, y: to.top });
+    kit.removeGhost(g);
+    if (e !== kit.epoch) return;
+    play('click');
+    renderTower();
+    const k = stepKey();
+    await talk(c.next ? [B(patternLine(towerSeq())), ...(done ? [] : [B(NEXT_LINE)])] : [B(countLine(n))]);
+    if (done) return towerDone(e);
+    if (k === stepKey()) kit.armNudge();
+  }
+  async function towerDone(e) {
+    if (e !== kit.epoch) return;
+    setState('busy');
+    seen('tower');
+    tower.classList.add('done');
+    play('sparkle');
+    renderCustomer('happy');
+    restartAnim(custEl, 'hop');
+    await talk([K(TOWER_DONE_LINE)]);
+    if (e !== kit.epoch) return;
+    nextCase(e);
+  }
+
   async function nextCase(e) {
     setState('leave');
     restartAnim(custEl, 'leave');
@@ -496,7 +737,7 @@ export function buildScreen(app, params = {}) {
       finishRound();
     } else startCase(s);
   } else {
-    plan = planRound(level, { shapes2, seen: progress.seen });
+    plan = planRound(level, { shapes2, seen: progress.seen, rounds: progress.rounds });
     caseIdx = 0;
     startHelmet();
   }

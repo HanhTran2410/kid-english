@@ -240,3 +240,97 @@ test('Đầu bếp mức 3 dọn bếp: chạm chỗ khi chưa chọn đồ — 
   await done(page);
   expect(await spoken(page)).toContain('All clean! Good job!');
 });
+
+// ---------- 0.73.0: 👷 Thợ xây — ca C sơn nhà (4.1), ca D xây tháp (4.2) ----------
+/** Giải bước đang chờ của Thợ xây. */
+async function solveBuild(page) {
+  const s = await play(page).getAttribute('data-state');
+  if (s === 'helmet') return page.locator('.bd-helmet').click();
+  if (s === 'part') {
+    for (const id of (await page.locator('.bd-plan').getAttribute('data-want')).split(',')) {
+      const item = page.locator(`.jb-tray [data-item="${id}:ok"]`);
+      if (await item.count()) return tapTray(page, `${id}:ok`);
+    }
+  }
+  if (s === 'hole') return page.locator(`.bd-block[data-shape="${await page.locator('.bd-hole').getAttribute('data-shape')}"]`).click();
+  if (s === 'paint') {
+    if (!(await page.locator('.bd-brush.dipped').count()) ) {
+      await page.locator(`.bd-bucket[data-color="${await page.locator('.bd-paints').getAttribute('data-want')}"]`).click();
+      if (await page.locator('.bd-brush').isHidden()) return; // mức 1: cọ tự quét
+    }
+    return page.locator(`.bd-slot[data-id="${await page.locator('.bd-plan').getAttribute('data-want')}"]`).dispatchEvent('click');
+  }
+  if (s === 'tower') return page.locator(`.bd-pile[data-color="${await page.locator('.bd-tower').getAttribute('data-want')}"]`).click();
+}
+async function playBuildUntil(page, re) {
+  for (let i = 0; i < 120; i++) {
+    const s = await play(page).getAttribute('data-state');
+    if (re.test(s)) return;
+    if (/^(helmet|part|hole|paint|tower)$/.test(s)) await solveBuild(page);
+    await page.waitForTimeout(150);
+  }
+  throw new Error(`không tới được ${re}`);
+}
+
+test('Thợ xây mức 1: A + B + C — sơn chính ngôi nhà vừa xây, phần đang sơn sáng viền, chọn thùng là cọ tự quét; hết lượt → sticker', async ({ page }) => {
+  await openJob(page, 'build', 1, 0);
+  await playBuildUntil(page, /^paint$/);
+  await expect.poll(() => spoken(page)).toContain('Paint my house, please!');
+  await expect(page.locator('.bd-slot')).toHaveCount(3);
+  await expect(page.locator('.bd-slot.lit')).toHaveCount(1);
+  await expect(page.locator('.bd-bucket')).toHaveCount(3);
+  const want = await page.locator('.bd-paints').getAttribute('data-want');
+  await expect.poll(() => spoken(page)).toContain(`${want[0].toUpperCase()}${want.slice(1)}, please!`);
+  for (let i = 0; i < 40 && !(await page.locator('.jb-play.jb-done').count()); i++) {
+    if ((await play(page).getAttribute('data-state')) === 'paint') await solveBuild(page);
+    await page.waitForTimeout(150);
+  }
+  await done(page);
+  expect(await spoken(page)).toContain('My beautiful house!');
+});
+
+test('Thợ xây mức 2 sơn nhà: chạm phần khi cọ chưa có màu — không tính nhầm (JOBS4-07); có màu rồi chạm sai phần → "That\'s the … . The …, please!", phần đó không đổi màu, cọ giữ màu (JOBS4-08); ra nền giữa ca C giữ phần đã sơn + cọ (JOBS4-09)', async ({ page }) => {
+  await openJob(page, 'build', 2, 0);
+  await playBuildUntil(page, /^paint$/);
+  const target = await page.locator('.bd-plan').getAttribute('data-want');
+  const color = await page.locator('.bd-paints').getAttribute('data-want');
+  const other = page.locator(`.bd-slot:not([data-id="${target}"])`).first();
+  const otherId = await other.getAttribute('data-id');
+  const otherHtml = await other.innerHTML();
+  await page.locator(`.bd-slot[data-id="${target}"]`).dispatchEvent('click');
+  await page.waitForTimeout(300);
+  expect((await spoken(page)).some((t) => /^That's the /.test(t))).toBe(false);
+  await page.locator(`.bd-bucket[data-color="${color}"]`).click();
+  await expect(page.locator('.bd-brush.dipped')).toHaveCount(1);
+  await page.locator(`.bd-slot[data-id="${otherId}"]`).dispatchEvent('click');
+  await expect.poll(async () => (await spoken(page)).some((t) => /^That's the \w+\. The \w+, please!$/.test(t))).toBe(true);
+  expect(await page.locator(`.bd-slot[data-id="${otherId}"]`).innerHTML()).toBe(otherHtml);
+  await expect(page.locator('.bd-brush.dipped')).toHaveCount(1);
+  await page.locator(`.bd-slot[data-id="${target}"]`).dispatchEvent('click');
+  await expect(page.locator('.bd-plan')).not.toHaveAttribute('data-want', target);
+  const painted = await page.locator(`.bd-slot[data-id="${target}"]`).innerHTML();
+  await setVisible(page, 'hidden');
+  await setVisible(page, 'visible');
+  await page.locator('.resume-overlay .start-btn').click();
+  await stateIs(page, 'paint');
+  expect(await page.locator(`.bd-slot[data-id="${target}"]`).innerHTML()).toBe(painted);
+});
+
+test('Thợ xây mức 3 xây tháp (lượt chẵn — JOBS4-19): mẫu lặp, đặt sai màu → chú đọc lại mẫu, tính nhầm, tháp giữ nguyên (JOBS4-18); đặt đúng 2 khối → cờ, "Hooray! A tall tower!"', async ({ page }) => {
+  await openJob(page, 'build', 3, 1);
+  await playBuildUntil(page, /^tower$/);
+  await expect.poll(() => spoken(page)).toContain('What comes next?');
+  const base = await page.locator('.bd-tblock').count();
+  expect([3, 4]).toContain(base);
+  const want = await page.locator('.bd-tower').getAttribute('data-want');
+  await page.locator(`.bd-pile:not([data-color="${want}"])`).first().click();
+  await expect.poll(async () => (await spoken(page)).filter((t) => t === 'What comes next?').length).toBeGreaterThan(1);
+  await expect(page.locator('.bd-tblock')).toHaveCount(base);
+  await solveBuild(page);
+  await expect(page.locator('.bd-tblock')).toHaveCount(base + 1);
+  await expect.poll(async () => (await spoken(page)).some((t) => new RegExp(`^${want[0].toUpperCase()}`).test(t) && t.split(', ').length === base + 1)).toBe(true);
+  await page.waitForTimeout(200);
+  await solveBuild(page);
+  await expect(page.locator('.bd-tower.done')).toHaveCount(1);
+  await expect.poll(() => spoken(page)).toContain('Hooray! A tall tower!');
+});

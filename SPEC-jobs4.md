@@ -1,6 +1,6 @@
 # SPEC — 🧑‍⚕️ Đóng vai nghề: nhiệm vụ mới cho cả 10 nghề
 
-> Phiên bản spec: **draft2** (sửa theo review, mục 15) · Ngày: 2026-11-16 · Dựa trên app 0.70.1. **Bố mẹ đã duyệt draft2 (2026-11-16, theo review — mục 14)**; làm theo 10 bản ở mục 12. **Đã làm:** 0.71.0 Nông trại, 0.72.0 Đầu bếp nhí (ghi chú mục 16).
+> Phiên bản spec: **draft2** (sửa theo review, mục 15) · Ngày: 2026-11-16 · Dựa trên app 0.70.1. **Bố mẹ đã duyệt draft2 (2026-11-16, theo review — mục 14)**; làm theo 10 bản ở mục 12. **Đã làm:** 0.71.0 Nông trại, 0.72.0 Đầu bếp nhí, 0.73.0 Thợ xây (ghi chú mục 16).
 > - **draft2, sửa theo review:** mẫu tháp AB / AAB (4.2); Đồ bỏ quên mức 2 chỉ hỏi người có dấu hiệu (5.1); thời tiết ngoài cửa sổ là nguồn chuẩn cho mọi câu (9 và mọi việc thời tiết); Cứu hỏa tách *scared* (chăn) khỏi bước giúp thứ hai (11); bảng món mức 1 / mức 3 của Đầu bếp (3.1); khóa bước đã xong ở việc hai bước (1); trạng thái Stop / Go của Cảnh sát (10); mã `seen` và thẻ nhiễu Nông trại (2.1); Bưu tá dạy "nơi nào – xe nào" trước khi hỏi suy luận (8); thời lượng lượt, dữ liệu thiếu, seed (1); 10 bản theo nghề (12); test JOBS4-30…39.
 > - draft1: **Phần 1** (mục 1–5) — 4 nghề của `SPEC-jobs3.md`, mỗi nghề **hai nhiệm vụ mới**; **Phần 2** (mục 6–11) — 6 nghề cũ, mỗi nghề **một nhiệm vụ mới** (bố mẹ chọn ý tưởng 2026-11-16).
 > Bổ sung cho `SPEC-jobs3.md` mục 4–7 và cho `SPEC-jobs.md` / `SPEC-jobs2.md` / `SPEC-doctor2.md` / `SPEC-fire2.md` (cách chơi hiện có của mọi nghề — **giữ nguyên**). Cùng cách làm với `SPEC-jobs2.md` (nhiệm vụ mới cho 4 nghề cũ): mỗi nghề thêm **ca kiểu mới** xen với ca cũ, **việc nhỏ cuối lượt**, hoặc **việc nhỏ giữa đường**.
@@ -564,3 +564,11 @@ Ca mới, **thay 1 ca tìm đồ** (mọi mức). Bé (cảnh sát) đứng gi�
 - *eggs* đọc số nhiều: *"The eggs go in the cupboard!"*.
 - **Lệch spec nhỏ:** dọn bếp chỉ tránh từ đã là đáp án **ở ca D** (như JOBS4-17); *milk* vẫn có thể xuất hiện dù bánh nướng có bước *pour the milk* — tiến độ không ghi trùng vì một từ chỉ ghi "đã gặp" một lần mỗi lượt.
 - Test: unit `chef.test.js` (500 seed mỗi mức: ca D thay A / C luân phiên, bảng tổ hợp mức 3, dọn bếp, câu nói); UI `jobs4.spec.js` (JOBS4-04, 05, 06, 16, dọn bếp nhầm chỗ, ra nền giữa dọn bếp, hết lượt); `jobs3.spec.js` thêm số lượt cho các test cần bánh mì kẹp. Ảnh chụp iPad + điện thoại 390 px (mức 1, 3).
+
+### 0.73.0 — 👷 Thợ xây (B2 + B3)
+- **Code:** `jobs/build.js` thêm `makePaintCase` / `paintOk` / `bucketsOf`, `makeTowerCase` / `towerOk` / `towerWant`, `roadOrTower`, câu nói ca C + D; `planRound(level, { rounds })` → `[nhà, đường | tháp, sơn nhà]`, khách ca C = khách ca A. `screens/build.js` thêm ca C (`paint`) và ca D (`tower`).
+- **Nhà mức 3:** hai cửa sổ giờ **một to một nhỏ** (để ca C hỏi theo cỡ). Bước *"Two square windows, please!"* giữ nguyên câu: mỗi khối tự vào ô đúng cỡ (đặt thứ tự nào cũng được); khay bước này bỏ khối "khác cỡ" (cả hai cỡ đều đúng), còn khối dáng gần giống. Cửa sổ to vẽ lớn hơn trên bản vẽ.
+- **Ca C:** thùng sơn (SVG, màu ở miệng thùng) xếp dọc bên trái nhà, cạnh đó là cái cọ. Mức 1: mỗi phần 3 thùng, phần đang sơn có viền vàng, chọn đúng thùng là cọ tự quét. Mức 2–3: 4 thùng; chọn thùng → cọ nhúng màu (nghiêng, đầu cọ đổi màu — khóa bước) → chạm phần nhà → phần đó đổi màu, lóe sáng. Xong: *"My beautiful house!"*.
+- Chạm phần nhà: ô bị phần khác đè lên (giữa tường có cửa) thì trúng phần nằm trên — bé chạm mép tường để sơn tường.
+- **Ca D:** khối kiểu gạch đồ chơi (SVG có núm), đống khối mỗi màu xếp dọc bên trái, tháp giữa sân. Mức 1–2 chú đếm *"One! Two!"*; mức 3 sau mỗi khối đúng chú đọc cả dãy thật trên tháp (*"Red, red, blue, red!"*) rồi *"What comes next?"*. Xong: tháp lắc nhẹ, cờ 🚩 trên đỉnh, *"Hooray! A tall tower!"*.
+- Test: unit `build.test.js` (500 seed mỗi mức: thứ tự ca + luân phiên, ca C cùng nhà, mẫu AB 4 / AAB 3, câu nói); UI `jobs4.spec.js` (mức 1 cả lượt, JOBS4-07, 08, 09, 18, 19). Ảnh chụp iPad + điện thoại 390 px (mức 2–3).
