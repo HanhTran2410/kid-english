@@ -1,6 +1,7 @@
-// Trò Đầu bếp nhí (SPEC-jobs3.md mục 5): rửa tay mở đầu; ca A làm bánh mì kẹp (xếp lớp theo thẻ công thức, mức 3 có
-// "No tomato, please!"), ca B làm bánh nướng (động từ pour / crack / mix / bake, mức 3 theo thứ tự), ca C trang trí bánh
-// (đếm, mức 3 hai loại). Không dao, không lửa bếp. File thuần: dữ liệu, kế hoạch lượt (bất biến mục 2.2), câu nói.
+// Trò Đầu bếp nhí (SPEC-jobs3.md mục 5, SPEC-jobs4.md mục 3): rửa tay mở đầu; ca A làm bánh mì kẹp (xếp lớp theo thẻ
+// công thức, mức 3 có "No tomato, please!"), ca B làm bánh nướng (động từ pour / crack / mix / bake, mức 3 theo thứ tự),
+// ca C trang trí bánh (đếm, mức 3 hai loại), ca D món nóng – món lạnh (thay A / C luân phiên); cuối lượt mức 2–3 dọn bếp.
+// Không dao, không lửa bếp. File thuần: dữ liệu, kế hoạch lượt (bất biến mục 2.2), câu nói.
 
 import { planChecked, shuffle, pick, randInt, leastSeen, NUMBER_WORDS, cap } from './levels.js';
 import { PATIENTS } from '../doctor.js';
@@ -39,6 +40,38 @@ export const DECOR = {
   candle: { one: 'candle', many: 'candles', emoji: '🕯️', vi: 'cây nến' },
 };
 const DECOR_IDS = Object.keys(DECOR);
+/** Ca D (SPEC-jobs4 3.1): món nóng có hơi bốc lên, món lạnh có đá; `word`: từ bài Food ghi "đã gặp" ở mức 3. */
+export const DISHES = {
+  soup: { hot: true, name: 'soup', that: "That's soup.", emoji: '🍲', vi: 'súp' },
+  'hot-milk': { hot: true, name: 'hot milk', that: "That's hot milk.", emoji: '☕', vi: 'sữa nóng', word: 'milk' },
+  'ice-cream': { hot: false, name: 'ice cream', that: "That's ice cream.", emoji: '🍦', vi: 'kem' },
+  'cold-milk': { hot: false, name: 'cold milk', that: "That's cold milk.", emoji: '🥛', vi: 'sữa lạnh', word: 'milk' },
+  'cold-water': { hot: false, name: 'cold water', that: "That's cold water.", emoji: '🧊', vi: 'nước lạnh', word: 'water' },
+};
+const DISH_IDS = Object.keys(DISHES);
+/** Mức 3: 4 món cố định theo món khách gọi (đúng một món khớp; có cùng món khác nóng / lạnh hoặc cùng nóng / lạnh khác món). */
+export const TEMP_COMBOS = {
+  'hot-milk': ['hot-milk', 'cold-milk', 'soup', 'ice-cream'],
+  'cold-milk': ['cold-milk', 'hot-milk', 'cold-water', 'ice-cream'],
+  soup: ['soup', 'hot-milk', 'ice-cream', 'cold-water'],
+  'ice-cream': ['ice-cream', 'cold-milk', 'soup', 'hot-milk'],
+  'cold-water': ['cold-water', 'cold-milk', 'hot-milk', 'soup'],
+};
+/** Dọn bếp (SPEC-jobs4 3.2): mỗi đồ đúng một chỗ hợp lý; `word`: từ bài Food. */
+export const CLEAN_ITEMS = {
+  milk: { place: 'fridge', name: 'milk', emoji: '🥛', vi: 'sữa', word: 'milk' },
+  juice: { place: 'fridge', name: 'juice', emoji: '🧃', vi: 'nước ép' },
+  bowl: { place: 'sink', name: 'bowl', emoji: '🥣', vi: 'cái bát' },
+  cup: { place: 'sink', name: 'cup', emoji: '🍵', vi: 'cái cốc' },
+  bread: { place: 'cupboard', name: 'bread', emoji: '🍞', vi: 'bánh mì', word: 'bread' },
+  eggs: { place: 'cupboard', name: 'eggs', emoji: '🥚', vi: 'hộp trứng', word: 'egg' },
+};
+export const PLACES = {
+  sink: { name: 'sink', vi: 'bồn rửa' },
+  fridge: { name: 'fridge', vi: 'tủ lạnh' },
+  cupboard: { name: 'cupboard', vi: 'tủ bát' },
+};
+export const PLACE_ORDER = ['sink', 'fridge', 'cupboard'];
 
 // ---------- Kế hoạch từng ca ----------
 /**
@@ -81,8 +114,56 @@ export function makeDecorCase(level, { rng = Math.random, seen = {} } = {}) {
   return { kind: 'decor', want, tray };
 }
 
+/**
+ * Ca D — món nóng, món lạnh: { kind: 'temp', want: 'hot' | 'cold', dish: mã món | null, tray }.
+ * Mức 1: khách lạnh → món nóng, khách nóng → món lạnh, khay 1 nóng + 1 lạnh; mức 2: khay món đúng + 2 món phía ngược lại;
+ * mức 3: khách gọi đúng món, khay theo `TEMP_COMBOS`.
+ */
+export function makeTempCase(level, { rng = Math.random, seen = {} } = {}) {
+  const want = pick(['hot', 'cold'], rng);
+  const side = (hot) => DISH_IDS.filter((id) => DISHES[id].hot === hot);
+  if (level <= 1) {
+    const right = leastSeen(side(want === 'hot'), seen, rng)[0];
+    return { kind: 'temp', want, dish: null, tray: shuffle([right, pick(side(want !== 'hot'), rng)], rng) };
+  }
+  if (level === 2) {
+    const right = leastSeen(side(want === 'hot'), seen, rng)[0];
+    const others = shuffle(side(want !== 'hot'), rng).slice(0, 2);
+    return { kind: 'temp', want, dish: null, tray: shuffle([right, ...others], rng) };
+  }
+  const dish = leastSeen(DISH_IDS, seen, rng)[0];
+  return { kind: 'temp', want: DISHES[dish].hot ? 'hot' : 'cold', dish, tray: shuffle(TEMP_COMBOS[dish], rng) };
+}
+/** Món khớp yêu cầu của ca D. */
+export const tempMatches = (c) => c.tray.filter((id) => (c.dish ? id === c.dish : DISHES[id].hot === (c.want === 'hot')));
+
+/**
+ * Dọn bếp (mức 2–3): { items: [đồ trên bàn], asks: [2 đồ cần cất, theo thứ tự] }. Hai đồ cần cất ở hai chỗ khác nhau;
+ * mức 3 thêm 1 đồ nhiễu trên bàn. Không dùng đồ có từ đã là đáp án ở ca D (`avoid` — SPEC-jobs3 2.7).
+ */
+export function makeClean(level, { rng = Math.random, avoid = [] } = {}) {
+  const ids = shuffle(Object.keys(CLEAN_ITEMS).filter((id) => !avoid.includes(CLEAN_ITEMS[id].word)), rng);
+  const first = ids[0];
+  const second = ids.find((id) => CLEAN_ITEMS[id].place !== CLEAN_ITEMS[first].place);
+  const asks = [first, second];
+  const extra = level >= 3 ? ids.find((id) => !asks.includes(id)) : null;
+  return { items: shuffle(extra ? [...asks, extra] : asks, rng), asks };
+}
+export function cleanOk(cl, level) {
+  if (!cl || cl.asks.length !== 2 || cl.asks.some((id) => !CLEAN_ITEMS[id])) return false;
+  if (CLEAN_ITEMS[cl.asks[0]].place === CLEAN_ITEMS[cl.asks[1]].place) return false;
+  if (!cl.asks.every((id) => cl.items.includes(id)) || new Set(cl.items).size !== cl.items.length) return false;
+  return cl.items.length === (level >= 3 ? 3 : 2);
+}
+
 /** Bất biến của một ca (SPEC-jobs3 mục 2.2). */
 export function caseOk(c, level) {
+  if (c.kind === 'temp') {
+    if (new Set(c.tray).size !== c.tray.length || !c.tray.every((id) => DISHES[id])) return false;
+    if (c.tray.length !== (level <= 1 ? 2 : level === 2 ? 3 : 4) || tempMatches(c).length !== 1) return false;
+    if (level >= 3) return Boolean(c.dish) && (c.want === 'hot') === DISHES[c.dish].hot;
+    return c.dish === null;
+  }
   if (c.kind === 'sandwich') {
     const need = new Set(c.layers);
     if (![...need].every((id) => c.tray.includes(id))) return false;
@@ -103,19 +184,31 @@ export function caseOk(c, level) {
   return false;
 }
 /** Số thao tác con của bé trong ca (đưa đĩa / bánh cho khách tính một; bánh trang trí tự mang ra). */
-export const caseActions = (c) => (c.kind === 'sandwich' ? c.layers.length + 1 : c.kind === 'bake' ? c.steps.length + 1 : c.want.reduce((n, w) => n + w.n, 0));
+export const caseActions = (c) => (c.kind === 'temp' ? 2 : c.kind === 'sandwich' ? c.layers.length + 1 : c.kind === 'bake' ? c.steps.length + 1 : c.want.reduce((n, w) => n + w.n, 0));
 
-/** Kế hoạch một lượt (mục 5.4): mức 1 và 3 theo thứ tự A + B + C, mức 2 xáo. */
-export function planRound(level, { rng = Math.random, seen = {} } = {}) {
+/** Ca D thay bánh mì kẹp ở lượt lẻ (`rounds` chẵn: lượt 1, 3…), thay trang trí ở lượt chẵn (SPEC-jobs4 3.1). */
+export const replacedByTemp = (rounds) => ((rounds ?? 0) % 2 === 0 ? 'sandwich' : 'decor');
+/** Từ bài Food là đáp án của ca D (để dọn bếp tránh — SPEC-jobs3 2.7). */
+const tempWords = (cases) => cases.filter((c) => c.kind === 'temp' && c.dish).map((c) => DISHES[c.dish].word).filter(Boolean);
+
+/**
+ * Kế hoạch một lượt (SPEC-jobs4 3.1, thay SPEC-jobs3 5.4): ca B giữ; ca D thay A hoặc C luân phiên theo `rounds`;
+ * mức 1 và 3 theo thứ tự, mức 2 xáo. Mức 2–3 có dọn bếp cuối lượt (`clean`).
+ */
+export function planRound(level, { rng = Math.random, seen = {}, rounds = 0 } = {}) {
   const make = () => {
-    const kinds = level === 2 ? shuffle(['sandwich', 'bake', 'decor'], rng) : ['sandwich', 'bake', 'decor'];
-    const maker = { sandwich: makeSandwichCase, bake: makeBakeCase, decor: makeDecorCase };
-    return { cases: kinds.map((k) => maker[k](level, { rng, seen })), customers: shuffle(PATIENTS.map((p) => p.id), rng).slice(0, CASES_PER_ROUND) };
+    const base = ['sandwich', 'bake', 'decor'].map((k) => (k === replacedByTemp(rounds) ? 'temp' : k));
+    const kinds = level === 2 ? shuffle(base, rng) : base;
+    const maker = { sandwich: makeSandwichCase, bake: makeBakeCase, decor: makeDecorCase, temp: makeTempCase };
+    const cases = kinds.map((k) => maker[k](level, { rng, seen }));
+    const clean = level >= 2 ? makeClean(level, { rng, avoid: tempWords(cases) }) : null;
+    return { cases, customers: shuffle(PATIENTS.map((p) => p.id), rng).slice(0, CASES_PER_ROUND), clean };
   };
-  const ok = (p) => p.cases.length === CASES_PER_ROUND && p.cases.every((c) => caseOk(c, level) && caseActions(c) <= 5);
-  return planChecked(make, ok, () => fallbackPlan(level));
+  const ok = (p) => p.cases.length === CASES_PER_ROUND && p.cases.every((c) => caseOk(c, level) && caseActions(c) <= 5)
+    && (level <= 1 ? p.clean === null : cleanOk(p.clean, level) && !p.clean.asks.some((id) => tempWords(p.cases).includes(CLEAN_ITEMS[id].word)));
+  return planChecked(make, ok, () => fallbackPlan(level, rounds));
 }
-export function fallbackPlan(level) {
+export function fallbackPlan(level, rounds = 0) {
   const sandwich = level <= 1
     ? { kind: 'sandwich', layers: ['bread', 'cheese', 'bread'], tray: ['bread', 'cheese', 'tomato'], no: null }
     : { kind: 'sandwich', layers: ['bread', 'cheese', 'lettuce', 'bread'], tray: ['bread', 'cheese', 'lettuce', 'tomato'], no: level >= 3 ? 'tomato' : null };
@@ -123,7 +216,12 @@ export function fallbackPlan(level) {
     : { kind: 'bake', steps: ['pour', 'crack', 'mix', 'bake'], tools: ['milk', 'egg', 'spoon'], ordered: level >= 3 };
   const decor = level >= 3 ? { kind: 'decor', want: [{ id: 'strawberry', n: 2 }, { id: 'cherry', n: 1 }], tray: ['strawberry', 'cherry', 'star'] }
     : { kind: 'decor', want: [{ id: 'strawberry', n: 2 }], tray: ['strawberry', 'cherry'] };
-  return { cases: [sandwich, bake, decor], customers: ['teddy', 'kitty', 'puppy'] };
+  const temp = level <= 1 ? { kind: 'temp', want: 'hot', dish: null, tray: ['soup', 'ice-cream'] }
+    : level === 2 ? { kind: 'temp', want: 'cold', dish: null, tray: ['ice-cream', 'soup', 'hot-milk'] }
+      : { kind: 'temp', want: 'hot', dish: 'soup', tray: TEMP_COMBOS.soup };
+  const cases = [sandwich, bake, decor].map((c) => (c.kind === replacedByTemp(rounds) ? temp : c));
+  const clean = level >= 2 ? { items: level >= 3 ? ['bowl', 'bread', 'juice'] : ['bowl', 'bread'], asks: ['bowl', 'bread'] } : null;
+  return { cases, customers: ['teddy', 'kitty', 'puppy'], clean };
 }
 
 // ---------- Câu nói ([en, vi]) ----------
@@ -161,3 +259,35 @@ export const decorAskLine = (want) => [`${cap(want.map((w) => `${NUMBER_WORDS[w.
 /** Đặt sai loại: "That's a blueberry. Strawberries, please!" (gọi các loại còn thiếu). */
 export const decorWrongLine = (given, missing) => [`That's a ${DECOR[given].one}. ${cap(missing.map((id) => DECOR[id].many).join(' and '))}, please!`, `Đó là ${DECOR[given].vi}. Cho ${missing.map((id) => DECOR[id].vi).join(' và ')} nhé!`];
 export const countLine = (n) => [`${cap(NUMBER_WORDS[n])}!`, `${n}!`];
+
+// ---------- Ca D — món nóng, món lạnh (SPEC-jobs4 3.1) ----------
+const dishName = (id) => cap(DISHES[id].name);
+/** Mức 1: khách nói mình lạnh / nóng ("I'm cold!"), chú đầu bếp gợi ý ("Something hot!"). */
+export const feelLine = (want) => (want === 'hot' ? ["I'm cold!", 'Tớ lạnh quá!'] : ["I'm hot!", 'Tớ nóng quá!']);
+export const somethingLine = (want) => (want === 'hot' ? ['Something hot!', 'Món gì nóng nhé!'] : ['Something cold!', 'Món gì lạnh nhé!']);
+/** Khách gọi (mức 2: "Something cold, please!"; mức 3: "Hot milk, please!"). */
+export const tempAskLine = (c) => (c.dish
+  ? [`${dishName(c.dish)}, please!`, `Cho tớ ${DISHES[c.dish].vi} nhé!`]
+  : c.want === 'hot' ? ['Something hot, please!', 'Cho tớ món gì nóng nhé!'] : ['Something cold, please!', 'Cho tớ món gì lạnh nhé!']);
+export const tempWrongLine = (c, given) => [`${DISHES[given].that} ${tempAskLine(c)[0]}`, `Đó là ${DISHES[given].vi}. ${tempAskLine(c)[1]}`];
+export const CAREFUL_LINE = ['Hot! Careful!', 'Nóng đấy! Cẩn thận nhé!'];
+export const PHEW_LINE = ['Phew, phew!', 'Phù, phù!'];
+export const BRR_LINE = ['Brr! Yummy!', 'Brr! Ngon quá!'];
+export const THANK_YOU_LINE = ['Thank you!', 'Cảm ơn bạn!'];
+
+// ---------- Dọn bếp (SPEC-jobs4 3.2) ----------
+export const CLEAN_LINE = ['Clean up time!', 'Dọn bếp nào!'];
+export const ALL_CLEAN_LINE = ['All clean! Good job!', 'Sạch bóng rồi! Giỏi lắm!'];
+const itemThe = (id) => `the ${CLEAN_ITEMS[id].name}`;
+const placeOf = (id) => CLEAN_ITEMS[id].place;
+/** Mức 2: "The milk goes in the fridge!"; mức 3: "Put the bread in the cupboard!"; yêu cầu thứ hai thêm "Now". */
+export function cleanAskLine(id, level, second = false) {
+  const p = PLACES[placeOf(id)];
+  const it = CLEAN_ITEMS[id];
+  if (level >= 3) return [`${second ? 'Now put' : 'Put'} ${itemThe(id)} in the ${p.name}!`, `${second ? 'Giờ cất' : 'Cất'} ${it.vi} vào ${p.vi} nhé!`];
+  return [`${second ? 'Now the' : 'The'} ${it.name} ${it.name === 'eggs' ? 'go' : 'goes'} in the ${p.name}!`, `${cap(it.vi)} cất vào ${p.vi} nhé!`];
+}
+/** Chạm chỗ sai: "That's the sink. In the fridge, please!". */
+export const placeWrongLine = (place, id) => [`That's the ${PLACES[place].name}. In the ${PLACES[placeOf(id)].name}, please!`, `Đó là ${PLACES[place].vi}. Cất vào ${PLACES[placeOf(id)].vi} nhé!`];
+/** Mức 3 chạm đồ sai: "That's the bowl. The bread, please!". */
+export const itemWrongLine = (given, id) => [`That's ${itemThe(given)}. ${cap(itemThe(id))}, please!`, `Đó là ${CLEAN_ITEMS[given].vi}. Lấy ${CLEAN_ITEMS[id].vi} nhé!`];

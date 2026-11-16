@@ -1,6 +1,6 @@
 # SPEC — 🧑‍⚕️ Đóng vai nghề: nhiệm vụ mới cho cả 10 nghề
 
-> Phiên bản spec: **draft2** (sửa theo review, mục 15) · Ngày: 2026-11-16 · Dựa trên app 0.70.1. **Bố mẹ đã duyệt draft2 (2026-11-16, theo review — mục 14)**; làm theo 10 bản ở mục 12. **Đã làm:** 0.71.0 Nông trại (ghi chú mục 16).
+> Phiên bản spec: **draft2** (sửa theo review, mục 15) · Ngày: 2026-11-16 · Dựa trên app 0.70.1. **Bố mẹ đã duyệt draft2 (2026-11-16, theo review — mục 14)**; làm theo 10 bản ở mục 12. **Đã làm:** 0.71.0 Nông trại, 0.72.0 Đầu bếp nhí (ghi chú mục 16).
 > - **draft2, sửa theo review:** mẫu tháp AB / AAB (4.2); Đồ bỏ quên mức 2 chỉ hỏi người có dấu hiệu (5.1); thời tiết ngoài cửa sổ là nguồn chuẩn cho mọi câu (9 và mọi việc thời tiết); Cứu hỏa tách *scared* (chăn) khỏi bước giúp thứ hai (11); bảng món mức 1 / mức 3 của Đầu bếp (3.1); khóa bước đã xong ở việc hai bước (1); trạng thái Stop / Go của Cảnh sát (10); mã `seen` và thẻ nhiễu Nông trại (2.1); Bưu tá dạy "nơi nào – xe nào" trước khi hỏi suy luận (8); thời lượng lượt, dữ liệu thiếu, seed (1); 10 bản theo nghề (12); test JOBS4-30…39.
 > - draft1: **Phần 1** (mục 1–5) — 4 nghề của `SPEC-jobs3.md`, mỗi nghề **hai nhiệm vụ mới**; **Phần 2** (mục 6–11) — 6 nghề cũ, mỗi nghề **một nhiệm vụ mới** (bố mẹ chọn ý tưởng 2026-11-16).
 > Bổ sung cho `SPEC-jobs3.md` mục 4–7 và cho `SPEC-jobs.md` / `SPEC-jobs2.md` / `SPEC-doctor2.md` / `SPEC-fire2.md` (cách chơi hiện có của mọi nghề — **giữ nguyên**). Cùng cách làm với `SPEC-jobs2.md` (nhiệm vụ mới cho 4 nghề cũ): mỗi nghề thêm **ca kiểu mới** xen với ca cũ, **việc nhỏ cuối lượt**, hoặc **việc nhỏ giữa đường**.
@@ -556,3 +556,11 @@ Ca mới, **thay 1 ca tìm đồ** (mọi mức). Bé (cảnh sát) đứng gi�
 - **Tiến độ:** một từ chỉ ghi "đã gặp" **một lần mỗi lượt** (ví dụ *cow* đã ghi ở ca A thì Good night không ghi lại).
 - **Ra nền:** ca D lưu bước thẻ (`wcard`) và đồ; Good night lưu con đã vào chuồng; quay lại Good night không nói lại câu mở đầu.
 - Test: unit `farm.test.js` (500 seed mỗi mức: loại ca theo mức + `rounds`, ca D, Good night, chia đều thời tiết, câu nói); UI `jobs4.spec.js` (JOBS4-01, 02, 03, 14, 15, mức 2 nhầm đồ + B / C luân phiên); `jobs3.spec.js` cập nhật bộ giải Nông trại cho các bước mới. Ảnh chụp iPad + điện thoại 390 px (mức 1 và 3: thẻ, đồ giúp, Good night).
+
+### 0.72.0 — 👨‍🍳 Đầu bếp nhí (C2 + C3)
+- **Code:** `jobs/chef.js` thêm `DISHES`, `TEMP_COMBOS`, `makeTempCase`, `tempMatches`, `CLEAN_ITEMS` / `PLACES`, `makeClean` / `cleanOk`, `replacedByTemp`, câu nói ca D + dọn bếp; `planRound(level, { rounds })` (ca D thay bánh mì kẹp khi `chefGame.rounds` chẵn — lượt 1, 3…; thay trang trí khi lẻ), kế hoạch có `clean` (mức 2–3). `screens/chef.js` thêm ca D (`temp` → `serve`) và dọn bếp (`clean`).
+- **Ca D:** món vẽ SVG (súp, cốc sữa nóng có 3 sợi hơi; kem ốc quế, ly sữa / ly nước có đá + bông tuyết). Món chọn đúng lên đĩa, bé chạm đĩa đưa cho khách. Mức 1: khách có dấu hiệu ❄️🧣 + run (lạnh) / 💦 (nóng), món đúng nhún ngay từ đầu, chạm món sai chỉ làm món đúng nhún.
+- **Dọn bếp:** bồn rửa, tủ lạnh, tủ bát vẽ SVG ở dưới; đồ trên quầy ở trên. Bát / cốc đã dùng vẽ SVG có vết bẩn (emoji 🥣 🍵 trông như bát súp / bát trà đầy); sữa, nước ép, bánh mì, trứng dùng emoji. Mức 2 đồ cần cất có viền vàng + nhún, bé chỉ chọn chỗ; mức 3 chọn đồ (đồ nhấc lên) rồi chọn chỗ — chọn đồ đúng là khóa bước 1.
+- *eggs* đọc số nhiều: *"The eggs go in the cupboard!"*.
+- **Lệch spec nhỏ:** dọn bếp chỉ tránh từ đã là đáp án **ở ca D** (như JOBS4-17); *milk* vẫn có thể xuất hiện dù bánh nướng có bước *pour the milk* — tiến độ không ghi trùng vì một từ chỉ ghi "đã gặp" một lần mỗi lượt.
+- Test: unit `chef.test.js` (500 seed mỗi mức: ca D thay A / C luân phiên, bảng tổ hợp mức 3, dọn bếp, câu nói); UI `jobs4.spec.js` (JOBS4-04, 05, 06, 16, dọn bếp nhầm chỗ, ra nền giữa dọn bếp, hết lượt); `jobs3.spec.js` thêm số lượt cho các test cần bánh mì kẹp. Ảnh chụp iPad + điện thoại 390 px (mức 1, 3).

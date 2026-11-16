@@ -1,7 +1,8 @@
 // Trò Đầu bếp nhí (SPEC-jobs3.md mục 5): chú đầu bếp bên trái, khách (bạn thú) bên phải. Mở đầu rửa tay; ca A xếp
 // bánh mì kẹp theo thẻ công thức; ca B làm bánh nướng — mỗi động từ một hoạt ảnh rõ (sữa chảy, trứng nứt, thìa khuấy,
-// lò đèn cam), bánh còn nóng thì "Hot! Wait!" (không tính nhầm); ca C trang trí bánh (đếm). Không dao, không lửa bếp.
-// Trạng thái: start → wash → enter → layer | serve | bake | hot | decor ⇄ busy → leave → ca sau | done.
+// lò đèn cam), bánh còn nóng thì "Hot! Wait!" (không tính nhầm); ca C trang trí bánh (đếm); ca D món nóng – món lạnh
+// (SPEC-jobs4 3.1); mức 2–3 cuối lượt dọn bếp (3.2). Không dao, không lửa bếp.
+// Trạng thái: start → wash → enter → layer | serve | bake | hot | decor | temp ⇄ busy → leave → ca sau | clean → done.
 
 import { h } from '../ui.js';
 import { play } from '../speech/sfx.js';
@@ -20,6 +21,8 @@ import {
   WASH_LINE, COOK_LINE, SANDWICH_LINE, CAKE_LINE, READY_LINE, HOT_LINE, NOW_READY_LINE, THANKS_LINE, ENOUGH_LINE,
   layerCallLine, orderLine, noLine, layerWrongLine, stepLine, verbLine, chainLine, firstLine, toolWrongLine,
   decorAskLine, decorWrongLine, countLine,
+  DISHES, CLEAN_ITEMS, PLACES, PLACE_ORDER, tempMatches, feelLine, somethingLine, tempAskLine, tempWrongLine,
+  CAREFUL_LINE, PHEW_LINE, BRR_LINE, THANK_YOU_LINE, CLEAN_LINE, ALL_CLEAN_LINE, cleanAskLine, placeWrongLine, itemWrongLine,
 } from '../jobs/chef.js';
 
 const JOB = 'chef';
@@ -28,7 +31,8 @@ const LEAVE_MS = 600;
 const ANIM_MS = 900; // hoạt ảnh một động từ
 const OVEN_MS = 2000;
 const HOT_MS = 2000;
-const ACTIVE = ['wash', 'layer', 'serve', 'bake', 'decor'];
+const ACTIVE = ['wash', 'layer', 'serve', 'bake', 'decor', 'temp', 'clean'];
+const TRAY_STATES = ['layer', 'decor', 'temp'];
 const INK = '#3d2c5e';
 const BOWL_SVG = `<svg viewBox="0 0 120 80" aria-hidden="true"><path class="cf-batter" d="M14 30 H106 Q100 72 60 74 Q20 72 14 30 Z" fill="#fff3bf"/><path class="cf-yolk" d="M48 40 a12 9 0 1 0 24 0 a12 9 0 1 0 -24 0" fill="#ffd43b"/><path d="M6 28 H114 Q108 78 60 78 Q12 78 6 28 Z" fill="none" stroke="${INK}" stroke-width="5" stroke-linejoin="round"/><path d="M6 28 H114" stroke="#74c0fc" stroke-width="9" stroke-linecap="round" opacity="0.7"/></svg>`;
 const OVEN_SVG = `<svg viewBox="0 0 120 120" aria-hidden="true"><rect x="6" y="6" width="108" height="108" rx="14" fill="#dee2e6" stroke="${INK}" stroke-width="5"/><rect x="6" y="6" width="108" height="22" rx="10" fill="#adb5bd" stroke="${INK}" stroke-width="4"/><circle cx="26" cy="17" r="5" fill="#fff" stroke="${INK}" stroke-width="2"/><circle cx="44" cy="17" r="5" fill="#fff" stroke="${INK}" stroke-width="2"/><circle class="cf-oven-lamp" cx="98" cy="17" r="5" fill="#868e96"/><rect class="cf-oven-door" x="18" y="40" width="84" height="62" rx="8" fill="#495057" stroke="${INK}" stroke-width="4"/><rect x="30" y="46" width="60" height="6" rx="3" fill="#ced4da"/></svg>`;
@@ -48,6 +52,28 @@ const LAYER_SIDE = {
   tomato: side(`<g stroke="${INK}" stroke-width="4"><ellipse cx="52" cy="30" rx="42" ry="12" fill="#ff6b6b"/><ellipse cx="148" cy="30" rx="42" ry="12" fill="#ff6b6b"/><ellipse cx="100" cy="28" rx="42" ry="13" fill="#fa5252"/></g><g fill="#ffe066"><circle cx="88" cy="30" r="2.5"/><circle cx="100" cy="28" r="2.5"/><circle cx="112" cy="30" r="2.5"/></g>`),
   lettuce: side(`<path d="M2 30 Q14 16 26 28 Q38 16 50 28 Q62 16 74 28 Q86 16 98 28 Q110 16 122 28 Q134 16 146 28 Q158 16 170 28 Q182 16 198 30 Q186 42 170 38 Q150 44 128 38 Q100 44 72 38 Q50 44 30 38 Q14 42 2 30 Z" fill="#69db7c" stroke="#2b8a3e" stroke-width="4" stroke-linejoin="round"/>`),
   egg: side(`<path d="M10 34 Q12 24 34 26 Q50 18 70 24 Q100 18 130 24 Q150 18 168 26 Q190 24 190 34 Q190 42 100 42 Q10 42 10 34 Z" fill="#fff" stroke="${INK}" stroke-width="4" stroke-linejoin="round"/><path d="M76 26 Q100 6 124 26 Z" fill="#ffd43b" stroke="${INK}" stroke-width="4" stroke-linejoin="round"/>`),
+};
+/** Món ca D (viewBox 100 × 100): món nóng có 3 sợi hơi to, món lạnh có đá — nhìn là biết (SPEC-jobs4 3.1). */
+const STEAM = `<path d="M34 30 Q28 20 34 10 M50 28 Q44 16 50 4 M66 30 Q60 20 66 10" fill="none" stroke="#adb5bd" stroke-width="5" stroke-linecap="round"/>`;
+const ICE = `<rect x="28" y="40" width="16" height="16" rx="3" fill="#e7f5ff" stroke="#74c0fc" stroke-width="3" transform="rotate(-12 36 48)"/><rect x="52" y="44" width="16" height="16" rx="3" fill="#e7f5ff" stroke="#74c0fc" stroke-width="3" transform="rotate(10 60 52)"/>`;
+const DISH_SVG = {
+  soup: `${STEAM}<path d="M10 52 H90 Q86 92 50 92 Q14 92 10 52 Z" fill="#ff922b" stroke="${INK}" stroke-width="5" stroke-linejoin="round"/><path d="M10 52 H90" stroke="${INK}" stroke-width="5"/><ellipse cx="50" cy="56" rx="34" ry="6" fill="#ffc078"/>`,
+  'hot-milk': `${STEAM}<path d="M24 40 H72 V84 Q72 94 62 94 H34 Q24 94 24 84 Z" fill="#fff" stroke="${INK}" stroke-width="5" stroke-linejoin="round"/><path d="M72 52 Q92 52 90 66 Q88 78 72 76" fill="none" stroke="${INK}" stroke-width="5"/><path d="M28 48 H68" stroke="#ffe8cc" stroke-width="6"/>`,
+  'ice-cream': `<path d="M32 50 L50 96 L68 50 Z" fill="#e8b384" stroke="${INK}" stroke-width="5" stroke-linejoin="round"/><circle cx="40" cy="40" r="15" fill="#ffc9de" stroke="${INK}" stroke-width="4"/><circle cx="60" cy="40" r="15" fill="#d0ebff" stroke="${INK}" stroke-width="4"/><circle cx="50" cy="24" r="14" fill="#fff" stroke="${INK}" stroke-width="4"/><path d="M78 14 l6 6 M84 14 l-6 6 M81 10 v14" stroke="#74c0fc" stroke-width="3" stroke-linecap="round"/>`,
+  'cold-milk': `<path d="M28 18 H72 L66 94 H34 Z" fill="#fff" stroke="${INK}" stroke-width="5" stroke-linejoin="round"/>${ICE}<path d="M80 12 l6 6 M86 12 l-6 6 M83 8 v14" stroke="#74c0fc" stroke-width="3" stroke-linecap="round"/>`,
+  'cold-water': `<path d="M28 18 H72 L66 94 H34 Z" fill="#d0ebff" stroke="${INK}" stroke-width="5" stroke-linejoin="round"/>${ICE}<path d="M80 12 l6 6 M86 12 l-6 6 M83 8 v14" stroke="#74c0fc" stroke-width="3" stroke-linecap="round"/>`,
+};
+/** Ba chỗ cất của Dọn bếp (viewBox 100 × 120), khác dáng hẳn nhau: bồn rửa thấp có vòi — tủ lạnh cao trắng — tủ bát gỗ hai cánh. */
+const PLACE_SVG = {
+  sink: `<svg viewBox="0 0 100 120" aria-hidden="true"><path d="M50 40 V24 Q50 14 62 14 H70" fill="none" stroke="#868e96" stroke-width="7" stroke-linecap="round"/><rect x="6" y="56" width="88" height="56" rx="8" fill="#dee2e6" stroke="${INK}" stroke-width="5"/><path d="M16 62 H84 Q80 92 50 92 Q20 92 16 62 Z" fill="#a5d8ff" stroke="${INK}" stroke-width="4"/></svg>`,
+  fridge: `<svg viewBox="0 0 100 120" aria-hidden="true"><rect x="16" y="4" width="68" height="112" rx="10" fill="#f8f9fa" stroke="${INK}" stroke-width="5"/><path d="M16 44 H84" stroke="${INK}" stroke-width="4"/><rect x="70" y="16" width="6" height="20" rx="3" fill="#868e96"/><rect x="70" y="54" width="6" height="34" rx="3" fill="#868e96"/><path d="M28 18 l6 6 M34 18 l-6 6 M31 14 v14" stroke="#74c0fc" stroke-width="3" stroke-linecap="round"/></svg>`,
+  cupboard: `<svg viewBox="0 0 100 120" aria-hidden="true"><rect x="6" y="20" width="88" height="92" rx="8" fill="#e8b384" stroke="${INK}" stroke-width="5"/><path d="M50 20 V112" stroke="${INK}" stroke-width="4"/><circle cx="42" cy="66" r="4" fill="${INK}"/><circle cx="58" cy="66" r="4" fill="${INK}"/><rect x="2" y="10" width="96" height="12" rx="4" fill="#c2855a" stroke="${INK}" stroke-width="4"/></svg>`,
+};
+/** Bát / cốc đã dùng (có vết bẩn) — emoji 🥣 🍵 trông như bát súp / bát trà đầy, nên vẽ riêng. */
+const DIRTY = `<g fill="#c2855a" opacity="0.8"><circle cx="38" cy="58" r="5"/><circle cx="60" cy="64" r="4"/><circle cx="52" cy="52" r="3"/></g>`;
+const CLEAN_SVG = {
+  bowl: `<svg viewBox="0 0 100 100" aria-hidden="true"><path d="M10 40 H90 Q86 86 50 86 Q14 86 10 40 Z" fill="#fff" stroke="${INK}" stroke-width="5" stroke-linejoin="round"/><path d="M10 40 H90" stroke="#74c0fc" stroke-width="7" stroke-linecap="round"/>${DIRTY}</svg>`,
+  cup: `<svg viewBox="0 0 100 100" aria-hidden="true"><path d="M22 28 H70 V78 Q70 88 60 88 H32 Q22 88 22 78 Z" fill="#fff" stroke="${INK}" stroke-width="5" stroke-linejoin="round"/><path d="M70 40 Q90 40 88 56 Q86 70 70 68" fill="none" stroke="${INK}" stroke-width="5"/><path d="M22 28 H70" stroke="#ff8787" stroke-width="7" stroke-linecap="round"/>${DIRTY}</svg>`,
 };
 const layerSide = (id, i) => (id === 'bread' ? (i === 0 ? LAYER_SIDE.breadBottom : LAYER_SIDE.breadTop) : LAYER_SIDE[id]);
 
@@ -74,6 +100,8 @@ export function chefScreen(app, params = {}) {
   const layerFace = (id, tag, props = {}) => itemFace(pics, id === 'egg' ? 'fried-egg' : id, tag, { ...props, text: LAYERS[id].emoji });
   const decorFace = (id, tag, props = {}) => itemFace(pics, id, tag, { ...props, text: DECOR[id].emoji });
   const toolFace = (id, tag) => itemFace(pics, id, tag, { text: TOOLS[id].emoji });
+  const dishFace = (id, tag) => itemFace(pics, id, tag, { html: `<svg viewBox="0 0 100 100" aria-hidden="true">${DISH_SVG[id]}</svg>` });
+  const cleanFace = (id, tag) => itemFace(pics, `clean-${id}`, tag, CLEAN_SVG[id] ? { html: CLEAN_SVG[id] } : { text: CLEAN_ITEMS[id].emoji });
 
   const custEl = h('div.cf-customer');
   const sink = h('button.cf-sink', { type: 'button', 'aria-label': 'Vòi nước', onclick: () => tapSink() },
@@ -88,6 +116,9 @@ export function chefScreen(app, params = {}) {
   const cake = h('button.cf-cake', { type: 'button', 'aria-label': 'Cái bánh', onclick: () => tapCake() }, h('span.cf-cake-art', { html: CAKE_SVG }), h('span.cf-tops'), h('span.cf-steam', { text: '♨️' }));
   const tops = cake.querySelector('.cf-tops');
   const table = h('div.cf-table', { 'aria-hidden': 'true' });
+  const places = h('div.cf-places');
+  const counter = h('div.cf-counter');
+  const cleanRoom = h('div.cf-clean', { hidden: true }, places, counter);
 
   const kit = jobScreen(app, {
     job: JOB, background: { lessonId: JOBS_BG_IMAGES, word: JOB }, className: 'cf-play', stageClass: 'cf-stage', title: '👨‍🍳 Chef',
@@ -113,26 +144,27 @@ export function chefScreen(app, params = {}) {
       },
     },
     tray: {
-      face: (id) => (LAYERS[id] ? layerFace(id, 'span.cf-item') : decorFace(id, 'span.cf-item')),
-      label: (id) => (LAYERS[id]?.name ?? DECOR[id].one),
-      canGive: () => state === 'layer' || state === 'decor',
+      face: (id) => (DISHES[id] ? dishFace(id, 'span.cf-item.cf-dish') : LAYERS[id] ? layerFace(id, 'span.cf-item') : decorFace(id, 'span.cf-item')),
+      label: (id) => (DISHES[id]?.name ?? LAYERS[id]?.name ?? DECOR[id].one),
+      canGive: () => TRAY_STATES.includes(state),
       dropOk: (x, y) => {
         const r = (state === 'decor' ? cake : plate).getBoundingClientRect();
         return x >= r.left - 30 && x <= r.right + 30 && y >= r.top - 40 && y <= r.bottom + 30;
       },
-      give: (id, from) => (state === 'layer' ? giveLayer(id, from) : giveDecor(id, from)),
+      give: (id, from) => (state === 'layer' ? giveLayer(id, from) : state === 'temp' ? giveDish(id, from) : giveDecor(id, from)),
     },
   });
   const { stage, count, talk } = kit;
-  stage.append(table, sink, card, plate, tools, bowl, oven, cake, custEl);
+  stage.append(table, sink, card, plate, tools, bowl, oven, cake, custEl, cleanRoom);
   const stepKey = () => `${kit.epoch}:${caseIdx}:${state}:${si}:${taken.list().length}`;
 
   function setState(s) {
     state = s;
-    kit.setState(s, s === 'layer' || s === 'decor');
+    kit.setState(s, TRAY_STATES.includes(s));
     app.root.dataset.case = cur()?.kind ?? '';
   }
-  const snap = (extra = {}) => saveSnap(JOB, { level, plan, caseIdx, si, wrongs, nudges, taken: taken.list(), recorded: [...recorded], washed, ...extra });
+  let cleanOn = false; // đang dọn bếp (bản lưu: quay lại không nói lại "Clean up time!")
+  const snap = (extra = {}) => saveSnap(JOB, { level, plan, caseIdx, si, wrongs, nudges, taken: taken.list(), recorded: [...recorded], washed, cleanOn, ...extra });
   const snapNext = () => saveSnap(JOB, { level, plan, caseIdx: caseIdx + 1, si: 0, wrongs: 0, nudges: 0, taken: [], recorded: [...recorded], washed });
   function countWrong(key) {
     const now = Date.now();
@@ -144,10 +176,12 @@ export function chefScreen(app, params = {}) {
     play('boing');
     return true;
   }
+  /** Ghi "đã gặp" một lần mỗi ca, và một từ chỉ một lần mỗi lượt (SPEC-jobs3 2.7). */
   function record(key, word, emoji) {
     const k = `${caseIdx}:${key}`;
-    if (recorded.has(k)) return;
+    if (recorded.has(k) || recorded.has(`w:${word}`)) return;
     recorded.add(k);
+    recorded.add(`w:${word}`);
     markPracticed(app, word, emoji);
   }
   function seen(id) {
@@ -166,6 +200,10 @@ export function chefScreen(app, params = {}) {
 
   // ---------- Câu hỏi của bước đang làm ----------
   function promptLines(short = false) {
+    if (state === 'clean') {
+      const target = cleanTarget();
+      return target ? [C(cleanAskLine(target, level, target !== plan.clean.asks[0]))] : [];
+    }
     const c = cur();
     if (state === 'wash') return [C(WASH_LINE)];
     if (!c) return [];
@@ -176,6 +214,7 @@ export function chefScreen(app, params = {}) {
     if (state === 'serve') return [C(READY_LINE)];
     if (state === 'bake') return c.ordered && !short ? [C(chainLine(c.steps))] : [C(c.ordered ? firstLine(c.steps[si]) : stepLine(c.steps[si]))];
     if (state === 'decor') return [K(decorAskLine(c.want))];
+    if (state === 'temp') return level <= 1 ? [C(somethingLine(c.want))] : [K(tempAskLine(c))];
     return [];
   }
   function nudgeTarget() {
@@ -185,6 +224,12 @@ export function chefScreen(app, params = {}) {
     else if (state === 'serve') restartAnim(c.kind === 'bake' ? cake : plate, 'nudge');
     else if (state === 'bake') restartAnim(toolEl(BAKE_STEPS[c.steps[si]].tool), 'nudge');
     else if (state === 'decor') kit.setHint(missing()[0]);
+    else if (state === 'temp') kit.setHint(tempMatches(c)[0]);
+    else if (state === 'clean') {
+      const target = cleanTarget();
+      const sel = level <= 2 || taken.has(`sel:${target}`);
+      restartAnim(sel ? places.querySelector(`[data-place="${CLEAN_ITEMS[target].place}"]`) : counter.querySelector(`[data-item="${target}"]`), 'nudge');
+    }
   }
   const toolEl = (id) => (id === 'bowl' ? bowl : tools.querySelector(`[data-tool="${id}"]`));
 
@@ -193,12 +238,16 @@ export function chefScreen(app, params = {}) {
     stage.dataset.scene = kind;
     sink.hidden = kind !== 'wash';
     card.hidden = !(kind === 'sandwich' || (kind === 'bake' && cur()?.ordered));
-    plate.hidden = kind !== 'sandwich';
+    plate.hidden = kind !== 'sandwich' && kind !== 'temp';
+    cleanRoom.hidden = kind !== 'clean';
+    cleanRoom.classList.remove('shine');
+    cleanOn = kind === 'clean';
+    delete custEl.dataset.feel;
     tools.hidden = kind !== 'bake';
     bowl.hidden = kind !== 'bake';
     oven.hidden = kind !== 'bake';
     cake.hidden = kind !== 'decor';
-    custEl.hidden = kind === 'wash';
+    custEl.hidden = kind === 'wash' || kind === 'clean';
     kit.renderTray([]);
     if (plan) count.textContent = `${Math.min(caseIdx + 1, plan.cases.length)}/${plan.cases.length}`;
   }
@@ -290,6 +339,7 @@ export function chefScreen(app, params = {}) {
     }
     if (c.kind === 'sandwich') return startSandwich(resume);
     if (c.kind === 'bake') return startBake(resume);
+    if (c.kind === 'temp') return startTemp(resume);
     return startDecor(resume);
   }
 
@@ -347,11 +397,13 @@ export function chefScreen(app, params = {}) {
     await ask([C(READY_LINE)], 'serve');
   }
   async function tapPlate() {
-    if (state !== 'serve' || cur().kind !== 'sandwich') return;
+    if (state !== 'serve' || !['sandwich', 'temp'].includes(cur().kind)) return;
     serve(plate);
   }
-  /** Đưa món cho khách (một thao tác), khách cảm ơn, ra về. */
+  /** Đưa món cho khách (một thao tác), khách cảm ơn, ra về. Ca D: món nóng "Hot! Careful!" → "Phew, phew!"; món lạnh "Brr! Yummy!". */
   async function serve(el) {
+    const c = cur();
+    const temp = c.kind === 'temp' ? DISHES[tempMatches(c)[0]] : null;
     if (!taken.take('serve')) return;
     const e = kit.epoch;
     setState('busy');
@@ -359,6 +411,7 @@ export function chefScreen(app, params = {}) {
     snapNext();
     play('whoosh');
     el.classList.remove('ready');
+    if (temp?.hot) talk([C(CAREFUL_LINE)]);
     const from = el.getBoundingClientRect();
     const to = custEl.getBoundingClientRect();
     if (!matchMedia('(prefers-reduced-motion: reduce)').matches) {
@@ -368,11 +421,12 @@ export function chefScreen(app, params = {}) {
     }
     el.hidden = true;
     if (e !== kit.epoch) return;
+    delete custEl.dataset.feel;
     renderCustomer('happy');
     restartAnim(custEl, 'hop');
     play('munch');
     playSoundFile(SOUND_BY_ID.get('dishes'), { isCurrent: () => e === kit.epoch }).catch(() => {}); // bát đĩa lách cách (file có sẵn)
-    await talk([K(THANKS_LINE)]);
+    await talk(!temp ? [K(THANKS_LINE)] : temp.hot ? [K(PHEW_LINE), K(THANKS_LINE)] : [K(BRR_LINE), K(THANK_YOU_LINE)]);
     if (e !== kit.epoch) return;
     nextCase(e);
   }
@@ -552,6 +606,172 @@ export function chefScreen(app, params = {}) {
     serve(cake);
   }
 
+  // Ca D — món nóng, món lạnh (SPEC-jobs4 3.1): chọn món → món lên đĩa → chạm đĩa đưa cho khách.
+  async function startTemp(resume) {
+    const c = cur();
+    const right = tempMatches(c)[0];
+    plate.dataset.dish = right; // cho test; bé không thấy
+    stack.replaceChildren();
+    plate.classList.remove('ready');
+    // Mức 1: khách có dấu hiệu lạnh (run, khăn) / nóng (mồ hôi); mức 2–3 không có.
+    if (level <= 1) custEl.dataset.feel = c.want === 'hot' ? 'cold' : 'hot';
+    if (taken.has('dish')) {
+      stack.replaceChildren(dishFace(right, 'span.cf-dish'));
+      return askServe(plate);
+    }
+    kit.renderTray(c.tray);
+    if (level <= 1) kit.setHint(right);
+    const lines = resume ? promptLines() : level <= 1 ? [K(feelLine(c.want)), C(somethingLine(c.want))] : [K(tempAskLine(c))];
+    await ask(lines, 'temp');
+  }
+  async function giveDish(id, from) {
+    if (state !== 'temp') return;
+    const e = kit.epoch;
+    const c = cur();
+    const right = tempMatches(c)[0];
+    if (id !== right) {
+      // Mức 1 là làm quen: món đúng nhún, không tính nhầm.
+      if (level <= 1) {
+        kit.setHint(right);
+        return;
+      }
+      if (!countWrong(`m:${id}`)) return;
+      if (wrongs >= 2) kit.setHint(right);
+      restartAnim(custEl, 'shake');
+      const k = stepKey();
+      await talk([K(tempWrongLine(c, id))]);
+      if (k === stepKey()) kit.armNudge();
+      return;
+    }
+    if (!taken.take('dish')) return;
+    kit.clearNudge();
+    kit.setHint(null);
+    setState('busy');
+    if (level >= 2 && wrongs === 0) {
+      record(`temp:${c.want}`, c.want, c.want === 'hot' ? '🥵' : '🥶');
+      if (c.dish && DISHES[c.dish].word) record(`dish:${c.dish}`, DISHES[c.dish].word, DISHES[c.dish].emoji);
+    }
+    seen(right);
+    snap();
+    const to = center(stack.getBoundingClientRect());
+    const g = await kit.flyTo(dishFace(id, 'span.cf-dish.cf-fly'), from, { x: to.x, y: to.y - 10 });
+    kit.removeGhost(g);
+    if (e !== kit.epoch) return;
+    play('pop');
+    stack.replaceChildren(dishFace(id, 'span.cf-dish'));
+    askServe(plate);
+  }
+
+  // Dọn bếp (SPEC-jobs4 3.2) — cuối lượt, mức 2–3.
+  const cleanTarget = () => plan.clean.asks.find((id) => !taken.has(`in:${id}`)) ?? null;
+  async function startClean(resume = null) {
+    const e = kit.epoch;
+    caseIdx = plan.cases.length;
+    wrongs = resume?.wrongs ?? 0;
+    nudges = resume?.nudges ?? 0;
+    taken = claims(resume?.taken ?? []);
+    setState('enter');
+    showScene('clean');
+    renderClean();
+    snap();
+    if (!resume) {
+      await talk([C(CLEAN_LINE)]);
+      if (e !== kit.epoch) return;
+    }
+    askClean(e);
+  }
+  function renderClean() {
+    const target = cleanTarget();
+    places.replaceChildren(...PLACE_ORDER.map((id) => h('button.cf-place', {
+      type: 'button', 'aria-label': PLACES[id].vi, dataset: { place: id }, onclick: () => tapPlace(id),
+    }, h('span', { html: PLACE_SVG[id] }))));
+    counter.replaceChildren(...plan.clean.items.map((id) => h('button.cf-citem', {
+      type: 'button', 'aria-label': CLEAN_ITEMS[id].vi, dataset: { item: id },
+      class: `${taken.has(`in:${id}`) ? 'in' : ''}${taken.has(`sel:${id}`) && !taken.has(`in:${id}`) ? ' sel' : ''}${level <= 2 && id === target ? ' next' : ''}`,
+      onclick: () => tapCleanItem(id),
+    }, cleanFace(id, 'span'))));
+    cleanRoom.dataset.target = target ?? ''; // cho test; bé không thấy
+    cleanRoom.dataset.place = target ? CLEAN_ITEMS[target].place : '';
+  }
+  async function askClean(e) {
+    const target = cleanTarget();
+    renderClean();
+    setState('clean');
+    snap();
+    await talk([C(cleanAskLine(target, level, target !== plan.clean.asks[0]))]);
+    if (e === kit.epoch && state === 'clean') kit.armNudge();
+  }
+  async function tapCleanItem(id) {
+    if (state !== 'clean' || level <= 2 || taken.has(`in:${id}`)) return;
+    const e = kit.epoch;
+    const target = cleanTarget();
+    if (taken.has(`sel:${target}`)) return; // đã chọn đồ — giờ chọn chỗ
+    const el = counter.querySelector(`[data-item="${id}"]`);
+    if (id !== target) {
+      if (!countWrong(`ci:${id}`)) return;
+      restartAnim(el, 'shake');
+      if (wrongs >= 2) restartAnim(counter.querySelector(`[data-item="${target}"]`), 'nudge');
+      const k = stepKey();
+      await talk([C(itemWrongLine(id, target))]);
+      if (k === stepKey()) kit.armNudge();
+      return;
+    }
+    if (!taken.take(`sel:${id}`)) return;
+    kit.clearNudge();
+    if (wrongs === 0 && CLEAN_ITEMS[id].word) record(`clean:${id}`, CLEAN_ITEMS[id].word, CLEAN_ITEMS[id].emoji);
+    // Bước chọn đồ xong: khóa, lần nhầm của bước chọn chỗ tính lại từ đầu.
+    wrongs = 0;
+    nudges = 0;
+    snap();
+    play('pop');
+    el.classList.add('sel');
+    if (e === kit.epoch) kit.armNudge();
+  }
+  async function tapPlace(place) {
+    if (state !== 'clean') return;
+    const e = kit.epoch;
+    const target = cleanTarget();
+    const itemEl = counter.querySelector(`[data-item="${target}"]`);
+    const placeEl = places.querySelector(`[data-place="${place}"]`);
+    if (level >= 3 && !taken.has(`sel:${target}`)) {
+      // Chưa chọn đồ: đồ cần cất nhún, chú nhắc lại (không tính nhầm).
+      restartAnim(itemEl, 'nudge');
+      const k = stepKey();
+      await talk([C(cleanAskLine(target, level, target !== plan.clean.asks[0]))]);
+      if (k === stepKey()) kit.armNudge();
+      return;
+    }
+    if (place !== CLEAN_ITEMS[target].place) {
+      if (!countWrong(`p:${place}`)) return;
+      restartAnim(placeEl, 'shake');
+      if (wrongs >= 2) restartAnim(places.querySelector(`[data-place="${CLEAN_ITEMS[target].place}"]`), 'nudge');
+      const k = stepKey();
+      await talk([C(placeWrongLine(place, target))]);
+      if (k === stepKey()) kit.armNudge();
+      return;
+    }
+    if (!taken.take(`in:${target}`)) return;
+    kit.clearNudge();
+    setState('busy');
+    wrongs = 0;
+    nudges = 0;
+    const all = !cleanTarget();
+    snap(all ? { cleanDone: true } : {});
+    const g = await kit.flyTo(cleanFace(target, 'span.cf-item.cf-fly'), center(itemEl.getBoundingClientRect()), center(placeEl.getBoundingClientRect()));
+    kit.removeGhost(g);
+    if (e !== kit.epoch) return;
+    play('pop');
+    restartAnim(placeEl, 'hop');
+    if (!all) return askClean(e);
+    seen('clean');
+    renderClean();
+    cleanRoom.classList.add('shine');
+    play('sparkle');
+    await talk([C(ALL_CLEAN_LINE)]);
+    if (e !== kit.epoch) return;
+    finishRound();
+  }
+
   async function nextCase(e) {
     setState('leave');
     restartAnim(custEl, 'leave');
@@ -559,8 +779,9 @@ export function chefScreen(app, params = {}) {
     if (e !== kit.epoch) return;
     custEl.classList.remove('leave');
     caseIdx += 1;
-    if (caseIdx >= plan.cases.length) finishRound();
-    else startCase();
+    if (caseIdx < plan.cases.length) startCase();
+    else if (plan.clean) startClean();
+    else finishRound();
   }
   function finishRound() {
     if (state === 'done') return;
@@ -607,13 +828,14 @@ export function chefScreen(app, params = {}) {
       recorded = new Set(s.recorded ?? []);
       washed = s.washed;
       if (!washed) startWash();
+      else if (caseIdx >= plan.cases.length && plan.clean && !s.cleanDone) startClean(s.cleanOn ? s : null);
       else if (caseIdx >= plan.cases.length) {
         caseIdx = plan.cases.length - 1;
         count.textContent = `${plan.cases.length}/${plan.cases.length}`;
         finishRound();
       } else startCase(s);
     } else {
-      plan = planRound(level, { seen: progress.seen });
+      plan = planRound(level, { seen: progress.seen, rounds: progress.rounds });
       caseIdx = 0;
       startWash();
     }

@@ -128,9 +128,115 @@ test('Nông trại mức 3: Good night gọi bằng tiếng kêu — chạm nh�
   const target = await page.locator('.fm-yard').getAttribute('data-target');
   const call = (await spoken(page)).find((t) => /^Who says \w+\? Go in!$/.test(t));
   const wrong = page.locator(`.fm-sleep:not([data-animal="${target}"])`).first();
+  // Câu gọi có thể đã được nhắc (10 giây, chế độ nhanh) — đếm từ lúc chạm nhầm.
+  const before = (await spoken(page)).filter((t) => t === call).length;
   await wrong.click();
-  await expect.poll(async () => (await spoken(page)).filter((t) => t === call).length).toBe(2);
+  await expect.poll(async () => (await spoken(page)).filter((t) => t === call).length).toBeGreaterThan(before);
   await expect(wrong).not.toHaveClass(/\bin\b/);
   await page.locator(`.fm-sleep[data-animal="${target}"]`).click();
   await expect(page.locator(`.fm-sleep[data-animal="${target}"]`)).toHaveClass(/\bin\b/);
+});
+
+// ---------- 0.72.0: 👨‍🍳 Đầu bếp nhí — ca D món nóng, món lạnh (3.1), dọn bếp (3.2) ----------
+const TOOL = { pour: 'milk', crack: 'egg', mix: 'spoon' };
+const HOT_DISH = { soup: true, 'hot-milk': true, 'ice-cream': false, 'cold-milk': false, 'cold-water': false };
+/** Giải bước đang chờ của Đầu bếp. */
+async function solveChef(page) {
+  const s = await play(page).getAttribute('data-state');
+  if (s === 'wash') return page.locator('.cf-sink').click();
+  if (s === 'layer') return tapTray(page, await page.locator('.cf-plate').getAttribute('data-next'));
+  if (s === 'serve') return page.locator('.cf-plate:visible, .cf-cake:visible').first().click();
+  if (s === 'bake') {
+    const want = await page.locator('.cf-tools').getAttribute('data-want');
+    return want === 'bake' ? page.locator('.cf-bowl').click() : page.locator(`.cf-tool[data-tool="${TOOL[want]}"]`).click();
+  }
+  if (s === 'decor') {
+    const want = (await page.locator('.cf-cake').getAttribute('data-want')).split(',').map((x) => x.split(':')[0]);
+    for (const id of want) if (!(await page.locator(`.jb-tray [data-item="${id}"].full`).count())) return tapTray(page, id);
+  }
+  if (s === 'temp') return tapTray(page, await page.locator('.cf-plate').getAttribute('data-dish'));
+  if (s === 'clean') {
+    const target = await page.locator('.cf-clean').getAttribute('data-target');
+    const item = page.locator(`.cf-citem[data-item="${target}"]`);
+    if (await page.locator('.jb-play').evaluate(() => window.kidEnglish.settings.chefGame.level) >= 3 && !(await item.evaluate((el) => el.classList.contains('sel')))) return item.click();
+    return page.locator(`.cf-place[data-place="${await page.locator('.cf-clean').getAttribute('data-place')}"]`).click();
+  }
+}
+async function playChefUntil(page, re) {
+  for (let i = 0; i < 120; i++) {
+    const s = await play(page).getAttribute('data-state');
+    if (re.test(s)) return;
+    if (/^(wash|layer|serve|bake|decor|temp|clean)$/.test(s)) await solveChef(page);
+    await page.waitForTimeout(150);
+  }
+  throw new Error(`không tới được ${re}`);
+}
+
+test('Đầu bếp mức 1 lượt lẻ: ca D thay bánh mì kẹp (JOBS4-06) — khách lạnh / nóng, món đúng nhún, chạm món sai không tính nhầm; đưa món nóng "Hot! Careful!" → "Phew, phew!", món lạnh "Brr! Yummy!" (JOBS4-05); không có dọn bếp', async ({ page }) => {
+  await openJob(page, 'chef', 1, 0);
+  await playChefUntil(page, /^temp$/);
+  await expect(page.locator('.cf-customer')).toHaveAttribute('data-feel', /^(hot|cold)$/);
+  await expect(page.locator('.jb-tray [data-item]')).toHaveCount(2);
+  const dish = await page.locator('.cf-plate').getAttribute('data-dish');
+  await tapTray(page, (await page.locator(`.jb-tray [data-item]:not([data-item="${dish}"])`).getAttribute('data-item')));
+  await page.waitForTimeout(300);
+  expect((await spoken(page)).some((t) => /^That's /.test(t))).toBe(false);
+  await tapTray(page, dish);
+  await stateIs(page, 'serve');
+  await page.locator('.cf-plate').click();
+  if (HOT_DISH[dish]) {
+    await expect.poll(() => spoken(page)).toEqual(expect.arrayContaining(['Hot! Careful!', 'Phew, phew!', 'Yummy! Thank you!']));
+  } else {
+    await expect.poll(() => spoken(page)).toContain('Brr! Yummy!');
+    expect(await spoken(page)).not.toContain('Hot! Careful!');
+  }
+  for (let i = 0; i < 80 && !(await page.locator('.jb-play.jb-done').count()); i++) {
+    if (/^(wash|layer|serve|bake|decor|temp)$/.test(await play(page).getAttribute('data-state'))) await solveChef(page);
+    await page.waitForTimeout(150);
+  }
+  await done(page);
+  expect(await spoken(page)).not.toContain('Clean up time!');
+  expect((await spoken(page)).some((t) => /^Bread!$/.test(t))).toBe(false); // không có bánh mì kẹp
+});
+
+test('Đầu bếp mức 3: khách gọi "Hot milk, please!" kiểu — chọn món cùng loại khác nóng / lạnh → câu nhầm, món về khay (JOBS4-04)', async ({ page }) => {
+  await openJob(page, 'chef', 3, 0);
+  await playChefUntil(page, /^temp$/);
+  await expect(page.locator('.jb-tray [data-item]')).toHaveCount(4);
+  const dish = await page.locator('.cf-plate').getAttribute('data-dish');
+  const wrong = await page.locator(`.jb-tray [data-item]:not([data-item="${dish}"])`).first().getAttribute('data-item');
+  await tapTray(page, wrong);
+  await expect.poll(async () => (await spoken(page)).some((t) => /^That's [\w ]+\. [\w ]+, please!$/.test(t))).toBe(true);
+  await expect(page.locator('.cf-stack .cf-dish')).toHaveCount(0);
+  await stateIs(page, 'temp');
+});
+
+test('Đầu bếp mức 3 dọn bếp: chạm chỗ khi chưa chọn đồ — không tính nhầm, nhắc lại (JOBS4-16); chọn đồ rồi chạm chỗ sai → "That\'s the … . In the …, please!"; xong → "All clean! Good job!" → sticker; ra nền giữa dọn bếp quay lại đúng đồ', async ({ page }) => {
+  await openJob(page, 'chef', 3, 1);
+  await playChefUntil(page, /^clean$/);
+  await expect(page.locator('.cf-citem')).toHaveCount(3);
+  await expect.poll(async () => (await spoken(page)).some((t) => /^Put the \w+ in the \w+!$/.test(t))).toBe(true);
+  const ask = (await spoken(page)).find((t) => /^Put the \w+ in the \w+!$/.test(t));
+  const target = await page.locator('.cf-clean').getAttribute('data-target');
+  const place = await page.locator('.cf-clean').getAttribute('data-place');
+  await page.locator(`.cf-place[data-place="${place}"]`).click();
+  await expect.poll(async () => (await spoken(page)).filter((t) => t === ask).length).toBe(2);
+  await expect(page.locator(`.cf-citem[data-item="${target}"]`)).not.toHaveClass(/\bin\b/);
+  await page.locator(`.cf-citem[data-item="${target}"]`).click();
+  await expect(page.locator(`.cf-citem[data-item="${target}"]`)).toHaveClass(/\bsel\b/);
+  await page.locator(`.cf-place:not([data-place="${place}"])`).first().click();
+  await expect.poll(async () => (await spoken(page)).some((t) => /^That's the \w+\. In the \w+, please!$/.test(t))).toBe(true);
+  await expect(page.locator(`.cf-citem[data-item="${target}"]`)).toHaveClass(/\bsel\b/);
+  await page.locator(`.cf-place[data-place="${place}"]`).click();
+  await expect(page.locator(`.cf-citem[data-item="${target}"]`)).toHaveClass(/\bin\b/);
+  await stateIs(page, 'clean');
+  await setVisible(page, 'hidden');
+  await setVisible(page, 'visible');
+  await page.locator('.resume-overlay .start-btn').click();
+  await stateIs(page, 'clean');
+  await expect(page.locator(`.cf-citem[data-item="${target}"]`)).toHaveClass(/\bin\b/);
+  expect((await spoken(page)).filter((t) => t === 'Clean up time!').length).toBe(1);
+  await playChefUntil(page, /^done$/).catch(() => {});
+  await done(page);
+  expect(await spoken(page)).toContain('All clean! Good job!');
 });

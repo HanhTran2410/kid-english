@@ -8,10 +8,11 @@ const play = (page) => page.locator('.jb-play');
 const FOOD = { cow: 'hay', sheep: 'grass', horse: 'carrot', chicken: 'corn', pig: 'apple', duck: 'seeds' };
 const TOOL = { pour: 'milk', crack: 'egg', mix: 'spoon' };
 
-async function openJob(page, job, level) {
+/** `rounds`: số lượt đã chơi — Đầu bếp (SPEC-jobs4 3.1) dùng để chọn ca D thay bánh mì kẹp (chẵn) hay trang trí (lẻ). */
+async function openJob(page, job, level, rounds = 0) {
   await fakeSpeech(page);
   await startApp(page);
-  await page.evaluate(([j, l]) => window.kidEnglish.setSetting(`${j}Game`, { level: l, rounds: 0, lock: l, seen: {} }), [job, level]);
+  await page.evaluate(([j, l, r]) => window.kidEnglish.setSetting(`${j}Game`, { level: l, rounds: r, lock: l, seen: {} }), [job, level, rounds]);
   await page.getByRole('button', { name: 'Trò chơi' }).click();
   await page.getByRole('button', { name: 'Đóng vai' }).click();
   await page.locator(`.jb-job-${job}`).click();
@@ -91,7 +92,7 @@ test('JOBS3-02: Nông trại mức 3 — chạm cửa chuồng sai: "Not me!" (t
 });
 
 test('Đầu bếp mức 3: rửa tay → bánh mì kẹp; đưa món "No …" → khách "No tomato, please!", lớp không lên đĩa (JOBS3-05)', async ({ page }) => {
-  await openJob(page, 'chef', 3);
+  await openJob(page, 'chef', 3, 1); // lượt chẵn: có bánh mì kẹp (ca D thay trang trí)
   await stateIs(page, 'wash');
   await page.locator('.cf-sink').click();
   await stateIs(page, 'layer');
@@ -125,7 +126,8 @@ test('Đầu bếp mức 2: làm bánh — nghe động từ chọn đồ, nhầ
     } else if (s === 'decor') {
       const want = (await page.locator('.cf-cake').getAttribute('data-want')).split(',').map((x) => x.split(':')[0]);
       for (const id of want) if (!(await page.locator(`.jb-tray [data-item="${id}"].full`).count())) { await tapTray(page, id); break; }
-    }
+    } else if (s === 'temp') await tapTray(page, await page.locator('.cf-plate').getAttribute('data-dish'));
+    else if (s === 'clean') await page.locator(`.cf-place[data-place="${await page.locator('.cf-clean').getAttribute('data-place')}"]`).click();
     await page.waitForTimeout(150);
   }
   await done(page);
@@ -213,7 +215,7 @@ test('Ảnh món (Góc bố mẹ → Ảnh Đóng vai): món có ảnh hiện �
     const blob = await c.convertToBlob({ type: 'image/png' });
     await setWordImage(window.kidEnglish.db, { lessonId: 'jobs:items', word: 'cheese', blob, width: 40, height: 40 });
   });
-  await page.evaluate(() => window.kidEnglish.setSetting('chefGame', { level: 1, rounds: 0, lock: 1, seen: {} }));
+  await page.evaluate(() => window.kidEnglish.setSetting('chefGame', { level: 1, rounds: 1, lock: 1, seen: {} })); // lượt chẵn: có bánh mì kẹp
   await page.getByRole('button', { name: 'Trò chơi' }).click();
   await page.getByRole('button', { name: 'Đóng vai' }).click();
   await page.locator('.jb-job-chef').click();
