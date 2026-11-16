@@ -327,7 +327,7 @@ export function cleanDoctorState(saved, { maxLevel = PLAYABLE_LEVEL } = {}) {
   const lock = ok(s.lock) ? s.lock : null;
   const seen = {};
   if (s.seen && typeof s.seen === 'object') {
-    for (const [id, n] of Object.entries(s.seen)) if ((CASE_BY_ID.has(id) || NEW_CASE_IDS.includes(id)) && Number.isInteger(n) && n > 0) seen[id] = n;
+    for (const [id, n] of Object.entries(s.seen)) if ((CASE_BY_ID.has(id) || NEW_CASE_IDS.includes(id) || FEELING_BY_ID.has(id.replace(/^feel:/, ''))) && Number.isInteger(n) && n > 0) seen[id] = n;
   }
   return {
     level: lock ?? (ok(s.level) ? s.level : 1),
@@ -468,7 +468,15 @@ export function planDoctorRound(level, { seen = {}, rng = Math.random, eyeWords 
   // Chỉ test UI đặt `window.__kidTest.doctorNewAt` để cố định chỗ ca mới; bình thường ngẫu nhiên.
   const pinned = globalThis.__kidTest?.doctorNewAt;
   cases.splice(Number.isInteger(pinned) ? pinned : Math.floor(rng() * (cases.length + 1)), 0, extra);
-  return cases.map((c) => ({ ...c, sticker: planSticker(level, { rng }) }));
+  const out = cases.map((c) => ({ ...c, sticker: planSticker(level, { rng }) }));
+  // Dỗ bạn thú (SPEC-jobs4 mục 6): đầu đúng một ca bệnh. Test UI đặt `doctorComfortAt` (-1 = không có, số = ca đó).
+  const pinC = globalThis.__kidTest?.doctorComfortAt;
+  const cf = pinC === -1 ? null : planComfort(level, out, { seen, rng, at: pinC });
+  if (cf) {
+    const { at, ...comfort } = cf;
+    out[at] = { ...out[at], comfort };
+  }
+  return out;
 }
 
 const blocks = (n) => (n === 1 ? 'block' : 'blocks');
@@ -565,3 +573,74 @@ export const seeLine = (w) => [`I see the ${w}!`, `Tớ thấy "${w}" rồi!`];
 export const wrongEyeLine = (x, w) => [`That's the ${x}. Where's the ${w}?`, `Đó là "${x}". "${w}" đâu nhỉ?`];
 /** Chỉ nói về bạn thú này: "Teddy needs glasses!" */
 export const needGlassesLine = (name) => [`${name} needs glasses!`, `${name} cần đeo kính!`];
+
+// ---------- SPEC-jobs4 mục 6 (DR4): Dỗ bạn thú — đầu một ca bệnh mỗi lượt ----------
+/** Cảm xúc (bài Feelings) → mặt bạn thú (patients.js) + đồ giúp. */
+export const FEELINGS = [
+  { id: 'scared', emoji: '😨', vi: 'sợ', help: 'teddy' },
+  { id: 'sad', emoji: '😢', vi: 'buồn', help: 'hug' },
+  { id: 'sleepy', emoji: '😴', vi: 'buồn ngủ', help: 'pillow' },
+  { id: 'hungry', emoji: '😋', vi: 'đói', help: 'apple' },
+];
+export const FEELING_BY_ID = new Map(FEELINGS.map((f) => [f.id, f]));
+/** Đồ giúp (mã trong khay có tiền tố `c-` để không trùng mã bạn thú "teddy"). */
+export const COMFORTS = [
+  { id: 'teddy', a: 'a teddy', vi: 'gấu bông' },
+  { id: 'hug', a: 'a hug', vi: 'cái ôm' },
+  { id: 'pillow', a: 'a pillow', vi: 'cái gối' },
+  { id: 'apple', a: 'an apple', vi: 'quả táo' },
+];
+export const COMFORT_BY_ID = new Map(COMFORTS.map((c) => [c.id, c]));
+export const comfortItemId = (id) => `c-${id}`;
+/** Cảm xúc theo mức: mức 1 chỉ *scared* / *sad*; mức 2–3 cả 4. */
+export const feelingsFor = (level) => (level <= 1 ? FEELINGS.slice(0, 2) : FEELINGS).map((f) => f.id);
+/** Ca không hợp với cảm xúc: ca buồn ngủ đã có mặt buồn ngủ (không dỗ ở ca này); đói thì không ở ca đau bụng / đau răng. */
+const comfortFits = (caseId, feel) => caseId !== 'sleepy' && !(feel === 'hungry' && ['tummy', 'tooth'].includes(caseId));
+
+/**
+ * Việc dỗ của lượt (sinh sẵn cùng kế hoạch): cảm xúc ít gặp nhất (`seen` `feel:*`) hợp với một ca bệnh của lượt;
+ * khay 3 đồ (đúng một đồ hợp), mức 3 thêm 3 thẻ mặt khác nhau (đúng một thẻ). Không có ca bệnh hợp thì `null`.
+ * @returns {{ at: number, feel: string, tray: string[], cards?: string[] } | null} `at` = vị trí ca trong `cases`
+ */
+export function planComfort(level, cases, { seen = {}, rng = Math.random, at: want = null } = {}) {
+  const ill = cases.map((c, i) => ({ id: c.id, i })).filter((c) => CASE_BY_ID.has(c.id));
+  for (const key of leastSeenIds(feelingsFor(level).map((f) => `feel:${f}`), seen, rng)) {
+    const feel = key.slice('feel:'.length);
+    const fit = ill.filter((c) => comfortFits(c.id, feel));
+    if (!fit.length) continue;
+    const at = fit.find((c) => c.i === want)?.i ?? fit[Math.floor(rng() * fit.length)].i;
+    const help = FEELING_BY_ID.get(feel).help;
+    const others = shuffleList(COMFORTS.map((c) => c.id).filter((id) => id !== help), rng).slice(0, 2);
+    const plan = { at, feel, tray: shuffleList([help, ...others], rng).map(comfortItemId) };
+    if (level >= 3) plan.cards = shuffleList([feel, ...shuffleList(FEELINGS.map((f) => f.id).filter((id) => id !== feel), rng).slice(0, 2)], rng);
+    return plan;
+  }
+  return null;
+}
+const leastSeenIds = (ids, seen, rng) => shuffleList(ids, rng).sort((a, b) => (seen[a] ?? 0) - (seen[b] ?? 0));
+
+/** Bạn thú nói cảm xúc (mức 1–2). */
+export const FEEL_LINES = {
+  scared: ["I'm scared!", 'Tớ sợ quá!'],
+  sad: ["I'm sad.", 'Tớ buồn.'],
+  sleepy: ["I'm sleepy…", 'Tớ buồn ngủ…'],
+  hungry: ["I'm hungry!", 'Tớ đói quá!'],
+};
+export const feelLine = (feel) => FEEL_LINES[feel];
+/** Bông (chú bác sĩ) nói khi đưa đồ giúp. */
+export const HELP_LINES = {
+  scared: ["Don't be scared! Here's a teddy!", 'Đừng sợ nhé! Gấu bông đây!'],
+  sad: ['A big hug!', 'Ôm một cái thật chặt nào!'],
+  sleepy: ['A pillow! Rest a little!', 'Gối đây! Nghỉ một chút nhé!'],
+  hungry: ['An apple for you!', 'Táo cho bạn đây!'],
+};
+export const helpLine = (feel) => HELP_LINES[feel];
+export const HAPPY_NOW_LINE = ["Thank you! I'm happy now!", 'Cảm ơn bác sĩ! Giờ tớ vui rồi!'];
+export const feelQLine = (name) => [`How does ${name} feel?`, `${name} thấy thế nào nhỉ?`];
+export const feelIsLine = (name, feel) => [`${name} is ${feel}!`, `${name} đang ${FEELING_BY_ID.get(feel).vi}!`];
+export const wrongCardLine = (x, name) => [`That's ${x}. Look at ${name}!`, `Đó là ${FEELING_BY_ID.get(x).vi}. Con nhìn ${name} xem!`];
+/** Nhầm đồ: "That's a pillow. I'm scared!" */
+export const wrongComfortLine = (item, feel) => {
+  const c = COMFORT_BY_ID.get(item);
+  return [`That's ${c.a}. ${FEEL_LINES[feel][0]}`, `Đó là ${c.vi}. ${FEEL_LINES[feel][1]}`];
+};

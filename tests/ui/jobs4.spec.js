@@ -439,3 +439,167 @@ test('Xe buýt mức 3: thẻ thời tiết sai → "That\'s … . Look outside!
   const seen = (await page.evaluate(() => window.kidEnglish.settings.busGame)).seen;
   for (const item of items) expect(seen[item]).toBeUndefined();
 });
+
+// ---------- 0.75.0: 🩺 Bác sĩ nhí — Dỗ bạn thú (SPEC-jobs4 mục 6) ----------
+const HELP = { scared: 'c-teddy', sad: 'c-hug', sleepy: 'c-pillow', hungry: 'c-apple' };
+const FEEL_EN = { scared: "I'm scared!", sad: "I'm sad.", sleepy: "I'm sleepy…", hungry: "I'm hungry!" };
+const DOC_STATES = /^(wash|feel|comfort|touch|check|treat|measure|howmany|taller|point|glasses|sticker)$/;
+/** Ca bệnh đầu lượt có việc dỗ (ca mới đo / khám mắt ở cuối lượt). */
+const pinComfort = (page) => page.addInitScript(() => { window.__kidTest = { doctorNewAt: 2, doctorComfortAt: 0 }; });
+const feelCount = (page, f) => page.evaluate(async (w) => (await window.kidEnglish.db.getAll('progress'))
+  .filter((p) => p.word === w).reduce((a, p) => a + (p.practiceCount ?? 0), 0), f);
+const trayIds = (page) => page.locator('.jb-tray [data-item]').evaluateAll((els) => els.map((e) => e.dataset.item));
+/** Giải bước đang chờ của Bác sĩ nhí (đọc các thuộc tính chỉ để test). */
+async function solveDoctor(page, level) {
+  const s = await play(page).getAttribute('data-state');
+  const pt = page.locator('.dr-patient');
+  if (s === 'wash') {
+    const items = await trayIds(page);
+    const id = ['soap', 'rinse', 'towel', 'gloves'].find((x) => items.includes(x));
+    if (id) await tapTray(page, id);
+  } else if (s === 'feel') await page.locator(`.dr-feel[data-feel="${await pt.getAttribute('data-feel')}"]`).click();
+  else if (s === 'comfort') await tapTray(page, HELP[await pt.getAttribute('data-feel')]);
+  else if (['touch', 'check', 'treat'].includes(s)) {
+    const id = await pt.getAttribute('data-case');
+    const step = await page.evaluate(async ([caseId, lv, type]) => {
+      const m = await import('/js/doctor.js');
+      return m.stepsFor(m.CASE_BY_ID.get(caseId), lv).find((x) => x.type === type);
+    }, [id, level, s]);
+    if (s === 'touch') await page.locator(`.dr-spot[data-region="${step.target}"]`).first().click();
+    else await tapTray(page, step.item);
+  } else if (s === 'measure') {
+    const heights = (await page.locator('.dr-measure').getAttribute('data-heights')).split(',').map(Number);
+    const lit = await page.locator('.dr-block.lit').count();
+    const w = lit >= heights[0] ? 1 : 0;
+    await page.locator(`.dr-block[data-who="${w}"][data-i="${w ? lit - heights[0] : lit}"]`).click();
+  } else if (s === 'howmany') await tapTray(page, `n-${(await page.locator('.dr-measure').getAttribute('data-heights')).split(',')[0]}`);
+  else if (s === 'taller') {
+    const [a, b] = (await page.locator('.dr-measure').getAttribute('data-heights')).split(',').map(Number);
+    await page.locator(`.dr-measure-pet[data-who="${a > b ? 0 : 1}"]`).click();
+  } else if (s === 'point') await page.locator(`.dr-eye-pic[data-word="${await page.locator('.dr-eyes').getAttribute('data-ask')}"]`).click();
+  else if (s === 'glasses') await tapTray(page, 'glasses');
+  else if (s === 'sticker') {
+    const want = await pt.getAttribute('data-want');
+    const ids = (await trayIds(page)).filter((x) => x.startsWith('st-'));
+    await tapTray(page, want ? ids.find((x) => x.startsWith(`st-${want}`)) : ids[0]);
+  }
+  return s;
+}
+/** Dấu bước hiện tại (đổi sau mỗi thao tác đúng). */
+const docKey = async (page) => [await play(page).getAttribute('data-state'), (await trayIds(page)).join(','),
+  await page.locator('.dr-block.lit').count(), await page.locator('.dr-eyes').getAttribute('data-ask')].join('|');
+async function playDoctorUntil(page, level, re) {
+  for (let i = 0; i < 150; i++) {
+    const s = await play(page).getAttribute('data-state');
+    if (re.test(s ?? '')) return;
+    if (DOC_STATES.test(s ?? '')) {
+      const key = await docKey(page);
+      await solveDoctor(page, level);
+      await expect.poll(() => docKey(page), { timeout: 15000 }).not.toBe(key).catch(() => {});
+    } else await page.waitForTimeout(150);
+  }
+  throw new Error(`không tới ${re}`);
+}
+
+test('Bác sĩ mức 1: ca đầu có việc dỗ — bạn thú sợ / buồn, đứng lệch khỏi giường, đồ đúng sáng; chạm đồ khác chỉ làm đồ đúng nhún, không tính nhầm; đưa đúng → "Thank you! I\'m happy now!" → ca bệnh như cũ; cả lượt một lần dỗ → sticker', async ({ page }) => {
+  await pinComfort(page);
+  await openJob(page, 'doctor', 1);
+  await playDoctorUntil(page, 1, /^comfort$/);
+  const pt = page.locator('.dr-patient');
+  const feel = await pt.getAttribute('data-feel');
+  expect(['scared', 'sad']).toContain(feel);
+  await expect(pt).toHaveClass(/upset/);
+  const want = HELP[feel];
+  await expect(page.locator(`.jb-tray [data-item="${want}"]`)).toHaveClass(/hint/);
+  await expect(page.locator('.jb-tray [data-item]')).toHaveCount(3);
+  await expect.poll(async () => (await spoken(page)).includes({ scared: "Don't be scared! Here's a teddy!", sad: 'A big hug!' }[feel])).toBe(true);
+  expect((await spoken(page)).includes(FEEL_EN[feel])).toBe(true);
+  await tapTray(page, (await trayIds(page)).find((x) => x !== want));
+  await page.waitForTimeout(400);
+  await expect(play(page)).toHaveAttribute('data-state', 'comfort');
+  expect((await spoken(page)).some((t) => /^That's an? /.test(t))).toBe(false);
+  await tapTray(page, want);
+  await stateIs(page, /^(touch|treat)$/);
+  await expect(pt).not.toHaveClass(/upset/);
+  expect(await pt.getAttribute('data-feel')).toBeNull();
+  expect((await spoken(page)).filter((t) => t === "Thank you! I'm happy now!").length).toBe(1);
+  expect(await feelCount(page, feel)).toBe(0); // mức 1: không ghi Feelings
+  await playDoctorUntil(page, 1, /^done$/);
+  await done(page);
+  expect((await spoken(page)).filter((t) => t === "Thank you! I'm happy now!").length).toBe(1);
+  expect((await page.evaluate(() => window.kidEnglish.settings.doctorGame)).seen[`feel:${feel}`]).toBe(1);
+});
+
+test('Bác sĩ mức 2: bạn nói cảm xúc, chạm đồ sai → "That\'s a … . I\'m …!", tính nhầm, ca bệnh chưa bắt đầu (JOBS4-22); đúng rồi ra nền → quay lại ở ca bệnh, không dỗ lại, Feelings không ghi (đã nhầm) (JOBS4-23)', async ({ page }) => {
+  await pinComfort(page);
+  await openJob(page, 'doctor', 2);
+  await playDoctorUntil(page, 2, /^comfort$/);
+  const pt = page.locator('.dr-patient');
+  const feel = await pt.getAttribute('data-feel');
+  const want = HELP[feel];
+  await expect(page.locator(`.jb-tray [data-item="${want}"]`)).not.toHaveClass(/hint/);
+  await tapTray(page, (await trayIds(page)).find((x) => x !== want));
+  await expect.poll(async () => (await spoken(page)).some((t) => t.startsWith("That's a") && t.endsWith(FEEL_EN[feel]))).toBe(true);
+  await expect(play(page)).toHaveAttribute('data-state', 'comfort');
+  await tapTray(page, want);
+  await stateIs(page, /^(touch|check|treat)$/);
+  const st = await play(page).getAttribute('data-state');
+  const caseId = await pt.getAttribute('data-case');
+  await setVisible(page, 'hidden');
+  await setVisible(page, 'visible');
+  await page.locator('.resume-overlay .start-btn').click();
+  await stateIs(page, st);
+  await expect(pt).toHaveAttribute('data-case', caseId);
+  await expect(pt).not.toHaveClass(/upset/);
+  await page.waitForTimeout(500);
+  expect((await spoken(page)).filter((t) => t === FEEL_EN[feel]).length).toBe(1);
+  expect(await feelCount(page, feel)).toBe(0);
+});
+
+test('Bác sĩ mức 3: bạn không nói cảm xúc — "How does … feel?" + 3 thẻ mặt; thẻ sai → "That\'s … . Look at …!"; đúng → "… is …!", đồ hiện sau; ra nền ở bước đồ → không hỏi thẻ lại; đã nhầm thì không ghi Feelings', async ({ page }) => {
+  await pinComfort(page);
+  await openJob(page, 'doctor', 3);
+  await playDoctorUntil(page, 3, /^feel$/);
+  const pt = page.locator('.dr-patient');
+  const feel = await pt.getAttribute('data-feel');
+  const name = await page.evaluate(async (id) => (await import('/js/doctor.js')).PATIENT_BY_ID.get(id).name, await pt.getAttribute('data-patient'));
+  await expect(page.locator('.dr-feel')).toHaveCount(3);
+  await expect(page.locator('.jb-tray [data-item]')).toHaveCount(0);
+  await expect.poll(async () => (await spoken(page)).includes(`How does ${name} feel?`)).toBe(true);
+  expect((await spoken(page)).some((t) => /^I'm (scared|sad|sleepy|hungry)/.test(t))).toBe(false);
+  await page.locator(`.dr-feel:not([data-feel="${feel}"])`).first().click();
+  await expect.poll(async () => (await spoken(page)).some((t) => t.startsWith("That's ") && t.endsWith(`. Look at ${name}!`))).toBe(true);
+  await page.locator(`.dr-feel[data-feel="${feel}"]`).click();
+  await stateIs(page, 'comfort');
+  await expect(page.locator('.jb-tray [data-item]')).toHaveCount(3);
+  await expect(page.locator(`.dr-feel[data-feel="${feel}"]`)).toHaveClass(/picked/);
+  await expect.poll(async () => (await spoken(page)).includes(`${name} is ${feel}!`)).toBe(true);
+  await setVisible(page, 'hidden');
+  await setVisible(page, 'visible');
+  await page.locator('.resume-overlay .start-btn').click();
+  await stateIs(page, 'comfort');
+  expect((await spoken(page)).filter((t) => t === `How does ${name} feel?`).length).toBe(1);
+  await tapTray(page, HELP[feel]);
+  await stateIs(page, /^(touch|check|treat)$/);
+  expect(await feelCount(page, feel)).toBe(0);
+  await playDoctorUntil(page, 3, /^done$/);
+  await done(page);
+});
+
+test('Bác sĩ mức 3: chọn đúng thẻ ngay lần đầu → ghi Feelings "đã gặp" một lần; 🧹 khám lại dỗ lại nhưng không ghi lần hai', async ({ page }) => {
+  await pinComfort(page);
+  await openJob(page, 'doctor', 3);
+  await playDoctorUntil(page, 3, /^feel$/);
+  const feel = await page.locator('.dr-patient').getAttribute('data-feel');
+  await page.locator(`.dr-feel[data-feel="${feel}"]`).click();
+  await stateIs(page, 'comfort');
+  await expect.poll(() => feelCount(page, feel)).toBe(1);
+  await tapTray(page, HELP[feel]);
+  await stateIs(page, /^(touch|check|treat)$/);
+  await page.getByRole('button', { name: 'Khám lại' }).click();
+  await playDoctorUntil(page, 3, /^feel$/);
+  await page.locator(`.dr-feel[data-feel="${feel}"]`).click();
+  await stateIs(page, 'comfort');
+  await page.waitForTimeout(300);
+  expect(await feelCount(page, feel)).toBe(1);
+});

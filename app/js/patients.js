@@ -59,9 +59,27 @@ function muzzle(id, c) {
     <ellipse cx="116" cy="107" rx="3" ry="2" fill="#fff" opacity="0.7"/>`;
 }
 
-/** Mặt: 'sad' (vào phòng), 'happy' (khỏe), 'sleepy' (ca buồn ngủ). */
+/**
+ * Mặt: 'sad' (vào phòng), 'happy' (khỏe), 'sleepy' (ca buồn ngủ); mặt cảm xúc nhẹ nhàng của việc Dỗ bạn thú
+ * (SPEC-jobs4 mục 6): 'scared' (mắt to tròn), 'teary' (buồn + một giọt nước mắt nhỏ), 'drowsy' (lim dim + z), 'hungry' (liếm môi).
+ */
 export function faceSvg(mood = 'sad') {
   const cheeks = `<circle cx="80" cy="124" r="10" fill="${CHEEK}" opacity="0.6"/><circle cx="160" cy="124" r="10" fill="${CHEEK}" opacity="0.6"/>`;
+  if (mood === 'scared') {
+    return `${cheeks}
+      <circle cx="92" cy="88" r="15" fill="#fff" stroke="${INK}" stroke-width="4"/><circle cx="148" cy="88" r="15" fill="#fff" stroke="${INK}" stroke-width="4"/>
+      <circle cx="92" cy="90" r="6" fill="${INK}"/><circle cx="148" cy="90" r="6" fill="${INK}"/>
+      <path d="M76 62 q14 -10 28 -4 M164 62 q-14 -10 -28 -4" fill="none" stroke="${INK}" stroke-width="4" stroke-linecap="round"/>
+      <path d="M104 144 q5 -6 8 0 q4 6 8 0 q4 -6 8 0 q4 6 8 0" fill="none" stroke="${INK}" stroke-width="4" stroke-linecap="round"/>`;
+  }
+  if (mood === 'drowsy') {
+    return `${cheeks}
+      <path d="M80 88 h24 M136 88 h24" stroke="${INK}" stroke-width="5" stroke-linecap="round"/>
+      <path d="M82 88 q10 10 20 0 M138 88 q10 10 20 0" fill="${INK}"/>
+      <ellipse cx="120" cy="142" rx="8" ry="9" fill="${INK}"/>
+      <text x="176" y="52" font-size="26" font-weight="900" fill="${INK}" opacity="0.7">z</text>
+      <text x="194" y="30" font-size="18" font-weight="900" fill="${INK}" opacity="0.5">z</text>`;
+  }
   if (mood === 'sleepy') {
     return `${cheeks}
       <path d="M80 90 q12 8 24 0 M136 90 q12 8 24 0" fill="none" stroke="${INK}" stroke-width="5" stroke-linecap="round"/>
@@ -70,12 +88,18 @@ export function faceSvg(mood = 'sad') {
   const eyes = `
     <ellipse cx="92" cy="88" rx="9" ry="11" fill="${INK}"/><ellipse cx="148" cy="88" rx="9" ry="11" fill="${INK}"/>
     <circle cx="95" cy="83" r="3.5" fill="#fff"/><circle cx="151" cy="83" r="3.5" fill="#fff"/>`;
+  if (mood === 'hungry') {
+    return `${cheeks}${eyes}
+      <path d="M104 136 q16 10 32 0" fill="none" stroke="${INK}" stroke-width="5" stroke-linecap="round"/>
+      <path d="M124 139 q8 2 10 10 q-8 4 -12 -4 z" fill="#ff7a9c" stroke="${INK}" stroke-width="2.5" stroke-linejoin="round"/>`;
+  }
   if (mood === 'happy') {
     return `${cheeks}${eyes}
       <path d="M104 134 q16 18 32 0 z" fill="${INK}"/>
       <path d="M111 140 q9 7 18 0 q-9 -5 -18 0 z" fill="#ff7a9c"/>`;
   }
-  return `${cheeks}${eyes}
+  const tear = mood === 'teary' ? `<path d="M150 102 q6 9 0 14 q-6 -5 0 -14 z" fill="#74c0fc" stroke="#4dabf7" stroke-width="1.5"/>` : '';
+  return `${cheeks}${eyes}${tear}
     <path d="M78 74 q10 -2 24 -12 M162 74 q-10 -2 -24 -12" fill="none" stroke="${INK}" stroke-width="4" stroke-linecap="round"/>
     <path d="M106 144 q14 -12 28 0" fill="none" stroke="${INK}" stroke-width="5" stroke-linecap="round"/>`;
 }

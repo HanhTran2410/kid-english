@@ -36,7 +36,7 @@ async function giveSticker(page) {
 }
 
 /** Ca mới (đo chiều cao) ở vị trí `at` của lượt (mặc định cuối — ca 1, 2 là ca bệnh như test cũ). */
-const pinNewCase = (page, at = 2) => page.addInitScript((n) => { window.__kidTest = { doctorNewAt: n }; }, at);
+const pinNewCase = (page, at = 2) => page.addInitScript((n) => { window.__kidTest = { doctorNewAt: n, doctorComfortAt: -1 }; }, at);
 
 /** Ca khám mắt: chỉ đúng hình Bông hỏi (đọc `data-ask`) tới hết câu, rồi đưa kính. */
 async function doEyes(page) {
@@ -229,7 +229,7 @@ test('giọng đọc lỗi: phụ đề vẫn hiện, chơi hết lượt đư�
   await page.addInitScript(() => {
     // Giọng đọc báo lỗi ngay mỗi câu.
     window.addEventListener('DOMContentLoaded', () => {
-      window.__kidTest = { doctorNewAt: 2 };
+      window.__kidTest = { doctorNewAt: 2, doctorComfortAt: -1 };
       window.speechSynthesis.speak = (u) => {
         window.__spoken.push(u.text);
         setTimeout(() => u.onerror?.({ error: 'synthesis-failed' }), 5);

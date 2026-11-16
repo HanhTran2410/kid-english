@@ -87,7 +87,7 @@ test.describe('màn ngang 1180×820', () => {
 
   test('ROLE-01 Bác sĩ nhí: chú bác sĩ (vẽ sẵn) bên trái; bệnh nhân nói thì bệnh nhân sáng, Bông mờ; bệnh nhân không bao giờ bị mờ', async ({ page }) => {
     await slowSpeech(page, 200);
-    await page.addInitScript(() => { window.__kidTest = { doctorNewAt: 2 }; }); // ca đầu là ca bệnh ("Hello, doctor!")
+    await page.addInitScript(() => { window.__kidTest = { doctorNewAt: 2, doctorComfortAt: -1 }; }); // ca đầu là ca bệnh ("Hello, doctor!")
     await openJob(page, 'Bác sĩ nhí');
     await expect(page.locator('.jb-host[data-host="doctor"] svg.dr-doctor')).toHaveCount(1);
     // Rửa tay đúng thứ tự (xà phòng → nước → khăn) cho tới khi bệnh nhân vào.

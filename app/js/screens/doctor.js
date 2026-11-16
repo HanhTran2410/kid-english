@@ -1,6 +1,8 @@
 // Trò Bác sĩ nhí (SPEC-doctor.md): bạn thú vào phòng khám kêu đau, Bông y tá hướng dẫn. Mỗi ca làm lần lượt các bước
 // của ca (chạm chỗ đau → khám → chữa, theo mức) rồi khỏe lại, cảm ơn, ra về. 3 ca → Hoan hô + sticker.
-// Trạng thái (mục 8): wash (đầu lượt, SPEC-doctor2) → enter → touch / check / treat ⇄ busy → healed → sticker → leave → ca sau | done.
+// SPEC-jobs4 mục 6 (DR4): đầu một ca bệnh mỗi lượt, bạn thú đang sợ / buồn / buồn ngủ / đói — bé dỗ bằng đồ hợp
+// (mức 3 chọn thẻ mặt cảm xúc trước) rồi ca bệnh chạy như cũ.
+// Trạng thái (mục 8): wash (đầu lượt, SPEC-doctor2) → enter → [feel →] comfort (DR4) → touch / check / treat ⇄ busy → healed → sticker → leave → ca sau | done.
 // Nhận một thao tác đúng = chuyển bước NGAY (ghi tiến độ, lưu để chơi tiếp); hoạt ảnh + câu nói chỉ để trình diễn.
 // Phần chung với các nghề khác (nói, nhắc, khay, đồ bay, lượt, ra nền) ở jobs/kit.js (SPEC-jobs mục 2.3).
 
@@ -25,6 +27,7 @@ import {
   planDoctorRound, CHECKUP_HELLO_LINE, MEASURE_LINE, FROM_BOTTOM_LINE, GROWING_LINE, HOW_MANY_BLOCKS_LINE, TALLER_Q_LINE,
   blockCountLine, tallLine, rightBlocksLine, wrongBlocksLine, tallerLine, wrongTallerLine,
   EYES_HELLO_LINE, COVER_LINE, GLASSES_ITEM, SEE_BETTER_LINE, pointLine, seeLine, wrongEyeLine, needGlassesLine,
+  HOW_HELP_LINE, FEELING_BY_ID, COMFORT_BY_ID, comfortItemId, feelLine, helpLine, HAPPY_NOW_LINE, feelQLine, feelIsLine, wrongCardLine, wrongComfortLine,
 } from '../doctor.js';
 
 const JOB = 'doctor';
@@ -36,7 +39,8 @@ const STEP_STATES = ['touch', 'check', 'treat'];
 /** Bước chờ bé thao tác (nhắc 10 giây, khay sáng): bước khám chữa + rửa tay + tặng sticker (SPEC-doctor2). */
 /** Ca đo chiều cao (SPEC-doctor2 DR2): đếm khối, chọn số (mức 2), ai cao hơn (mức 3). */
 const MEASURE_STATES = ['measure', 'howmany', 'taller', 'point', 'glasses']; // + khám mắt (DR3)
-const ACTIVE = [...STEP_STATES, 'wash', 'sticker', ...MEASURE_STATES];
+const COMFORT_STATES = ['feel', 'comfort']; // Dỗ bạn thú (DR4)
+const ACTIVE = [...STEP_STATES, 'wash', 'sticker', ...MEASURE_STATES, ...COMFORT_STATES];
 const WASH_MS = 700; // hoạt ảnh rửa tay, không chặn thao tác tiếp
 const INK = '#3d2c5e';
 const COLOR_HEX = new Map(STICKER_COLORS.map((c) => [c.id, c.hex]));
@@ -96,6 +100,23 @@ const ITEM_TARGET = {
   blanket: 'tummy', stethoscope: 'tummy', thermometer: 'hand', flashlight: null,
 };
 const ITEM_SOUND = { bandage: 'pop', medicine: 'chomp', tissue: 'honk', toothbrush: 'brush', stethoscope: 'ding', thermometer: 'ding', drops: 'pop', icepack: 'pop', water: 'chomp', blanket: 'sparkle' };
+/** Dỗ bạn thú (DR4): mặt theo cảm xúc, chỗ đồ giúp bay tới, hình đồ giúp (vẽ SVG, khác dáng hẳn nhau). */
+const FEEL_MOOD = { scared: 'scared', sad: 'teary', sleepy: 'drowsy', hungry: 'hungry' };
+const COMFORT_TARGET = { teddy: 'tummy', hug: 'tummy', pillow: 'head', apple: 'mouth' };
+const COMFORT_SVG = {
+  teddy: `<svg viewBox="0 0 40 40"><circle cx="11" cy="9" r="5" fill="#c08552" stroke="${INK}" stroke-width="2"/><circle cx="29" cy="9" r="5" fill="#c08552" stroke="${INK}" stroke-width="2"/>
+    <ellipse cx="20" cy="30" rx="11" ry="9" fill="#c08552" stroke="${INK}" stroke-width="2"/><circle cx="20" cy="15" r="10" fill="#c08552" stroke="${INK}" stroke-width="2"/>
+    <ellipse cx="20" cy="18" rx="4.5" ry="3.5" fill="#f3d9b1"/><circle cx="16" cy="13" r="1.6" fill="${INK}"/><circle cx="24" cy="13" r="1.6" fill="${INK}"/><circle cx="20" cy="17" r="1.4" fill="${INK}"/>
+    <ellipse cx="20" cy="31" rx="5" ry="4.5" fill="#f3d9b1"/></svg>`,
+  hug: `<svg viewBox="0 0 40 40"><path d="M20 35 C10 28 5 22 5 16 C5 12 8 9.5 11.5 9.5 C14.5 9.5 18 11.5 20 14 C22 11.5 25.5 9.5 28.5 9.5 C32 9.5 35 12 35 16 C35 22 30 28 20 35 Z" fill="#ff8fab" stroke="${INK}" stroke-width="2"/>
+    <path d="M3 24 Q8 34 18 31 M37 24 Q32 34 22 31" fill="none" stroke="#f5c9a0" stroke-width="6" stroke-linecap="round"/>
+    <path d="M3 24 Q8 34 18 31 M37 24 Q32 34 22 31" fill="none" stroke="${INK}" stroke-width="1.5" stroke-linecap="round" opacity="0.6"/></svg>`,
+  pillow: `<svg viewBox="0 0 40 40"><path d="M5 12 Q20 6 35 12 Q38 20 35 28 Q20 34 5 28 Q2 20 5 12 Z" fill="#e7f5ff" stroke="${INK}" stroke-width="2.2" stroke-linejoin="round"/>
+    <path d="M10 15 Q20 12 30 15 M10 25 Q20 28 30 25" fill="none" stroke="#a5d8ff" stroke-width="2"/><circle cx="20" cy="20" r="2.4" fill="#74c0fc"/></svg>`,
+  apple: `<svg viewBox="0 0 40 40"><path d="M20 12 C14 8 6 10 6 20 C6 30 13 36 20 33 C27 36 34 30 34 20 C34 10 26 8 20 12 Z" fill="#fa5252" stroke="${INK}" stroke-width="2"/>
+    <path d="M20 12 Q20 7 23 4" fill="none" stroke="#8d5524" stroke-width="2.5" stroke-linecap="round"/><path d="M22 8 Q28 3 32 7 Q27 11 22 8 Z" fill="#69db7c" stroke="${INK}" stroke-width="1.5"/>
+    <ellipse cx="13" cy="18" rx="2.5" ry="4" fill="#fff" opacity="0.5"/></svg>`,
+};
 const BUG_MS = 1200; // bọ rùa bay ra khỏi tai (ca tai)
 const REST_MS = 2000; // ca buồn ngủ: zZz 2 giây
 
@@ -224,6 +245,11 @@ export function doctorScreen(app, params = {}) {
           kit.talk(promptLines()).then(rearm);
           return;
         }
+        if (COMFORT_STATES.includes(state)) {
+          nudgeComfort();
+          kit.talk(comfortPrompt()).then(rearm);
+          return;
+        }
         if (MEASURE_STATES.includes(state)) {
           nudgeMeasure();
           kit.talk(measurePrompt()).then(rearm);
@@ -238,11 +264,11 @@ export function doctorScreen(app, params = {}) {
     },
     tray: {
       face: (id) => trayFace(id),
-      label: (id) => (id === 'glasses' ? 'glasses' : WASH_BY.has(id) ? WASH_BY.get(id).name : stickerById(id) ? `${stickerById(id).color} ${stickerById(id).shape}` : id.startsWith('n-') ? id.slice(2) : ITEM_BY_ID.get(id).name),
+      label: (id) => (id.startsWith('c-') ? COMFORT_BY_ID.get(id.slice(2)).id : id === 'glasses' ? 'glasses' : WASH_BY.has(id) ? WASH_BY.get(id).name : stickerById(id) ? `${stickerById(id).color} ${stickerById(id).shape}` : id.startsWith('n-') ? id.slice(2) : ITEM_BY_ID.get(id).name),
       canGive: () => ACTIVE.includes(state),
       // Rửa tay / tặng sticker: thả ở đâu cũng được (đồ tự tới tay / tự dán lên bạn thú).
-      dropOk: (x, y) => ['wash', 'sticker', 'howmany', 'glasses'].includes(state) || Boolean(regionAtScreen(x, y)),
-      give: (id, from) => (state === 'wash' ? useWash(id, from) : state === 'sticker' ? giveSticker(id, from) : state === 'howmany' ? pickBlocks(id)
+      dropOk: (x, y) => ['wash', 'sticker', 'howmany', 'glasses', 'comfort'].includes(state) || Boolean(regionAtScreen(x, y)),
+      give: (id, from) => (state === 'wash' ? useWash(id, from) : state === 'comfort' ? giveComfort(id, from) : state === 'sticker' ? giveSticker(id, from) : state === 'howmany' ? pickBlocks(id)
         : state === 'glasses' ? giveGlasses(id, from) : give(id, from)),
     },
   });
@@ -251,7 +277,8 @@ export function doctorScreen(app, params = {}) {
   kit.sayBox.classList.add('dr-say');
   kit.trayEl.classList.add('dr-tray');
   const bed = h('div.dr-bed', { 'aria-hidden': 'true' });
-  stage.append(bed, patientEl, washEl, measureEl, eyesEl);
+  const feelsEl = h('div.dr-feels', { hidden: true }); // DR4 mức 3: 3 thẻ mặt cảm xúc
+  stage.append(bed, patientEl, washEl, measureEl, eyesEl, feelsEl);
   const stepKey = () => `${kit.epoch}:${caseIdx}:${stepIdx}:${washed.length}:${mWho}:${mCount}:${eIdx}:${state}`;
   /** Hình trong khay: đồ rửa tay (emoji / khăn vẽ), sticker (SVG), đồ khám chữa (ảnh bố mẹ thêm hoặc emoji). */
   function trayFace(id) {
@@ -262,6 +289,7 @@ export function doctorScreen(app, params = {}) {
     if (st) return h('span.dr-item-face.dr-svg-face', { 'aria-hidden': 'true', html: stickerShape(st) });
     if (id.startsWith('n-')) return h('span.dr-item-face.dr-num-face', { 'aria-hidden': 'true', text: id.slice(2) });
     if (id === 'glasses') return h('span.dr-item-face', { 'aria-hidden': 'true', text: GLASSES_ITEM.emoji });
+    if (id.startsWith('c-')) return h('span.dr-item-face.dr-svg-face', { 'aria-hidden': 'true', html: COMFORT_SVG[id.slice(2)] });
     return itemFace(ITEM_BY_ID.get(id), images);
   }
   /** Món cần đưa (để nhắc / nhún): món rửa tay tiếp theo, sticker khớp yêu cầu. */
@@ -288,6 +316,8 @@ export function doctorScreen(app, params = {}) {
     patientEl.innerHTML = patientSvg(p.id, { mood: !c ? 'happy' : c.face === 'sleepy' ? 'sleepy' : 'sad', sign: c?.sign ?? null, title: p.name });
     patientEl.dataset.patient = p.id;
     patientEl.dataset.case = cases[caseIdx].id;
+    patientEl.classList.remove('upset');
+    delete patientEl.dataset.feel;
     count.textContent = `${caseIdx + 1}/${cases.length}`;
   }
   const setMood = (mood) => {
@@ -366,6 +396,7 @@ export function doctorScreen(app, params = {}) {
     }
     measureEl.hidden = true;
     eyesEl.hidden = true;
+    feelsEl.hidden = true;
     bed.hidden = false;
     patientEl.hidden = false;
     setState('enter');
@@ -380,18 +411,22 @@ export function doctorScreen(app, params = {}) {
       return;
     }
     snap();
+    // Dỗ bạn thú chưa xong: vào (lại) bước dỗ; xong rồi thì ca bệnh như cũ (không hỏi dỗ lại).
     if (resume) {
-      beginStep(resume);
+      if (needComfort()) startComfort();
+      else beginStep(resume);
       return;
     }
+    if (needComfort()) showFeeling(true);
     patientEl.classList.remove('leave');
     restartAnim(patientEl, 'enter');
     play('doorbell');
     await wait(ENTER_MS);
     if (e !== kit.epoch) return;
-    await talk([B(COME_IN_LINE), P(HELLO_DOCTOR_LINE), P(curCase().say)]);
+    await talk([B(COME_IN_LINE), P(HELLO_DOCTOR_LINE), ...(needComfort() ? [] : [P(curCase().say)])]);
     if (e !== kit.epoch) return;
-    beginStep();
+    if (needComfort()) startComfort();
+    else beginStep();
   }
 
   /** Vào bước hiện tại: khay (bước khám / chữa), gợi ý có sẵn, câu của bước. Chơi tiếp: bạn thú nói lại triệu chứng trước. */
@@ -553,6 +588,156 @@ export function doctorScreen(app, params = {}) {
     await talk([P(betterLine(c)), B(GOOD_JOB_LINE)]);
     if (e !== kit.epoch) return;
     startSticker();
+  }
+
+  // ---------- Dỗ bạn thú (SPEC-jobs4 mục 6, DR4): đầu một ca bệnh — mức 3 chọn thẻ mặt, rồi chọn đồ giúp ----------
+  const comfortOf = () => cases[caseIdx]?.comfort;
+  const needComfort = () => Boolean(comfortOf() && !comfortOf().done);
+  const helpId = () => comfortItemId(FEELING_BY_ID.get(comfortOf().feel).help);
+  /** Mặt cảm xúc + đứng lệch khỏi giường (chưa chịu ngồi) khi còn phải dỗ; dỗ xong thì bỏ. */
+  function showFeeling(on) {
+    const c = comfortOf();
+    patientEl.classList.toggle('upset', on);
+    if (on) {
+      patientEl.dataset.feel = c.feel;
+      setMood(FEEL_MOOD[c.feel]);
+    } else delete patientEl.dataset.feel;
+  }
+  function renderFeels() {
+    const c = comfortOf();
+    feelsEl.replaceChildren(...c.cards.map((f) => h('button.dr-feel', {
+      type: 'button', 'aria-label': f, dataset: { feel: f }, text: FEELING_BY_ID.get(f).emoji, onclick: () => tapFeel(f),
+    })));
+    feelsEl.hidden = false;
+  }
+  /** Câu của bước dỗ (vào bước, nhắc, chạm Bông / bạn thú). */
+  function comfortPrompt() {
+    const c = comfortOf();
+    const name = curPatient().name;
+    if (state === 'feel') return [B(feelQLine(name))];
+    if (level <= 1) return [P(feelLine(c.feel)), B(helpLine(c.feel))];
+    if (level === 2) return [P(feelLine(c.feel)), B(HOW_HELP_LINE)];
+    return [B(feelIsLine(name, c.feel)), B(HOW_HELP_LINE)];
+  }
+  function nudgeComfort() {
+    if (state === 'feel') restartAnim(feelsEl.querySelector(`[data-feel="${comfortOf().feel}"]`), 'nudge');
+    else restartAnim(kit.trayItem(helpId()), 'nudge');
+  }
+  /** Ghi từ Feelings "đã gặp" (đúng ngay lần đầu; mức 2: đồ, mức 3: thẻ mặt) — một lần mỗi ca. */
+  function recordFeel() {
+    const f = comfortOf().feel;
+    if (recorded.has(`feel:${caseIdx}`)) return;
+    recorded.add(`feel:${caseIdx}`);
+    markPracticed(app, f, FEELING_BY_ID.get(f).emoji);
+  }
+  async function startComfort() {
+    const e = kit.epoch;
+    const c = comfortOf();
+    setGlow(null);
+    showFeeling(true);
+    if (level >= 3 && !c.cardDone) {
+      tray = [];
+      renderTray();
+      renderFeels();
+      setState('feel');
+      snap();
+      await talk(comfortPrompt());
+      if (e === kit.epoch && state === 'feel') kit.armNudge();
+      return;
+    }
+    feelsEl.hidden = level < 3;
+    if (level >= 3) renderFeels();
+    feelsEl.querySelector(`[data-feel="${c.feel}"]`)?.classList.add('picked');
+    tray = c.tray;
+    renderTray();
+    // Mức 1: đồ đúng sáng + nhún ngay (không có nhầm); mức 2–3: nhầm 2 lần thì đồ đúng sáng.
+    if (level <= 1 || wrongs >= 2) kit.setHint(helpId());
+    if (level <= 1) restartAnim(kit.trayItem(helpId()), 'nudge');
+    setState('comfort');
+    snap();
+    await talk(comfortPrompt());
+    if (e === kit.epoch && state === 'comfort') kit.armNudge();
+  }
+  /** Mức 3: chạm thẻ mặt cảm xúc. Đúng thì khóa bước thẻ (lưu ngay), sang chọn đồ. */
+  function tapFeel(f) {
+    if (state !== 'feel') return;
+    const c = comfortOf();
+    const btn = feelsEl.querySelector(`[data-feel="${f}"]`);
+    if (f !== c.feel) {
+      if (!countWrong(`f:${f}`)) return;
+      restartAnim(btn, 'shake');
+      if (wrongs >= 2) restartAnim(feelsEl.querySelector(`[data-feel="${c.feel}"]`), 'nudge');
+      const k = stepKey();
+      talk([B(wrongCardLine(f, curPatient().name))]).then(() => k === stepKey() && kit.armNudge());
+      return;
+    }
+    kit.clearNudge();
+    if (wrongs === 0) recordFeel();
+    c.cardDone = true;
+    wrongs = 0;
+    nudges = 0;
+    play('ding');
+    startComfort();
+  }
+  /** Bé đưa đồ giúp. Đúng: nhận NGAY (lưu: ca bệnh bắt đầu khi quay lại), hoạt ảnh, bạn vui, ngồi lên giường. */
+  async function giveComfort(id, from) {
+    if (state !== 'comfort') return;
+    const e = kit.epoch;
+    const c = comfortOf();
+    const want = helpId();
+    if (id !== want) {
+      // Mức 1: không có nhầm — đồ đúng nhún.
+      if (level <= 1) {
+        restartAnim(kit.trayItem(want), 'nudge');
+        return;
+      }
+      if (!countWrong(`c:${id}`)) return;
+      restartAnim(kit.trayItem(id), 'shake');
+      if (wrongs >= 2) {
+        kit.setHint(want);
+        restartAnim(kit.trayItem(want), 'nudge');
+      }
+      const k = stepKey();
+      talk([P(wrongComfortLine(id.slice(2), c.feel))]).then(() => k === stepKey() && kit.armNudge());
+      return;
+    }
+    setState('busy');
+    kit.clearNudge();
+    kit.setHint(null);
+    if (level === 2 && wrongs === 0) recordFeel();
+    c.done = true;
+    wrongs = 0;
+    nudges = 0;
+    tray = [];
+    if (!recorded.has(`soothe:${caseIdx}`)) {
+      recorded.add(`soothe:${caseIdx}`);
+      progress = afterHealed(progress, `feel:${c.feel}`);
+      saveProgress();
+    }
+    snap();
+    const help = id.slice(2);
+    const spot = regionPoint(COMFORT_TARGET[help], 0);
+    const ghost = await kit.flyTo(trayFace(id), from, toScreen(spot.x, spot.y));
+    kit.renderTray([]);
+    if (e !== kit.epoch) return;
+    play(help === 'apple' ? 'chomp' : 'pop');
+    ghost.classList.add(`use-${help}`);
+    if (help === 'pillow') setMood('sleep');
+    if (help === 'hug') restartAnim(patientEl, 'hugged');
+    await Promise.all([talk(level <= 1 ? [] : [B(helpLine(c.feel))]), wait(USE_MS)]);
+    if (e !== kit.epoch) return;
+    kit.removeGhost(ghost);
+    feelsEl.hidden = true;
+    showFeeling(false);
+    setMood('happy');
+    play('sparkle');
+    restartAnim(patientEl, 'hop');
+    await talk([P(HAPPY_NOW_LINE)]);
+    if (e !== kit.epoch) return;
+    setMood(curCase().face === 'sleepy' ? 'sleepy' : 'sad');
+    await talk([P(curCase().say)]);
+    if (e !== kit.epoch) return;
+    beginStep();
   }
 
   // ---------- Ca đo chiều cao (SPEC-doctor2 mục 5, DR2) ----------
@@ -973,6 +1158,8 @@ export function doctorScreen(app, params = {}) {
   function restart() {
     if (state === 'done' || !cases.length) return;
     kit.cancelAll();
+    // Dỗ bạn thú làm lại (tiến độ đã ghi thì không ghi lần hai — `recorded` giữ nguyên).
+    for (const c of cases) if (c.comfort) Object.assign(c.comfort, { done: false, cardDone: false });
     caseIdx = 0;
     washed = [];
     washDone = false;
@@ -1079,6 +1266,11 @@ export function doctorScreen(app, params = {}) {
 
   /** Chạm Bông y tá: nói lại câu của bước hiện tại. */
   function repeatPrompt() {
+    if (COMFORT_STATES.includes(state)) {
+      const k = stepKey();
+      talk(comfortPrompt()).then(() => k === stepKey() && kit.armNudge());
+      return;
+    }
     if (state === 'wash' || state === 'sticker') {
       const k = stepKey();
       talk(promptLines()).then(() => k === stepKey() && kit.armNudge());
@@ -1102,7 +1294,11 @@ export function doctorScreen(app, params = {}) {
     const region = regionAtScreen(e.clientX, e.clientY);
     if (!region) return; // chạm ra ngoài người: không có gì
     if (state === 'touch') touchRegion(region);
-    else if (state === 'check' || state === 'treat') {
+    else if (COMFORT_STATES.includes(state)) {
+      // Chạm bạn thú lúc dỗ: nghe lại câu, không tính nhầm.
+      const k = stepKey();
+      talk(comfortPrompt()).then(() => k === stepKey() && kit.armNudge());
+    } else if (state === 'check' || state === 'treat') {
       // Nghe lại triệu chứng: không tính nhầm, không đổi bước.
       const k = stepKey();
       talk([P(curCase().say)]).then(() => k === stepKey() && kit.armNudge());

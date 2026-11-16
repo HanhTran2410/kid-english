@@ -297,3 +297,62 @@ test('chú bác sĩ khen bé là "little doctor" (không nhầm hai bác sĩ)', 
   assert.deepEqual(GOOD_JOB_LINE, ['Great job, little doctor!', 'Bác sĩ nhí giỏi quá!']);
   assert.match(ALL_BETTER_LINE[0], /little doctor/);
 });
+
+// ---------- SPEC-jobs4 mục 6 (DR4): Dỗ bạn thú ----------
+test('DR4 — 500 seed mỗi mức: đúng một ca bệnh có việc dỗ; cảm xúc theo mức; khay 3 đồ, đúng một đồ hợp; mức 3 thẻ mặt khác nhau, có thẻ đúng', async () => {
+  const { FEELINGS, FEELING_BY_ID, comfortItemId } = await import('../../app/js/doctor.js');
+  for (const level of [1, 2, 3]) {
+    const rng = seeded(700 + level);
+    const feels = new Set();
+    for (let i = 0; i < 500; i++) {
+      const cases = planDoctorRound(level, { rng });
+      const with_ = cases.filter((c) => c.comfort);
+      assert.equal(with_.length, 1, `mức ${level}`);
+      const c = with_[0];
+      assert.ok(CASE_BY_ID.has(c.id), 'chỉ ca bệnh (không đo / khám mắt)');
+      assert.notEqual(c.id, 'sleepy');
+      const { feel, tray, cards } = c.comfort;
+      feels.add(feel);
+      if (level <= 1) assert.ok(['scared', 'sad'].includes(feel));
+      if (feel === 'hungry') assert.ok(!['tummy', 'tooth'].includes(c.id));
+      assert.equal(tray.length, 3);
+      assert.equal(new Set(tray).size, 3);
+      const fits = tray.filter((id) => FEELINGS.some((f) => f.id === feel && comfortItemId(f.help) === id));
+      assert.deepEqual(fits, [comfortItemId(FEELING_BY_ID.get(feel).help)]);
+      if (level >= 3) {
+        assert.equal(cards.length, 3);
+        assert.equal(new Set(cards).size, 3);
+        assert.ok(cards.includes(feel));
+      } else assert.equal(cards, undefined);
+    }
+    assert.equal(feels.size, level <= 1 ? 2 : 4, `mức ${level}: đủ cảm xúc`);
+  }
+});
+
+test('DR4 — cảm xúc ít gặp (seen feel:*) được ưu tiên; cleanDoctorState giữ seen feel:*; cùng seed → cùng kế hoạch', async () => {
+  const { planComfort } = await import('../../app/js/doctor.js');
+  const rng = seeded(9);
+  const cases = [{ id: 'cut-hand' }, { id: 'checkup' }, { id: 'runny-nose' }];
+  for (let i = 0; i < 50; i++) assert.equal(planComfort(2, cases, { rng, seen: { 'feel:scared': 2, 'feel:sad': 2, 'feel:sleepy': 1 } }).feel, 'hungry');
+  assert.equal(planComfort(1, [{ id: 'checkup' }, { id: 'eyes' }], { rng }), null);
+  assert.equal(planComfort(2, cases, { rng, at: 2 }).at, 2);
+  assert.deepEqual(cleanDoctorState({ seen: { 'feel:sad': 2, 'feel:bogus': 1, tummy: 1 } }).seen, { 'feel:sad': 2, tummy: 1 });
+  assert.deepEqual(planDoctorRound(3, { rng: seeded(5) }), planDoctorRound(3, { rng: seeded(5) }));
+});
+
+test('DR4 — câu nói: cảm xúc, câu giúp, thẻ nhầm, đồ nhầm (a / an)', async () => {
+  const m = await import('../../app/js/doctor.js');
+  assert.equal(m.feelLine('scared')[0], "I'm scared!");
+  assert.equal(m.helpLine('scared')[0], "Don't be scared! Here's a teddy!");
+  assert.equal(m.helpLine('sad')[0], 'A big hug!');
+  assert.equal(m.helpLine('sleepy')[0], 'A pillow! Rest a little!');
+  assert.equal(m.helpLine('hungry')[0], 'An apple for you!');
+  assert.equal(m.feelQLine('Kitty')[0], 'How does Kitty feel?');
+  assert.equal(m.feelIsLine('Kitty', 'scared')[0], 'Kitty is scared!');
+  assert.equal(m.wrongCardLine('sleepy', 'Kitty')[0], "That's sleepy. Look at Kitty!");
+  assert.equal(m.wrongComfortLine('pillow', 'scared')[0], "That's a pillow. I'm scared!");
+  assert.equal(m.wrongComfortLine('apple', 'sad')[0], "That's an apple. I'm sad.");
+  for (const f of m.FEELINGS) for (const line of [m.feelLine(f.id), m.helpLine(f.id), m.feelIsLine('Teddy', f.id)]) {
+    assert.ok(line.every((t) => t && !/undefined/.test(t)));
+  }
+});
