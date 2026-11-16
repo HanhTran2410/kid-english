@@ -1,7 +1,8 @@
 // Hành khách xe buýt (SPEC-jobs3 mục 7): 6 người nhà vẽ SVG (viewBox 160 × 200), mỗi người một dấu hiệu nhìn là biết
 // (bà: búi tóc bạc + kính; ông: mũ nồi + ria; mẹ: tóc dài + túi xách; bố: cà vạt; chị: hai bím; em bé: xe đẩy + mũ len).
 // Mặt theo cảm xúc (happy / sad / sleepy / hungry) chỉ đổi mắt, miệng, thêm "z" hoặc tay xoa bụng — một bộ vẽ cho mọi cảm xúc.
-// Không dùng ảnh (người là đáp án theo dấu hiệu).
+// Không dùng ảnh (người là đáp án theo dấu hiệu). Đồ bỏ quên mức 2 (SPEC-jobs4 5.1): vẽ người thiếu đúng dấu hiệu đó
+// (`without`: glasses / hat / bag) + hình riêng của đồ (ITEM_SVG) giống hệt dấu hiệu trên người.
 
 const INK = '#3d2c5e';
 const SKIN = '#f5c9a0';
@@ -46,24 +47,27 @@ function adult({ shirt, hairBack = '', hairFront = '', top = '', clothes = '', g
   ${extra}${tummyHand(80, 168, mood)}`;
 }
 
+const HAT = `<path d="M44 52 C44 26 116 26 116 52 Z" fill="#c92a2a" stroke="${INK}" stroke-width="3" stroke-linejoin="round"/><circle cx="80" cy="24" r="4" fill="#c92a2a" stroke="${INK}" stroke-width="2"/>`;
+const BAG = `<path d="M120 150 q12 -18 22 0" fill="none" stroke="${INK}" stroke-width="3"/><rect x="114" y="150" width="34" height="28" rx="6" fill="#ffd43b" stroke="${INK}" stroke-width="3"/>`;
+
 const DRAW = {
-  grandma: (mood) => adult({
-    mood, shirt: '#9775fa', glasses: true,
+  grandma: (mood, without) => adult({
+    mood, shirt: '#9775fa', glasses: without !== 'glasses',
     hairFront: `<path d="M44 72 C40 34 120 34 116 72 C108 56 96 50 80 50 C64 50 52 56 44 72 Z" fill="${GREY}" stroke="${INK}" stroke-width="3" stroke-linejoin="round"/>`,
     top: `<circle cx="80" cy="30" r="15" fill="${GREY}" stroke="${INK}" stroke-width="3"/>`,
     clothes: '<circle cx="80" cy="160" r="3" fill="#fff"/><circle cx="80" cy="178" r="3" fill="#fff"/>',
   }),
-  grandpa: (mood) => adult({
+  grandpa: (mood, without) => adult({
     mood, shirt: '#74b816', glasses: true,
     hairFront: `<path d="M44 80 C42 66 46 58 52 56 M116 80 C118 66 114 58 108 56" fill="none" stroke="${GREY}" stroke-width="8" stroke-linecap="round"/>`,
-    top: `<path d="M44 52 C44 26 116 26 116 52 Z" fill="#c92a2a" stroke="${INK}" stroke-width="3" stroke-linejoin="round"/><circle cx="80" cy="24" r="4" fill="#c92a2a" stroke="${INK}" stroke-width="2"/>`,
+    top: without === 'hat' ? '' : HAT,
     extra: `<path d="M64 92 Q72 84 80 90 Q88 84 96 92 Q88 96 80 93 Q72 96 64 92 Z" fill="${GREY}" stroke="${INK}" stroke-width="2"/>`,
   }),
-  mummy: (mood) => adult({
+  mummy: (mood, without) => adult({
     mood, shirt: '#f783ac',
     hairBack: `<path d="M38 76 C34 30 126 30 122 76 L126 140 C108 128 52 128 34 140 Z" fill="${BROWN}" stroke="${INK}" stroke-width="3" stroke-linejoin="round"/>`,
     hairFront: `<path d="M44 72 C40 36 120 36 116 72 C104 58 92 52 80 54 C70 62 56 66 44 72 Z" fill="${BROWN}" stroke="${INK}" stroke-width="3" stroke-linejoin="round"/>`,
-    extra: `<path d="M120 150 q12 -18 22 0" fill="none" stroke="${INK}" stroke-width="3"/><rect x="114" y="150" width="34" height="28" rx="6" fill="#ffd43b" stroke="${INK}" stroke-width="3"/>`,
+    extra: without === 'bag' ? '' : BAG,
   }),
   daddy: (mood) => adult({
     mood, shirt: '#4dabf7',
@@ -95,7 +99,13 @@ const DRAW = {
   ${face(104, 102, 22, mood)}`,
 };
 
-/** SVG một người nhà (`member`) với cảm xúc `mood`. */
-export function familySvg(member, mood = 'happy', title = '') {
-  return `<svg class="bs-person-svg" viewBox="0 0 160 200" role="img" aria-label="${title}">${(DRAW[member] ?? DRAW.daddy)(mood)}</svg>`;
+/** SVG một người nhà (`member`) với cảm xúc `mood`; `without`: thiếu dấu hiệu (đồ bỏ quên mức 2). */
+export function familySvg(member, mood = 'happy', title = '', without = '') {
+  return `<svg class="bs-person-svg" viewBox="0 0 160 200" role="img" aria-label="${title}">${(DRAW[member] ?? DRAW.daddy)(mood, without)}</svg>`;
 }
+/** Hình đồ bỏ quên mức 2 — cùng nét với dấu hiệu trên người (kính tròn của bà, mũ nồi của ông, túi vàng của mẹ). */
+export const ITEM_SVG = {
+  glasses: `<svg viewBox="40 52 80 44" aria-hidden="true"><circle cx="66" cy="72" r="14" fill="#e7f5ff" stroke="${INK}" stroke-width="4"/><circle cx="94" cy="72" r="14" fill="#e7f5ff" stroke="${INK}" stroke-width="4"/><path d="M80 72 h0 M78 70 q2 -3 4 0" stroke="${INK}" stroke-width="4" fill="none"/><path d="M52 70 L44 64 M108 70 L116 64" stroke="${INK}" stroke-width="4" stroke-linecap="round"/></svg>`,
+  hat: `<svg viewBox="40 16 80 40" aria-hidden="true">${HAT}</svg>`,
+  bag: `<svg viewBox="108 128 46 56" aria-hidden="true">${BAG}</svg>`,
+};

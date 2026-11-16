@@ -3765,15 +3765,53 @@ img.dr-admin-face { width: 100%; height: 100%; object-fit: contain; }
 .bs-cab { position: absolute; left: 75.6%; top: 15.4%; width: 19.4%; height: 41.4%; overflow: hidden; border-radius: 8px; pointer-events: none; }
 .bs-play .bs-cab .jb-host { position: static; left: auto; top: auto; bottom: auto; width: 100%; height: 100%; }
 .bs-cab .jb-host-badge { display: none; }
+/* Thời tiết trên đường (SPEC-jobs4 5.2): lớp trời, kính lái có giọt mưa + cần gạt, kính cửa sổ từng ghế kéo lên, kính râm. */
+.bs-sky { position: absolute; inset: 0; z-index: 0; pointer-events: none; }
+.bs-sky[data-weather="rainy"] { background: linear-gradient(rgba(73, 80, 87, 0.4), rgba(73, 80, 87, 0.15) 66%, transparent), repeating-linear-gradient(105deg, transparent 0 22px, rgba(116, 192, 252, 0.75) 22px 25px); background-size: 100% 100%, 60px 60px; animation: fm-rain 0.6s linear infinite; }
+.bs-sky[data-weather="cold"] { background: linear-gradient(rgba(208, 235, 255, 0.6), transparent 75%), radial-gradient(circle, #fff 0 3px, transparent 4px), radial-gradient(circle, #fff 0 2px, transparent 3px); background-size: 100% 100%, 70px 70px, 44px 44px; background-position: 0 0, 0 0, 20px 30px; animation: fm-snow 3s linear infinite; }
+.bs-sky[data-weather="sunny"] { background: radial-gradient(circle at 90% 12%, #fff3bf 0 5%, #ffd43b 6% 10%, rgba(255, 212, 59, 0.45) 11% 26%, transparent 27%), linear-gradient(rgba(255, 236, 153, 0.55), transparent 70%); }
+.bs-glass { position: absolute; left: 75.3%; top: 14.7%; width: 20%; height: 42.7%; border-radius: 8px; overflow: hidden; pointer-events: none; z-index: 2; }
+.bs-glass.wet { background: radial-gradient(circle, rgba(116, 192, 252, 0.95) 0 3px, transparent 4px), radial-gradient(circle, rgba(116, 192, 252, 0.85) 0 2px, transparent 3px), rgba(173, 181, 189, 0.45); background-size: 16px 18px, 11px 13px, 100% 100%; background-position: 0 0, 6px 5px, 0 0; }
+.bs-wiper { position: absolute; left: 50%; bottom: 4%; width: 6%; height: 92%; margin-left: -3%; border-radius: 4px; background: #343a40; transform-origin: 50% 100%; rotate: -62deg; }
+.bs-glass.wipe { overflow: visible; }
+.bs-glass.wipe .bs-wiper { animation: bs-wipe 0.6s ease-in-out 1; }
+@keyframes bs-wipe { 50% { rotate: 62deg; } }
+.bs-seat { position: relative; }
+.bs-seat::after { content: ''; position: absolute; inset: 0; background: linear-gradient(135deg, rgba(255, 255, 255, 0.5) 0 14%, rgba(165, 216, 255, 0.18) 15% 60%, rgba(255, 255, 255, 0.4) 61% 66%, rgba(165, 216, 255, 0.18) 67%); box-shadow: inset 0 0 0 3px rgba(255, 255, 255, 0.6); transform-origin: 50% 100%; transform: scaleY(0); transition: transform 0.5s ease-out; pointer-events: none; }
+.bs-seats.closed .bs-seat::after { transform: scaleY(1); }
+.bs-seats.shiver .bs-person { animation: bs-shiver 0.2s linear infinite; }
+@keyframes bs-shiver { 25% { translate: -2px 0; } 75% { translate: 2px 0; } }
+.bs-shades { position: absolute; left: 50%; top: 43%; width: 38%; translate: -50% -50%; z-index: 3; pointer-events: none; animation: cf-drop 0.3s ease-out; }
+.bs-shades svg { display: block; width: 100%; }
+.bs-stage.parked .bs-road { animation: none; }
+.bs-dash, .bs-wcards { position: absolute; left: 50%; top: 6%; transform: translateX(-50%); display: flex; gap: clamp(12px, 3vmin, 28px); padding: 10px 18px; border-radius: 22px; background: #495057; border: 4px solid #3d2c5e; box-shadow: var(--shadow); z-index: 3; }
+.bs-wcards { background: #fff; }
+.bs-fix, .bs-wcard { width: clamp(70px, 12vmin, 110px); aspect-ratio: 1; padding: 8px; border-radius: 18px; border: 4px solid #3d2c5e; background: #f8f9fa; }
+.bs-fix svg { display: block; width: 100%; height: 100%; }
+.bs-wcard { font-family: var(--emoji); font-size: clamp(36px, 7vmin, 62px); line-height: 1; }
+.bs-fix.lit { outline: 6px solid #fcc419; outline-offset: 3px; animation: bd-glow 1.2s ease-in-out infinite; }
+.bs-fix.picked, .bs-wcard.picked { background: #d3f9d8; }
+.bs-fix.nudge, .bs-wcard.nudge { animation: hint-hop 0.5s ease-in-out 3; }
+.bs-fix.shake, .bs-wcard.shake { animation: dr-shake 0.45s; }
+/* Đồ bỏ quên (SPEC-jobs4 5.1): đồ nằm trên ghế, bay tới người nhận. */
+.bs-item { display: grid; place-items: center; width: 80%; aspect-ratio: 1; margin-bottom: 8%; }
+.bs-item svg { display: block; width: 100%; height: 100%; }
+.bs-item-emoji { font-family: var(--emoji); font-size: clamp(28px, 6vmin, 54px); line-height: 1; }
+.bs-item.bs-fly { width: 70px; height: 70px; }
+.bs-queue .bs-person.hop { animation: dr-hop 0.5s ease-in-out 2; }
 @media (max-width: 600px), (orientation: portrait) {
   .bs-bus { left: 4%; width: 86%; bottom: 4%; }
   .bs-stop { right: 2%; width: 56%; height: 34%; bottom: auto; top: 30%; }
   .bs-map { top: 3%; padding: 8px 12px; }
   .bs-light { left: auto; right: 4%; }
+  .bs-dash, .bs-wcards { top: 3%; padding: 8px 12px; }
 }
 @media (prefers-reduced-motion: reduce) {
   .bs-stage.driving .bs-road, .bs-stage.driving .bs-bus, .bs-bus.honk, .bs-queue .bs-person.nudge, .bs-queue .bs-person.shake,
-  .bs-map-stop.nudge, .bs-map-stop.shake, .bs-wheel.nudge, .bs-belt.nudge, .bs-pedal.nudge, .bs-pedal.shake { animation: none; }
+  .bs-map-stop.nudge, .bs-map-stop.shake, .bs-wheel.nudge, .bs-belt.nudge, .bs-pedal.nudge, .bs-pedal.shake,
+  .bs-sky, .bs-glass.wipe .bs-wiper, .bs-seats.shiver .bs-person, .bs-shades, .bs-fix.lit, .bs-fix.nudge, .bs-wcard.nudge, .bs-fix.shake, .bs-wcard.shake,
+  .bs-queue .bs-person.hop { animation: none; }
+  .bs-seat::after { transition: none; }
 }
 
 /* Bán hàng — quầy sinh tố: đủ quả thì hộp sữa rót vào cối (cối đầy màu trắng); bấm nút thì quả tan, sữa đổi sang màu

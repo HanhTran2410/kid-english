@@ -155,15 +155,19 @@ test('JOBS3-10 / 17: Xe buýt mức 2 — đón lần lượt, người xuống 
   await page.locator('.bs-belt').click();
   for (let i = 0; i < 60 && !(await page.locator('.jb-play.jb-done').count()); i++) {
     const s = await play(page).getAttribute('data-state');
-    if (s === 'pick') await page.locator(`.bs-queue [data-id="${await page.locator('.bs-queue').getAttribute('data-want')}"]`).click();
+    if (s === 'pick' || s === 'lost') await page.locator(`.bs-queue [data-id="${await page.locator('.bs-queue').getAttribute('data-want')}"]`).click();
+    else if (s === 'wbtn') await page.locator(`.bs-fix[data-fix="${await page.locator('.bs-dash').getAttribute('data-want')}"]`).click(); // SPEC-jobs4 5.2
     else if (s === 'map') {
       const want = await page.locator('.bs-map').getAttribute('data-want');
       const seats = await page.locator('.bs-seat').count();
       await page.locator(`.bs-map-stop:not([data-color="${want}"])`).first().click();
       await expect.poll(async () => (await spoken(page)).some((t) => new RegExp(`^That's the \\w+ stop\\. The ${want} stop, please!$`).test(t))).toBe(true);
       await page.locator(`.bs-map-stop[data-color="${want}"]`).click();
-      // Chỉ một người xuống; ai còn lại vẫn trên xe.
-      await expect.poll(() => page.locator('.bs-seat').count(), { timeout: 15000 }).toBe(seats - 1);
+      // Chỉ một người xuống; ai còn lại vẫn trên xe. (Chặng 1 → 2 có thời tiết trên đường — SPEC-jobs4 5.2: bấm nút đúng.)
+      await expect.poll(async () => {
+        if ((await play(page).getAttribute('data-state')) === 'wbtn') await page.locator(`.bs-fix[data-fix="${await page.locator('.bs-dash').getAttribute('data-want')}"]`).click();
+        return page.locator('.bs-seat').count();
+      }, { timeout: 15000 }).toBe(seats - 1);
     }
     await page.waitForTimeout(150);
   }
@@ -180,8 +184,12 @@ test('JOBS3-12 / 18: Xe buýt — bé không chạm: sau 2 lần nhắc người
   await page.locator('.bs-belt').click();
   await stateIs(page, 'pick');
   await expect(page.locator('.bs-seat')).toHaveCount(1, { timeout: 20000 });
+  // Thời tiết trên đường (SPEC-jobs4 5.2) không tự xong: bé bấm nút đúng (chỉ ghi "đã gặp" tên nút).
+  await stateIs(page, 'wbtn');
+  const fix = await page.locator('.bs-dash').getAttribute('data-want');
+  await page.locator(`.bs-fix[data-fix="${fix}"]`).click();
   await done(page);
-  expect((await page.evaluate(() => window.kidEnglish.settings.busGame)).seen).toEqual({});
+  expect((await page.evaluate(() => window.kidEnglish.settings.busGame)).seen).toEqual({ [fix]: 1 });
 });
 
 test('JOBS3-11 / 21: ra nền giữa ca rồi quay lại → đúng ca, đúng bước, giữ các thao tác đã nhận (Nông trại: trứng trong giỏ)', async ({ page }) => {

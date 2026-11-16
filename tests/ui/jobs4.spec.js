@@ -334,3 +334,108 @@ test('Thợ xây mức 3 xây tháp (lượt chẵn — JOBS4-19): mẫu lặp, 
   await expect(page.locator('.bd-tower.done')).toHaveCount(1);
   await expect.poll(() => spoken(page)).toContain('Hooray! A tall tower!');
 });
+
+// ---------- 0.74.0: 🚌 Xe buýt — thời tiết trên đường (5.2), đồ bỏ quên (5.1) ----------
+const BUS_STATES = /^(horn|belt|map|green|pick|wcard|wbtn|lost)$/;
+/** Giải bước đang chờ của Xe buýt; `skip`: các trạng thái để test tự xử lý. */
+async function solveBus(page, skip = []) {
+  const s = await play(page).getAttribute('data-state');
+  if (skip.includes(s)) return s;
+  if (s === 'horn') await page.locator('.bs-wheel').click();
+  else if (s === 'belt') await page.locator('.bs-belt').click();
+  else if (s === 'map') await page.locator(`.bs-map-stop[data-color="${await page.locator('.bs-map').getAttribute('data-want')}"]`).click();
+  else if (s === 'green') await page.locator('.bs-pedal').click();
+  else if (s === 'pick' || s === 'lost') {
+    const id = await page.locator('.bs-queue').getAttribute('data-want');
+    if (id) await page.locator(`.bs-queue [data-id="${id}"]`).click();
+  } else if (s === 'wcard') await page.locator(`.bs-wcard[data-weather="${await page.locator('.bs-wcards').getAttribute('data-want')}"]`).click();
+  else if (s === 'wbtn') await page.locator(`.bs-fix[data-fix="${await page.locator('.bs-dash').getAttribute('data-want')}"]`).click();
+  return s;
+}
+async function playBusUntil(page, re, skip = []) {
+  for (let i = 0; i < 80; i++) {
+    const s = await play(page).getAttribute('data-state');
+    if (re.test(s ?? '')) return;
+    if (BUS_STATES.test(s ?? '')) {
+      await solveBus(page, skip);
+      await expect(play(page)).not.toHaveAttribute('data-state', s, { timeout: 15000 }).catch(() => {});
+    } else await page.waitForTimeout(150);
+  }
+  throw new Error(`không tới ${re}`);
+}
+
+test('Xe buýt mức 1: thời tiết giữa trạm 1 và 2 — xe đỗ, nút đúng sáng, chạm nút khác không tính nhầm; không có đồ bỏ quên, hết lượt → sticker', async ({ page }) => {
+  await openJob(page, 'bus', 1);
+  await playBusUntil(page, /^wbtn$/);
+  await expect(page.locator('.bs-play .jb-count')).toHaveText('2/3');
+  await expect(page.locator('.bs-stage')).toHaveClass(/parked/);
+  const want = await page.locator('.bs-dash').getAttribute('data-want');
+  await expect(page.locator(`.bs-fix[data-fix="${want}"]`)).toHaveClass(/lit/);
+  await expect(page.locator('.bs-fix.lit')).toHaveCount(1);
+  expect(await page.locator('.bs-sky').getAttribute('data-weather')).toBeTruthy();
+  await expect.poll(async () => (await spoken(page)).some((t) => /^It's \w+! (Wipers on|Sunglasses on|Windows up)!$/.test(t))).toBe(true);
+  await page.locator(`.bs-fix:not([data-fix="${want}"])`).first().click();
+  await page.waitForTimeout(300);
+  expect((await spoken(page)).some((t) => t.startsWith("That's the"))).toBe(false);
+  await stateIs(page, 'wbtn');
+  await solveBus(page);
+  await expect.poll(() => spoken(page)).toContain("Good job! Let's go!");
+  await playBusUntil(page, /^done$/);
+  await expect(page.locator('.jb-play.jb-done')).toHaveCount(1);
+  expect((await spoken(page)).some((t) => /^Oh! /.test(t))).toBe(false);
+  expect((await page.evaluate(() => window.kidEnglish.settings.busGame)).seen[want]).toBe(1);
+});
+
+test('Xe buýt mức 2: chạm nút sai → "That\'s the … . It\'s …! …!", tính nhầm, xe vẫn đỗ (JOBS4-20); đồ bỏ quên — người bỏ quên thiếu dấu hiệu, chạm người khác → "Not mine!" (JOBS4-10); trả đúng → "My …! Thank you!" → sticker', async ({ page }) => {
+  await openJob(page, 'bus', 2);
+  await playBusUntil(page, /^wbtn$/);
+  const want = await page.locator('.bs-dash').getAttribute('data-want');
+  await expect(page.locator('.bs-fix.lit')).toHaveCount(0);
+  await page.locator(`.bs-fix:not([data-fix="${want}"])`).first().click();
+  await expect.poll(async () => (await spoken(page)).some((t) => /^That's the \w+\. It's \w+! [\w ]+!$/.test(t))).toBe(true);
+  await stateIs(page, 'wbtn');
+  await expect(page.locator('.bs-stage')).toHaveClass(/parked/);
+  await playBusUntil(page, /^lost$/);
+  await expect(page.locator('.bs-queue .bs-person')).toHaveCount(2);
+  const owner = await page.locator('.bs-queue').getAttribute('data-want');
+  const item = await page.locator(`.bs-queue [data-id="${owner}"]`).getAttribute('data-without');
+  expect(['glasses', 'hat', 'bag']).toContain(item);
+  await expect(page.locator(`.bs-seat [data-item="${item}"]`)).toHaveCount(1);
+  await expect(page.locator('.bs-queue [data-without=""]')).toHaveCount(1);
+  await expect.poll(async () => (await spoken(page)).some((t) => t.startsWith('Oh! ') && [`Whose ${item} is this?`, `Whose ${item} are these?`].some((q) => t.endsWith(q)))).toBe(true);
+  await page.locator(`.bs-queue .bs-person:not([data-id="${owner}"])`).click();
+  await expect.poll(async () => (await spoken(page)).some((t) => t === 'Not mine!' || t === 'Goo-goo!')).toBe(true); // em bé: "Goo-goo!"
+  await stateIs(page, 'lost');
+  await solveBus(page);
+  await expect.poll(() => spoken(page)).toContain(`My ${item}! Thank you!`);
+  await done(page);
+  expect((await page.evaluate(() => window.kidEnglish.settings.busGame)).seen[item]).toBeUndefined(); // nhầm rồi: không ghi
+});
+
+test('Xe buýt mức 3: thẻ thời tiết sai → "That\'s … . Look outside!", đúng rồi ra nền → xe vẫn đỗ, cảnh còn, ở bước chọn nút (JOBS4-21); đèn đỏ không ở chặng 1 → 2; đồ bỏ quên bé không chạm → người đúng tự lấy, không ghi (JOBS4-12)', async ({ page }) => {
+  await openJob(page, 'bus', 3);
+  await playBusUntil(page, /^wcard$/);
+  expect((await spoken(page)).filter((t) => t === 'Red light! Stop!').length).toBe(0);
+  await expect(page.locator('.bs-dash')).toBeHidden();
+  const w = await page.locator('.bs-wcards').getAttribute('data-want');
+  await page.locator(`.bs-wcard:not([data-weather="${w}"])`).first().click();
+  await expect.poll(async () => (await spoken(page)).some((t) => /^That's \w+\. Look outside! What's the weather\?$/.test(t))).toBe(true);
+  await page.locator(`.bs-wcard[data-weather="${w}"]`).click();
+  await stateIs(page, 'wbtn');
+  await setVisible(page, 'hidden');
+  await setVisible(page, 'visible');
+  await page.locator('.resume-overlay .start-btn').click();
+  await stateIs(page, 'wbtn');
+  await expect(page.locator('.bs-stage')).toHaveClass(/parked/);
+  await expect(page.locator('.bs-sky')).toHaveAttribute('data-weather', w);
+  await expect(page.locator('.bs-wcards')).toBeHidden();
+  expect((await spoken(page)).filter((t) => t === "What's the weather?").length).toBe(1);
+  await playBusUntil(page, /^lost$/);
+  const items = await page.locator('.bs-seat .bs-item').evaluateAll((els) => els.map((e) => e.dataset.item));
+  expect(items.length).toBeGreaterThanOrEqual(1);
+  await expect.poll(async () => (await spoken(page)).some((t) => /^Oh! An? \w+! It's \w+'s \w+!$/.test(t))).toBe(true);
+  await expect(page.locator('.jb-play.jb-done')).toHaveCount(1, { timeout: 60000 });
+  expect((await spoken(page)).filter((t) => /^(My \w+|Baby's \w+)! Thank you!$/.test(t)).length).toBe(items.length);
+  const seen = (await page.evaluate(() => window.kidEnglish.settings.busGame)).seen;
+  for (const item of items) expect(seen[item]).toBeUndefined();
+});
