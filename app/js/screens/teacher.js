@@ -1,7 +1,8 @@
 // Trò Cô giáo nhí (SPEC-jobs.md mục 5): đảo vai — Bông làm học trò, nhìn hình trên bảng và giơ tay nói tên,
 // đôi khi cố tình nói sai; bé chấm ✅ / ❌. Chấm đúng: Bông vui / Bông sửa lại; chấm nhầm: Bông nói lại, bé chọn lại.
 // SPEC-jobs2 TE1: mở đầu lượt bé rung chuông + điểm danh lớp (chạm đúng bạn được gọi); một trong 5 việc là ca
-// "Classroom actions" (bé chạm thẻ hành động, cả lớp làm theo). 5 việc → vở của Bông có 5 ⭐ → sticker.
+// "Classroom actions" (bé chạm thẻ hành động, cả lớp làm theo). SPEC-jobs4 TE3: sau điểm danh bé chọn thẻ thời tiết
+// theo cửa sổ lớp, thẻ gắn lên bảng thời tiết ở góc lớp. 5 việc → vở của Bông có 5 ⭐ → sticker.
 // Trạng thái: bell → roll ⇄ busy → claim → judge | act ⇄ busy → việc sau | done. Khung chung ở jobs/kit.js.
 
 import { h } from '../ui.js';
@@ -10,7 +11,7 @@ import { play } from '../speech/sfx.js';
 import { markPracticed } from '../player/track.js';
 import { patientSvg } from '../patients.js';
 import { PATIENT_BY_ID } from '../doctor.js';
-import { cleanJobState, afterJobRound } from '../jobs/levels.js';
+import { cleanJobState, afterJobRound, afterSeen } from '../jobs/levels.js';
 import { JOBS_BG_IMAGES } from '../jobs/backgrounds.js';
 import { TEACHER_SVG, STUDENT_SVG, loadPersonImage } from '../jobs/people.js';
 import { jobScreen, saveSnap, takeSnap, clearSnap, restartAnim, center, wait, WRONG_LOCK_MS, MAX_NUDGES } from '../jobs/kit.js';
@@ -20,12 +21,13 @@ import {
   ACTION_BY_ID, ACTION_STEPS, BELL_LINE, MORNING_LINE, CLASS_MORNING_LINE, whereLine, HERE_LINE, notMeLine, ALL_HERE_LINE,
   WHAT_DO_LINE, canWeLine, cmdLine, wrongActionLine, ACTIONS_DONE_LINE,
   starsForLine, starCountLine, STAR_THANKS_LINE, haveStarsLine, GOODBYE_CLASS_LINE, GOODBYE_TEACHER_LINE,
+  WEATHER_BY, HOW_WEATHER_LINE, itsWeatherLine, wrongWeatherLine, START_CLASS_LINE,
 } from '../jobs/teacher.js';
 
 const JOB = 'teacher';
 const SAY_BACK_MS = 2000; // "Oops! What is it?": chờ bé nói tên
 const ACT_MS = 1600; // cả lớp làm theo lệnh (bé làm theo nếu muốn)
-const ACTIVE = ['judge', 'bell', 'roll', 'act', 'stars'];
+const ACTIVE = ['judge', 'bell', 'roll', 'act', 'stars', 'wcard'];
 const COLOR_HEX = { red: '#ff6b6b', blue: '#4dabf7', yellow: '#ffd43b', green: '#51cf66', pink: '#f783ac', orange: '#ff922b' };
 
 /** Đồ tô màu của mức 3 (viewBox 100 × 100). */
@@ -43,6 +45,25 @@ function thingSvg(thing, color) {
     <path d="M14 42 q36 18 72 0" fill="none" stroke="#fff" stroke-width="7" opacity="0.8"/></svg>`;
 }
 
+/** Cửa sổ lớp học (viewBox 120 × 100): khung gỗ, song cửa, trời theo thời tiết của buổi học (SPEC-jobs4 mục 9). */
+function windowSvg(w) {
+  const ink = 'stroke="#3d2c5e" stroke-width="2"';
+  const cloud = (x, y, c = '#fff', k = 1) => `<g fill="${c}" ${ink}><path d="M${x - 16 * k} ${y} a${9 * k} ${9 * k} 0 0 1 ${8 * k} -${10 * k} a${11 * k} ${11 * k} 0 0 1 ${20 * k} -${2 * k} a${8 * k} ${8 * k} 0 0 1 ${6 * k} ${12 * k} z"/></g>`;
+  const sun = (x, y, r, c) => `<g stroke="${c}" stroke-width="3" stroke-linecap="round">${Array.from({ length: 8 }, (_, i) => {
+    const a = (i * Math.PI) / 4;
+    return `<path d="M${(x + Math.cos(a) * (r + 4)).toFixed(1)} ${(y + Math.sin(a) * (r + 4)).toFixed(1)} L${(x + Math.cos(a) * (r + 10)).toFixed(1)} ${(y + Math.sin(a) * (r + 10)).toFixed(1)}"/>`;
+  }).join('')}</g><circle cx="${x}" cy="${y}" r="${r}" fill="${c}" ${ink}/>`;
+  const scene = {
+    sunny: `<rect width="120" height="100" fill="#74c0fc"/>${sun(40, 34, 14, '#ffd43b')}<rect y="78" width="120" height="22" fill="#69db7c"/>${cloud(92, 30)}`,
+    rainy: `<rect width="120" height="100" fill="#adb5bd"/>${cloud(56, 34, '#868e96', 1.6)}<g class="tc-rain" stroke="#1c7ed6" stroke-width="3" stroke-linecap="round">${Array.from({ length: 9 }, (_, i) => `<path d="M${18 + i * 11} ${44 + (i % 3) * 10} l-4 9"/>`).join('')}</g><rect y="84" width="120" height="16" fill="#69db7c"/><ellipse cx="80" cy="90" rx="18" ry="4" fill="#4dabf7"/>`,
+    cloudy: `<rect width="120" height="100" fill="#a5d8ff"/>${cloud(36, 34, '#dee2e6', 1.3)}${cloud(86, 46, '#ced4da', 1.5)}${cloud(58, 66, '#e9ecef', 1)}<rect y="84" width="120" height="16" fill="#69db7c"/>`,
+    windy: `<rect width="120" height="100" fill="#74c0fc"/><g class="tc-wind" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round"><path d="M8 26 h40 a7 7 0 1 0 -7 -7"/><path d="M14 46 h52 a7 7 0 1 1 -7 7"/><path d="M60 22 h34"/></g><path d="M96 92 q-2 -22 6 -40" fill="none" stroke="#8d5a3b" stroke-width="5"/><ellipse cx="108" cy="46" rx="18" ry="12" fill="#51cf66" ${ink} transform="rotate(25 108 46)"/><g class="tc-leaves" fill="#51cf66" ${ink}><ellipse cx="70" cy="62" rx="4" ry="2.5"/><ellipse cx="52" cy="72" rx="4" ry="2.5"/><ellipse cx="80" cy="36" rx="4" ry="2.5"/></g><rect y="84" width="120" height="16" fill="#69db7c"/>`,
+    hot: `<rect width="120" height="100" fill="#ffc078"/>${sun(60, 36, 20, '#f03e3e')}<g fill="none" stroke="#e8590c" stroke-width="2.5" stroke-linecap="round" class="tc-heat"><path d="M14 74 q6 -6 12 0 t12 0"/><path d="M80 70 q6 -6 12 0 t12 0"/></g><rect y="84" width="120" height="16" fill="#ffe066"/>`,
+    cold: `<rect width="120" height="100" fill="#d0ebff"/><g class="tc-snow" fill="#fff" ${ink.replace('2', '1')}>${Array.from({ length: 11 }, (_, i) => `<circle cx="${10 + i * 10}" cy="${12 + ((i * 23) % 60)}" r="3"/>`).join('')}</g><path d="M0 82 q30 -10 60 0 t60 0 V100 H0 Z" fill="#fff" ${ink}/><circle cx="92" cy="74" r="8" fill="#fff" ${ink}/><circle cx="92" cy="62" r="6" fill="#fff" ${ink}/><path d="M92 62 l6 1.5 -6 1.5 z" fill="#ff922b"/>`,
+  }[w] ?? '';
+  return `<svg class="tc-window-svg" viewBox="0 0 120 100" aria-hidden="true">${scene}<g fill="none" stroke="#a9744a" stroke-width="5"><rect x="2.5" y="2.5" width="115" height="95" rx="4"/><path d="M60 3 V97 M3 50 H117"/></g></svg>`;
+}
+
 export function teacherScreen(app, params = {}) {
   let progress = cleanJobState(app.settings.teacherGame, { maxLevel: MAX_LEVEL });
   const level = progress.level;
@@ -56,6 +77,7 @@ export function teacherScreen(app, params = {}) {
   let starIdx = 0; // phát sao: bạn thứ mấy
   let given = 0; // số sao đã phát cho bạn đó
   let extraTap = false; // chạm hộp sao khi bạn đã đủ sao
+  let wDone = false; // bảng thời tiết đã gắn thẻ (SPEC-jobs4 TE3)
   let idx = 0;
   let wrongs = 0;
   let nudges = 0;
@@ -74,6 +96,7 @@ export function teacherScreen(app, params = {}) {
   const rollWant = () => klass?.roll[rollIdx];
   const actWant = () => (q()?.asks ? ACTION_BY_ID.get(q().asks[actIdx]) : null);
   const starTurn = () => klass?.stars?.[starIdx];
+  const wb = () => klass?.weather ?? null;
 
   const picture = h('div.tc-picture');
   const board = h('div.tc-board', {}, picture);
@@ -92,6 +115,10 @@ export function teacherScreen(app, params = {}) {
   const noBtn = h('button.tc-answer.tc-no', { type: 'button', 'aria-label': 'Sai', text: '❌', onclick: () => judge(false) });
   const answers = h('div.tc-answers', {}, yesBtn, noBtn);
   const classEl = h('div.tc-class', { hidden: true });
+  // SPEC-jobs4 TE3: cửa sổ lớp (trời của buổi học) + bảng thời tiết ở góc lớp (thẻ gắn ở lại suốt lượt).
+  const windowEl = h('div.tc-window', { hidden: true, 'aria-label': 'Cửa sổ lớp học' });
+  const wslot = h('div.tc-wslot');
+  const wboardEl = h('div.tc-wboard', { hidden: true, 'aria-label': 'Bảng thời tiết' }, h('span.tc-wboard-title', { text: 'Weather' }), wslot);
   // SPEC-roles: bàn cô giáo (bé đóng vai cô giáo, máy đọc giùm) bên trái; lớp học + Bông bên phải.
   const deskFace = h('span.tc-desk-face', { html: TEACHER_SVG });
   const desk = h('div.tc-desk', { 'aria-hidden': 'true' }, deskFace, h('span.tc-desk-top', { text: 'Teacher' }));
@@ -132,6 +159,7 @@ export function teacherScreen(app, params = {}) {
         if (state === 'bell') restartAnim(picture.querySelector('.tc-bell'), 'nudge');
         else if (state === 'stars') restartAnim(picture.querySelector('.tc-starbox'), 'nudge');
         else if (state === 'roll') restartAnim(pupilEl(rollWant()), 'nudge');
+        else if (state === 'wcard') restartAnim(level === 1 ? wcardEl(wb().weather) : windowEl, 'nudge');
         else if (state === 'act') {
           const want = actWant();
           if (want) restartAnim(cardEl(want.id), 'nudge');
@@ -142,22 +170,27 @@ export function teacherScreen(app, params = {}) {
     },
   });
   const { stage, count, talk } = kit;
-  stage.append(board, desk, student, notebook, answers, classEl);
+  stage.append(board, h('div.tc-corner', {}, windowEl, wboardEl), desk, student, notebook, answers, classEl);
   const stepKey = () => `${kit.epoch}:${phase}:${rollIdx}:${idx}:${actIdx}:${starIdx}:${given}:${state}`;
   const pupilEl = (id) => classEl.querySelector(`.tc-pupil[data-pupil="${id}"]`);
   const cardEl = (id) => picture.querySelector(`.tc-card[data-action="${id}"]`);
+  const wcardEl = (id) => picture.querySelector(`.tc-wcard[data-weather="${id}"]`);
 
   function setState(s) {
     state = s;
     kit.setState(s, false);
     answers.classList.toggle('locked', s !== 'judge');
   }
-  const snap = () => saveSnap(JOB, { level, plan, klass, phase, rollIdx, rang, idx, actIdx, usedCards, starIdx, given, wrongs, nudges, recorded: [...recorded] });
+  const snap = () => saveSnap(JOB, { level, plan, klass, phase, rollIdx, rang, wDone, idx, actIdx, usedCards, starIdx, given, wrongs, nudges, recorded: [...recorded] });
 
   /** Câu hỏi / yêu cầu của bước đang chờ bé (nhắc, chạm Bông). */
   function promptLines() {
     if (state === 'bell') return [B(BELL_LINE)];
     if (state === 'roll') return [T(whereLine(pupilName(rollWant())))];
+    if (state === 'wcard') {
+      const w = wb().weather;
+      return level === 1 ? [B(itsWeatherLine(w))] : level === 2 ? [P(wb().says, itsWeatherLine(w))] : [B(HOW_WEATHER_LINE)];
+    }
     if (state === 'stars') return [T(starsForLine(starTurn().n, pupilName(starTurn().pupil)))];
     if (state === 'act') {
       const want = actWant();
@@ -186,7 +219,7 @@ export function teacherScreen(app, params = {}) {
   }
   function renderPicture() {
     const { shown, right } = q();
-    picture.classList.remove('tc-cards');
+    picture.classList.remove('tc-cards', 'tc-wcards');
     picture.dataset.kind = shown.kind;
     picture.dataset.right = String(right); // cho test; bé không thấy
     if (shown.kind === 'color') {
@@ -215,6 +248,7 @@ export function teacherScreen(app, params = {}) {
   }
   function renderCards() {
     const item = q();
+    picture.classList.remove('tc-wcards');
     picture.classList.add('tc-cards');
     picture.dataset.kind = 'actions';
     picture.dataset.right = '';
@@ -232,10 +266,12 @@ export function teacherScreen(app, params = {}) {
   }
   /** Bố cục theo bước: điểm danh / hành động — lớp hiện, ✅ ❌ ẩn; chấm hình — ngược lại. */
   function layout() {
-    const showClass = phase === 'roll' || phase === 'stars' || isActions();
+    const showClass = phase === 'roll' || phase === 'stars' || phase === 'weather' || isActions();
     classEl.hidden = !showClass;
     answers.hidden = showClass;
-    notebook.hidden = phase === 'roll' || phase === 'stars';
+    notebook.hidden = phase === 'roll' || phase === 'stars' || phase === 'weather';
+    windowEl.hidden = !wb();
+    wboardEl.hidden = !wb();
   }
 
   // ---------- Chuông + điểm danh (SPEC-jobs2 mục 4.2) ----------
@@ -280,8 +316,12 @@ export function teacherScreen(app, params = {}) {
       play('sparkle');
       await talk([B(ALL_HERE_LINE)]);
       if (e !== kit.epoch) return;
-      phase = 'quiz';
       for (const el of classEl.children) el.dataset.here = 'false';
+      if (wb() && !wDone) {
+        startWeather();
+        return;
+      }
+      phase = 'quiz';
       ask();
       return;
     }
@@ -330,6 +370,112 @@ export function teacherScreen(app, params = {}) {
     await talk([P(id, HERE_LINE)]);
     if (e !== kit.epoch) return;
     rollStep();
+  }
+
+  // ---------- Bảng thời tiết (SPEC-jobs4 mục 9) ----------
+  function weatherFace(id, imgClass, emojiClass) {
+    return face(id, WEATHER_BY.get(id).emoji, imgClass, emojiClass);
+  }
+  /** Cửa sổ + bảng thời tiết (thẻ đã gắn thì hiện trên bảng). */
+  function renderWeatherCorner() {
+    if (!wb()) return;
+    windowEl.dataset.weather = wb().weather; // cho test
+    if (windowEl.dataset.drawn !== wb().weather) {
+      windowEl.innerHTML = windowSvg(wb().weather);
+      windowEl.dataset.drawn = wb().weather;
+    }
+    wslot.replaceChildren(...(wDone ? [weatherFace(wb().weather, 'tc-wslot-img', 'tc-wslot-emoji'), h('span.tc-wslot-label', { text: wb().weather })] : []));
+    wboardEl.dataset.filled = String(wDone);
+  }
+  function renderWeatherCards() {
+    const c = wb();
+    picture.classList.add('tc-cards', 'tc-wcards');
+    picture.dataset.kind = 'weather';
+    picture.dataset.right = '';
+    picture.dataset.word = c.weather; // cho test
+    picture.style.setProperty('--cols', String(c.cards.length === 4 ? 2 : c.cards.length));
+    picture.replaceChildren(...c.cards.map((id) => {
+      const card = h('button.tc-card.tc-wcard', { type: 'button', 'aria-label': id, dataset: { weather: id }, onclick: () => tapWeather(id) },
+        weatherFace(id, 'tc-card-img', 'tc-card-emoji'), h('span.tc-card-label', { text: id }));
+      card.classList.toggle('hint', level === 1 && id === c.weather);
+      return card;
+    }));
+  }
+  async function startWeather(resume = false) {
+    const e = kit.epoch;
+    phase = 'weather';
+    if (!resume) {
+      wrongs = 0;
+      nudges = 0;
+    }
+    count.textContent = '';
+    layout();
+    renderWeatherCorner();
+    renderWeatherCards();
+    setState('wcard');
+    snap();
+    if (!resume) {
+      restartAnim(picture, 'pop');
+      restartAnim(windowEl, 'nudge');
+    }
+    if (level === 1) restartAnim(wcardEl(wb().weather), 'nudge');
+    await talk([...(resume && level < 3 ? [] : [B(HOW_WEATHER_LINE)]), ...(level < 3 ? promptLines() : [])]);
+    if (e === kit.epoch && state === 'wcard') kit.armNudge();
+  }
+  async function tapWeather(id) {
+    if (state !== 'wcard') return;
+    const e = kit.epoch;
+    const c = wb();
+    const card = wcardEl(id);
+    if (id !== c.weather) {
+      if (level >= 2) {
+        // Nhầm (mức 2–3): thẻ rơi về, Bông nhắc nhìn cửa sổ; nhầm lần 2 thẻ đúng nhún.
+        const now = Date.now();
+        if (`w:${id}` === lastWrong.key && now - lastWrong.at < WRONG_LOCK_MS) return;
+        lastWrong = { key: `w:${id}`, at: now };
+        wrongs += 1;
+        snap();
+        play('boing');
+        kit.clearNudge();
+        restartAnim(card, 'drop');
+        restartAnim(windowEl, 'nudge');
+        if (wrongs >= 2) restartAnim(wcardEl(c.weather), 'nudge');
+        const k = stepKey();
+        await talk([B(wrongWeatherLine(id))]);
+        if (k === stepKey()) kit.armNudge();
+        return;
+      }
+      // Mức 1: không tính nhầm — thẻ đúng nhún.
+      restartAnim(card, 'shake');
+      restartAnim(wcardEl(c.weather), 'nudge');
+      return;
+    }
+    // Đúng: nhận NGAY (một lần) — từ Weather (mức 2–3, đúng ngay lần đầu), `seen` thời tiết; thẻ bay lên bảng thời tiết.
+    setState('busy');
+    kit.clearNudge();
+    if (!recorded.has('weather')) {
+      recorded.add('weather');
+      if (level >= 2 && wrongs === 0) markPracticed(app, c.weather, WEATHER_BY.get(c.weather).emoji);
+      progress = afterSeen(progress, c.weather);
+      app.setSetting('teacherGame', progress).catch(() => {});
+    }
+    wDone = true;
+    wrongs = 0;
+    nudges = 0;
+    snap();
+    play('pop');
+    card.classList.add('used');
+    const ghost = await kit.flyTo(weatherFace(id, 'tc-card-img', 'tc-card-emoji'), center(card.getBoundingClientRect()), center(wslot.getBoundingClientRect()));
+    kit.removeGhost(ghost);
+    if (e !== kit.epoch) return;
+    renderWeatherCorner();
+    restartAnim(wboardEl, 'hop');
+    play('sparkle');
+    await talk([{ who: 'class', line: itsWeatherLine(c.weather) }, B(START_CLASS_LINE)]);
+    if (e !== kit.epoch) return;
+    picture.classList.remove('tc-wcards');
+    phase = 'quiz';
+    ask();
   }
 
   // ---------- Câu ----------
@@ -474,7 +620,7 @@ export function teacherScreen(app, params = {}) {
       extraTap = false;
     }
     // Đủ sao: lưu sẵn bạn sau (ra nền không phát lại).
-    if (full) saveSnap(JOB, { level, plan, klass, phase, rollIdx, rang, idx, actIdx, usedCards, starIdx: starIdx + 1, given: 0, wrongs, nudges, recorded: [...recorded] });
+    if (full) saveSnap(JOB, { level, plan, klass, phase, rollIdx, rang, wDone, idx, actIdx, usedCards, starIdx: starIdx + 1, given: 0, wrongs, nudges, recorded: [...recorded] });
     else snap();
     play('pop');
     const box = picture.querySelector('.tc-starbox');
@@ -611,6 +757,10 @@ export function teacherScreen(app, params = {}) {
       startStars();
       return;
     }
+    if (phase === 'weather') {
+      startWeather();
+      return;
+    }
     if (phase === 'roll') {
       rollIdx = 0;
       rang = false;
@@ -631,7 +781,7 @@ export function teacherScreen(app, params = {}) {
 
   /** Ảnh bài học mới nhất của các từ trong lượt (hình + thẻ hành động; chỉ đọc, không chép). */
   async function loadImages() {
-    const words = [];
+    const words = [...(wb()?.cards ?? [])];
     for (const item of plan) {
       if (item.kind === 'actions') words.push(...item.cards.map((id) => ACTION_BY_ID.get(id).word));
       else if (item.shown.kind === 'noun') words.push(item.shown.en);
@@ -654,6 +804,7 @@ export function teacherScreen(app, params = {}) {
       phase = s.phase ?? 'quiz';
       rollIdx = s.rollIdx ?? 0;
       rang = Boolean(s.rang);
+      wDone = Boolean(s.wDone);
       idx = s.idx;
       actIdx = s.actIdx ?? 0;
       usedCards = s.usedCards ?? [];
@@ -665,14 +816,17 @@ export function teacherScreen(app, params = {}) {
     } else {
       const known = new Set();
       for (const rec of await app.db.getAll('progress').catch(() => [])) if ((rec.practiceCount ?? 0) > 0) known.add(rec.word);
-      const lesson = planLesson(level, { known });
+      const lesson = planLesson(level, { known, seen: progress.seen });
       plan = lesson.items;
-      klass = { pupils: lesson.pupils, roll: lesson.roll, stars: lesson.stars };
+      klass = { pupils: lesson.pupils, roll: lesson.roll, stars: lesson.stars, weather: lesson.weather };
     }
     await loadImages();
     if (kit.signal.aborted) return;
     renderClass();
+    layout();
+    renderWeatherCorner();
     if (phase === 'stars') startStars(true);
+    else if (phase === 'weather') startWeather(true);
     else if (idx >= plan.length) {
       count.textContent = `${plan.length}/${plan.length}`;
       renderNotebook();

@@ -123,3 +123,40 @@ test('SPEC-jobs2 TE2 — phát sao: mức 1 không có; mức 2–3 hai bạn kh
   assert.equal(starCountLine(3)[0], 'Three!');
   assert.equal(haveStarsLine(2)[0], 'I have two stars! Thank you!');
 });
+
+// ---------- SPEC-jobs4 mục 9 (TE3): bảng thời tiết ----------
+test('TE3 / JOBS4-31 — 500 seed mỗi mức: mỗi buổi đúng một thời tiết; bộ 2 / 3 / 4 thẻ khác nhau có thẻ đúng, không có hot + sunny / cold + cloudy; mức 2 có bạn trong lớp nói câu thời tiết; mọi câu trùng thời tiết cửa sổ', async () => {
+  const { planLesson, WEATHERS, WEATHER_CARDS, weathersClash, itsWeatherLine } = await import('../../app/js/jobs/teacher.js');
+  for (const level of [1, 2, 3]) {
+    const rng = seeded(900 + level);
+    const seenW = new Set();
+    for (let i = 0; i < 500; i++) {
+      const { weather: wb, pupils } = planLesson(level, { rng });
+      seenW.add(wb.weather);
+      assert.equal(wb.cards.length, WEATHER_CARDS[level]);
+      assert.equal(new Set(wb.cards).size, wb.cards.length);
+      assert.ok(wb.cards.includes(wb.weather));
+      for (const a of wb.cards) for (const b of wb.cards) assert.equal(weathersClash(a, b), false, `${a} + ${b}`);
+      if (level === 2) assert.ok(pupils.includes(wb.says));
+      else assert.equal(wb.says, null);
+      assert.equal(itsWeatherLine(wb.weather)[0], `It's ${wb.weather}!`);
+    }
+    assert.equal(seenW.size, WEATHERS.length);
+  }
+});
+
+test('TE3 — thời tiết ít gặp trước (seen); câu nói; test UI tắt bảng thời tiết', async () => {
+  const m = await import('../../app/js/jobs/teacher.js');
+  const rng = seeded(11);
+  for (let i = 0; i < 30; i++) assert.equal(m.makeWeatherBoard(2, { rng, seen: { sunny: 2, rainy: 1, cloudy: 3, hot: 1, cold: 4 } }).weather, 'windy');
+  assert.equal(m.HOW_WEATHER_LINE[0], "How's the weather today?");
+  assert.equal(m.wrongWeatherLine('cloudy')[0], "That's cloudy. Look outside!");
+  assert.equal(m.START_CLASS_LINE[0], "Let's start class!");
+  for (const w of m.WEATHERS) for (const [en, vi] of [m.itsWeatherLine(w.id), m.wrongWeatherLine(w.id)]) assert.ok(en && vi && !/undefined/.test(en + vi));
+  globalThis.__kidTest = { teacherWeather: false };
+  try {
+    assert.equal(m.planLesson(3, { rng }).weather, null);
+  } finally {
+    delete globalThis.__kidTest;
+  }
+});

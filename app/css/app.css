@@ -2920,6 +2920,42 @@ img.dr-admin-face { width: 100%; height: 100%; object-fit: contain; }
 .tc-card.nudge { animation: hint-hop 0.5s ease-in-out 3; outline: 5px solid var(--yellow); }
 @media (max-width: 600px) { .tc-class { left: 3%; right: 3%; } .tc-picture.tc-cards { gap: 5px; } }
 /* SPEC-jobs2 TE2: hộp sao + sao trong vở từng bạn. */
+/* Cô giáo — bảng thời tiết (SPEC-jobs4 mục 9): cửa sổ lớp góc trái trên, bảng thời tiết ngay dưới; thẻ trên bảng đen. */
+.tc-window[hidden], .tc-wboard[hidden] { display: none; }
+.tc-corner { position: absolute; left: 3%; top: 5%; width: min(17%, 150px); display: flex; flex-direction: column; gap: 12px; pointer-events: none; }
+.tc-window { position: relative; width: 100%; aspect-ratio: 6 / 5; border-radius: 8px; overflow: hidden; box-shadow: var(--shadow); }
+.tc-window-svg { width: 100%; height: 100%; display: block; }
+.tc-window.nudge { animation: hint-hop 0.5s ease-in-out 2; }
+.tc-rain { animation: tc-rain 0.8s linear infinite; }
+.tc-snow { animation: tc-snow 2.4s linear infinite; }
+.tc-wind, .tc-leaves { animation: tc-wind 1.6s ease-in-out infinite; }
+.tc-heat { animation: tc-heat 1.2s ease-in-out infinite; }
+@keyframes tc-rain { from { transform: translateY(-8px); } to { transform: translateY(8px); } }
+@keyframes tc-snow { from { transform: translateY(-6px); } to { transform: translateY(6px); } }
+@keyframes tc-wind { 0%, 100% { transform: translateX(-4px); } 50% { transform: translateX(6px); } }
+@keyframes tc-heat { 0%, 100% { transform: translateY(0); opacity: 0.6; } 50% { transform: translateY(-4px); opacity: 1; } }
+.tc-wboard { position: relative; width: 100%; display: grid; justify-items: center; gap: 4px; padding: 6px 6px 8px; box-sizing: border-box; border-radius: 12px; background: #fff; border: 4px solid #a9744a; box-shadow: var(--shadow); }
+.tc-wboard.hop { animation: dr-hop 0.5s ease-in-out; }
+.tc-wboard-title { font-weight: 900; font-size: clamp(12px, 2.2vmin, 18px); color: var(--ink); }
+.tc-wslot { display: grid; place-items: center; width: 64%; aspect-ratio: 1; border-radius: 10px; border: 3px dashed #adb5bd; }
+.tc-wboard[data-filled="true"] .tc-wslot { border: 0; grid-template-rows: minmax(0, 1fr) auto; }
+.tc-wslot-img { width: 100%; height: 100%; min-height: 0; object-fit: contain; }
+.tc-wslot-emoji { font-family: var(--emoji); font-size: clamp(26px, 5.6vmin, 48px); line-height: 1; }
+.tc-wslot-label { font-weight: 900; font-size: clamp(11px, 2vmin, 16px); color: var(--ink); }
+.tc-picture.tc-wcards { grid-template-columns: repeat(var(--cols, 3), minmax(0, 1fr)); width: 90%; height: 84%; gap: 12px; }
+.tc-wcard.hint { outline: 5px solid var(--yellow); }
+.tc-wcard.used { opacity: 0.35; }
+.tc-wcard.drop { animation: tc-drop 0.55s ease-out; }
+@keyframes tc-drop { 0% { transform: translateY(0); } 40% { transform: translateY(18px) rotate(-6deg); } 100% { transform: translateY(0); } }
+@media (max-width: 600px) {
+  .tc-corner { left: 2%; right: 2%; top: 1%; width: auto; z-index: 1; flex-direction: row; justify-content: space-between; align-items: flex-start; }
+  .tc-window { width: 26%; }
+  .tc-wboard { width: 22%; padding: 3px 3px 5px; }
+  .tc-picture.tc-wcards { gap: 6px; height: 80%; margin-top: 12%; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .tc-window.nudge, .tc-rain, .tc-snow, .tc-wind, .tc-leaves, .tc-heat, .tc-wboard.hop, .tc-wcard.drop { animation: none; }
+}
 .tc-starbox { display: grid; place-items: center; width: 100%; height: 100%; border: 0; background: transparent; font-family: var(--emoji); font-size: clamp(72px, 18vmin, 150px); line-height: 1; cursor: pointer; touch-action: manipulation; }
 .tc-starbox.nudge { animation: hint-hop 0.5s ease-in-out 3; }
 .tc-starbox.hop { animation: dr-hop 0.35s ease-in-out; }

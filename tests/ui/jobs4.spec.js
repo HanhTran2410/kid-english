@@ -422,6 +422,7 @@ test('Xe buýt mức 3: thẻ thời tiết sai → "That\'s … . Look outside!
   await expect.poll(async () => (await spoken(page)).some((t) => /^That's \w+\. Look outside! What's the weather\?$/.test(t))).toBe(true);
   await page.locator(`.bs-wcard[data-weather="${w}"]`).click();
   await stateIs(page, 'wbtn');
+  const asks = (await spoken(page)).filter((t) => t === "What's the weather?").length;
   await setVisible(page, 'hidden');
   await setVisible(page, 'visible');
   await page.locator('.resume-overlay .start-btn').click();
@@ -429,7 +430,7 @@ test('Xe buýt mức 3: thẻ thời tiết sai → "That\'s … . Look outside!
   await expect(page.locator('.bs-stage')).toHaveClass(/parked/);
   await expect(page.locator('.bs-sky')).toHaveAttribute('data-weather', w);
   await expect(page.locator('.bs-wcards')).toBeHidden();
-  expect((await spoken(page)).filter((t) => t === "What's the weather?").length).toBe(1);
+  expect((await spoken(page)).filter((t) => t === "What's the weather?").length).toBe(asks); // không hỏi thẻ lại
   await playBusUntil(page, /^lost$/);
   const items = await page.locator('.bs-seat .bs-item').evaluateAll((els) => els.map((e) => e.dataset.item));
   expect(items.length).toBeGreaterThanOrEqual(1);
@@ -574,11 +575,12 @@ test('Bác sĩ mức 3: bạn không nói cảm xúc — "How does … feel?" + 
   await expect(page.locator('.jb-tray [data-item]')).toHaveCount(3);
   await expect(page.locator(`.dr-feel[data-feel="${feel}"]`)).toHaveClass(/picked/);
   await expect.poll(async () => (await spoken(page)).includes(`${name} is ${feel}!`)).toBe(true);
+  const asks = (await spoken(page)).filter((t) => t === `How does ${name} feel?`).length;
   await setVisible(page, 'hidden');
   await setVisible(page, 'visible');
   await page.locator('.resume-overlay .start-btn').click();
   await stateIs(page, 'comfort');
-  expect((await spoken(page)).filter((t) => t === `How does ${name} feel?`).length).toBe(1);
+  expect((await spoken(page)).filter((t) => t === `How does ${name} feel?`).length).toBe(asks); // không hỏi thẻ lại
   await tapTray(page, HELP[feel]);
   await stateIs(page, /^(touch|check|treat)$/);
   expect(await feelCount(page, feel)).toBe(0);
@@ -870,4 +872,86 @@ test('Bưu tá mức 3: nơi chưa gặp → Bông dạy trước rồi mới h�
   await tapTray(page, v);
   await expect.poll(() => spoken(page), { timeout: 15000 }).toContain(`By ${v}! Good idea!`);
   await expect.poll(() => wordCount(page, v)).toBe(1);
+});
+
+// ---------- 0.78.0: 👩‍🏫 Cô giáo nhí — Bảng thời tiết (SPEC-jobs4 mục 9) ----------
+async function openTeacher4(page, level) {
+  await page.addInitScript(() => { window.__kidTest = { teacherActionsAt: 4 }; });
+  await openJob(page, 'teacher', level);
+}
+/** Rung chuông + điểm danh → tới bảng thời tiết. */
+async function toWeatherBoard(page) {
+  await stateIs(page, 'bell');
+  await page.locator('.tc-bell').click();
+  for (let i = 0; i < 6; i++) {
+    await stateIs(page, /^(roll|wcard)$/);
+    if ((await play(page).getAttribute('data-state')) === 'wcard') break;
+    const id = await page.locator('.tc-picture').getAttribute('data-word');
+    await expect(page.locator(`.tc-pupil[data-pupil="${id}"]`)).toHaveAttribute('data-here', 'false');
+    await page.locator(`.tc-pupil[data-pupil="${id}"]`).click();
+    await expect(page.locator(`.tc-pupil[data-pupil="${id}"]`)).toHaveAttribute('data-here', 'true', { timeout: 15000 }).catch(() => {});
+  }
+  await stateIs(page, 'wcard');
+  await expect(page.locator('.tc-window')).toBeVisible();
+  await expect(page.locator('.tc-wboard')).toBeVisible();
+  return page.locator('.tc-window').getAttribute('data-weather');
+}
+const its = (w) => `It's ${w}!`;
+const countSaid = async (page, t) => (await spoken(page)).filter((x) => x === t).length;
+
+test('Cô giáo mức 1 (JOBS4-26): sau điểm danh — cửa sổ thấy trời, "How\'s the weather today?" + Bông "It\'s …!", 2 thẻ, thẻ đúng sáng; chạm thẻ khác → thẻ đúng nhún, không tính nhầm; đúng → thẻ lên bảng, cả lớp "It\'s …!", "Let\'s start class!"; thẻ ở lại suốt lượt', async ({ page }) => {
+  await openTeacher4(page, 1);
+  const w = await toWeatherBoard(page);
+  await expect.poll(() => spoken(page)).toContain("How's the weather today?");
+  await expect.poll(() => spoken(page)).toContain(its(w));
+  await expect(page.locator('.tc-wcard')).toHaveCount(2);
+  await expect(page.locator(`.tc-wcard.hint[data-weather="${w}"]`)).toHaveCount(1);
+  await expect(page.locator('.tc-wboard')).toHaveAttribute('data-filled', 'false');
+  await page.locator(`.tc-wcard:not([data-weather="${w}"])`).click();
+  await expect(page.locator(`.tc-wcard[data-weather="${w}"]`)).toHaveClass(/nudge/);
+  expect((await spoken(page)).some((t) => /Look outside!$/.test(t))).toBe(false);
+  await stateIs(page, 'wcard');
+  await page.locator(`.tc-wcard[data-weather="${w}"]`).click();
+  await expect.poll(() => spoken(page)).toContain("Let's start class!");
+  const said = await spoken(page);
+  expect(said[said.indexOf("Let's start class!") - 1]).toBe(its(w)); // cả lớp nói ngay trước
+  await stateIs(page, /^(claim|judge|act)$/);
+  await expect(page.locator('.tc-wboard')).toHaveAttribute('data-filled', 'true');
+  await expect(page.locator('.tc-wslot-label')).toHaveText(w);
+  await expect(page.locator('.tc-window')).toBeVisible();
+  expect((await page.evaluate(() => window.kidEnglish.settings.teacherGame)).seen[w]).toBe(1);
+});
+
+test('Cô giáo mức 2: một bạn trong lớp nói "It\'s …!", 3 thẻ không sáng; thẻ sai → rơi về, "That\'s … . Look outside!", tính nhầm; ra nền → quay lại bước chọn thẻ; đã nhầm thì không ghi Weather', async ({ page }) => {
+  await openTeacher4(page, 2);
+  const w = await toWeatherBoard(page);
+  await expect.poll(() => spoken(page)).toContain(its(w));
+  await expect(page.locator('.tc-wcard')).toHaveCount(3);
+  await expect(page.locator('.tc-wcard.hint')).toHaveCount(0);
+  const wrong = await page.locator(`.tc-wcard:not([data-weather="${w}"])`).first().getAttribute('data-weather');
+  await page.locator(`.tc-wcard[data-weather="${wrong}"]`).click();
+  await expect.poll(() => spoken(page)).toContain(`That's ${wrong}. Look outside!`);
+  await stateIs(page, 'wcard');
+  await setVisible(page, 'hidden');
+  await setVisible(page, 'visible');
+  await page.locator('.resume-overlay .start-btn').click();
+  await stateIs(page, 'wcard');
+  await expect(page.locator('.tc-wcard')).toHaveCount(3);
+  await expect(page.locator('.tc-window')).toHaveAttribute('data-weather', w);
+  await page.locator(`.tc-wcard[data-weather="${w}"]`).click();
+  await expect.poll(() => spoken(page)).toContain("Let's start class!");
+  await expect(page.locator('.tc-wboard')).toHaveAttribute('data-filled', 'true');
+  expect(await wordCount(page, w)).toBe(0);
+});
+
+test('Cô giáo mức 3: không ai nói thời tiết, 4 thẻ; đúng ngay lần đầu → cả lớp "It\'s …!", ghi từ Weather một lần', async ({ page }) => {
+  await openTeacher4(page, 3);
+  const w = await toWeatherBoard(page);
+  await expect.poll(() => spoken(page)).toContain("How's the weather today?");
+  await expect(page.locator('.tc-wcard')).toHaveCount(4);
+  expect(await spoken(page)).not.toContain(its(w));
+  await page.locator(`.tc-wcard[data-weather="${w}"]`).click();
+  await expect.poll(() => countSaid(page, its(w))).toBe(1);
+  await expect.poll(() => spoken(page)).toContain("Let's start class!");
+  await expect.poll(() => wordCount(page, w)).toBe(1);
 });

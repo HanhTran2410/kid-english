@@ -9,7 +9,7 @@ const isRight = async (page) => (await page.locator('.tc-picture').getAttribute(
 
 async function openTeacher(page, settings, before, { actionsAt = 4, roll = true } = {}) {
   await fakeSpeech(page);
-  await page.addInitScript((n) => { window.__kidTest = { teacherActionsAt: n }; }, actionsAt);
+  await page.addInitScript((n) => { window.__kidTest = { teacherActionsAt: n, teacherWeather: false }; }, actionsAt);
   await startApp(page);
   if (settings) await page.evaluate((s) => window.kidEnglish.setSetting('teacherGame', s), settings);
   if (before) await before();

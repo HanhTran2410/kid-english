@@ -169,9 +169,10 @@ export function makeActionsItem(level, pupils, { rng = Math.random } = {}) {
 /**
  * Kế hoạch một buổi học: lớp (3 bạn mức 1 / 4 bạn mức 2–3, chỗ ngồi cố định), thứ tự điểm danh, 5 việc =
  * 4 hình (như cũ) + 1 ca Classroom actions thay một hình Bông nói ĐÚNG (giữ 2–3 câu sai).
- * Chỉ test UI đặt `window.__kidTest.teacherActionsAt` để cố định chỗ ca hành động.
+ * Chỉ test UI đặt `window.__kidTest.teacherActionsAt` để cố định chỗ ca hành động. SPEC-jobs4 TE3: bảng thời tiết sau
+ * điểm danh (`weather`; mức 2 có bạn `says` nói câu thời tiết); test cũ đặt `window.__kidTest.teacherWeather = false` để bỏ.
  */
-export function planLesson(level, { known = new Set(), rng = Math.random } = {}) {
+export function planLesson(level, { known = new Set(), rng = Math.random, seen = {} } = {}) {
   const pupils = shuffle(CLASS_IDS, rng).slice(0, level <= 1 ? 3 : 4);
   const roll = shuffle(pupils, rng);
   const items = planRound(level, { known, rng });
@@ -181,7 +182,9 @@ export function planLesson(level, { known = new Set(), rng = Math.random } = {})
   const pinned = globalThis.__kidTest?.teacherActionsAt;
   const to = Number.isInteger(pinned) && pinned >= 0 && pinned <= items.length ? pinned : at;
   items.splice(to, 0, makeActionsItem(level, pupils, { rng }));
-  return { pupils, roll, items, stars: planStars(level, pupils, { rng }) };
+  const weather = globalThis.__kidTest?.teacherWeather === false ? null
+    : { ...makeWeatherBoard(level, { seen, rng }), says: level === 2 ? pick(pupils, rng) : null };
+  return { pupils, roll, items, stars: planStars(level, pupils, { rng }), weather };
 }
 
 export const BELL_LINE = ['Ring the bell, teacher!', 'Cô ơi, cô rung chuông vào lớp đi ạ!'];
@@ -223,3 +226,39 @@ export const STAR_THANKS_LINE = ['Thank you, teacher!', 'Cảm ơn cô giáo ạ
 export const haveStarsLine = (n) => [`I have ${starsWord(n)}! Thank you!`, `Em có ${STAR_NUM_VI[n]} ngôi sao rồi ạ! Em cảm ơn cô!`];
 export const GOODBYE_CLASS_LINE = ['Goodbye, class!', 'Tạm biệt cả lớp!'];
 export const GOODBYE_TEACHER_LINE = ['Goodbye, teacher!', 'Chúng em chào cô ạ!'];
+
+// ---------- SPEC-jobs4 mục 9 (TE3): bảng thời tiết (mở đầu lượt, sau điểm danh) ----------
+/** 6 từ của bài Weather (emoji dự phòng khi không có ảnh bài học). */
+export const WEATHERS = [
+  { id: 'sunny', emoji: '☀️', vi: 'nắng' }, { id: 'rainy', emoji: '🌧️', vi: 'mưa' }, { id: 'cloudy', emoji: '☁️', vi: 'nhiều mây' },
+  { id: 'windy', emoji: '🌬️', vi: 'có gió' }, { id: 'hot', emoji: '🥵', vi: 'nóng' }, { id: 'cold', emoji: '🥶', vi: 'lạnh' },
+];
+export const WEATHER_BY = new Map(WEATHERS.map((w) => [w.id, w]));
+/** Cặp dễ nhầm nhìn qua cửa sổ: không bao giờ cùng một bộ thẻ. */
+const WEATHER_CLASH = { hot: 'sunny', sunny: 'hot', cold: 'cloudy', cloudy: 'cold' };
+export const weathersClash = (a, b) => WEATHER_CLASH[a] === b;
+export const WEATHER_CARDS = { 1: 2, 2: 3, 3: 4 };
+
+/**
+ * Bảng thời tiết của buổi học (sinh sẵn): { weather, cards }. Thời tiết ít gặp trước (`seen`); bộ thẻ 2 / 3 / 4 thẻ
+ * khác nhau, có thẻ đúng, không có cặp dễ nhầm (hot / sunny, cold / cloudy).
+ */
+export function makeWeatherBoard(level, { seen = {}, rng = Math.random } = {}) {
+  const ids = WEATHERS.map((w) => w.id);
+  const weather = shuffle(ids, rng).sort((a, b) => (seen[a] ?? 0) - (seen[b] ?? 0))[0];
+  const n = WEATHER_CARDS[level] ?? WEATHER_CARDS[1];
+  const cards = [weather];
+  for (const id of shuffle(ids, rng)) {
+    if (cards.length >= n) break;
+    if (!cards.includes(id) && !cards.some((c) => weathersClash(c, id))) cards.push(id);
+  }
+  return { weather, cards: shuffle(cards, rng) };
+}
+
+/** Bông: "How's the weather today?" */
+export const HOW_WEATHER_LINE = ["How's the weather today?", 'Hôm nay trời thế nào nhỉ?'];
+/** "It's sunny!" — Bông (mức 1), một bạn (mức 2), cả lớp (sau khi đúng, mọi mức): luôn sinh từ thời tiết cửa sổ. */
+export const itsWeatherLine = (w) => [`It's ${w}!`, `Trời ${WEATHER_BY.get(w).vi}!`];
+/** Nhầm: "That's cloudy. Look outside!" */
+export const wrongWeatherLine = (tapped) => [`That's ${tapped}. Look outside!`, `Đó là trời ${WEATHER_BY.get(tapped).vi}. Cô nhìn ra cửa sổ đi ạ!`];
+export const START_CLASS_LINE = ["Let's start class!", 'Mình bắt đầu học nào!'];
