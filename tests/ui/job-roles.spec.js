@@ -109,7 +109,7 @@ test.describe('màn ngang 1180×820', () => {
 
   /** Vào Cảnh sát ở mức `level`, cố định chỗ ca đèn / ca qua đường. */
   async function openPoliceAt(page, level, trafficAt, crossAt) {
-    await page.addInitScript(([t, c]) => { window.__kidTest = { policeTrafficAt: t, policeCrossAt: c }; }, [trafficAt, crossAt]);
+    await page.addInitScript(([t, c]) => { window.__kidTest = { policeTrafficAt: t, policeCrossAt: c, policeJunctionAt: -1 }; }, [trafficAt, crossAt]);
     await startApp(page);
     await page.evaluate((l) => window.kidEnglish.setSetting('policeGame', { level: l, rounds: 0, lock: l, seen: {} }), level);
     await page.getByRole('button', { name: 'Trò chơi' }).click();
@@ -263,7 +263,7 @@ test.describe('Cảnh sát màn dọc 390×760', () => {
   test.use({ viewport: { width: 390, height: 760 } });
   test('chú cảnh sát góc dưới trái, không đè bạn thú / đồ', async ({ page }) => {
     await fakeSpeech(page);
-    await page.addInitScript(() => { window.__kidTest = { policeTrafficAt: 2 }; });
+    await page.addInitScript(() => { window.__kidTest = { policeTrafficAt: 2, policeJunctionAt: -1 }; });
     await startApp(page);
     await page.getByRole('button', { name: 'Trò chơi' }).click();
     await page.getByRole('button', { name: 'Đóng vai' }).click();

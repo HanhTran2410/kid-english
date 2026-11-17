@@ -955,3 +955,129 @@ test('Cô giáo mức 3: không ai nói thời tiết, 4 thẻ; đúng ngay lầ
   await expect.poll(() => spoken(page)).toContain("Let's start class!");
   await expect.poll(() => wordCount(page, w)).toBe(1);
 });
+
+// ---------- 0.79.0: 👮 Cảnh sát — Điều khiển ngã tư (SPEC-jobs4 mục 10) ----------
+async function openPolice4(page, level) {
+  await page.addInitScript(() => { window.__kidTest = { policeJunctionAt: 0, policeTrafficAt: 2, policeCrossAt: 1 }; });
+  await openJob(page, 'police', level);
+  await stateIs(page, 'junction');
+  await expect(page.locator('.pl-junction')).toBeVisible();
+}
+const jOrder = async (page) => (await page.locator('.pl-junction').getAttribute('data-order')).split(':');
+const jName = async (page, id, level) => {
+  const v = page.locator(`.pl-jv[data-id="${id}"]`);
+  const type = await v.getAttribute('data-type');
+  return level >= 2 && !(level >= 3 && type === 'bike') ? `${await v.getAttribute('data-color')} ${type}` : type;
+};
+/** Chạm đúng xe của lệnh hiện tại, chờ sang lệnh sau (hoặc hết ca). */
+async function solveJunction(page) {
+  const before = await page.locator('.pl-junction').getAttribute('data-order');
+  const [, id] = before.split(':');
+  await page.locator(`.pl-jv[data-id="${id}"]`).click();
+  await expect.poll(async () => (await page.locator('.pl-junction').isVisible()) && (await page.locator('.pl-junction').getAttribute('data-order')) !== before
+    && (await play(page).getAttribute('data-state')) === 'junction' || !(await page.locator('.pl-junction').isVisible()), { timeout: 15000 }).toBe(true);
+}
+
+test('Cảnh sát mức 1: ngã tư — "Let\'s help the cars!", 3 xe khác loại, xe được gọi nhún; chạm xe khác → bấm còi, "That\'s the … . The …, go!", không chạy; đúng → xe chạy ra khỏi màn, "Beep beep! Thank you!"; hết xe → "Good job, officer!"', async ({ page }) => {
+  await openPolice4(page, 1);
+  await expect.poll(() => spoken(page)).toContain("Let's help the cars!");
+  await expect(page.locator('.pl-jv')).toHaveCount(3);
+  expect((await page.locator('.pl-jv').evaluateAll((els) => els.map((e) => e.dataset.type))).sort()).toEqual(['bike', 'bus', 'car']);
+  const [, id] = await jOrder(page);
+  const want = await jName(page, id, 1);
+  await expect.poll(() => spoken(page)).toContain(`The ${want}, go!`);
+  await expect(page.locator(`.pl-jv.called[data-id="${id}"]`)).toHaveCount(1);
+  const other = page.locator(`.pl-jv:not([data-id="${id}"])`).first();
+  const otherName = await jName(page, await other.getAttribute('data-id'), 1);
+  await other.click();
+  await expect.poll(() => spoken(page)).toContain(`That's the ${otherName}. The ${want}, go!`);
+  await expect(page.locator('.pl-jv[data-state="go"]')).toHaveCount(0);
+  await stateIs(page, 'junction');
+  await page.locator(`.pl-jv[data-id="${id}"]`).click();
+  await expect(page.locator(`.pl-jv[data-id="${id}"]`)).toHaveAttribute('data-state', 'go');
+  await expect.poll(() => spoken(page)).toContain('Beep beep! Thank you!');
+  await stateIs(page, 'junction');
+  await expect(page.locator('.pl-jv')).toHaveCount(2);
+  await solveJunction(page);
+  await solveJunction(page);
+  await expect.poll(() => spoken(page), { timeout: 15000 }).toContain('Good job, officer!');
+  await expect(page.locator('.jb-count')).toHaveText('2/3', { timeout: 15000 });
+});
+
+test('Cảnh sát mức 2 (JOBS4-27): 4 xe 2 loại × 2 màu, không nhún; gọi "The red car, go!" mà chạm xe cùng loại khác màu → bấm còi, không chạy, "That\'s the blue car. The red car, go!", tính nhầm; không có hai xe cùng chạy', async ({ page }) => {
+  await openPolice4(page, 2);
+  await expect(page.locator('.pl-jv')).toHaveCount(4);
+  await expect(page.locator('.pl-jv.called')).toHaveCount(0);
+  const [, id] = await jOrder(page);
+  const want = await jName(page, id, 2);
+  await expect.poll(() => spoken(page)).toContain(`The ${want}, go!`);
+  const type = await page.locator(`.pl-jv[data-id="${id}"]`).getAttribute('data-type');
+  const twin = page.locator(`.pl-jv[data-type="${type}"]:not([data-id="${id}"])`);
+  const twinName = await jName(page, await twin.getAttribute('data-id'), 2);
+  await twin.click();
+  await expect(twin).toHaveClass(/honk/);
+  await expect.poll(() => spoken(page)).toContain(`That's the ${twinName}. The ${want}, go!`);
+  await expect(page.locator('.pl-jv[data-state="go"]')).toHaveCount(0);
+  await page.locator(`.pl-jv[data-id="${id}"]`).click();
+  await page.locator(`.pl-jv:not([data-id="${id}"])`).first().click({ force: true }); // chạm thêm lúc xe đang chạy: không nhận
+  await expect(page.locator('.pl-jv[data-state="go"]')).toHaveCount(1);
+  expect(await wordCount(page, type)).toBe(0);
+  await stateIs(page, 'junction');
+  await solveJunction(page);
+  await solveJunction(page);
+  await expect.poll(() => spoken(page), { timeout: 15000 }).toContain('Good job, officer!');
+});
+
+test('Cảnh sát mức 3 (JOBS4-36): Go → "The bike, stop!" — xe đạp đi tới; chạm xe đang chờ → "That\'s the … . The bike, stop!"; chạm xe đạp → dừng trước vạch, không tự chạy; ra nền → xe đạp vẫn dừng; "Now the …, go!"; cuối "The bike, go!" → xe đạp đi', async ({ page }) => {
+  await openPolice4(page, 3);
+  await expect(page.locator('.pl-jv')).toHaveCount(4);
+  await expect(page.locator('.pl-jv[data-type="bike"]')).toHaveCount(0);
+  const [, first] = await jOrder(page);
+  const firstName = await jName(page, first, 3);
+  await expect.poll(() => spoken(page)).toContain(`The ${firstName}, go!`);
+  await page.locator(`.pl-jv[data-id="${first}"]`).click();
+  await expect.poll(async () => (await jOrder(page))[0], { timeout: 15000 }).toBe('stop');
+  await stateIs(page, 'junction');
+  const bike = page.locator('.pl-jv[data-type="bike"]');
+  await expect(bike).toHaveAttribute('data-state', 'coming');
+  await expect.poll(() => spoken(page)).toContain('The bike, stop!');
+  const waiting = page.locator('.pl-jv[data-state="waiting"]').first();
+  const waitingName = await jName(page, await waiting.getAttribute('data-id'), 3);
+  await waiting.click();
+  await expect.poll(() => spoken(page)).toContain(`That's the ${waitingName}. The bike, stop!`);
+  await expect(bike).toHaveAttribute('data-state', 'coming');
+  await bike.click();
+  await expect(bike).toHaveAttribute('data-state', 'stopped');
+  await expect.poll(async () => (await jOrder(page))[0], { timeout: 15000 }).toBe('go');
+  await stateIs(page, 'junction');
+  const [, second] = await jOrder(page);
+  const secondName = await jName(page, second, 3);
+  await expect.poll(() => spoken(page)).toContain(`Now the ${secondName}, go!`);
+  await bike.click();
+  await expect.poll(() => spoken(page)).toContain(`That's the bike. Now the ${secondName}, go!`);
+  await expect(bike).toHaveAttribute('data-state', 'stopped');
+  await setVisible(page, 'hidden');
+  await setVisible(page, 'visible');
+  await page.locator('.resume-overlay .start-btn').click();
+  await stateIs(page, 'junction');
+  await expect(page.locator('.pl-jv[data-type="bike"]')).toHaveAttribute('data-state', 'stopped');
+  expect(await page.locator('.pl-junction').getAttribute('data-order')).toBe(`go:${second}`);
+  await page.locator(`.pl-jv[data-id="${second}"]`).click();
+  await expect.poll(async () => (await jOrder(page)).join(':'), { timeout: 15000 }).toBe(`go:${await page.locator('.pl-jv[data-type="bike"]').getAttribute('data-id')}`);
+  await expect.poll(() => spoken(page)).toContain('The bike, go!');
+  await stateIs(page, 'junction');
+  await page.locator('.pl-jv[data-type="bike"]').click();
+  await expect(page.locator('.pl-jv[data-type="bike"]')).toHaveAttribute('data-state', 'go');
+  await expect.poll(() => spoken(page), { timeout: 15000 }).toContain('Good job, officer!');
+});
+
+test('Cảnh sát mức 3: chạm đúng ngay lần đầu → ghi loại xe + màu (Vehicles, Colors)', async ({ page }) => {
+  await openPolice4(page, 3);
+  const [, first] = await jOrder(page);
+  const v = page.locator(`.pl-jv[data-id="${first}"]`);
+  const type = await v.getAttribute('data-type');
+  const color = await v.getAttribute('data-color');
+  await v.click();
+  await expect.poll(() => wordCount(page, type)).toBe(1);
+  await expect.poll(() => wordCount(page, color)).toBe(1);
+});

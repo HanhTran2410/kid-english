@@ -81,7 +81,7 @@ export const CLOTHES_COLORS = ['red', 'blue', 'yellow', 'green'];
  * 3 ca của một lượt, mỗi ca một bạn thú (người hỏi) khác nhau. Mức 3: đúng một ca tìm bạn bị lạc. Mọi mức: đúng một ca
  * đèn giao thông (SPEC-jobs2 mục 5.1, thay một ca tìm đồ); còn lại tìm đồ. Hai ca liền nhau không cùng loại đồ.
  */
-export function planRound(level, { rng = Math.random } = {}) {
+export function planRound(level, { rng = Math.random, rounds = 0 } = {}) {
   const askers = shuffle(PATIENTS, rng).slice(0, CASES_PER_ROUND).map((p) => p.id);
   // Chỉ test UI đặt `window.__kidTest.policeTrafficAt` / `policeCrossAt` để cố định chỗ ca đèn / ca qua đường.
   const all = [0, 1, 2];
@@ -119,7 +119,27 @@ export function planRound(level, { rng = Math.random } = {}) {
     lastToy = c.toy;
     cases.push({ asker, ...c });
   });
+  placeJunction(cases, level, { rng, rounds });
   return { cases };
+}
+
+/**
+ * SPEC-jobs4 PL3: ca ngã tư thay một ca tìm đồ (mức 1–2). Mức 3 không có ca tìm đồ nên thay luân phiên theo số lượt:
+ * lượt chẵn thay ca tìm bạn lạc, lượt lẻ thay ca qua đường. Chỉ test UI đặt `window.__kidTest.policeJunctionAt`
+ * (-1: không có; số: thay đúng ca đó nếu không phải ca đèn).
+ */
+function placeJunction(cases, level, { rng, rounds }) {
+  const pinned = globalThis.__kidTest?.policeJunctionAt;
+  if (pinned === -1) return;
+  let at;
+  if (Number.isInteger(pinned) && cases[pinned] && cases[pinned].kind !== 'traffic') at = pinned;
+  else {
+    const want = level >= 3 ? (rounds % 2 === 0 ? 'friend' : 'cross') : 'toy';
+    const free = cases.map((c, i) => (c.kind === want ? i : -1)).filter((i) => i >= 0);
+    at = free[Math.floor(rng() * free.length)];
+  }
+  if (at == null) return;
+  cases[at] = { asker: cases[at].asker, ...makeJunctionCase(level, { rng }) };
 }
 
 /** Các đồ / bạn khớp mô tả của đồ cần tìm (để kiểm tra: luôn đúng một). */
@@ -242,3 +262,81 @@ export const crossStepLine = (step) => ({
 // ---------- SPEC-jobs2 PL2b: tìm bạn bị lạc theo quần áo (câu trung tính, không theo giới tính) ----------
 /** "My friend has a red hat and blue shoes." */
 export const friendClothesLine = (x) => [`My friend has a ${x.hat} hat and ${x.shoes} shoes.`, `Bạn tớ đội mũ ${COLOR_VI[x.hat]}, đi giày ${COLOR_VI[x.shoes]}.`];
+
+// ---------- SPEC-jobs4 mục 10 (PL3): điều khiển ngã tư ----------
+/** Ngả đường quanh ngã tư (xe đứng ở ngả của mình, chạy thẳng qua ngã tư ra phía đối diện). */
+export const ARMS = ['left', 'top', 'right', 'bottom'];
+export const JUNCTION_COLORS = ['red', 'blue', 'yellow', 'green'];
+/** Màu vẽ xe mức 1 (không nói màu). */
+const PLAIN_COLOR = { car: 'red', bus: 'yellow', bike: 'blue' };
+
+/**
+ * Ca ngã tư (sinh sẵn): { kind: 'junction', vehicles: [{ id, type, color, arm, extra? }], orders: [{ cmd: 'go' | 'stop', id }] }.
+ * - Mức 1: 3 xe khác loại (car, bus, bike) ở 3 ngả; 3 lệnh Go, mỗi xe một lần.
+ * - Mức 2: 4 xe = 2 loại × 2 màu ở 4 ngả; 3 lệnh Go khác xe.
+ * - Mức 3: 4 xe car / bus × 2 màu + xe đạp (`extra`, xe thứ năm, chỉ hiện từ lệnh Stop, đi tới từ ngả của xe đã đi);
+ *   lệnh cố định thứ tự Go → Stop (xe đạp) → Go → Go (xe đạp).
+ * Mỗi lệnh khớp đúng một xe ở đúng trạng thái; xe đã đi không được gọi lại.
+ */
+export function makeJunctionCase(level, { rng = Math.random } = {}) {
+  const arms = shuffle(ARMS, rng);
+  if (level <= 1) {
+    const vehicles = shuffle(['car', 'bus', 'bike'], rng).map((type, i) => ({ id: `v${i}`, type, color: PLAIN_COLOR[type], arm: arms[i] }));
+    return { kind: 'junction', vehicles, orders: shuffle(vehicles, rng).map((v) => ({ cmd: 'go', id: v.id })) };
+  }
+  const types = level >= 3 ? ['car', 'bus'] : shuffle(['car', 'bus', 'bike'], rng).slice(0, 2);
+  const colors = shuffle(JUNCTION_COLORS, rng).slice(0, 2);
+  const combos = shuffle(types.flatMap((type) => colors.map((color) => ({ type, color }))), rng);
+  const vehicles = combos.map((x, i) => ({ id: `v${i}`, ...x, arm: arms[i] }));
+  const goes = shuffle(vehicles, rng).slice(0, level >= 3 ? 2 : 3);
+  if (level < 3) return { kind: 'junction', vehicles, orders: goes.map((v) => ({ cmd: 'go', id: v.id })) };
+  const bike = { id: 'v4', type: 'bike', color: pick(JUNCTION_COLORS, rng), arm: goes[0].arm, extra: true };
+  return {
+    kind: 'junction',
+    vehicles: [...vehicles, bike],
+    orders: [{ cmd: 'go', id: goes[0].id }, { cmd: 'stop', id: bike.id }, { cmd: 'go', id: goes[1].id }, { cmd: 'go', id: bike.id }],
+  };
+}
+
+/**
+ * Trạng thái mỗi xe trước lệnh thứ `k`: waiting | gone | coming | stopped | hidden (xe đạp chưa tới).
+ * Xe `coming` chỉ có lúc lệnh hiện tại là Stop gọi nó; `stopped` không tự chạy, chỉ đi khi lệnh Go gọi nó.
+ */
+export function junctionStates(c, k) {
+  const st = Object.fromEntries(c.vehicles.map((v) => [v.id, v.extra ? 'hidden' : 'waiting']));
+  c.orders.slice(0, k).forEach((o) => { st[o.id] = o.cmd === 'stop' ? 'stopped' : 'gone'; });
+  const now = c.orders[k];
+  if (now?.cmd === 'stop') st[now.id] = 'coming';
+  return st;
+}
+/** Xe khớp lệnh `k` (để kiểm tra: luôn đúng một, ở đúng trạng thái). */
+export function junctionMatches(c, k, level) {
+  const o = c.orders[k];
+  const want = c.vehicles.find((v) => v.id === o.id);
+  const st = junctionStates(c, k);
+  const ok = o.cmd === 'stop' ? ['coming'] : ['waiting', 'stopped'];
+  return c.vehicles.filter((v) => ok.includes(st[v.id]) && v.type === want.type && (level <= 1 || v.extra || v.color === want.color));
+}
+
+const VEHICLE_VI = { car: 'ô tô', bus: 'xe buýt', bike: 'xe đạp' };
+/** "the bus" (mức 1, xe đạp mức 3) / "the red car" (mức 2–3). */
+export function vehicleName(v, level) {
+  if (level <= 1 || v.extra) return [`the ${v.type}`, `${VEHICLE_VI[v.type]}`];
+  return [`the ${v.color} ${v.type}`, `${VEHICLE_VI[v.type]} ${COLOR_VI[v.color]}`];
+}
+const capFirst = (s) => s.charAt(0).toUpperCase() + s.slice(1);
+/** Lệnh: "The bus, go!" / "Now the blue bus, go!" / "The bike, stop!" */
+export function orderLine(o, v, level, now = false) {
+  const [en, vi] = vehicleName(v, level);
+  const cmd = o.cmd === 'stop' ? ['stop', 'dừng lại'] : ['go', 'đi đi'];
+  return [`${now ? `Now ${en}` : capFirst(en)}, ${cmd[0]}!`, `${now ? 'Giờ thì ' : ''}${vi}, ${cmd[1]}!`.replace(/^./, (x) => x.toUpperCase())];
+}
+/** Nhầm: "That's the blue car. The red car, go!" */
+export function junctionWrongLine(tapped, o, want, level, now = false) {
+  const [en, vi] = vehicleName(tapped, level);
+  const [oEn, oVi] = orderLine(o, want, level, now);
+  return [`That's ${en}. ${oEn}`, `Đó là ${vi}. ${oVi}`];
+}
+export const HELP_CARS_LINE = ["Let's help the cars!", 'Mình giúp các xe qua ngã tư nào!'];
+export const BEEP_THANKS_LINE = ['Beep beep! Thank you!', 'Bíp bíp! Cảm ơn chú cảnh sát!'];
+export const JUNCTION_DONE_LINE = ['Good job, officer!', 'Chú cảnh sát giỏi quá!'];

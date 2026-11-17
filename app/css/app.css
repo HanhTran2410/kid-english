@@ -3183,6 +3183,43 @@ img.dr-admin-face { width: 100%; height: 100%; object-fit: contain; }
 /* Đồ / bạn nấp sau bụi cây: ẩn hẳn tới khi bé chạm bụi (không ló đầu lộ đáp án). */
 .pl-hidden:not(.open) .pl-item { visibility: hidden; }
 /* SPEC-jobs2 PL1: ca đèn giao thông — đường + vạch kẻ, xe chờ, bạn thú qua đường, cột đèn ba màu. */
+/* Cảnh sát — ngã tư (SPEC-jobs4 mục 10): hai đường cắt nhau, chú cảnh sát cầm gậy ở giữa, xe chờ ở các ngả. */
+.pl-junction[hidden] { display: none; }
+.pl-junction { position: absolute; inset: 0; z-index: 2; overflow: hidden; background: #8ce99a; }
+.pl-junction.enter { animation: dr-fade-in 0.5s ease-out; }
+.pl-junction.leave { animation: dr-fade 0.6s ease-in forwards; }
+.pl-jroad { position: absolute; background: #868e96; }
+.pl-jroad.h { left: 0; right: 0; top: 34%; height: 32%; background: linear-gradient(#868e96 0 48%, #fff 48% 52%, #868e96 52%); }
+.pl-jroad.v { top: 0; bottom: 0; left: 38%; width: 24%; background: linear-gradient(90deg, #868e96 0 48%, #fff 48% 52%, #868e96 52%); }
+.pl-jroad.v::after { content: ''; position: absolute; left: 0; right: 0; top: 34%; height: 32%; background: #868e96; }
+.pl-cop { position: absolute; left: 50%; top: 50%; z-index: 1; display: grid; place-items: center; width: min(11%, 90px); aspect-ratio: 1; border-radius: 50%; background: #fff; border: 4px solid #3d2c5e; transform: translate(-50%, -50%); }
+.pl-cop-face { font-family: var(--emoji); font-size: clamp(26px, 6vmin, 52px); line-height: 1; }
+.pl-baton { position: absolute; right: -26%; top: 4%; width: 12%; height: 62%; border-radius: 6px; background: repeating-linear-gradient(#fff 0 8px, #fa5252 8px 16px); border: 2px solid #3d2c5e; transform-origin: 50% 100%; animation: pl-baton 1.6s ease-in-out infinite; }
+@keyframes pl-baton { 0%, 100% { transform: rotate(-20deg); } 50% { transform: rotate(25deg); } }
+.pl-jv { position: absolute; z-index: 2; width: min(16%, 150px); aspect-ratio: 100 / 64; padding: 0; border: 0; background: none; transform: translate(-50%, -50%); transition-property: left, top; transition-timing-function: linear; cursor: pointer; touch-action: manipulation; }
+.pl-jv-body { display: block; width: 100%; height: 100%; transform-origin: 50% 90%; }
+.pl-jv-body svg { width: 100%; height: 100%; display: block; overflow: visible; }
+.pl-jv.flip .pl-jv-body svg { transform: scaleX(-1); }
+.pl-jv.called .pl-jv-body { animation: hint-hop 0.9s ease-in-out infinite; }
+.pl-jv.nudge .pl-jv-body { animation: hint-hop 0.5s ease-in-out 3; }
+.pl-jv.honk .pl-jv-body { animation: dr-shake 0.45s; }
+.pl-jv.hop .pl-jv-body { animation: dr-hop 0.45s ease-in-out; }
+.pl-jv[data-state="coming"] .pl-jv-body { animation: m-wiggle 0.5s ease-in-out infinite; }
+.pl-jv[data-state="go"] { pointer-events: none; }
+.pl-jv-mark { position: absolute; right: -6%; top: -30%; font-family: var(--emoji); font-size: clamp(20px, 4.4vmin, 40px); line-height: 1; }
+.pl-jv[data-state="stopped"] .pl-jv-mark::after { content: '✋'; }
+.pl-jv.honk .pl-jv-mark::after { content: '📢'; }
+@media (max-width: 600px) {
+  .pl-jroad.h { top: 38%; height: 24%; }
+  .pl-jroad.v { left: 32%; width: 36%; }
+  .pl-jroad.v::after { top: 38%; height: 24%; }
+  .pl-jv { width: 30%; }
+  .pl-cop { width: 16%; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .pl-junction.enter, .pl-baton, .pl-jv .pl-jv-body { animation: none !important; }
+  .pl-jv { transition: none; }
+}
 .pl-traffic { position: absolute; inset: 0; z-index: 2; }
 .pl-traffic[hidden], .pl-park[hidden], .pl-asker[hidden], .pl-walker[hidden] { display: none; }
 .pl-traffic.enter { animation: dr-enter 0.65s ease-out; }
@@ -3373,11 +3410,12 @@ img.dr-admin-face { width: 100%; height: 100%; object-fit: contain; }
 
 /* Cảnh sát (SPEC-roles mục 9): chú cảnh sát đứng bên trái, bạn thú cạnh chú, đồ ở nửa phải; cảnh đường: chú lên góc trên trái. */
 .pl-play .jb-host { z-index: 3; width: min(19%, 190px); }
-.pl-stage[data-scene="road"] .jb-host { top: 3%; bottom: auto; width: min(13%, 130px); }
+.pl-stage[data-scene="road"] .jb-host, .pl-stage[data-scene="junction"] .jb-host { top: 3%; bottom: auto; width: min(13%, 130px); }
 @media (min-width: 601px) { .pl-play .pl-asker { left: 22%; } }
 @media (max-width: 600px) {
   .pl-play .jb-host { top: auto; bottom: 3%; left: 2%; width: 26%; }
   .pl-stage[data-scene="road"] .jb-host { top: 3%; bottom: auto; left: 50%; translate: -50% 0; width: 20%; }
+  .pl-stage[data-scene="junction"] .jb-host { top: 2%; bottom: auto; left: 2%; width: 22%; } /* góc cỏ trên trái, không che ngả trên */
 }
 /* Ô đồ trong khay: ảnh món (bố mẹ thêm, kể cả ảnh dọc cao) luôn nằm gọn trong ô — hàng / cột lưới cố định theo ô. */
 .dr-item { grid-template: minmax(0, 1fr) / minmax(0, 1fr); overflow: hidden; }

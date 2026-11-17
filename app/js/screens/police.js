@@ -1,6 +1,7 @@
 // Trò Cảnh sát giúp bạn (SPEC-jobs.md mục 6): bạn thú làm mất đồ ("Oh no! I lost my ball! It's red!"), bé chạm đúng
 // đồ trong công viên; đồ bay về tay bạn, bạn cảm ơn. Mức 3: đồ / bạn nấp sau bụi cây — chạm bụi để nhìn (không tính nhầm).
 // SPEC-jobs2 PL1: mỗi lượt một ca đèn giao thông (giả lập): mức 1 học màu đèn, mức 2–3 bật đỏ khi có bạn qua đường.
+// SPEC-jobs4 PL3: ca điều khiển ngã tư — Bông gọi "The bus, go!", bé chạm đúng xe, mỗi lúc một xe chạy; mức 3 có "Stop!".
 // 3 ca → sticker. Trạng thái: enter → find | ask ⇄ busy / move → found → leave → ca sau | done. Khung chung ở jobs/kit.js.
 
 import { h } from '../ui.js';
@@ -16,6 +17,7 @@ import {
   MAX_LEVEL, planRound, lostLine, describeLine, foundLine, wrongLine, HELLO_LINE, LOOK_LINE, BUSH_LINE,
   TRAFFIC_INTRO_LINE, CAN_GO_LINE, CHANGING_LINE, TRAFFIC_DONE_LINE, makeItLine, lightRightLine, lightWrongLine,
   CROSS_STEPS, CROSS_ASK_LINE, NO_CARS_LINE, CROSS_THANKS_LINE, crossStepLine,
+  junctionStates, orderLine, junctionWrongLine, HELP_CARS_LINE, BEEP_THANKS_LINE, JUNCTION_DONE_LINE,
 } from '../jobs/police.js';
 
 const JOB = 'police';
@@ -63,6 +65,33 @@ const CHECK_MS = 900; // nhìn lại mỗi bên (tự động)
 const CROSS_ACTIVE = ['look-left', 'look-right', 'press', 'go'];
 const BUSH_SVG = `<svg viewBox="0 0 100 80" aria-hidden="true"><path d="M8 72 q-6 -26 18 -30 q2 -26 28 -24 q20 -12 32 10 q20 2 14 26 q6 14 -6 18 z" fill="#51cf66" stroke="#2b8a3e" stroke-width="4" stroke-linejoin="round"/><circle cx="36" cy="40" r="4" fill="#ff8787"/><circle cx="62" cy="34" r="4" fill="#ff8787"/></svg>`;
 
+// ---------- Ngã tư (SPEC-jobs4 mục 10) ----------
+const DRIVE_MS = 1300; // xe chạy qua ngã tư ra khỏi màn
+const COMING_MS = 2600; // xe đạp đi chậm tới vạch
+/** Chỗ chờ ở mỗi ngả, chỗ ra (phía đối diện), chỗ xe đạp đi tới từ ngoài màn (% của cảnh ngã tư). */
+const ARM_AT_WIDE = { left: [13, 58], right: [87, 42], top: [42, 15], bottom: [58, 85] };
+/** Màn dọc (điện thoại): xe ngả trái / phải lùi vào trong để không bị cắt mép. */
+const ARM_AT_TALL = { left: [17, 57], right: [83, 43], top: [42, 17], bottom: [58, 84] };
+const ARM_EXIT = { left: [118, 58], right: [-18, 42], top: [42, 118], bottom: [58, -18] };
+const ARM_FROM = { left: [-14, 58], right: [114, 42], top: [42, -16], bottom: [58, 116] };
+const VEHICLE_EMOJI = { car: '🚗', bus: '🚌', bike: '🚲' };
+/** Xe nhìn ngang (viewBox 100 × 64) tô màu: ô tô, xe buýt, xe đạp. */
+function vehicleSvg(type, color) {
+  const c = COLOR_HEX[color] ?? '#ff6b6b';
+  const k = '#3d2c5e';
+  const body = {
+    car: `<path d="M6 46 v-12 q2 -6 10 -8 l12 -14 h34 l12 14 q16 2 20 8 v12 z" fill="${c}" stroke="${k}" stroke-width="3.5" stroke-linejoin="round"/>
+      <path d="M33 16 h12 v11 h-20 z M50 16 h11 l9 11 h-20 z" fill="#e7f5ff" stroke="${k}" stroke-width="2"/><circle cx="26" cy="48" r="9" fill="${k}"/><circle cx="74" cy="48" r="9" fill="${k}"/><circle cx="26" cy="48" r="3.5" fill="#dee2e6"/><circle cx="74" cy="48" r="3.5" fill="#dee2e6"/>`,
+    bus: `<rect x="4" y="8" width="92" height="40" rx="8" fill="${c}" stroke="${k}" stroke-width="3.5"/>
+      ${[12, 32, 52].map((x) => `<rect x="${x}" y="15" width="15" height="13" rx="2" fill="#e7f5ff" stroke="${k}" stroke-width="2"/>`).join('')}<rect x="74" y="15" width="16" height="26" rx="2" fill="#e7f5ff" stroke="${k}" stroke-width="2"/>
+      <circle cx="24" cy="50" r="9" fill="${k}"/><circle cx="76" cy="50" r="9" fill="${k}"/><circle cx="24" cy="50" r="3.5" fill="#dee2e6"/><circle cx="76" cy="50" r="3.5" fill="#dee2e6"/>`,
+    bike: `<circle cx="24" cy="44" r="15" fill="none" stroke="${k}" stroke-width="4"/><circle cx="76" cy="44" r="15" fill="none" stroke="${k}" stroke-width="4"/>
+      <path d="M24 44 L42 22 H66 L76 44 M42 22 L52 44 L66 22 M52 44 H24" fill="none" stroke="${c}" stroke-width="5" stroke-linejoin="round" stroke-linecap="round"/>
+      <path d="M38 16 h10 M66 22 l-4 -10 h8" fill="none" stroke="${k}" stroke-width="4" stroke-linecap="round"/>`,
+  }[type];
+  return `<svg viewBox="0 0 100 64" aria-hidden="true">${body}</svg>`;
+}
+
 export function policeScreen(app, params = {}) {
   let progress = cleanJobState(app.settings.policeGame, { maxLevel: MAX_LEVEL });
   const level = progress.level;
@@ -89,16 +118,17 @@ export function policeScreen(app, params = {}) {
     // SPEC-roles mục 9: chú cảnh sát đứng bên trái nói câu của Bông (phụ đề 👮); bạn thú / xe nói thì sáng, ai nói người đó sáng.
     host: { svg: POLICE_SVG, label: 'police' },
     roles: {
-      of: (who) => (who === 'bong' ? kit.host : who === 'asker' ? [askerEl, walker] : who === 'car' ? car : null),
-      all: () => [kit.host, askerEl, walker, car].filter((el) => !el.closest('[hidden]')), // cảnh nào chỉ vai cảnh đó
+      of: (who) => (who === 'bong' ? kit.host : who === 'asker' ? [askerEl, walker] : who === 'car' ? car
+        : who?.startsWith('jv:') ? junctionEl.querySelector(`.pl-jv[data-id="${who.slice(3)}"]`) : null),
+      all: () => [kit.host, askerEl, walker, car, ...junctionEl.querySelectorAll('.pl-jv')].filter((el) => !el.closest('[hidden]')), // cảnh nào chỉ vai cảnh đó
       dim: (el) => el !== walker, // lúc giúp qua đường bé chạm bạn thú: không làm mờ
     },
-    icon: (who) => (who === 'asker' ? asker()?.emoji ?? '' : who === 'car' ? '🚗' : '👮'),
+    icon: (who) => (who === 'asker' ? asker()?.emoji ?? '' : who === 'car' ? '🚗' : who?.startsWith('jv:') ? VEHICLE_EMOJI[jv(who.slice(3))?.type] ?? '🚗' : '👮'),
     onTalk: (who) => askerEl.classList.toggle('talking', who === 'asker'),
     onReset: () => restart(),
     onHelper: () => repeatPrompt(),
     nudge: {
-      ready: () => (state === 'find' || state === 'ask' || CROSS_ACTIVE.includes(state)) && nudges < MAX_NUDGES,
+      ready: () => (state === 'find' || state === 'ask' || state === 'junction' || CROSS_ACTIVE.includes(state)) && nudges < MAX_NUDGES,
       key: () => stepKey(),
       fire: (rearm) => {
         nudges += 1;
@@ -106,6 +136,11 @@ export function policeScreen(app, params = {}) {
         if (state === 'ask') {
           restartAnim(lampEl(cur().steps[tIdx].want), 'nudge');
           kit.talk(trafficPrompt()).then(rearm);
+          return;
+        }
+        if (state === 'junction') {
+          restartAnim(jvEl(order().id), 'nudge');
+          kit.talk([B(junctionOrderLine())]).then(rearm);
           return;
         }
         if (CROSS_ACTIVE.includes(state)) {
@@ -139,7 +174,10 @@ export function policeScreen(app, params = {}) {
   const arrowEl = (dir) => crossKit.querySelector(`.pl-arrow[data-dir="${dir}"]`);
   walker.addEventListener('pointerdown', () => tapWalker(), { signal: kit.signal });
   const lampEl = (color) => trafficEl.querySelector(`.pl-lamp[data-color="${color}"]`);
-  stage.append(h('div.pl-tree', { 'aria-hidden': 'true' }), park, askerEl, trafficEl);
+  // SPEC-jobs4 PL3: ngã tư — hai con đường cắt nhau, chú cảnh sát cầm gậy ở giữa, xe chờ ở các ngả (chạm được).
+  const junctionEl = h('div.pl-junction', { hidden: true },
+    h('div.pl-jroad.h'), h('div.pl-jroad.v'), h('div.pl-cop', { 'aria-hidden': 'true' }, h('span.pl-cop-face', { text: '👮' }), h('span.pl-baton')));
+  stage.append(h('div.pl-tree', { 'aria-hidden': 'true' }), park, askerEl, trafficEl, junctionEl);
   const stepKey = () => `${kit.epoch}:${caseIdx}:${tIdx}:${state}`;
 
   function setState(s) {
@@ -202,7 +240,8 @@ export function policeScreen(app, params = {}) {
   async function startCase(resume = null) {
     const e = kit.epoch;
     // Cảnh đường (đèn / qua đường): chú cảnh sát lên góc trên trái, nhường chỗ cho đường và xe.
-    stage.dataset.scene = cur().kind === 'traffic' || cur().kind === 'cross' ? 'road' : 'park';
+    stage.dataset.scene = cur().kind === 'junction' ? 'junction' : cur().kind === 'traffic' || cur().kind === 'cross' ? 'road' : 'park';
+    junctionEl.hidden = cur().kind !== 'junction';
     wrongs = resume?.wrongs ?? 0;
     nudges = resume?.nudges ?? 0;
     revealed = new Set(resume?.revealed ?? []);
@@ -212,6 +251,10 @@ export function policeScreen(app, params = {}) {
     }
     if (cur().kind === 'cross') {
       startCross(resume);
+      return;
+    }
+    if (cur().kind === 'junction') {
+      startJunction(resume);
       return;
     }
     trafficEl.hidden = true;
@@ -546,6 +589,147 @@ export function policeScreen(app, params = {}) {
     else startCase();
   }
 
+  // ---------- Ngã tư (SPEC-jobs4 mục 10) — `tIdx` là lệnh thứ mấy trong `orders` ----------
+  const jv = (id) => cur()?.vehicles?.find((v) => v.id === id);
+  const jvEl = (id) => junctionEl.querySelector(`.pl-jv[data-id="${id}"]`);
+  const order = () => cur().orders[tIdx];
+  const armAt = (arm) => (stage.clientHeight > stage.clientWidth ? ARM_AT_TALL : ARM_AT_WIDE)[arm];
+  /** Câu lệnh hiện tại; lệnh ngay sau "Stop!" có "Now …". */
+  const junctionOrderLine = () => orderLine(order(), jv(order().id), level, tIdx > 0 && cur().orders[tIdx - 1].cmd === 'stop');
+  function placeAt(el, [x, y], ms = 0) {
+    el.style.transitionDuration = `${ms}ms`;
+    el.style.left = `${x}%`;
+    el.style.top = `${y}%`;
+  }
+  /** Vẽ xe theo trạng thái trước lệnh `tIdx`: xe đã đi thì không còn; xe đạp chưa tới thì ẩn. */
+  function renderJunction() {
+    const c = cur();
+    const st = junctionStates(c, tIdx);
+    count.textContent = `${caseIdx + 1}/${plan.cases.length}`;
+    junctionEl.dataset.order = order() ? `${order().cmd}:${order().id}` : ''; // cho test
+    junctionEl.replaceChildren(...[...junctionEl.children].filter((el) => !el.classList.contains('pl-jv')));
+    for (const v of c.vehicles) {
+      if (st[v.id] === 'gone' || st[v.id] === 'hidden') continue;
+      const label = `${level >= 2 && !v.extra ? `${v.color} ` : ''}${v.type}`;
+      const el = h('button.pl-jv', {
+        type: 'button', 'aria-label': label,
+        dataset: { id: v.id, type: v.type, color: v.color, arm: v.arm, state: st[v.id] },
+        onclick: () => tapVehicle(v.id),
+      }, h('span.pl-jv-body', { html: vehicleSvg(v.type, v.color) }), h('span.pl-jv-mark', { 'aria-hidden': 'true' }));
+      el.classList.toggle('flip', v.arm === 'right');
+      placeAt(el, st[v.id] === 'coming' ? ARM_FROM[v.arm] : armAt(v.arm));
+      junctionEl.append(el);
+    }
+    const now = order();
+    if (level <= 1 && now) jvEl(now.id)?.classList.add('called');
+  }
+  async function startJunction(resume = null) {
+    const e = kit.epoch;
+    tIdx = resume?.tIdx ?? 0;
+    askerEl.hidden = true;
+    park.hidden = true;
+    trafficEl.hidden = true;
+    junctionEl.hidden = false;
+    setState('enter');
+    renderJunction();
+    snap();
+    if (!resume) {
+      restartAnim(junctionEl, 'enter');
+      play('honk');
+      await talk([B(HELP_CARS_LINE)]);
+      if (e !== kit.epoch) return;
+    }
+    junctionStep();
+  }
+  /** Lệnh hiện tại: xe đạp (lệnh Stop) đi chậm tới vạch rồi chờ ở đó tới khi bé chạm. */
+  async function junctionStep() {
+    const e = kit.epoch;
+    renderJunction();
+    const now = order();
+    setState('junction');
+    snap();
+    if (now.cmd === 'stop') {
+      const el = jvEl(now.id);
+      void el.offsetWidth;
+      placeAt(el, armAt(jv(now.id).arm), COMING_MS);
+      play('ring');
+    }
+    await talk([B(junctionOrderLine())]);
+    if (e === kit.epoch && state === 'junction') kit.armNudge();
+  }
+  async function tapVehicle(id) {
+    if (state !== 'junction') return; // đang có xe chạy: không nhận chạm (mỗi lúc một xe)
+    const e = kit.epoch;
+    const now = order();
+    const v = jv(id);
+    if (id !== now.id) {
+      // Nhầm: xe bé chạm bấm còi nhẹ, không chạy. Mức 1 không tính (xe được gọi đang nhún).
+      const key = `j:${id}`;
+      const t = Date.now();
+      if (key === lastWrong.key && t - lastWrong.at < WRONG_LOCK_MS) return;
+      lastWrong = { key, at: t };
+      if (level >= 2) wrongs += 1;
+      snap();
+      kit.clearNudge();
+      play('honk');
+      restartAnim(jvEl(id), 'honk');
+      if (level <= 1 || wrongs >= 2) restartAnim(jvEl(now.id), 'nudge');
+      const k = stepKey();
+      await talk([B(junctionWrongLine(v, now, jv(now.id), level, tIdx > 0 && cur().orders[tIdx - 1].cmd === 'stop'))]);
+      if (k === stepKey()) kit.armNudge();
+      return;
+    }
+    // Đúng: nhận NGAY (một lần) — loại xe (+ màu mức 2–3) ghi đã gặp nếu đúng ngay lần đầu.
+    setState('move');
+    kit.clearNudge();
+    if (level >= 2 && wrongs === 0 && !recorded.has(`${caseIdx}:j:${tIdx}`)) {
+      recorded.add(`${caseIdx}:j:${tIdx}`);
+      markPracticed(app, v.type, VEHICLE_EMOJI[v.type]);
+      if (!v.extra) markPracticed(app, v.color, COLOR_EMOJI[v.color]);
+    }
+    tIdx += 1;
+    wrongs = 0;
+    nudges = 0;
+    const last = tIdx >= cur().orders.length;
+    if (last) saveSnap(JOB, { level, plan, caseIdx: caseIdx + 1, wrongs: 0, nudges: 0, revealed: [], recorded: [...recorded], tIdx: 0 });
+    else snap();
+    const el = jvEl(id);
+    el.classList.remove('called', 'nudge');
+    if (now.cmd === 'stop') {
+      play('ding');
+      // Dừng ngay chỗ đang đi tới (không nhảy), rồi đứng yên trước vạch.
+      const { left, top } = getComputedStyle(el);
+      el.style.transitionDuration = '0ms';
+      el.style.left = left;
+      el.style.top = top;
+      el.dataset.state = 'stopped';
+      restartAnim(el, 'hop');
+      await wait(LEAVE_MS);
+    } else {
+      play('whoosh');
+      el.dataset.state = 'go';
+      placeAt(el, ARM_EXIT[v.arm], DRIVE_MS);
+      await Promise.all([talk([{ who: `jv:${id}`, line: BEEP_THANKS_LINE }]), wait(DRIVE_MS)]);
+    }
+    if (e !== kit.epoch) return;
+    if (!last) {
+      junctionStep();
+      return;
+    }
+    play('sparkle');
+    await talk([B(JUNCTION_DONE_LINE)]);
+    if (e !== kit.epoch) return;
+    setState('leave');
+    restartAnim(junctionEl, 'leave');
+    await wait(LEAVE_MS);
+    if (e !== kit.epoch) return;
+    junctionEl.classList.remove('leave');
+    junctionEl.hidden = true;
+    caseIdx += 1;
+    if (caseIdx >= plan.cases.length) finishRound();
+    else startCase();
+  }
+
   function finishRound() {
     if (state === 'done') return;
     setState('done');
@@ -572,6 +756,11 @@ export function policeScreen(app, params = {}) {
     if (state === 'ask') {
       const k = stepKey();
       talk(trafficPrompt()).then(() => k === stepKey() && kit.armNudge());
+      return;
+    }
+    if (state === 'junction') {
+      const k = stepKey();
+      talk([B(junctionOrderLine())]).then(() => k === stepKey() && kit.armNudge());
       return;
     }
     if (state !== 'find') return;
@@ -601,7 +790,7 @@ export function policeScreen(app, params = {}) {
       finishRound();
     } else startCase(s);
   } else {
-    plan = planRound(level);
+    plan = planRound(level, { rounds: progress.rounds });
     caseIdx = 0;
     startCase();
   }

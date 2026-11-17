@@ -9,7 +9,7 @@ const target = async (page) => page.locator(`.pl-item[data-id="${await page.loca
 
 async function openPolice(page, settings, trafficAt = 2, crossAt = 1) {
   await fakeSpeech(page);
-  await page.addInitScript(([t, c]) => { window.__kidTest = { policeTrafficAt: t, policeCrossAt: c }; }, [trafficAt, crossAt]);
+  await page.addInitScript(([t, c]) => { window.__kidTest = { policeTrafficAt: t, policeCrossAt: c, policeJunctionAt: -1 }; }, [trafficAt, crossAt]);
   await startApp(page);
   if (settings) await page.evaluate((s) => window.kidEnglish.setSetting('policeGame', s), settings);
   await page.getByRole('button', { name: 'Trò chơi' }).click();
