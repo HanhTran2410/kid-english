@@ -748,3 +748,126 @@ test('Bán hàng mức 3: chọn đúng thẻ ngay lần đầu → ghi từ Wea
   await stateIs(page, 'order');
   await expect.poll(() => wordCount(page, w)).toBe(1);
 });
+
+// ---------- 0.77.0: 📮 Bưu tá — Chọn xe đưa thư (SPEC-jobs4 mục 8) ----------
+async function openPost4(page, level, seen = {}) {
+  await page.addInitScript(() => { window.__kidTest = { postParcelAt: 4, postVehicleAt: 1 }; });
+  await fakeSpeech(page);
+  await startApp(page);
+  await page.evaluate(([l, s]) => window.kidEnglish.setSetting('postGame', { level: l, rounds: 0, lock: null, seen: s }), [level, seen]);
+  await page.getByRole('button', { name: 'Trò chơi' }).click();
+  await page.getByRole('button', { name: 'Đóng vai' }).click();
+  await page.locator('.jb-job-post').click();
+  await expect(play(page)).toBeVisible();
+}
+/** Dán 3 tem, đưa thư đầu → tới ca chọn xe (thư thứ hai). */
+async function toFarCase(page) {
+  for (let i = 0; i < 3; i++) {
+    await stateIs(page, 'stamp');
+    await expect(page.locator('.ps-envelope[data-stamped="true"]')).toHaveCount(i, { timeout: 15000 });
+    await page.locator(`.jb-tray .dr-item[data-item="${await page.locator('.ps-desk').getAttribute('data-answer')}"]`).click();
+  }
+  await stateIs(page, 'deliver');
+  const line = (await spoken(page)).filter((t) => /^This letter is for .+!$/.test(t)).at(-1);
+  const what = line.match(/^This letter is for (.+)!$/)[1];
+  let m = what.match(/^the (\w+) house$/);
+  let house;
+  if (m) house = page.locator(`.ps-house[data-color="${m[1]}"]`);
+  else if ((m = what.match(/^house number (\w+)$/))) house = page.locator(`.ps-house[data-number="${['zero', 'one', 'two', 'three', 'four', 'five'].indexOf(m[1])}"]`);
+  else {
+    const id = await page.evaluate(async (name) => (await import('/js/doctor.js')).PATIENTS.find((p) => p.name === name).id, what);
+    house = page.locator(`.ps-house[data-resident="${id}"]`);
+  }
+  await house.click();
+  await stateIs(page, 'vehicle');
+  await expect(page.locator('.ps-far')).toBeVisible();
+  await expect(page.locator('.jb-count')).toHaveText('2/5');
+}
+const TEACH = { island: 'The sea! A boat!', city: 'The mountains! A plane!', station: 'The train tracks! A train!', park: 'The park! A bike!' };
+
+test('Bưu tá mức 1: thư thứ hai đi xa — bản đồ, "Let\'s go by …!", xe đúng sáng, khay 2 xe; chạm xe khác → "That\'s a … . By …, please!", không tính nhầm; đúng → xe chở thư đi, câu dạy, "A letter for me! Thank you!" → thư 3; seen nơi nhận', async ({ page }) => {
+  await openPost4(page, 1);
+  await toFarCase(page);
+  const far = page.locator('.ps-far');
+  const place = await far.getAttribute('data-place');
+  const v = await far.getAttribute('data-vehicle');
+  await expect.poll(() => spoken(page)).toContain(`Let's go by ${v}!`);
+  await expect(page.locator('.jb-tray [data-item]')).toHaveCount(2);
+  await expect(page.locator(`.jb-tray .dr-item.hint[data-item="${v}"]`)).toHaveCount(1);
+  const wrong = await page.locator(`.jb-tray [data-item]:not([data-item="${v}"])`).getAttribute('data-item');
+  await tapTray(page, wrong);
+  await expect.poll(() => spoken(page)).toContain(`That's a ${wrong}. By ${v}, please!`);
+  await stateIs(page, 'vehicle');
+  await expect(page.locator('.jb-tray [data-item]')).toHaveCount(2);
+  await expect(page.locator('.ps-ride')).toBeHidden();
+  await tapTray(page, v);
+  await expect(page.locator(`.ps-ride[data-vehicle="${v}"]`)).toBeVisible();
+  await expect.poll(() => spoken(page), { timeout: 15000 }).toContain(TEACH[place]);
+  await expect.poll(() => spoken(page), { timeout: 15000 }).toContain('A letter for me! Thank you!');
+  await expect(page.locator('.jb-count')).toHaveText('3/5', { timeout: 15000 });
+  await stateIs(page, 'deliver');
+  await expect(far).toBeHidden();
+  expect((await page.evaluate(() => window.kidEnglish.settings.postGame)).seen[place]).toBe(1);
+});
+
+test('Bưu tá mức 2: "By …, please!", khay 3 xe không sáng; chọn sai → xe chạy tới mép rồi dừng, "That\'s a … . By …, please!", về khay; đã nhầm thì không ghi Vehicles', async ({ page }) => {
+  await openPost4(page, 2);
+  await toFarCase(page);
+  const v = await page.locator('.ps-far').getAttribute('data-vehicle');
+  await expect.poll(() => spoken(page)).toContain(`By ${v}, please!`);
+  await expect(page.locator('.jb-tray [data-item]')).toHaveCount(3);
+  await expect(page.locator('.jb-tray .dr-item.hint')).toHaveCount(0);
+  const wrong = await page.locator(`.jb-tray [data-item]:not([data-item="${v}"])`).first().getAttribute('data-item');
+  await tapTray(page, wrong);
+  await expect(page.locator(`.ps-ride[data-vehicle="${wrong}"]`)).toBeVisible();
+  await expect.poll(() => spoken(page)).toContain(`That's a ${wrong}. By ${v}, please!`);
+  await stateIs(page, 'vehicle');
+  await expect(page.locator(`.jb-tray [data-item="${wrong}"]`)).toBeVisible();
+  await tapTray(page, v);
+  await expect(page.locator('.jb-count')).toHaveText('3/5', { timeout: 15000 });
+  expect(await wordCount(page, v)).toBe(0);
+});
+
+test('Bưu tá mức 3 (JOBS4-25): nơi nhận là đảo, chọn ô tô → ô tô dừng ở mép biển, "Oops! A car can\'t go on the sea!" + Bông chỉ biển "The sea! A boat!" rồi hỏi lại; ra nền → quay lại bước chọn xe; đúng → "By boat! Good idea!"', async ({ page }) => {
+  await openPost4(page, 3, { island: 1 });
+  await toFarCase(page);
+  await expect(page.locator('.ps-far')).toHaveAttribute('data-place', 'island');
+  const ask = 'This letter goes to the island! How do we go?';
+  await expect.poll(() => spoken(page)).toContain(ask);
+  expect(await spoken(page)).not.toContain('The sea! A boat!'); // nơi đã gặp: không dạy trước
+  await expect(page.locator('.jb-tray [data-item]')).toHaveCount(4);
+  await expect(page.locator('.jb-tray [data-item="plane"]')).toHaveCount(0);
+  await tapTray(page, 'car');
+  await expect(page.locator('.ps-ride[data-vehicle="car"]')).toBeVisible();
+  await expect.poll(() => spoken(page)).toContain("Oops! A car can't go on the sea!");
+  await expect(page.locator('.ps-point.show')).toHaveCount(1, { timeout: 15000 });
+  await expect.poll(() => spoken(page)).toContain('The sea! A boat!');
+  await expect.poll(async () => { const t = await spoken(page); const k = t.lastIndexOf('The sea! A boat!'); return k > t.indexOf("Oops! A car can't go on the sea!") && t.slice(k + 1).includes(ask); }).toBe(true);
+  await stateIs(page, 'vehicle');
+  await setVisible(page, 'hidden');
+  await setVisible(page, 'visible');
+  await page.locator('.resume-overlay .start-btn').click();
+  await stateIs(page, 'vehicle');
+  await expect(page.locator('.ps-far')).toHaveAttribute('data-place', 'island');
+  await expect(page.locator('.jb-tray [data-item]')).toHaveCount(4);
+  expect(await wordCount(page, 'boat')).toBe(0);
+  await tapTray(page, 'boat');
+  await expect.poll(() => spoken(page), { timeout: 15000 }).toContain('By boat! Good idea!');
+  await expect(page.locator('.jb-count')).toHaveText('3/5', { timeout: 15000 });
+  expect(await wordCount(page, 'boat')).toBe(0);
+});
+
+test('Bưu tá mức 3: nơi chưa gặp → Bông dạy trước rồi mới hỏi; chọn đúng ngay lần đầu → ghi từ Vehicles một lần', async ({ page }) => {
+  await openPost4(page, 3);
+  await toFarCase(page);
+  const far = page.locator('.ps-far');
+  const place = await far.getAttribute('data-place');
+  const v = await far.getAttribute('data-vehicle');
+  await expect.poll(async () => (await spoken(page)).some((t) => /^This letter goes to .+! How do we go\?$/.test(t))).toBe(true);
+  const said = await spoken(page);
+  expect(said.indexOf(TEACH[place])).toBeGreaterThan(-1);
+  expect(said.indexOf(TEACH[place])).toBeLessThan(said.findIndex((t) => /How do we go\?$/.test(t)));
+  await tapTray(page, v);
+  await expect.poll(() => spoken(page), { timeout: 15000 }).toContain(`By ${v}! Good idea!`);
+  await expect.poll(() => wordCount(page, v)).toBe(1);
+});

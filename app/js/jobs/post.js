@@ -2,6 +2,7 @@
 // (hoặc chạm nhà). Mức 1 theo màu, mức 2 theo số nhà, mức 3 trộn màu / số / tên bạn thú. File thuần để test được.
 
 import { PATIENTS, PATIENT_BY_ID, STICKER_SHAPES, STICKER_COLORS, planSticker, matchesSticker } from '../doctor.js';
+import { leastSeen } from './levels.js';
 
 export const LETTERS_PER_ROUND = 5;
 export const MAX_LEVEL = 3;
@@ -66,15 +67,16 @@ export function makeLetters(street, level, { rng = Math.random, n = LETTERS_PER_
 }
 
 /**
- * Kế hoạch lượt: dãy nhà, 5 thư (SPEC-jobs2 PO1: một thư thành bưu kiện), 3 bộ tem cho phần dán tem mở đầu.
- * Chỉ test UI đặt `window.__kidTest.postParcelAt` để cố định chỗ bưu kiện.
+ * Kế hoạch lượt: dãy nhà, 5 thư (SPEC-jobs2 PO1: một thư thành bưu kiện; SPEC-jobs4 PO2: một thư khác đi xa — chọn xe),
+ * 3 bộ tem cho phần dán tem mở đầu. Chỉ test UI đặt `window.__kidTest.postParcelAt` / `postVehicleAt` để cố định chỗ.
  */
-export const planRound = (level, { rng = Math.random, words = [] } = {}) => {
+export const planRound = (level, { rng = Math.random, words = [], seen = {} } = {}) => {
   const street = makeStreet(level, { rng });
   const letters = makeLetters(street, level, { rng });
   const pinned = globalThis.__kidTest?.postParcelAt;
   const at = Number.isInteger(pinned) && pinned >= 0 && pinned < letters.length ? pinned : Math.floor(rng() * letters.length);
   letters[at] = { ...letters[at], parcel: makeParcel(level, { words, rng }) };
+  placeFar(letters, level, { seen, rng });
   return { street, letters, stamps: Array.from({ length: STAMPS_PER_ROUND }, () => planStamp(level, { rng })) };
 };
 
@@ -187,3 +189,73 @@ export const OPEN_ASK_LINE = ['Open the box!', 'Con mở hộp nhé!'];
 export const itsLine = (w) => [`It's ${aWord(w)}!`, `Đó là ${w.vi}!`];
 /** Bạn thú: "A ball! Thank you!" */
 export const parcelThanksLine = (w) => [`${aWord(w).replace(/^a/, 'A')}! Thank you!`, `${w.vi.charAt(0).toUpperCase()}${w.vi.slice(1)}! Cảm ơn bác bưu tá!`];
+
+// ---------- SPEC-jobs4 mục 8 (PO2): chọn xe đưa thư đi xa (thay 1 thư) ----------
+/** Xe của bài Vehicles (emoji dự phòng khi không có ảnh bố mẹ thêm). */
+export const VEHICLES = [
+  { id: 'car', emoji: '🚗', vi: 'ô tô' }, { id: 'bus', emoji: '🚌', vi: 'xe buýt' }, { id: 'train', emoji: '🚂', vi: 'tàu hỏa' },
+  { id: 'plane', emoji: '✈️', vi: 'máy bay' }, { id: 'boat', emoji: '⛵', vi: 'con thuyền' }, { id: 'bike', emoji: '🚲', vi: 'xe đạp' },
+];
+export const VEHICLE_BY = new Map(VEHICLES.map((v) => [v.id, v]));
+/**
+ * Nơi nhận ở xa: đúng một xe tới được. `skip`: xe cũng có thể coi là tới được (máy bay ra đảo) — không bao giờ lên khay.
+ * `where` / `teach`: câu "Oops! A car can't go on the sea!" và câu dạy "The sea! A boat!".
+ */
+export const PLACES = [
+  { id: 'island', vehicle: 'boat', skip: ['plane'], to: ['the island', 'hòn đảo'], where: ['on the sea', 'trên biển'], teach: ['The sea! A boat!', 'Biển kìa! Đi thuyền!'] },
+  { id: 'city', vehicle: 'plane', skip: [], to: ['the city', 'thành phố sau núi'], where: ['over the mountains', 'qua núi cao'], teach: ['The mountains! A plane!', 'Núi cao kìa! Đi máy bay!'] },
+  { id: 'station', vehicle: 'train', skip: [], to: ['the station', 'nhà ga'], where: ['on the train tracks', 'trên đường ray'], teach: ['The train tracks! A train!', 'Đường ray kìa! Đi tàu hỏa!'] },
+  { id: 'park', vehicle: 'bike', skip: [], to: ['the park', 'bên kia công viên'], where: ['in the park', 'trong công viên'], teach: ['The park! A bike!', 'Công viên kìa! Đi xe đạp!'] },
+];
+export const PLACE_BY = new Map(PLACES.map((p) => [p.id, p]));
+/** Số xe trên khay theo mức. */
+export const VEHICLE_TRAY = { 1: 2, 2: 3, 3: 4 };
+
+/**
+ * Ca chọn xe: { place, vehicle, tray, teach }. Mức 1–2: nơi ít gặp trước (`seen`). Mức 3: chỉ nơi bé đã gặp
+ * (ít gặp trước); chưa gặp nơi nào thì nơi bất kỳ và `teach` = true (Bông dạy trước khi hỏi).
+ * Xe nhiễu: *car, bus* trước rồi các xe còn lại; không bao giờ có xe thứ hai hợp đường.
+ */
+export function makeFarCase(level, { seen = {}, rng = Math.random } = {}) {
+  const ids = PLACES.map((p) => p.id);
+  const known = ids.filter((id) => (seen[id] ?? 0) > 0);
+  const useKnown = level >= 3 && known.length > 0;
+  const place = PLACE_BY.get(leastSeen(useKnown ? known : ids, seen, rng)[0]);
+  const others = VEHICLES.map((v) => v.id).filter((id) => id !== place.vehicle && !place.skip.includes(id));
+  const first = shuffle(others.filter((id) => id === 'car' || id === 'bus'), rng);
+  const rest = shuffle(others.filter((id) => id !== 'car' && id !== 'bus'), rng);
+  const n = VEHICLE_TRAY[level] ?? VEHICLE_TRAY[1];
+  const tray = shuffle([place.vehicle, ...[...first, ...rest].slice(0, n - 1)], rng);
+  return { place: place.id, vehicle: place.vehicle, tray, teach: level >= 3 && !useKnown };
+}
+/** Thư đi xa thay một thư thường (không phải bưu kiện); `postVehicleAt` chỉ để test (-1: không có). */
+function placeFar(letters, level, { seen, rng }) {
+  const pinned = globalThis.__kidTest?.postVehicleAt;
+  if (pinned === -1) return;
+  const free = letters.map((_, i) => i).filter((i) => i > 0 && !letters[i].parcel);
+  const at = Number.isInteger(pinned) && pinned >= 0 && pinned < letters.length && !letters[pinned].parcel ? pinned : free[Math.floor(rng() * free.length)];
+  if (at == null) return;
+  letters[at] = { ...letters[at], far: makeFarCase(level, { seen, rng }) };
+}
+
+const aV = (id) => `a ${id}`;
+const capA = (s) => s.charAt(0).toUpperCase() + s.slice(1);
+/** Mức 1: "Let's go by boat!" */
+export const goByLine = (v) => [`Let's go by ${v}!`, `Mình đi bằng ${VEHICLE_BY.get(v).vi} nhé!`];
+/** Mức 2: "By train, please!" */
+export const byPleaseLine = (v) => [`By ${v}, please!`, `Đi bằng ${VEHICLE_BY.get(v).vi} nhé!`];
+/** Mức 3: "This letter goes to the island! How do we go?" */
+export const farAskLine = (place) => {
+  const p = PLACE_BY.get(place);
+  return [`This letter goes to ${p.to[0]}! How do we go?`, `Lá thư này gửi tới ${p.to[1]}! Mình đi bằng gì nhỉ?`];
+};
+export const teachLine = (place) => PLACE_BY.get(place).teach;
+/** Nhầm mức 1–2: "That's a car. By boat, please!" */
+export const wrongVehicleLine = (v, want) => [`That's ${aV(v)}. By ${want}, please!`, `Đó là ${VEHICLE_BY.get(v).vi}. Đi bằng ${VEHICLE_BY.get(want).vi} nhé!`];
+/** Nhầm mức 3: "Oops! A car can't go on the sea!" */
+export const cantGoLine = (v, place) => {
+  const p = PLACE_BY.get(place);
+  return [`Oops! ${capA(aV(v))} can't go ${p.where[0]}!`, `Ối! ${capA(VEHICLE_BY.get(v).vi)} không đi ${p.where[1]} được!`];
+};
+/** Mức 3 đúng: "By boat! Good idea!" */
+export const goodIdeaLine = (v) => [`By ${v}! Good idea!`, `Đi ${VEHICLE_BY.get(v).vi}! Hay quá!`];

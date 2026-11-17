@@ -8,7 +8,7 @@ const play = (page) => page.locator('.ps-play');
 
 async function openPost(page, settings, { parcelAt = 4, stamp = true } = {}) {
   await fakeSpeech(page);
-  await page.addInitScript((n) => { window.__kidTest = { postParcelAt: n }; }, parcelAt);
+  await page.addInitScript((n) => { window.__kidTest = { postParcelAt: n, postVehicleAt: -1 }; }, parcelAt);
   await startApp(page);
   if (settings) await page.evaluate((s) => window.kidEnglish.setSetting('postGame', s), settings);
   await page.getByRole('button', { name: 'Trò chơi' }).click();
@@ -209,7 +209,7 @@ test('PO1 mức 3: 4 tem, "A blue circle stamp, please!" (hình + màu)', async 
 
 test('PO1 bưu kiện mức 1: đồ trong hộp là từ bé đã học ("an egg"); "A parcel for …!" → nhà đúng → "Knock on the door!"; chạm hộp trước: cửa nhún; gõ cửa → "Knock, knock!" → "A parcel! What\'s inside?" → mở hộp → "It\'s an egg!" → "An egg! Thank you!"', async ({ page }) => {
   await fakeSpeech(page);
-  await page.addInitScript(() => { window.__kidTest = { postParcelAt: 0 }; });
+  await page.addInitScript(() => { window.__kidTest = { postParcelAt: 0, postVehicleAt: -1 }; });
   await startApp(page);
   await page.evaluate(() => window.kidEnglish.db.put('progress', { word: 'egg', emoji: '🥚', mastery: 1, practiceCount: 2, lastPracticedAt: Date.now(), lastVoiceDay: null }));
   await page.getByRole('button', { name: 'Trò chơi' }).click();
