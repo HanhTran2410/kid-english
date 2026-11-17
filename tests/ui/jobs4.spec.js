@@ -1081,3 +1081,96 @@ test('Cảnh sát mức 3: chạm đúng ngay lần đầu → ghi loại xe + m
   await expect.poll(() => wordCount(page, type)).toBe(1);
   await expect.poll(() => wordCount(page, color)).toBe(1);
 });
+
+// ---------- 0.80.0: 🚒 Lính cứu hỏa — Bạn thú còn sợ (SPEC-jobs4 mục 11) ----------
+const FIRE_STATES = /^(dress|drive|spray|count|tree|knock|open)$/;
+/** Giải bước đang chờ của Lính cứu hỏa (đọc thuộc tính chỉ để test). */
+async function solveFire(page) {
+  const s = await play(page).getAttribute('data-state');
+  if (s === 'dress') {
+    const want = await page.locator('.fr-scene').getAttribute('data-want');
+    return page.locator(want ? `.jb-tray [data-item="${want}"]` : '.jb-tray [data-item="helmet"], .jb-tray [data-item="jacket"], .jb-tray [data-item="boots"]').first().click();
+  }
+  if (s === 'drive') return page.locator(`.fr-home[data-color="${await page.locator('.fr-street').getAttribute('data-color')}"]`).click();
+  if (s === 'spray') {
+    const t = await page.locator('.fr-scene').getAttribute('data-target');
+    return page.locator(t ? `.fr-fire[data-id="${t}"]` : '.fr-fire:not(.out)').first().click();
+  }
+  if (s === 'count') return page.locator(`.fr-number[data-n="${await page.locator('.fr-fire').count()}"]`).click();
+  if (s === 'tree') return tapTray(page, 'ladder');
+  if (s === 'knock' || s === 'open') return page.locator('.fr-door').click();
+}
+async function toCalm(page) {
+  for (let i = 0; i < 120; i++) {
+    const s = await play(page).getAttribute('data-state');
+    if (s === 'blanket') return;
+    if (FIRE_STATES.test(s ?? '')) {
+      await solveFire(page).catch(() => {});
+      await page.waitForTimeout(250);
+    } else await page.waitForTimeout(150);
+  }
+  throw new Error('không tới bước chăn');
+}
+
+test('Cứu hỏa mức 2: sau ca cứu bạn thú run "I\'m scared!", Bông "You\'re safe now!"; khay chỉ có chăn (chăn nhún); chạm bạn thú không tính nhầm; chăn → khoác vai, "I\'m safe now."; bước 2 "I\'m thirsty." / "I\'m sad." + khay nước / ôm / gấu bông; gấu bông → "That\'s a teddy. I\'m …!", tính nhầm; đúng → "Thank you, firefighter!"', async ({ page }) => {
+  await openJob(page, 'fire', 2);
+  await toCalm(page);
+  await expect.poll(() => spoken(page)).toContain("I'm scared!");
+  await expect.poll(() => spoken(page)).toContain("You're safe now!");
+  await expect(page.locator('.fr-resident')).toHaveClass(/shiver/);
+  await expect(page.locator('.jb-tray [data-item]')).toHaveCount(1);
+  await expect(page.locator('.jb-tray [data-item="blanket"]')).toHaveCount(1);
+  await page.locator('.fr-resident').click();
+  await expect(page.locator('.jb-tray [data-item="blanket"]')).toHaveClass(/nudge/);
+  await stateIs(page, 'blanket');
+  await tapTray(page, 'blanket');
+  await expect.poll(() => spoken(page)).toContain("I'm safe now.");
+  await stateIs(page, 'calm');
+  await expect(page.locator('.fr-blanket-on')).toBeVisible();
+  await expect(page.locator('.fr-resident')).not.toHaveClass(/shiver/);
+  const need = (await spoken(page)).includes("I'm thirsty.") ? 'thirsty' : 'sad';
+  await expect.poll(() => spoken(page)).toContain(need === 'thirsty' ? "I'm thirsty." : "I'm sad.");
+  await expect(page.locator('.jb-tray [data-item]')).toHaveCount(3);
+  await tapTray(page, 'teddy');
+  await expect.poll(() => spoken(page)).toContain(`That's a teddy. I'm ${need}!`);
+  await stateIs(page, 'calm');
+  await tapTray(page, need === 'thirsty' ? 'water' : 'hug');
+  await expect.poll(() => spoken(page), { timeout: 15000 }).toContain('Thank you, firefighter!');
+  expect(await wordCount(page, 'sad')).toBe(0);
+  await expect.poll(() => wordCount(page, 'scared')).toBe(1);
+  await expect.poll(async () => (await page.evaluate(() => window.kidEnglish.settings.fireGame)).seen.blanket).toBe(1);
+});
+
+test('Cứu hỏa mức 3 (JOBS4-28): sau chăn "How does … feel now?" + 3 thẻ mặt, bạn thú đã cười; chọn scared → "Look! … is smiling!", tính nhầm; ra nền → quay lại bước chọn mặt, chăn vẫn khoác; happy → "… is happy! Hooray!"', async ({ page }) => {
+  await openJob(page, 'fire', 3);
+  await toCalm(page);
+  await tapTray(page, 'blanket');
+  await stateIs(page, 'feel');
+  await expect.poll(async () => (await spoken(page)).some((t) => /^How does \w+ feel now\?$/.test(t))).toBe(true);
+  const name = (await spoken(page)).find((t) => /^How does \w+ feel now\?$/.test(t)).match(/^How does (\w+)/)[1];
+  await expect(page.locator('.fr-feel')).toHaveCount(3);
+  await page.locator('.fr-feel[data-feel="scared"]').click();
+  await expect.poll(() => spoken(page)).toContain(`Look! ${name} is smiling!`);
+  await stateIs(page, 'feel');
+  const scaredSaid = (await spoken(page)).filter((t) => t === "I'm scared!").length;
+  await setVisible(page, 'hidden');
+  await setVisible(page, 'visible');
+  await page.locator('.resume-overlay .start-btn').click();
+  await stateIs(page, 'feel');
+  await expect(page.locator('.fr-feel')).toHaveCount(3);
+  await expect(page.locator('.fr-blanket-on')).toBeVisible();
+  expect((await spoken(page)).filter((t) => t === "I'm scared!").length).toBe(scaredSaid); // không quay lại bước chăn
+  await page.locator('.fr-feel[data-feel="happy"]').click();
+  await expect.poll(() => spoken(page)).toContain(`${name} is happy! Hooray!`);
+  await expect.poll(() => spoken(page), { timeout: 15000 }).toContain('Thank you, firefighter!');
+  expect(await wordCount(page, 'happy')).toBe(0);
+});
+
+test('Cứu hỏa mức 3: chọn happy ngay lần đầu → ghi từ Feelings happy một lần', async ({ page }) => {
+  await openJob(page, 'fire', 3);
+  await toCalm(page);
+  await tapTray(page, 'blanket');
+  await stateIs(page, 'feel');
+  await page.locator('.fr-feel[data-feel="happy"]').click();
+  await expect.poll(() => wordCount(page, 'happy')).toBe(1);
+});

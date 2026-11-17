@@ -11,6 +11,9 @@ const setVisible = (page, v) => page.evaluate((state) => {
   document.dispatchEvent(new Event('visibilitychange'));
 }, v);
 
+// Test cũ: ca cứu kết thúc như trước (không có việc "bạn thú còn sợ" của SPEC-jobs4 mục 11).
+test.beforeEach(({ page }) => page.addInitScript(() => { window.__kidTest = { ...(window.__kidTest ?? {}), fireCalm: false }; }));
+
 async function enterFire(page, settings) {
   await fakeSpeech(page);
   await startApp(page);

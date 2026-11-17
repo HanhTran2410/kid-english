@@ -24,6 +24,8 @@ import {
   FIRE_GEAR_IMAGES, FIRE_GEAR_FRAMES, GEAR_ANCHOR,
   READY_LINE, DRESS_ANY_LINE, GO_LINE, putOnLine, gearOnLine, wrongGearLine, goToLine, wrongHouseLine,
   STUCK_LINE, KNOCK_LINE, KNOCKED_LINE, OPEN_LINE, SAFE_LINE,
+  CALM_NEEDS, FEEL_EMOJI, SCARED_LINE, YOU_SAFE_LINE, BLANKET_LINE, SAFE_NOW_LINE, needLine, wrongCalmLine, calmThanksLine,
+  feelNowLine, smilingLine, happyNowLine,
   SAFETY_BY, FIRE_NUMBER, KEY_WORDS, SAFETY_INTRO, GROWNUP_LINE, DIAL_LINE, STATION_LINE, lookLine, safetyRightLine, safetyWrongLine, wrongKeyLine,
 } from '../jobs/fire.js';
 
@@ -34,7 +36,21 @@ const OUT_MS = 450; // ngọn lửa nhỏ dần rồi tắt
 const JET_MS = 280; // tia nước vươn từ vòi tới ngọn lửa
 const SPLASH_MS = 500;
 const DRIVE_MS = 900; // xe cứu hỏa chạy tới nhà
-const ACTIVE = ['dress', 'drive', 'spray', 'count', 'tree', 'knock', 'open', 'safety', 'dial'];
+const ACTIVE = ['dress', 'drive', 'spray', 'count', 'tree', 'knock', 'open', 'safety', 'dial', 'blanket', 'calm', 'feel'];
+// SPEC-jobs4 FF4: đồ của việc "bạn thú còn sợ" — chăn (bước 1), cốc nước / cái ôm / gấu bông (bước 2 mức 2).
+const CALM_INK = '#3d2c5e';
+const BLANKET_SVG = `<svg viewBox="0 0 40 40" aria-hidden="true"><path d="M5 9 h30 v22 q-15 6 -30 0 z" fill="#ff8787" stroke="${CALM_INK}" stroke-width="2.5" stroke-linejoin="round"/><path d="M5 16 h30 M5 23 h30 M15 9 v24 M25 9 v24" stroke="#fff" stroke-width="2" opacity="0.8"/></svg>`;
+const WATER_SVG = `<svg viewBox="0 0 40 40" aria-hidden="true"><path d="M10 8 h20 l-3 26 h-14 z" fill="#e7f5ff" stroke="${CALM_INK}" stroke-width="2.5" stroke-linejoin="round"/><path d="M11.5 17 h17 l-2 16 h-13 z" fill="#74c0fc"/></svg>`;
+/** Chăn choàng trên vai bạn thú (viewBox 100 × 80): mép trên ôm cổ, hai vạt rủ xuống, kẻ ô. */
+const BLANKET_WORN_SVG = `<svg viewBox="0 0 100 80" aria-hidden="true"><defs><clipPath id="fr-cape"><path d="M14 8 Q30 2 42 10 Q50 16 58 10 Q70 2 86 8 Q98 30 94 74 Q74 80 56 76 L50 58 L44 76 Q26 80 6 74 Q2 30 14 8 Z"/></clipPath></defs><g clip-path="url(#fr-cape)"><rect width="100" height="80" fill="#ff8787"/><path d="M0 26 H100 M0 50 H100 M24 0 V80 M76 0 V80" stroke="#fff" stroke-width="4" opacity="0.8"/></g><path d="M14 8 Q30 2 42 10 Q50 16 58 10 Q70 2 86 8 Q98 30 94 74 Q74 80 56 76 L50 58 L44 76 Q26 80 6 74 Q2 30 14 8 Z" fill="none" stroke="${CALM_INK}" stroke-width="3" stroke-linejoin="round"/></svg>`;
+const CALM_FACE = {
+  blanket: () => h('span.dr-item-face.fr-calm-face', { html: BLANKET_SVG, 'aria-hidden': 'true' }),
+  water: () => h('span.dr-item-face.fr-calm-face', { html: WATER_SVG, 'aria-hidden': 'true' }),
+  hug: () => h('span.dr-item-face', { text: '🤗', 'aria-hidden': 'true' }),
+  teddy: () => h('span.dr-item-face', { text: '🧸', 'aria-hidden': 'true' }),
+};
+const CALM_LABEL = { blanket: 'blanket', water: 'water', hug: 'hug', teddy: 'teddy' };
+const CALM_EMOJI = { happy: '😊', scared: '😨', sad: '😢' };
 /** Chỗ ngọn lửa trên ngôi nhà (phần trăm của khung nhà). */
 const SPOT_XY = { roof: [50, 24], window: [30, 56], window2: [70, 56], door: [50, 84], chimney: [76, 12] };
 
@@ -176,6 +192,8 @@ export function fireScreen(app, params = {}) {
   let nudges = 0;
   let state = 'start';
   let lastWrong = { key: '', at: 0 };
+  let calmStep = null; // SPEC-jobs4 FF4: null = chưa tới; 0 = chăn; 1 = giúp thêm / chọn mặt
+  let recorded = new Set();
 
   const cur = () => plan?.cases[caseIdx];
   const resident = () => PATIENT_BY_ID.get(cur()?.resident);
@@ -206,6 +224,9 @@ export function fireScreen(app, params = {}) {
     return h('span.dr-item-face.ff-gear-face', { 'aria-hidden': 'true', html: `<svg viewBox="${GEAR_VIEW[id]}">${GEAR_PARTS[id]}</svg>` });
   };
   const safetyEl = h('div.fr-safety', { hidden: true });
+  // SPEC-jobs4 FF4: chăn khoác trên vai bạn thú + 3 thẻ mặt (mức 3).
+  const blanketOn = h('div.fr-blanket-on', { hidden: true, html: BLANKET_WORN_SVG, 'aria-hidden': 'true' });
+  const feelsEl = h('div.fr-feels', { hidden: true });
 
   const kit = jobScreen(app, {
     job: JOB, background: { lessonId: JOBS_BG_IMAGES, word: JOB }, className: 'fr-play', stageClass: 'fr-stage', title: '🚒 Firefighter', helperLabel: 'Bông cứu hỏa', cap: 'fire',
@@ -221,19 +242,24 @@ export function fireScreen(app, params = {}) {
         nudges += 1;
         snap();
         nudgeWanted();
-        kit.talk([B(promptLine())]).then(rearm);
+        kit.talk(promptLines()).then(rearm);
       },
     },
     tray: {
-      face: (id) => (id === 'ladder' ? h('span.dr-item-face', { text: '🪜', 'aria-hidden': 'true' }) : gearFace(id)),
-      label: (id) => (id === 'ladder' ? 'Cái thang' : GEAR_INFO[id].en),
-      canGive: () => state === 'tree' || state === 'dress',
-      dropOk: () => true, // thả ở đâu cũng được: thang tự đặt vào cây, đồ tự mặc lên Bông
-      give: (id, from) => (state === 'dress' ? wearGear(id, from) : placeLadder()),
+      face: (id) => (id === 'ladder' ? h('span.dr-item-face', { text: '🪜', 'aria-hidden': 'true' }) : CALM_FACE[id] ? CALM_FACE[id]() : gearFace(id)),
+      label: (id) => (id === 'ladder' ? 'Cái thang' : CALM_LABEL[id] ?? GEAR_INFO[id].en),
+      canGive: () => state === 'tree' || state === 'dress' || state === 'blanket' || state === 'calm',
+      dropOk: () => true, // thả ở đâu cũng được: thang tự đặt vào cây, đồ tự mặc lên Bông, đồ giúp tự tới bạn thú
+      give: (id, from) => (state === 'dress' ? wearGear(id, from) : state === 'blanket' ? giveBlanket(from)
+        : state === 'calm' ? giveCalm(id, from) : placeLadder()),
     },
   });
   const { stage, count, talk } = kit;
-  stage.append(scene, residentEl, hose, choices, street, safetyEl);
+  stage.append(scene, residentEl, hose, choices, street, safetyEl, feelsEl);
+  // Chạm bạn thú lúc chờ chăn / đồ giúp: chăn (đồ đúng) nhún — không tính nhầm.
+  residentEl.addEventListener('click', () => {
+    if (state === 'blanket') restartAnim(kit.trayItem('blanket'), 'nudge');
+  }, { signal: kit.signal });
   const stepKey = () => `${kit.epoch}:${caseIdx}:${out.size}:${worn.size}:${safetyIdx}:${dialed}:${state}`;
 
   function setState(s) {
@@ -243,10 +269,20 @@ export function fireScreen(app, params = {}) {
     kit.setState(s, ACTIVE.includes(s));
     choices.classList.toggle('locked', s !== 'count');
   }
-  const snap = () => saveSnap(JOB, { level, plan, caseIdx, out: [...out], worn: [...worn], dressed, drove, knocked, safetyIdx, dialed, wrongs, nudges, phase: state });
+  const snap = () => saveSnap(JOB, { level, plan, caseIdx, out: [...out], worn: [...worn], dressed, drove, knocked, safetyIdx, dialed, wrongs, nudges, phase: state, calmStep, recorded: [...recorded] });
   /** Ca xong (nhận thao tác đúng cuối cùng): lưu để chơi tiếp là ca sau — ra nền giữa hoạt ảnh không bị kẹt / làm lại. */
-  const caseDone = () => saveSnap(JOB, { level, plan, caseIdx: caseIdx + 1, out: [], worn: [...worn], dressed: true, drove: false, knocked: false, safetyIdx: 0, dialed: 0, wrongs: 0, nudges: 0, phase: 'start' });
+  const caseDone = () => saveSnap(JOB, { level, plan, caseIdx: caseIdx + 1, out: [], worn: [...worn], dressed: true, drove: false, knocked: false, safetyIdx: 0, dialed: 0, wrongs: 0, nudges: 0, phase: 'start', calmStep: null, recorded: [...recorded] });
+  /** Ca cứu xong phần cứu, sang việc "bạn thú còn sợ": lưu để chơi tiếp là bước chăn (không cứu lại). */
+  const calmSaved = (step) => saveSnap(JOB, { level, plan, caseIdx, out: [], worn: [...worn], dressed: true, drove: true, knocked: true, safetyIdx: 0, dialed: 0, wrongs: 0, nudges: 0, phase: 'calm', calmStep: step, recorded: [...recorded] });
 
+  /** Câu nhắc của bước đang chờ (người nói theo bước). */
+  function promptLines() {
+    const c = cur()?.calm;
+    if (state === 'blanket') return [R(SCARED_LINE), B(YOU_SAFE_LINE)];
+    if (state === 'calm') return [R(needLine(c.need))];
+    if (state === 'feel') return [B(feelNowLine(resident().name))];
+    return [B(promptLine())];
+  }
   function promptLine() {
     if (state === 'dress') return wantGear() ? putOnLine(wantGear()) : DRESS_ANY_LINE;
     if (state === 'drive') return goToLine(cur().house.color);
@@ -259,7 +295,10 @@ export function fireScreen(app, params = {}) {
     return targetFire() ? whereLine(spotOf(targetFire())) : TAP_LINE;
   }
   function nudgeWanted() {
-    if (state === 'dress') restartAnim(kit.trayItem(nextGear()), 'nudge');
+    if (state === 'blanket') restartAnim(kit.trayItem('blanket'), 'nudge');
+    else if (state === 'calm') restartAnim(kit.trayItem(CALM_NEEDS[cur().calm.need]), 'nudge');
+    else if (state === 'feel') restartAnim(feelsEl.querySelector('[data-feel="happy"]'), 'nudge');
+    else if (state === 'dress') restartAnim(kit.trayItem(nextGear()), 'nudge');
     else if (state === 'drive') restartAnim(homes.querySelector(`[data-color="${cur().house.color}"]`), 'nudge');
     else if (state === 'tree') restartAnim(kit.trayItem('ladder'), 'nudge');
     else if (state === 'knock' || state === 'open') restartAnim(scene.querySelector('.fr-door'), 'nudge');
@@ -492,6 +531,12 @@ export function fireScreen(app, params = {}) {
     drove = arrived || Boolean(resume?.drove);
     knocked = Boolean(resume?.knocked);
     const c = cur();
+    calmStep = resume?.calmStep ?? null;
+    recorded = new Set(resume?.recorded ?? recorded);
+    if (c.calm && calmStep != null) {
+      startCalm(true);
+      return;
+    }
     if (c.kind === 'safety') {
       startSafety(resume);
       return;
@@ -778,7 +823,8 @@ export function fireScreen(app, params = {}) {
     // Mở cửa: nhận một lần, ca xong ngay (ra nền lúc này thì chơi tiếp là ca sau).
     setState('busy');
     kit.clearNudge();
-    caseDone();
+    if (cur().calm) calmSaved(0);
+    else caseDone();
     play('pop');
     door.classList.add('open');
     await wait(OUT_MS);
@@ -792,7 +838,8 @@ export function fireScreen(app, params = {}) {
     play('sparkle');
     await talk([R(SAFE_LINE)]);
     if (e !== kit.epoch) return;
-    leave();
+    if (cur().calm) startCalm();
+    else leave();
   }
 
   /** Chạm một ngọn lửa: tắt (mỗi ngọn một lần, Bông đếm). Mức 3: chỉ ngọn Bông đang gọi. */
@@ -890,7 +937,8 @@ export function fireScreen(app, params = {}) {
     setState('busy');
     kit.clearNudge();
     kit.renderTray([]);
-    caseDone();
+    if (cur().calm) calmSaved(0);
+    else caseDone();
     play('pop');
     scene.classList.add('laddered');
     await wait(OUT_MS);
@@ -903,6 +951,174 @@ export function fireScreen(app, params = {}) {
     scene.querySelector('.fr-climber').innerHTML = patientSvg(r.id, { mood: 'happy', title: r.name });
     await talk([R(DOWN_LINE)]);
     if (e !== kit.epoch) return;
+    if (cur().calm) startCalm();
+    else leave();
+  }
+
+  // ---------- Bạn thú còn sợ (SPEC-jobs4 mục 11): chăn → giúp thêm (mức 2) / chọn mặt (mức 3) → vui ----------
+  /** Bạn thú đứng cạnh chú lính cứu hỏa (cây: rời khỏi thang), run khi còn sợ; chăn trên vai sau bước 1. */
+  function showCalmFriend(mood) {
+    const r = resident();
+    scene.querySelector('.fr-climber')?.classList.add('gone');
+    scene.querySelector('.fr-peek')?.remove();
+    residentEl.innerHTML = patientSvg(r.id, { mood, title: r.name });
+    residentEl.append(blanketOn);
+    residentEl.hidden = false;
+    residentEl.classList.remove('leave');
+    residentEl.classList.toggle('shiver', calmStep === 0);
+    residentEl.dataset.calm = String(calmStep);
+    blanketOn.hidden = calmStep === 0;
+  }
+  async function startCalm(resume = false) {
+    const e = kit.epoch;
+    const c = cur().calm;
+    if (calmStep == null) calmStep = 0;
+    if (!resume) {
+      wrongs = 0;
+      nudges = 0;
+    }
+    count.textContent = `${caseIdx + 1}/${plan.cases.length}`;
+    if (resume) renderCase();
+    hose.hidden = false;
+    if (calmStep === 0) {
+      showCalmFriend('scared');
+      feelsEl.hidden = true;
+      kit.renderTray(['blanket']);
+      restartAnim(kit.trayItem('blanket'), 'nudge');
+      setState('blanket');
+      calmSaved(0);
+      await talk(promptLines());
+      if (e === kit.epoch && state === 'blanket') kit.armNudge();
+      return;
+    }
+    showCalmFriend(level >= 3 ? 'happy' : 'sad');
+    if (level >= 3) {
+      kit.renderTray([]);
+      feelsEl.replaceChildren(...c.cards.map((f) => h('button.fr-feel', {
+        type: 'button', 'aria-label': f, dataset: { feel: f }, text: CALM_EMOJI[f], onclick: () => tapFeel(f),
+      })));
+      feelsEl.hidden = false;
+      setState('feel');
+    } else {
+      kit.renderTray(c.tray);
+      setState('calm');
+    }
+    calmSaved(1);
+    snap();
+    await talk(promptLines());
+    if (e === kit.epoch && (state === 'calm' || state === 'feel')) kit.armNudge();
+  }
+  /** Bước 1: chăn bay lên vai bạn thú, hết run — luôn đúng (không có nhầm). */
+  async function giveBlanket(from) {
+    if (state !== 'blanket') return;
+    const e = kit.epoch;
+    setState('busy');
+    kit.clearNudge();
+    if (!recorded.has(`calm:${caseIdx}:scared`)) {
+      recorded.add(`calm:${caseIdx}:scared`);
+      markPracticed(app, 'scared', FEEL_EMOJI.scared);
+      progress = afterSeen(progress, 'blanket');
+      app.setSetting('fireGame', progress).catch(() => {});
+    }
+    calmStep = 1;
+    wrongs = 0;
+    nudges = 0;
+    calmSaved(1);
+    const start = from ?? center((kit.trayItem('blanket') ?? residentEl).getBoundingClientRect());
+    kit.renderTray([]);
+    const ghost = await kit.flyTo(CALM_FACE.blanket(), start, center(residentEl.getBoundingClientRect()));
+    kit.removeGhost(ghost);
+    if (e !== kit.epoch) return;
+    play('pop');
+    residentEl.classList.remove('shiver');
+    blanketOn.hidden = false;
+    restartAnim(residentEl, 'hop');
+    await talk([B(BLANKET_LINE), R(SAFE_NOW_LINE)]);
+    if (e !== kit.epoch) return;
+    startCalm();
+  }
+  /** Bước 2 mức 2: đồ đúng theo câu bạn thú (thirsty → nước, sad → ôm); gấu bông luôn là đồ nhiễu. */
+  async function giveCalm(id, from) {
+    if (state !== 'calm') return;
+    const e = kit.epoch;
+    const c = cur().calm;
+    const want = CALM_NEEDS[c.need];
+    if (id !== want) {
+      if (lockedWrong(`calm:${id}`)) return;
+      wrongs += 1;
+      snap();
+      kit.clearNudge();
+      play('boing');
+      restartAnim(kit.trayItem(id), 'shake');
+      if (wrongs >= 2) restartAnim(kit.trayItem(want), 'nudge');
+      const k = stepKey();
+      await talk([R(wrongCalmLine(id, c.need))]);
+      if (k === stepKey()) kit.armNudge();
+      return;
+    }
+    setState('busy');
+    kit.clearNudge();
+    if (c.need === 'sad' && wrongs === 0 && !recorded.has(`calm:${caseIdx}:sad`)) {
+      recorded.add(`calm:${caseIdx}:sad`);
+      markPracticed(app, 'sad', FEEL_EMOJI.sad);
+    }
+    caseDone();
+    const start = from ?? center((kit.trayItem(id) ?? residentEl).getBoundingClientRect());
+    kit.renderTray([]);
+    const ghost = await kit.flyTo(CALM_FACE[id](), start, center(residentEl.getBoundingClientRect()));
+    kit.removeGhost(ghost);
+    if (e !== kit.epoch) return;
+    play('sparkle');
+    calmStep = 2;
+    showCalmFriend('happy');
+    restartAnim(residentEl, 'hop');
+    await talk([R(calmThanksLine(id))]);
+    if (e !== kit.epoch) return;
+    calmThanks();
+  }
+  /** Bước 2 mức 3: bạn thú đã cười → chọn thẻ mặt happy. */
+  async function tapFeel(f) {
+    if (state !== 'feel') return;
+    const e = kit.epoch;
+    const card = feelsEl.querySelector(`[data-feel="${f}"]`);
+    const name = resident().name;
+    if (f !== 'happy') {
+      if (lockedWrong(`feel:${f}`)) return;
+      wrongs += 1;
+      snap();
+      kit.clearNudge();
+      play('boing');
+      restartAnim(card, 'shake');
+      restartAnim(residentEl, 'hop');
+      if (wrongs >= 2) restartAnim(feelsEl.querySelector('[data-feel="happy"]'), 'nudge');
+      const k = stepKey();
+      await talk([B(smilingLine(name))]);
+      if (k === stepKey()) kit.armNudge();
+      return;
+    }
+    setState('busy');
+    kit.clearNudge();
+    if (wrongs === 0 && !recorded.has(`calm:${caseIdx}:happy`)) {
+      recorded.add(`calm:${caseIdx}:happy`);
+      markPracticed(app, 'happy', FEEL_EMOJI.happy);
+    }
+    caseDone();
+    card.classList.add('picked');
+    play('sparkle');
+    await talk([B(happyNowLine(name))]);
+    if (e !== kit.epoch) return;
+    feelsEl.hidden = true;
+    calmThanks();
+  }
+  /** Xong: bạn thú vẫy tay "Thank you, firefighter!" → ca sau. */
+  async function calmThanks() {
+    const e = kit.epoch;
+    setState('thanks');
+    residentEl.classList.add('wave');
+    await talk([R(THANKS_LINE)]);
+    if (e !== kit.epoch) return;
+    residentEl.classList.remove('wave');
+    calmStep = null;
     leave();
   }
 
@@ -923,11 +1139,14 @@ export function fireScreen(app, params = {}) {
     const e = kit.epoch;
     setState('leave');
     caseDone();
-    restartAnim(cur().kind === 'tree' ? scene : residentEl, 'leave');
+    restartAnim(cur().kind === 'tree' && !cur().calm ? scene : residentEl, 'leave');
     await wait(LEAVE_MS);
     if (e !== kit.epoch) return;
     scene.classList.remove('laddered', 'down', 'leave');
-    residentEl.classList.remove('leave');
+    residentEl.classList.remove('leave', 'shiver');
+    blanketOn.hidden = true;
+    feelsEl.hidden = true;
+    calmStep = null;
     caseIdx += 1;
     if (caseIdx >= plan.cases.length) finishRound();
     else startCase();
@@ -950,6 +1169,10 @@ export function fireScreen(app, params = {}) {
     if (state === 'done' || !plan) return;
     kit.cancelAll();
     scene.classList.remove('laddered', 'down', 'leave');
+    residentEl.classList.remove('shiver', 'wave');
+    blanketOn.hidden = true;
+    feelsEl.hidden = true;
+    calmStep = null;
     caseIdx = 0;
     worn = new Set();
     startGear();
@@ -958,7 +1181,7 @@ export function fireScreen(app, params = {}) {
   function repeatPrompt() {
     if (!ACTIVE.includes(state)) return;
     const k = stepKey();
-    talk([B(promptLine())]).then(() => k === stepKey() && kit.armNudge());
+    talk(promptLines()).then(() => k === stepKey() && kit.armNudge());
   }
 
   // Ảnh lưới chú lính cứu hỏa (SPEC-art ART2): nạp trước khi vẽ; đủ 6 ô thì dùng ảnh (mặc đồ ghép ảnh, cầm vòi là ảnh).

@@ -169,3 +169,51 @@ test('SPEC-art ART2 — ảnh lưới chú lính cứu hỏa: 6 ô đúng thứ 
   for (const a of Object.values(GEAR_ANCHOR)) assert.ok(a.left >= 0 && a.left + a.width <= 100 && a.top >= -10 && a.top < 100);
   assert.ok(GEAR_ANCHOR.helmet.top < GEAR_ANCHOR.jacket.top && GEAR_ANCHOR.jacket.top < GEAR_ANCHOR.boots.top);
 });
+
+// ---------- SPEC-jobs4 mục 11 (FF4): bạn thú còn sợ ----------
+test('FF4 / JOBS4-32 — 500 seed mỗi mức: chỉ ca cứu (mức 2–3) có việc sau cứu; mức 2 bước 2 không bao giờ là scared, gấu bông không bao giờ là đáp án, khay 3 đồ; mức 3 3 thẻ mặt có happy', async () => {
+  const { planRound, CALM_NEEDS } = await import('../../app/js/jobs/fire.js');
+  for (const level of [1, 2, 3]) {
+    const rng = seeded(1200 + level);
+    const needs = new Set();
+    for (let i = 0; i < 500; i++) {
+      const { cases } = planRound(level, { rng });
+      for (const c of cases) {
+        if (c.kind !== 'tree' && c.kind !== 'house') {
+          assert.ok(!c.calm, `${c.kind} không có việc sau cứu`);
+          continue;
+        }
+        if (level === 2) {
+          assert.ok(['thirsty', 'sad'].includes(c.calm.need));
+          needs.add(c.calm.need);
+          assert.deepEqual([...c.calm.tray].sort(), ['hug', 'teddy', 'water']);
+          assert.notEqual(CALM_NEEDS[c.calm.need], 'teddy');
+        } else {
+          assert.deepEqual([...c.calm.cards].sort(), ['happy', 'sad', 'scared']);
+        }
+      }
+      if (level === 1) assert.ok(cases.every((c) => !c.calm));
+    }
+    if (level === 2) assert.equal(needs.size, 2);
+  }
+});
+
+test('FF4 — câu nói; test UI tắt việc sau cứu', async () => {
+  const m = await import('../../app/js/jobs/fire.js');
+  assert.equal(m.SCARED_LINE[0], "I'm scared!");
+  assert.equal(m.YOU_SAFE_LINE[0], "You're safe now!");
+  assert.equal(m.SAFE_NOW_LINE[0], "I'm safe now.");
+  assert.equal(m.needLine('thirsty')[0], "I'm thirsty.");
+  assert.equal(m.needLine('sad')[0], "I'm sad.");
+  assert.equal(m.wrongCalmLine('teddy', 'thirsty')[0], "That's a teddy. I'm thirsty!");
+  assert.equal(m.wrongCalmLine('water', 'sad')[0], "That's some water. I'm sad!");
+  assert.equal(m.feelNowLine('Kitty')[0], 'How does Kitty feel now?');
+  assert.equal(m.smilingLine('Kitty')[0], 'Look! Kitty is smiling!');
+  assert.equal(m.happyNowLine('Kitty')[0], 'Kitty is happy! Hooray!');
+  globalThis.__kidTest = { fireCalm: false };
+  try {
+    assert.ok(m.planRound(3, { rng: seeded(2) }).cases.every((c) => !c.calm));
+  } finally {
+    delete globalThis.__kidTest;
+  }
+});

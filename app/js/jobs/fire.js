@@ -120,9 +120,10 @@ export function planRound(level, { rng = Math.random, seen = {} } = {}) {
     const c = { ...makeFireCase(level, resident, { rng }), house: planHouse(level, { rng }) };
     return level === 2 ? { ...c, choices: numberChoices(c.fires.length, { rng }) } : c;
   };
-  const rescueCase = (resident) => (pickRescue(seen, rng) === 'tree'
-    ? { kind: 'tree', resident }
-    : { kind: 'house', resident, house: planHouse(level, { rng }) });
+  const rescueCase = (resident) => ({
+    ...(pickRescue(seen, rng) === 'tree' ? { kind: 'tree', resident } : { kind: 'house', resident, house: planHouse(level, { rng }) }),
+    calm: planCalm(level, { rng }), // SPEC-jobs4 FF4: bạn thú còn sợ (cuối ca cứu)
+  });
   const first = level >= 2 ? shuffle([fireCase(r0), rescueCase(r1)], rng) : [fireCase(r0), fireCase(r1)];
   return {
     gear: planGear(level, { rng }),
@@ -240,3 +241,38 @@ export const GEAR_ANCHOR = {
   jacket: { left: 0, top: 33, width: 100 },
   boots: { left: 15, top: 73, width: 70 },
 };
+
+// ---------- SPEC-jobs4 mục 11 (FF4): bạn thú còn sợ (cuối ca cứu, mức 2–3) ----------
+/** Đồ giúp ở bước 2 mức 2: nhu cầu → đồ đúng; gấu bông luôn là đồ nhiễu. */
+export const CALM_NEEDS = { thirsty: 'water', sad: 'hug' };
+export const CALM_ITEMS = ['water', 'hug', 'teddy'];
+/** Thẻ mặt mức 3 (sau khi được giúp bạn thú đã cười → happy). */
+export const CALM_FACES = ['happy', 'scared', 'sad'];
+export const FEEL_EMOJI = { happy: '😊', scared: '😨', sad: '😢' };
+/**
+ * Việc nhỏ sau ca cứu: bước 1 chăn (luôn giải quyết scared); bước 2 — mức 2 `need` (thirsty / sad, không bao giờ scared)
+ * + khay 3 đồ; mức 3 3 thẻ mặt. Chỉ test UI đặt `window.__kidTest.fireCalm = false` để bỏ.
+ */
+export function planCalm(level, { rng = Math.random } = {}) {
+  if (level < 2 || globalThis.__kidTest?.fireCalm === false) return null;
+  if (level >= 3) return { cards: shuffle(CALM_FACES, rng) };
+  const need = Object.keys(CALM_NEEDS)[Math.floor(rng() * 2)];
+  return { need, tray: shuffle(CALM_ITEMS, rng) };
+}
+export const SCARED_LINE = ["I'm scared!", 'Tớ sợ quá!'];
+export const YOU_SAFE_LINE = ["You're safe now!", 'Cậu an toàn rồi!'];
+export const BLANKET_LINE = ['Here is a blanket!', 'Chăn đây!'];
+export const SAFE_NOW_LINE = ["I'm safe now.", 'Tớ thấy an toàn rồi.'];
+/** Mức 2: "I'm thirsty." / "I'm sad." */
+export const needLine = (need) => (need === 'thirsty' ? ["I'm thirsty.", 'Tớ khát nước.'] : ["I'm sad.", 'Tớ buồn.']);
+const ITEM_NAME = { water: ['some water', 'cốc nước'], hug: ['a hug', 'cái ôm'], teddy: ['a teddy', 'gấu bông'] };
+/** Nhầm: "That's a teddy. I'm thirsty!" */
+export const wrongCalmLine = (item, need) => [`That's ${ITEM_NAME[item][0]}. ${needLine(need)[0].replace(/\.$/, '!')}`, `Đó là ${ITEM_NAME[item][1]}. ${needLine(need)[1].replace(/\.$/, '!')}`];
+/** Đúng: "Mmm, water! Thank you!" / "A big hug! Thank you!" */
+export const calmThanksLine = (item) => (item === 'water' ? ['Mmm, water! Thank you!', 'Ngon quá! Cảm ơn nhé!'] : ['A big hug! Thank you!', 'Ôm thật chặt! Cảm ơn nhé!']);
+/** Mức 3: "How does Kitty feel now?" */
+export const feelNowLine = (name) => [`How does ${name} feel now?`, `Giờ ${name} thấy thế nào?`];
+/** Mức 3 thẻ sai: "Look! Kitty is smiling!" */
+export const smilingLine = (name) => [`Look! ${name} is smiling!`, `Nhìn kìa! ${name} đang cười!`];
+/** Mức 3 đúng: "Kitty is happy! Hooray!" */
+export const happyNowLine = (name) => [`${name} is happy! Hooray!`, `${name} vui rồi! Hoan hô!`];
