@@ -8,7 +8,7 @@ const play = (page) => page.locator('.sh-play');
 
 async function openShop(page, settings, { stock = true, smoothieAt = 2 } = {}) {
   await fakeSpeech(page);
-  await page.addInitScript((n) => { window.__kidTest = { shopSmoothieAt: n }; }, smoothieAt);
+  await page.addInitScript((n) => { window.__kidTest = { shopSmoothieAt: n, shopWeatherAt: -1 }; }, smoothieAt);
   await startApp(page);
   if (settings) await page.evaluate((s) => window.kidEnglish.setSetting('shopGame', s), settings);
   await page.getByRole('button', { name: 'Trò chơi' }).click();

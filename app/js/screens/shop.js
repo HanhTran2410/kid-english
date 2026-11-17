@@ -2,7 +2,8 @@
 // Đủ món: Bông "Here you are!"; từ mức 2 khách trả xu, bé bỏ từng xu vào két (Bông đếm). 3 khách → sticker.
 // SPEC-jobs2 SH1: mở đầu lượt bày kệ (món trong thùng → giỏ Fruit / Drinks / Other food); cuối mỗi ca bỏ đồ vào túi,
 // đưa túi cho khách, chào "Have a nice day!".
-// Trạng thái: stock ⇄ busy → enter → order ⇄ busy → (coins) → bag → give → thanks → leave → khách sau | done.
+// SPEC-jobs4 mục 7 (SH3): khách thứ hai mua đồ dùng theo thời tiết ngoài cửa sổ (mức 3 chọn thẻ thời tiết trước — wcard).
+// Trạng thái: stock ⇄ busy → enter → [wcard →] order ⇄ busy → (coins) → bag → give → thanks → leave → khách sau | done.
 // Khung chung (nói, nhắc, khay, đồ bay, lượt, ra nền) ở jobs/kit.js.
 
 import { h } from '../ui.js';
@@ -22,13 +23,15 @@ import {
   GROUP_INFO, foodGroup, groupsFor, groupLine, wrongBasketLine, stockLine, OPEN_LINE,
   BAG_LINE, giveBagLine, NICE_DAY_LINE, YOU_TOO_LINE, BYE_LINE,
   SMOOTHIE_COLOR, smoothieOrderLine, wrongFruitLine, needFruitLine, BLEND_ASK_LINE, MILK_LINE, hereSmoothieLine, YUMMY_LINE,
+  WEAR_BY, WEAR_FOR, wearAskLine, LOOK_OUTSIDE_LINE, yesWeatherLine, WHAT_NEED_LINE, wrongWearLine, wrongWeatherCardLine, READY_LINE,
 } from '../jobs/shop.js';
+import { afterSeen } from '../jobs/levels.js';
 
 const JOB = 'shop';
 const ENTER_MS = 650;
 const LEAVE_MS = 600;
 const SAY_BACK_MS = 2000; // "Here you are!": chờ bé nói theo
-const ACTIVE = ['order', 'coins', 'stock', 'bag', 'give', 'blend-add', 'blend-ready'];
+const ACTIVE = ['order', 'coins', 'stock', 'bag', 'give', 'blend-add', 'blend-ready', 'wcard'];
 const BLEND_MS = 1100; // máy xay chạy
 const MILK_MS = 1400; // hộp sữa rót vào cối
 const POUR_CUP_MS = 700; // sinh tố từ cối rót sang ly
@@ -39,6 +42,34 @@ const BAG_SVG = `<svg viewBox="0 0 64 72" aria-hidden="true">
   <path d="M10.4 26 H53.6 L54.3 34 H9.7 Z" fill="#ff8fab"/>
   <circle cx="32" cy="50" r="7" fill="#ffd43b" stroke="#3d2c5e" stroke-width="2"/>
 </svg>`;
+const INK = '#3d2c5e';
+/** SH3: đồ dùng trên kệ (vẽ SVG, khác dáng hẳn nhau): ô sọc mở, kính râm đen, khăn len quấn, quạt tay giấy. */
+const WEAR_SVG = {
+  umbrella: `<svg viewBox="0 0 64 64" aria-hidden="true"><path d="M6 30 Q32 -2 58 30 Q51 24 45 30 Q38 24 32 30 Q26 24 19 30 Q13 24 6 30 Z" fill="#ff6b6b" stroke="${INK}" stroke-width="3" stroke-linejoin="round"/>
+    <path d="M19 30 Q22 12 32 4 Q42 12 45 30 Q38 24 32 30 Q26 24 19 30 Z" fill="#fff" opacity="0.85"/><path d="M32 30 V54 Q32 60 26 60 Q21 60 21 55" fill="none" stroke="${INK}" stroke-width="4" stroke-linecap="round"/></svg>`,
+  sunglasses: `<svg viewBox="0 0 64 64" aria-hidden="true"><path d="M3 24 H61" stroke="${INK}" stroke-width="4" stroke-linecap="round"/><path d="M6 24 h22 v6 a11 11 0 0 1 -22 0 Z M36 24 h22 v6 a11 11 0 0 1 -22 0 Z" fill="#212529" stroke="${INK}" stroke-width="3" stroke-linejoin="round"/>
+    <path d="M10 28 l6 -2 M40 28 l6 -2" stroke="#fff" stroke-width="2.5" stroke-linecap="round" opacity="0.7"/></svg>`,
+  scarf: `<svg viewBox="0 0 64 64" aria-hidden="true"><path d="M10 16 Q32 28 54 16 L54 26 Q32 38 10 26 Z" fill="#4dabf7" stroke="${INK}" stroke-width="3" stroke-linejoin="round"/>
+    <path d="M38 28 L46 58 L36 58 L30 30 Z" fill="#4dabf7" stroke="${INK}" stroke-width="3" stroke-linejoin="round"/><path d="M20 22 l-1 8 M30 25 l0 8 M42 24 l1 8 M37 40 h8 M39 48 h8" stroke="#fff" stroke-width="3" stroke-linecap="round"/>
+    <path d="M37 58 v4 M41 58 v4 M45 58 v4" stroke="${INK}" stroke-width="2.5" stroke-linecap="round"/></svg>`,
+  fan: `<svg viewBox="0 0 64 64" aria-hidden="true"><path d="M32 46 L6 22 Q32 0 58 22 Z" fill="#fff3bf" stroke="${INK}" stroke-width="3" stroke-linejoin="round"/>
+    <path d="M32 46 L14 15 M32 46 L24 9 M32 46 L32 7 M32 46 L40 9 M32 46 L50 15" stroke="#f59f00" stroke-width="2.5"/><path d="M32 46 V60" stroke="${INK}" stroke-width="5" stroke-linecap="round"/></svg>`,
+};
+/** SH3: cửa sổ thấy trời bên ngoài (nguồn chuẩn của thời tiết): mưa rơi, nắng chói, tuyết rơi, mặt trời đỏ + sóng nhiệt. */
+const pane = (sky, inner) => `<svg viewBox="0 0 120 100" aria-hidden="true"><rect x="4" y="4" width="112" height="92" rx="8" fill="${sky}"/>${inner}
+  <path d="M60 4 V96 M4 50 H116" stroke="#fff" stroke-width="5"/><rect x="4" y="4" width="112" height="92" rx="8" fill="none" stroke="#8d5524" stroke-width="7"/></svg>`;
+const CLOUD = (x, y, fill) => `<path transform="translate(${x} ${y})" d="M0 14 Q0 2 12 4 Q16 -6 28 0 Q40 -2 40 10 Q48 12 44 20 H4 Q-6 20 0 14 Z" fill="${fill}"/>`;
+const WINDOW_SVG = {
+  rainy: pane('#ced4da', `${CLOUD(16, 12, '#868e96')}${CLOUD(64, 18, '#adb5bd')}<g class="sh-rain" stroke="#4dabf7" stroke-width="3" stroke-linecap="round">
+    <path d="M20 44 l-4 10 M40 52 l-4 10 M30 72 l-4 10 M58 46 l-4 10 M78 56 l-4 10 M98 48 l-4 10 M88 74 l-4 10 M50 78 l-4 10 M108 76 l-4 10"/></g>`),
+  sunny: pane('#a5d8ff', `<g class="sh-sun"><circle cx="60" cy="50" r="18" fill="#ffd43b" stroke="#f59f00" stroke-width="3"/>
+    <path d="M60 18 v10 M60 72 v10 M28 50 h10 M82 50 h10 M37 27 l7 7 M76 66 l7 7 M83 27 l-7 7 M44 66 l-7 7" stroke="#f59f00" stroke-width="4" stroke-linecap="round"/></g>`),
+  cold: pane('#dee2e6', `${CLOUD(40, 10, '#f1f3f5')}<g class="sh-snow" fill="#fff" stroke="#adb5bd" stroke-width="1">
+    <circle cx="18" cy="40" r="4"/><circle cx="44" cy="58" r="3.5"/><circle cx="30" cy="80" r="4"/><circle cx="74" cy="44" r="3.5"/><circle cx="96" cy="62" r="4"/><circle cx="84" cy="84" r="3.5"/><circle cx="56" cy="88" r="3"/><circle cx="106" cy="34" r="3"/></g>
+    <path d="M4 90 Q60 78 116 90 V96 H4 Z" fill="#fff"/>`),
+  hot: pane('#ffc078', `<circle cx="60" cy="40" r="20" fill="#ff6b6b" stroke="#e03131" stroke-width="3"/><g class="sh-heat" fill="none" stroke="#e8590c" stroke-width="3" stroke-linecap="round">
+    <path d="M14 72 q6 -6 12 0 t12 0 t12 0 M64 80 q6 -6 12 0 t12 0 t12 0 M24 88 q6 -6 12 0 t12 0"/></g>`),
+};
 const NICE_DAY_PAUSE_MS = 1000; // "Have a nice day!" — ngắt — "You too!"
 
 export function shopScreen(app, params = {}) {
@@ -67,6 +98,11 @@ export function shopScreen(app, params = {}) {
   const customer = () => PATIENT_BY_ID.get(cur()?.customer);
   const order = () => cur()?.order ?? [];
   const isSmoothie = () => cur()?.kind === 'smoothie';
+  const isWeather = () => cur()?.kind === 'weather';
+  /** Món ăn (Cho Bông ăn) hoặc đồ dùng của ca thời tiết. */
+  const itemById = (id) => foodById(id) ?? WEAR_BY.get(id);
+  /** Hình một món: đồ dùng vẽ SVG, món ăn như cũ (ảnh bố mẹ thêm / emoji). */
+  const itemFace = (id, cls) => (WEAR_BY.has(id) ? h(`span.${cls}.sh-wear-face`, { 'aria-hidden': 'true', html: WEAR_SVG[id] }) : foodFace(foodById(id), images, cls));
   const fruitsLeft = () => remaining(order(), got).map((o) => foodById(o.id));
   const C = (line) => ({ who: 'customer', line });
   const B = (line) => ({ who: 'bong', line });
@@ -88,6 +124,9 @@ export function shopScreen(app, params = {}) {
   const blendBtn = h('button.sh-blend-btn', { type: 'button', 'aria-label': 'Nút máy xay', onclick: () => pressBlend() }, h('span', { text: '▶' }));
   const blender = h('div.sh-blender', { hidden: true }, milkJug, jar,h('div.sh-blender-base', {}, blendBtn));
   const cup = h('div.sh-cup', { hidden: true, 'aria-hidden': 'true' }, h('span.sh-cup-top'), h('span.sh-cup-bottom'));
+  // SPEC-jobs4 SH3: cửa sổ thấy trời + 3 thẻ thời tiết (mức 3).
+  const windowEl = h('div.sh-window', { hidden: true, 'aria-label': 'Cửa sổ' });
+  const cardsEl = h('div.sh-wcards', { hidden: true });
 
   const kit = jobScreen(app, {
     job: JOB, background: { lessonId: JOBS_BG_IMAGES, word: JOB }, className: 'sh-play', stageClass: 'sh-stage', title: '🛒 Shop', helperLabel: 'Bông bán hàng', cap: 'shop',
@@ -131,19 +170,24 @@ export function shopScreen(app, params = {}) {
           kit.talk(state === 'blend-ready' ? [B(BLEND_ASK_LINE)] : [C(smoothieOrderLine(order().map((o) => foodById(o.id))))]).then(rearm);
           return;
         }
+        if (state === 'wcard') {
+          restartAnim(cardsEl.querySelector(`[data-weather="${cur().weather}"]`), 'nudge');
+          kit.talk([B(LOOK_OUTSIDE_LINE)]).then(rearm);
+          return;
+        }
         if (state === 'bag' || state === 'give') {
           restartAnim(state === 'bag' ? bagEl : customerEl, state === 'bag' ? 'nudge' : 'hop');
           kit.talk([B(state === 'bag' ? BAG_LINE : giveBagLine(customer().name))]).then(rearm);
           return;
         }
-        showWish();
+        if (!isWeather() || level <= 1) showWish();
         restartAnim(kit.trayItem(remaining(order(), got)[0]?.id), 'nudge');
-        kit.talk([C(orderLine(order(), foodById, got))]).then(rearm);
+        kit.talk([askNow()]).then(rearm);
       },
     },
     tray: {
-      face: (id) => foodFace(foodById(id), images, 'fd-face'),
-      label: (id) => foodById(id)?.en ?? id,
+      face: (id) => itemFace(id, 'fd-face'),
+      label: (id) => itemById(id)?.en ?? id,
       canGive: () => state === 'order' || state === 'stock' || state === 'blend-add',
       dropOk: (x, y) => (state === 'stock' ? Boolean(basketAt(x, y))
         : state === 'blend-add' ? inside(blender, x, y, 0.15) || inside(customerEl, x, y, 0.1)
@@ -152,7 +196,7 @@ export function shopScreen(app, params = {}) {
     },
   });
   const { stage, count, talk } = kit;
-  stage.append(customerEl, wish, counter, basketsEl, blender, cup);
+  stage.append(windowEl, customerEl, wish, counter, basketsEl, blender, cup, cardsEl);
   const stepKey = () => `${kit.epoch}:${caseIdx}:${state}:${remaining(order(), got).length}:${paid}:${stocked.length}`;
   const basketEl = (g) => basketsEl.querySelector(`.sh-basket[data-group="${g}"]`);
   const basketAt = (x, y) => [...basketsEl.children].find((el) => inside(el, x, y, 0.08))?.dataset.group ?? null;
@@ -182,10 +226,9 @@ export function shopScreen(app, params = {}) {
   function renderWish() {
     wish.hidden = !(level <= 1 || wishShown) || !order().length;
     wish.replaceChildren(...order().map((o) => {
-      const food = foodById(o.id);
       const n = got[o.id] ?? 0;
       return h('span.sh-wish-item', { dataset: { food: o.id, done: String(n >= o.count) } },
-        foodFace(food, images, 'sh-wish-face'),
+        itemFace(o.id, 'sh-wish-face'),
         o.count > 1 ? h('span.sh-wish-count', { text: `${n}/${o.count}` }) : null,
         n >= o.count ? h('span.sh-wish-tick', { text: '✓' }) : null);
     }));
@@ -221,10 +264,12 @@ export function shopScreen(app, params = {}) {
     cup.hidden = true;
     setState('enter');
     renderCustomer();
+    renderWeather();
     renderWish();
     renderGoods();
     renderJar();
-    kit.renderTray(isSmoothie() ? cur().tray : plan.shelf);
+    // Ca thời tiết: kệ đồ dùng (mức 3 chỉ hiện sau khi chọn đúng thẻ thời tiết).
+    kit.renderTray(isWeather() ? (level >= 3 && !cur().cardDone ? [] : cur().tray) : isSmoothie() ? cur().tray : plan.shelf);
     renderCoins();
     snap();
     if (resume) {
@@ -251,10 +296,14 @@ export function shopScreen(app, params = {}) {
       beginBlend();
       return;
     }
+    if (isWeather() && level >= 3 && !cur().cardDone) {
+      startCard();
+      return;
+    }
     setState('order');
     phase = 'order';
     snap();
-    await talk([C(orderLine(order(), foodById, got))]);
+    await talk([askNow()]);
     if (e === kit.epoch) kit.armNudge();
   }
 
@@ -262,8 +311,21 @@ export function shopScreen(app, params = {}) {
   async function give(id, from) {
     if (state !== 'order') return;
     const e = kit.epoch;
-    const food = foodById(id);
+    const food = itemById(id);
     const need = remaining(order(), got).find((o) => o.id === id);
+    if (!need && isWeather()) {
+      // Ca thời tiết: món về kệ, khách nói lại thời tiết (mức 2–3: món đúng chỉ sáng từ lần nhầm thứ hai).
+      if (!countWrong(`i:${id}`)) return;
+      restartAnim(kit.trayItem(id), 'shake');
+      const want = order()[0].id;
+      if (level <= 1 || wrongs >= 2) {
+        kit.setHint(want);
+        restartAnim(kit.trayItem(want), 'nudge');
+      }
+      const k = stepKey();
+      talk([C(wrongWearLine(id, cur().weather))]).then(() => k === stepKey() && kit.armNudge());
+      return;
+    }
     if (!need) {
       if (!countWrong(`i:${id}`)) return;
       restartAnim(kit.trayItem(id), 'shake');
@@ -287,12 +349,20 @@ export function shopScreen(app, params = {}) {
       recorded.add(key);
       markPracticed(app, food.en, food.emoji);
     }
+    // Ca thời tiết: mức 2 ghi từ Weather khi đúng ngay lần đầu (mức 3 ghi ở bước thẻ); `seen` món đồ dùng.
+    if (isWeather() && !recorded.has(key)) {
+      recorded.add(key);
+      const w = cur().weather;
+      if (level === 2 && wrongs === 0) markPracticed(app, w, WEAR_FOR.get(w).emoji);
+      progress = afterSeen(progress, id);
+      saveProgress();
+    }
     const done = orderDone(order(), got);
     wrongs = 0;
     nudges = 0;
     snap();
     // Món bay ra đặt trên quầy (không đưa thẳng cho khách): đủ món thì bỏ vào túi rồi mới đưa.
-    const ghost = await kit.flyTo(foodFace(food, images, 'fd-face'), from, goodsSpot());
+    const ghost = await kit.flyTo(itemFace(id, 'fd-face'), from, goodsSpot());
     kit.removeGhost(ghost);
     if (e !== kit.epoch) return;
     play('pop');
@@ -369,7 +439,7 @@ export function shopScreen(app, params = {}) {
   function renderGoods() {
     const show = !isSmoothie() && ['order', 'coins', 'bag'].includes(phase);
     goodsEl.replaceChildren(...(show ? order().flatMap((o) => Array.from({ length: got[o.id] ?? 0 },
-      () => h('span.sh-good', { dataset: { food: o.id } }, foodFace(foodById(o.id), images, 'sh-good-face')))) : []));
+      () => h('span.sh-good', { dataset: { food: o.id } }, itemFace(o.id, 'sh-good-face')))) : []));
   }
   /** Chỗ món bay tới trên quầy: sau món cuối đang nằm (chưa có thì giữa khay). Khay ở đầu phải quầy nên thêm món
    *  thì cả hàng dịch sang trái nửa ô: món mới nằm sau món cuối nửa ô. */
@@ -510,6 +580,84 @@ export function shopScreen(app, params = {}) {
     startCoins();
   }
 
+  // ---------- Quầy đồ theo thời tiết (SPEC-jobs4 mục 7, SH3) ----------
+  /** Cửa sổ (nguồn chuẩn của thời tiết), thẻ đã dán (mức 3), khách run khi lạnh. */
+  function renderWeather() {
+    const c = cur();
+    windowEl.hidden = !isWeather();
+    cardsEl.hidden = true;
+    customerEl.classList.remove('shiver');
+    customerEl.querySelector('.sh-worn')?.remove();
+    if (!isWeather()) return;
+    windowEl.dataset.weather = c.weather;
+    windowEl.innerHTML = WINDOW_SVG[c.weather];
+    if (c.cardDone) windowEl.append(h('span.sh-window-card', { text: WEAR_FOR.get(c.weather).emoji, 'aria-hidden': 'true' }));
+    customerEl.classList.toggle('shiver', c.weather === 'cold');
+  }
+  function renderCards() {
+    const c = cur();
+    cardsEl.replaceChildren(...c.cards.map((w) => h('button.sh-wcard', {
+      type: 'button', 'aria-label': w, dataset: { weather: w }, text: WEAR_FOR.get(w).emoji, onclick: () => tapCard(w),
+    })));
+    cardsEl.hidden = false;
+  }
+  /** Câu khách xin đồ dùng: mức 1–2 nói thời tiết (mức 1 cả tên món); mức 3 (sau thẻ) "What do I need?". */
+  const wearPrompt = () => (level >= 3 ? C(WHAT_NEED_LINE) : C(wearAskLine(cur().weather, level)));
+  /** Câu của bước gọi món (nhắc, chạm khách / Bông): ca thời tiết hay ca thường. */
+  const askNow = () => (isWeather() ? wearPrompt() : C(orderLine(order(), foodById, got)));
+  /** Mức 3: chưa chọn thẻ thì hỏi thời tiết trước (kệ đồ dùng chưa hiện). */
+  async function startCard() {
+    const e = kit.epoch;
+    kit.renderTray([]);
+    renderCards();
+    setState('wcard');
+    phase = 'order';
+    snap();
+    await talk([B(LOOK_OUTSIDE_LINE)]);
+    if (e === kit.epoch && state === 'wcard') kit.armNudge();
+  }
+  /** Chạm thẻ thời tiết: đúng → khóa bước thẻ (lưu ngay), thẻ dán lên cửa sổ, khách "Yes! It's sunny! What do I need?". */
+  async function tapCard(w) {
+    if (state !== 'wcard') return;
+    const e = kit.epoch;
+    const c = cur();
+    const btn = cardsEl.querySelector(`[data-weather="${w}"]`);
+    if (w !== c.weather) {
+      if (!countWrong(`w:${w}`)) return;
+      restartAnim(btn, 'shake');
+      if (wrongs >= 2) restartAnim(cardsEl.querySelector(`[data-weather="${c.weather}"]`), 'nudge');
+      const k = stepKey();
+      talk([B(wrongWeatherCardLine(w))]).then(() => k === stepKey() && kit.armNudge());
+      return;
+    }
+    setState('busy');
+    kit.clearNudge();
+    if (wrongs === 0 && !recorded.has(`wx:${caseIdx}`)) {
+      recorded.add(`wx:${caseIdx}`);
+      markPracticed(app, w, WEAR_FOR.get(w).emoji);
+    }
+    c.cardDone = true;
+    wrongs = 0;
+    nudges = 0;
+    snap();
+    play('ding');
+    const ghost = await kit.flyTo(h('span.sh-wcard-fly', { text: WEAR_FOR.get(w).emoji }), center(btn.getBoundingClientRect()), center(windowEl.getBoundingClientRect()));
+    kit.removeGhost(ghost);
+    if (e !== kit.epoch) return;
+    renderWeather();
+    kit.renderTray(cur().tray);
+    await talk([C(yesWeatherLine(w))]);
+    if (e !== kit.epoch) return;
+    beginOrder();
+  }
+  /** Khách nhận túi: lấy đồ dùng ra dùng ngay (mở ô, đeo kính, quấn khăn, phẩy quạt). */
+  function wearItem() {
+    const id = order()[0].id;
+    customerEl.classList.remove('shiver');
+    customerEl.querySelector('.sh-worn')?.remove();
+    customerEl.append(h('span.sh-worn', { dataset: { item: id }, 'aria-hidden': 'true', html: WEAR_SVG[id] }));
+  }
+
   // ---------- Đưa túi, chào khách (SPEC-jobs2 mục 2.4) ----------
   async function startBag(resume = false) {
     const e = kit.epoch;
@@ -586,7 +734,8 @@ export function shopScreen(app, params = {}) {
     // Khách xong: lưu để chơi tiếp là khách sau.
     saveSnap(JOB, { level, plan, caseIdx: caseIdx + 1, got: {}, paid: 0, wrongs: 0, nudges: 0, wishShown: false, recorded: [...recorded], phase: 'order', stocked });
     play('sparkle');
-    await talk([C(THANKS_LINE), B(NICE_DAY_LINE)]);
+    if (isWeather()) wearItem();
+    await talk([C(isWeather() ? READY_LINE : THANKS_LINE), B(NICE_DAY_LINE)]);
     if (e !== kit.epoch) return;
     await wait(NICE_DAY_PAUSE_MS);
     if (e !== kit.epoch) return;
@@ -619,6 +768,7 @@ export function shopScreen(app, params = {}) {
       startStock();
       return;
     }
+    for (const c of plan.cases) if (c.kind === 'weather') c.cardDone = false;
     caseIdx = 0;
     startCase();
   }
@@ -743,8 +893,8 @@ export function shopScreen(app, params = {}) {
     const k = stepKey();
     const line = {
       coins: B(TAP_COINS_LINE), stock: B(stockLine(level)), bag: B(BAG_LINE), give: B(giveBagLine(customer()?.name ?? '')),
-      'blend-ready': B(BLEND_ASK_LINE), 'blend-add': C(smoothieOrderLine(order().map((o) => foodById(o.id)))),
-    }[state] ?? C(orderLine(order(), foodById, got));
+      'blend-ready': B(BLEND_ASK_LINE), 'blend-add': C(smoothieOrderLine(order().map((o) => foodById(o.id)))), wcard: B(LOOK_OUTSIDE_LINE),
+    }[state] ?? askNow();
     talk([line]).then(() => k === stepKey() && kit.armNudge());
   }
 
@@ -763,9 +913,13 @@ export function shopScreen(app, params = {}) {
       repeatPrompt();
       return;
     }
+    if (state === 'wcard') {
+      repeatPrompt();
+      return;
+    }
     if (state !== 'order') return;
     const k = stepKey();
-    talk([C(orderLine(order(), foodById, got))]).then(() => k === stepKey() && kit.armNudge());
+    talk([askNow()]).then(() => k === stepKey() && kit.armNudge());
   }, { signal: kit.signal });
 
   loadFeedImages(app).catch(() => null).then((loaded) => {
@@ -788,7 +942,7 @@ export function shopScreen(app, params = {}) {
       } else startCase(s);
       return;
     }
-    plan = planRound(level, { foods });
+    plan = planRound(level, { foods, seen: progress.seen });
     caseIdx = 0;
     startStock();
   });

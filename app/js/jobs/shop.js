@@ -63,9 +63,10 @@ export function makeOrder(shelf, level, { rng = Math.random, avoid = null } = {}
 /**
  * Kế hoạch một lượt: kệ hàng + 3 khách (bạn thú khác nhau) với món gọi; hai khách liền nhau không gọi cùng món đầu.
  * SPEC-jobs2 SH1: thêm thùng hàng `stock` (bày kệ mở đầu lượt).
+ * SPEC-jobs4 SH3: khách thứ hai (mọi mức) là ca thời tiết — ca đầu luôn là khách đồ ăn; `seen`: món đồ dùng đã bán.
  * @returns {{ shelf: string[], cases: Array<{ customer: string, order: Array<{ id: string, count: number }> }>, stock: string[] }}
  */
-export function planRound(level, { foods = BUILTIN_FOODS, rng = Math.random } = {}) {
+export function planRound(level, { foods = BUILTIN_FOODS, rng = Math.random, seen = {} } = {}) {
   const shelfFoods = makeShelf(level, { foods, rng });
   const stock = makeStock(level, { foods, rng });
   const customers = shuffle(PATIENTS, rng);
@@ -76,13 +77,18 @@ export function planRound(level, { foods = BUILTIN_FOODS, rng = Math.random } = 
     last = order[0].id;
     cases.push({ customer: customers[i % customers.length].id, order });
   }
-  // SPEC-jobs2 SH2: mức 2–3 một khách gọi sinh tố (thay một ca thường). Chỉ test UI đặt
+  // Ca thời tiết ở khách thứ hai. Chỉ test UI đặt `window.__kidTest.shopWeatherAt` (-1 = không có, số = ca đó).
+  const pinW = globalThis.__kidTest?.shopWeatherAt;
+  const wAt = pinW === -1 ? -1 : Number.isInteger(pinW) && pinW >= 0 && pinW < cases.length ? pinW : 1;
+  // SPEC-jobs2 SH2: mức 2–3 một khách gọi sinh tố (thay một ca thường, không trùng ca thời tiết). Chỉ test UI đặt
   // `window.__kidTest.shopSmoothieAt` để cố định chỗ ca sinh tố.
   if (level >= 2) {
     const pinned = globalThis.__kidTest?.shopSmoothieAt;
-    const at = Number.isInteger(pinned) && pinned >= 0 && pinned < cases.length ? pinned : Math.floor(rng() * cases.length);
+    const free = cases.map((_, i) => i).filter((i) => i !== wAt && (wAt < 0 || i > 0)); // có ca thời tiết: ca đầu là khách đồ ăn thường
+    const at = Number.isInteger(pinned) && pinned >= 0 && pinned < cases.length && pinned !== wAt ? pinned : free[Math.floor(rng() * free.length)];
     cases[at] = { customer: cases[at].customer, ...makeSmoothie(level, { foods, rng }) };
   }
+  if (wAt >= 0) cases[wAt] = { customer: cases[wAt].customer, ...makeWeatherCase(level, { seen, rng }) };
   return { shelf: shelfFoods.map((f) => f.id), cases, stock };
 }
 
@@ -227,3 +233,52 @@ export const MILK_LINE = ['And some milk!', 'Thêm chút sữa nữa!'];
 /** "Here you are! A banana smoothie!" */
 export const hereSmoothieLine = (foods) => [`Here you are! ${capital(smoothieA(foods))} ${smoothieName(foods)} smoothie!`, `Của bạn đây! Sinh tố ${foods.map(shortVi).join(' ')}!`];
 export const YUMMY_LINE = ['Yummy! Thank you!', 'Ngon quá! Cảm ơn bạn!'];
+
+// ---------- SPEC-jobs4 mục 7 (SH3): quầy đồ theo thời tiết (thay ca khách thứ hai) ----------
+/**
+ * Kệ đồ dùng (ngoại lệ có chủ ý với luật "chỉ bán đồ ăn" — chỉ ca này): mỗi thời tiết đúng một món hợp.
+ * `en` tên món (câu xin dùng `a`), `that` câu nhầm, `emoji` thẻ thời tiết (bài Weather).
+ */
+export const WEAR = [
+  { id: 'umbrella', weather: 'rainy', en: 'umbrella', a: 'an umbrella', that: "That's an umbrella", vi: 'cái ô', wvi: 'mưa', emoji: '🌧️' },
+  { id: 'sunglasses', weather: 'sunny', en: 'sunglasses', a: 'sunglasses', that: 'Those are sunglasses', vi: 'kính râm', wvi: 'nắng', emoji: '☀️' },
+  { id: 'scarf', weather: 'cold', en: 'scarf', a: 'a scarf', that: "That's a scarf", vi: 'khăn len', wvi: 'lạnh', emoji: '🥶' },
+  { id: 'fan', weather: 'hot', en: 'fan', a: 'a fan', that: "That's a fan", vi: 'cái quạt', wvi: 'nóng', emoji: '🥵' },
+];
+export const WEAR_BY = new Map(WEAR.map((w) => [w.id, w]));
+export const WEAR_FOR = new Map(WEAR.map((w) => [w.weather, w]));
+export const WEATHERS = WEAR.map((w) => w.weather);
+/** Số món trên kệ đồ dùng theo mức. */
+export const WEAR_SHELF = { 1: 2, 2: 3, 3: 4 };
+/**
+ * Ca thời tiết (sinh sẵn): món ít gặp nhất (`seen`: umbrella / sunglasses / scarf / fan) → thời tiết; kệ 2 / 3 / 4 món có
+ * đúng món đó; mức 3 thêm 3 thẻ thời tiết khác nhau (có thẻ đúng). `order` dùng chung cơ chế món của ca thường.
+ */
+export function makeWeatherCase(level, { seen = {}, rng = Math.random } = {}) {
+  const item = shuffle(WEAR.map((w) => w.id), rng).sort((a, b) => (seen[a] ?? 0) - (seen[b] ?? 0))[0];
+  const w = WEAR_BY.get(item);
+  const n = WEAR_SHELF[level] ?? WEAR_SHELF[1];
+  const tray = shuffle([item, ...shuffle(WEAR.map((x) => x.id).filter((id) => id !== item), rng).slice(0, n - 1)], rng);
+  const c = { kind: 'weather', weather: w.weather, order: [{ id: item, count: 1 }], tray };
+  if (level >= 3) c.cards = shuffle([w.weather, ...shuffle(WEATHERS.filter((x) => x !== w.weather), rng).slice(0, 2)], rng);
+  return c;
+}
+const itsLine = (weather) => [`It's ${weather}!`, `Trời ${WEAR_FOR.get(weather).wvi} quá!`];
+/** Mức 1: "It's rainy! Can I have an umbrella, please?" — mức 2: "It's cold! Can you help me?" */
+export const wearAskLine = (weather, level) => {
+  const w = WEAR_FOR.get(weather);
+  const [en, vi] = itsLine(weather);
+  return level <= 1 ? [`${en} Can I have ${w.a}, please?`, `${vi} Cho tớ ${w.vi} nhé!`] : [`${en} Can you help me?`, `${vi} Bạn giúp tớ với!`];
+};
+export const LOOK_OUTSIDE_LINE = ["Look outside! What's the weather?", 'Con nhìn ra cửa sổ xem! Trời thế nào nhỉ?'];
+export const itsWeatherLine = itsLine;
+export const yesWeatherLine = (weather) => [`Yes! It's ${weather}!`, `Đúng rồi! Trời ${WEAR_FOR.get(weather).wvi}!`];
+export const WHAT_NEED_LINE = ['What do I need?', 'Tớ cần gì nhỉ?'];
+/** Nhầm món: "That's a scarf. It's hot!" */
+export const wrongWearLine = (id, weather) => {
+  const g = WEAR_BY.get(id);
+  return [`${g.that}. It's ${weather}!`, `Đó là ${g.vi}. Trời ${WEAR_FOR.get(weather).wvi} mà!`];
+};
+/** Mức 3 thẻ sai: "That's rainy. Look outside!" */
+export const wrongWeatherCardLine = (x) => [`That's ${x}. Look outside!`, `Đó là trời ${WEAR_FOR.get(x).wvi}. Con nhìn ra cửa sổ nhé!`];
+export const READY_LINE = ["Thank you! Now I'm ready!", 'Cảm ơn bạn! Giờ tớ sẵn sàng rồi!'];

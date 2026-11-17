@@ -603,3 +603,148 @@ test('Bác sĩ mức 3: chọn đúng thẻ ngay lần đầu → ghi Feelings "
   await page.waitForTimeout(300);
   expect(await feelCount(page, feel)).toBe(1);
 });
+
+// ---------- 0.76.0: 🛒 Bán hàng — Quầy đồ theo thời tiết (SPEC-jobs4 mục 7) ----------
+const WEAR_OF = { rainy: 'umbrella', sunny: 'sunglasses', cold: 'scarf', hot: 'fan' };
+const SHOP_STATES = /^(stock|order|coins|bag|give|blend-add|blend-ready|wcard)$/;
+const shopWeather = (page) => page.locator('.sh-window').getAttribute('data-weather');
+const wordCount = (page, w) => page.evaluate(async (x) => (await window.kidEnglish.db.getAll('progress'))
+  .filter((p) => p.word === x).reduce((a, p) => a + (p.practiceCount ?? 0), 0), w);
+/** Giải bước đang chờ của Bán hàng (đọc các thuộc tính chỉ để test). */
+async function solveShop(page) {
+  const s = await play(page).getAttribute('data-state');
+  if (s === 'stock') {
+    const item = page.locator('.jb-tray .dr-item').first();
+    const g = await item.getAttribute('data-group');
+    await item.click();
+    if (await page.locator('.jb-tray .dr-item.picked').count()) await page.locator(`.sh-basket[data-group="${g}"]`).click();
+  } else if (s === 'order' || s === 'blend-add') {
+    const id = await page.locator('.sh-wish-item[data-done="false"]').first().getAttribute('data-food');
+    await tapTray(page, id);
+  } else if (s === 'blend-ready') await page.locator('.sh-blend-btn').click();
+  else if (s === 'coins') { if (await page.locator('.sh-coin').count()) await page.locator('.sh-coin').first().click(); }
+  else if (s === 'bag') await page.locator('.sh-bag').click();
+  else if (s === 'give') await page.locator('.sh-customer').click();
+  else if (s === 'wcard') await page.locator(`.sh-wcard[data-weather="${await shopWeather(page)}"]`).click();
+  return s;
+}
+const shopKey = async (page) => [await play(page).getAttribute('data-state'), await page.locator('.jb-tray .dr-item').count(),
+  await page.locator('.sh-wish-item[data-done="false"]').count(), await page.locator('.sh-coin').count(), await page.locator('.jb-count').textContent()].join('|');
+async function playShopUntil(page, re) {
+  for (let i = 0; i < 150; i++) {
+    const s = await play(page).getAttribute('data-state');
+    if (re.test(s ?? '')) return;
+    if (SHOP_STATES.test(s ?? '')) {
+      const key = await shopKey(page);
+      await solveShop(page);
+      await expect.poll(() => shopKey(page), { timeout: 15000 }).not.toBe(key).catch(() => {});
+    } else await page.waitForTimeout(150);
+  }
+  throw new Error(`không tới ${re}`);
+}
+/** Chơi tới ca thời tiết (khách thứ hai) đang chờ bước `re`. */
+async function toWeatherCase(page, re) {
+  for (let i = 0; i < 150; i++) {
+    const s = await play(page).getAttribute('data-state');
+    if (re.test(s ?? '') && await page.locator('.sh-window').isVisible()) return;
+    if (SHOP_STATES.test(s ?? '')) {
+      const key = await shopKey(page);
+      await solveShop(page);
+      await expect.poll(() => shopKey(page), { timeout: 15000 }).not.toBe(key).catch(() => {});
+    } else await page.waitForTimeout(150);
+  }
+  throw new Error('không tới ca thời tiết');
+}
+
+test('Bán hàng mức 1: khách thứ hai — cửa sổ thấy trời, "It\'s …! Can I have …, please?" + bong bóng món; kệ 2 đồ dùng; nhầm → "That\'s … . It\'s …!"; đưa túi → khách dùng đồ, "Thank you! Now I\'m ready!" → sticker', async ({ page }) => {
+  await openJob(page, 'shop', 1);
+  await toWeatherCase(page, /^order$/);
+  await expect(page.locator('.jb-count')).toHaveText('2/3');
+  const w = await shopWeather(page);
+  const item = WEAR_OF[w];
+  expect((await spoken(page)).some((t) => t.startsWith('Can I have '))).toBe(true); // ca đầu: khách đồ ăn
+  await expect.poll(async () => (await spoken(page)).some((t) => t.startsWith(`It's ${w}! Can I have `))).toBe(true);
+  await expect(page.locator(`.sh-wish-item[data-food="${item}"]`)).toBeVisible();
+  const tray = await page.locator('.jb-tray [data-item]').evaluateAll((els) => els.map((e) => e.dataset.item));
+  expect(tray).toHaveLength(2);
+  expect(tray).toContain(item);
+  await tapTray(page, tray.find((x) => x !== item));
+  await expect.poll(async () => (await spoken(page)).some((t) => /^(That's an?|Those are) \w+\. It's \w+!$/.test(t) && t.endsWith(`It's ${w}!`))).toBe(true);
+  await expect(play(page)).toHaveAttribute('data-state', 'order');
+  await expect(page.locator('.jb-tray [data-item]')).toHaveCount(2);
+  await tapTray(page, item);
+  await playShopUntil(page, /^thanks$/);
+  await expect(page.locator(`.sh-customer .sh-worn[data-item="${item}"]`)).toHaveCount(1);
+  await expect.poll(async () => (await spoken(page)).includes("Thank you! Now I'm ready!")).toBe(true);
+  await playShopUntil(page, /^done$/);
+  await done(page);
+  expect((await page.evaluate(() => window.kidEnglish.settings.shopGame)).seen[item]).toBe(1);
+});
+
+test('Bán hàng mức 2: khách chỉ nói thời tiết "It\'s …! Can you help me?", kệ 3 món không sáng; đưa sai → "That\'s … . It\'s …!", tính nhầm, món về kệ (JOBS4-24); đúng → trả 1 xu + đưa túi như ca thường; đã nhầm thì không ghi Weather', async ({ page }) => {
+  await openJob(page, 'shop', 2);
+  await toWeatherCase(page, /^order$/);
+  const w = await shopWeather(page);
+  const item = WEAR_OF[w];
+  await expect.poll(async () => (await spoken(page)).includes(`It's ${w}! Can you help me?`)).toBe(true);
+  await expect(page.locator('.sh-wish')).toBeHidden();
+  const tray = await page.locator('.jb-tray [data-item]').evaluateAll((els) => els.map((e) => e.dataset.item));
+  expect(tray).toHaveLength(3);
+  await expect(page.locator('.jb-tray .dr-item.hint')).toHaveCount(0);
+  const wrong = tray.find((x) => x !== item);
+  await tapTray(page, wrong);
+  await expect.poll(async () => (await spoken(page)).some((t) => t.endsWith(`. It's ${w}!`) && /^(That's|Those are)/.test(t))).toBe(true);
+  await expect(page.locator(`.jb-tray [data-item="${wrong}"]`)).toHaveCount(1);
+  await expect(play(page)).toHaveAttribute('data-state', 'order');
+  await tapTray(page, item);
+  await stateIs(page, 'coins');
+  await expect(page.locator('.sh-coin')).toHaveCount(1);
+  await playShopUntil(page, /^give$/);
+  await page.locator('.sh-customer').click();
+  await expect.poll(async () => (await spoken(page)).includes("Thank you! Now I'm ready!")).toBe(true);
+  expect(await wordCount(page, w)).toBe(0);
+});
+
+test('Bán hàng mức 3: "Look outside! What\'s the weather?" + 3 thẻ, kệ chưa hiện; thẻ sai → "That\'s … . Look outside!"; đúng → thẻ dán lên cửa sổ, "Yes! It\'s …!" + "What do I need?"; chọn sai món chỉ nhắc bước 2 (JOBS4-35); ra nền → quay lại bước chọn món', async ({ page }) => {
+  await openJob(page, 'shop', 3);
+  await toWeatherCase(page, /^wcard$/);
+  const w = await shopWeather(page);
+  const item = WEAR_OF[w];
+  await expect(page.locator('.sh-wcard')).toHaveCount(3);
+  await expect(page.locator('.jb-tray [data-item]')).toHaveCount(0);
+  await expect.poll(async () => (await spoken(page)).includes("Look outside! What's the weather?")).toBe(true);
+  await page.locator(`.sh-wcard:not([data-weather="${w}"])`).first().click();
+  await expect.poll(async () => (await spoken(page)).some((t) => /^That's \w+\. Look outside!$/.test(t))).toBe(true);
+  await page.locator(`.sh-wcard[data-weather="${w}"]`).click();
+  await stateIs(page, 'order');
+  await expect(page.locator('.sh-window-card')).toHaveCount(1);
+  await expect(page.locator('.sh-wcards')).toBeHidden();
+  await expect(page.locator('.jb-tray [data-item]')).toHaveCount(4);
+  await expect.poll(async () => (await spoken(page)).includes(`Yes! It's ${w}!`)).toBe(true);
+  await expect.poll(async () => (await spoken(page)).includes('What do I need?')).toBe(true);
+  const asks = (await spoken(page)).filter((t) => t === "Look outside! What's the weather?").length;
+  await tapTray(page, (await page.locator('.jb-tray [data-item]').evaluateAll((els) => els.map((e) => e.dataset.item))).find((x) => x !== item));
+  await expect.poll(async () => (await spoken(page)).some((t) => t.endsWith(`. It's ${w}!`) && /^(That's|Those are)/.test(t))).toBe(true);
+  await expect(play(page)).toHaveAttribute('data-state', 'order');
+  await setVisible(page, 'hidden');
+  await setVisible(page, 'visible');
+  await page.locator('.resume-overlay .start-btn').click();
+  await stateIs(page, 'order');
+  await expect(page.locator('.sh-wcards')).toBeHidden();
+  await expect(page.locator('.sh-window-card')).toHaveCount(1);
+  await expect(page.locator('.jb-tray [data-item]')).toHaveCount(4);
+  expect((await spoken(page)).filter((t) => t === "Look outside! What's the weather?").length).toBe(asks);
+  expect(await wordCount(page, w)).toBe(0);
+  await tapTray(page, item);
+  await playShopUntil(page, /^done$/);
+  await done(page);
+});
+
+test('Bán hàng mức 3: chọn đúng thẻ ngay lần đầu → ghi từ Weather "đã gặp" một lần', async ({ page }) => {
+  await openJob(page, 'shop', 3);
+  await toWeatherCase(page, /^wcard$/);
+  const w = await shopWeather(page);
+  await page.locator(`.sh-wcard[data-weather="${w}"]`).click();
+  await stateIs(page, 'order');
+  await expect.poll(() => wordCount(page, w)).toBe(1);
+});
