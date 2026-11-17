@@ -194,10 +194,10 @@ test('MATH-02/03/04: bài mẫu thêm một lần; xóa rồi mở lại không 
   await fakeSpeech(page);
   await startApp(page);
   const mathTitles = () => page.evaluate(async () => (await window.kidEnglish.db.getAll('lessons')).filter((l) => l.kind === 'math').map((l) => l.title).sort());
-  expect(await mathTitles()).toEqual(['Big and small', 'Heavy and light', 'Long and short', 'More or fewer', 'Small, medium, big', 'Tall and short']);
+  expect(await mathTitles()).toEqual(['Big and small', 'Heavy and light', 'Long and short', 'More or fewer', 'Review', 'Small, medium, big', 'Tall and short']);
   // Danh sách bài Toán xếp theo mã bài L1 → L6.
   await page.getByRole('button', { name: 'Toán' }).click();
-  await expect(page.locator('.lesson-card .lesson-title')).toHaveText(['Big and small', 'Tall and short', 'Long and short', 'More or fewer', 'Small, medium, big', 'Heavy and light']);
+  await expect(page.locator('.lesson-card .lesson-title')).toHaveText(['Big and small', 'Tall and short', 'Long and short', 'More or fewer', 'Small, medium, big', 'Heavy and light', 'Review']);
   await page.evaluate(async () => {
     const db = window.kidEnglish.db;
     const l1 = (await db.getAll('lessons')).find((l) => l.builtin === 'math-l1');
@@ -207,7 +207,7 @@ test('MATH-02/03/04: bài mẫu thêm một lần; xóa rồi mở lại không 
   await page.reload();
   await page.getByRole('button', { name: 'Bắt đầu' }).click();
   await page.getByRole('button', { name: 'Toán' }).waitFor();
-  expect(await mathTitles()).toEqual(['Big and small', 'Heavy and light', 'Long and short', 'More or fewer', 'Small, medium, big', 'Tall and short'].filter((t) => t !== 'Big and small'));
+  expect(await mathTitles()).toEqual(['Big and small', 'Heavy and light', 'Long and short', 'More or fewer', 'Review', 'Small, medium, big', 'Tall and short'].filter((t) => t !== 'Big and small'));
   await openParent(page);
   await page.getByRole('button', { name: 'Quản lý bài' }).click();
   // "Thêm lại bài mẫu" chỉ thêm bài mẫu còn thiếu (ở đây chỉ bài Toán vừa xóa), rồi vẽ lại trang.
@@ -220,7 +220,7 @@ test('MATH-02/03/04: bài mẫu thêm một lần; xóa rồi mở lại không 
   await page.getByRole('button', { name: 'Thêm lại bài mẫu' }).click();
   await expect(page.getByText('Đã có đủ bài mẫu.')).toBeVisible();
   expect(await total()).toBe(before + 1); // bấm lại: không tạo bản trùng
-  expect(await mathTitles()).toEqual(['Big and small', 'Heavy and light', 'Long and short', 'More or fewer', 'Small, medium, big', 'Tall and short']);
+  expect(await mathTitles()).toEqual(['Big and small', 'Heavy and light', 'Long and short', 'More or fewer', 'Review', 'Small, medium, big', 'Tall and short']);
   // Góc bố mẹ: trang bài Toán có sao cũ (gắn với mã bài), mức, nút đặt mức.
   await page.locator('.lesson-row', { hasText: 'Big and small' }).click();
   await expect(page.getByText('⭐⭐⭐')).toBeVisible();
@@ -358,4 +358,53 @@ test('ảnh Toán: bố mẹ thêm ảnh đồ vật → bài dùng ảnh thay e
   await expect(page.locator('.mt-admin-pics img')).toHaveCount(6);
   await expect(page.locator('.mt-admin-pics .mt-admin-emoji')).toHaveCount(10);
   await expect(page.getByText(/Ảnh lưới — 10 đồ vật chưa có ảnh/)).toBeVisible();
+});
+
+// ---------- L7 Ôn tập (mục 4.8) ----------
+/** Trả lời đúng câu đang hỏi, mọi loại câu (Nhỏ – vừa – to thì kéo cả 3 đồ vào đúng ô). */
+async function answerAny(page) {
+  const q = question(page);
+  if ((await q.getAttribute('data-type')) !== 'order') return answerRight(page);
+  await q.evaluate((el) => { el.dataset.old = '1'; });
+  for (const rank of [0, 1, 2]) {
+    await drag(page, q.locator(`.mt-tray [data-rank="${rank}"]`), q.locator(`.mt-slot[data-slot="${rank}"]`));
+    await expect(q.locator(`.mt-slot[data-slot="${rank}"] [data-rank="${rank}"]`)).toHaveCount(1);
+  }
+  await expect(page.locator('.mt-question[data-old]')).toHaveCount(0, { timeout: 10000 });
+}
+
+test('MATH-35: Ôn tập mức 1 — không có phần xem mẫu, Bông "Let\'s review! Look and tap!"; 6 câu trộn các bài (có nhiều – ít, xếp cỡ, nặng – nhẹ); đúng hết → Hoan hô, +2⭐, lên mức 2', async ({ page }) => {
+  await openMath(page, 'Review');
+  await expect(question(page)).toBeVisible();
+  await expect(page.locator('.mt-question.demo')).toHaveCount(0);
+  await expect.poll(() => spoken(page)).toContain("Let's review! Look and tap!");
+  const types = [];
+  for (let i = 0; i < 6; i++) {
+    await expect(question(page)).toBeVisible();
+    types.push(await question(page).getAttribute('data-type'));
+    await answerAny(page);
+  }
+  await expect(page.locator('.done-btn')).toBeVisible({ timeout: 15000 });
+  for (const t of ['big', 'more', 'order', 'heavy']) expect(types).toContain(t);
+  expect(types.filter((t) => t === 'tall' || t === 'long')).toHaveLength(1);
+  const p = await progressOf(page, 'math:l7');
+  expect(p.mastery).toBe(2);
+  expect(p.level).toBe(2);
+});
+
+test('MATH-36: Ôn tập — thoát giữa lượt → Học tiếp vào đúng câu, không nói lại câu mở đầu, câu vẫn là câu đã sinh', async ({ page }) => {
+  await openMath(page, 'Review');
+  await expect(question(page)).toBeVisible();
+  await answerAny(page);
+  await answerAny(page);
+  await expect.poll(async () => (await lessonRecord(page, 'Review')).resume.index).toBe(2);
+  const qs = (await lessonRecord(page, 'Review')).resume.questions;
+  const intro = (await spoken(page)).filter((t) => t === "Let's review! Look and tap!").length;
+  await page.getByRole('button', { name: 'Về màn hình chính' }).click();
+  await page.getByRole('button', { name: 'Toán' }).click();
+  await page.getByRole('button', { name: 'Review' }).click();
+  await page.getByRole('button', { name: 'Học tiếp' }).click();
+  await expect(question(page)).toHaveAttribute('data-type', qs[2].type);
+  expect((await spoken(page)).filter((t) => t === "Let's review! Look and tap!").length).toBe(intro);
+  expect((await lessonRecord(page, 'Review')).resume.questions).toEqual(qs);
 });

@@ -1,7 +1,7 @@
 # SPEC — Mục mới "🧮 Toán" (Math): so sánh to – nhỏ, nhiều – ít bằng tiếng Anh
 
 > Phiên bản spec: **draft3** · Ngày: 2026-11-10 · Dựa trên app 0.65.4
-> Trạng thái: **đã làm đợt M-a trong app 0.66.0** (nút 🧮, L1 To – nhỏ, L4 Nhiều – ít, sao, mức, Góc bố mẹ) và **đợt M-b trong app 0.67.0** (L2 Cao – thấp, L3 Dài – ngắn, L5 Nhỏ – vừa – to, L6 Nặng – nhẹ).
+> Trạng thái: **đã làm đợt M-a trong app 0.66.0** (nút 🧮, L1 To – nhỏ, L4 Nhiều – ít, sao, mức, Góc bố mẹ) và **đợt M-b trong app 0.67.0** (L2 Cao – thấp, L3 Dài – ngắn, L5 Nhỏ – vừa – to, L6 Nặng – nhẹ); **bài L7 Ôn tập trong app 0.81.0** (mục 4.8, bố mẹ yêu cầu 2026-11-17).
 >
 > **Ghi chú khi code (0.66.0):**
 > - Mã bài có tiền tố như các loại bài khác: `math-l1`, `math-l4`. Khóa tiến độ vẫn là `math:l1`, `math:l4` (chữ thường, vì khóa tiến độ được chuẩn hóa).
@@ -81,7 +81,7 @@ Mục mới dùng lại:
 - Cộng, trừ, đo bằng đơn vị.
 - Bố mẹ tự soạn bài.
 - **Nói theo bằng mic**: bé chỉ nghe, nhìn, chạm. Sau này có thể thêm nút nói tự nguyện, không tính sao.
-- **Đưa vào 🎲 Trò chơi tổng hợp / ⭐ Ôn tập**: để sau, khi đã có dữ liệu dùng thật.
+- **Đưa vào 🎲 Trò chơi tổng hợp / ⭐ Ôn tập** (mục Ôn tập từ vựng chung của app): để sau, khi đã có dữ liệu dùng thật. Bài **L7 Ôn tập** (mục 4.8) là một bài *bên trong* mục Toán, không phải phần này.
 
 ## 2. Vị trí trong app
 
@@ -165,6 +165,7 @@ Mỗi bài **khoảng** 4 phút. Đây là mục tiêu khi soạn, **không ph�
 | L4 | **🍓 More or fewer** / Nhiều hay ít | Hai đĩa đồ ăn, bé chạm đếm được. Chạm đĩa nhiều / ít hơn, hoặc nút *The same* |
 | L5 | **🪆 Small, medium, big** / Nhỏ, vừa, to | **Kéo** 3 đồ vào 3 ô từ nhỏ đến to |
 | L6 | **⚖️ Heavy and light** / Nặng và nhẹ | Bập bênh: bên nặng chúi xuống. Chạm đồ nặng / nhẹ |
+| L7 | **🌟 Review** / Ôn tập | 6 câu trộn từ L1–L6 (mục 4.8) |
 
 ### 4.1 Câu hỏi và câu mẫu theo mức (L1, L2, L3, L6)
 
@@ -231,6 +232,20 @@ Mỗi bài **khoảng** 4 phút. Đây là mục tiêu khi soạn, **không ph�
 - Bông giới thiệu trước (*"The elephant is heavy. The balloon is light."*), bé quan sát bập bênh dừng hẳn thì Bông mới hỏi.
 - **Chỉ dùng cặp rõ ràng:** một đồ rất nặng (voi, dưa hấu, bí ngô) với một đồ rất nhẹ (bóng bay, chiếc lá, quả nho, quả dâu). Bỏ cặp phụ thuộc loại đồ (xe tải – quả bóng).
 - Đổi bên ngẫu nhiên: đồ nặng có lúc bên trái, có lúc bên phải; bập bênh luôn nghiêng đúng bên nặng.
+
+### 4.8 L7 — Ôn tập (0.81.0)
+- **Mục đích:** ôn lại các bài L1–L6 trong một lượt. Bài thứ 7 trong danh sách Toán (mã `math-l7`, khóa tiến độ `math:l7`, `skill: "review"`), thẻ bài 🌟 với một đồ của mỗi bài (🍎 🌳 ✏️ 🍓 🧸 🐘).
+- **Không có phần xem mẫu:** bé đã xem mẫu ở từng bài. Lượt mới: Bông nói *"Let's review! Look and tap!"* rồi vào câu 1. Học tiếp thì vào thẳng câu đang dở, không nói lại câu mở đầu.
+- **6 câu, mỗi câu sinh bằng đúng bộ sinh của bài nguồn** (`size`, `count`, `order`, `weight`), cùng hình vẽ, câu hỏi, câu khen / câu sai / hiện đáp án như ở bài nguồn. Câu lưu thêm `part` (mã bài nguồn).
+  - Mỗi lượt luôn có: **To – nhỏ**, **Nhiều – ít**, **Nhỏ – vừa – to** (kéo), **Nặng – nhẹ**;
+  - **một** trong Cao – thấp / Dài – ngắn (ngẫu nhiên): *short* chỉ một nghĩa trong một lượt (mục 4.1);
+  - **một câu thêm** của To – nhỏ / Nhiều – ít / Nặng – nhẹ (ngẫu nhiên), khác đồ với câu cùng bài.
+- **Thứ tự:** xáo; hai câu liền nhau không cùng bài. Đáp án trái / phải gần đều (≤ 4 / 6, ≤ 3 câu liền, như mục 4.7). *The same* tối đa 1 câu.
+- **Mức:** của bài Ôn tập (`math:l7`, 1–3), dùng chung cho mọi câu: câu nào cũng theo bảng mức của bài nguồn ở mức đó (ví dụ mức 3: *bigger*, *the same*, *heavier*…). Không lấy mức của từng bài L1–L6.
+- **Sao, mức, thống kê:** như mọi bài (mục 6) — +1 / +2 sao, tối đa +2 / ngày, lên mức khi đủ sao và ≥ 4/6 đúng ngay. Kiểu câu của bài là hợp kiểu câu của L1–L6 ở mức đó; kiểu hay sai (mục 6.3) được hỏi ở **một** câu (nếu bài nguồn của câu đó có kiểu này).
+- **Đồ vật:** lấy theo cấu hình L1–L6 viết sẵn trong code (`reviewParts()`), không phụ thuộc bài L1–L6 còn trên máy hay đã bị xóa.
+- **Bài mẫu:** thêm như M-b (mục 7.4): máy đã có L1–L6 chỉ nhận thêm L7; xóa L7 thì không tự thêm lại; "Thêm lại bài mẫu" thêm lại nếu thiếu.
+- **Sao lưu:** bài L7 có `config.parts` thay cho `config.itemIds`; từ 0.81.0 `readBackup` nhận cả hai. App bản cũ (≤ 0.80.x) báo "file hỏng" khi khôi phục file sao lưu có L7 — cập nhật app trên máy kia trước (giống mục 7.5).
 
 ### 4.7 Sinh câu hỏi (chung)
 - **Mỗi kiểu bài một bộ sinh riêng:**
@@ -400,6 +415,7 @@ Làm giống bài Số đếm (`samples.js`): danh sách `mathLessonsSeeded` g�
 |---|---|---|
 | **M-a** | Nút 🧮 (10 nút ở màn hình chính) + danh sách bài · khung lượt chơi chung (xem mẫu, 6 câu, ▶, chờ, hiện đáp án, Học tiếp) · **L1 To – nhỏ** (bộ sinh `size`) · **L4 Nhiều – ít** (bộ sinh `count`) · sao, mức, thống kê kiểu câu · Góc bố mẹ | 0.66.0 |
 | **M-b** | L2 Cao – thấp, L3 Dài – ngắn (dùng `size`, thêm SVG) · L5 Nhỏ – vừa – to (`order`) · L6 Nặng – nhẹ (`weight`) | 0.67.0 |
+| **M-c** | L7 Ôn tập (mục 4.8): trộn câu L1–L6, không xem mẫu | 0.81.0 |
 
 ## 10. Test
 
@@ -455,10 +471,19 @@ Làm giống bài Số đếm (`samples.js`): danh sách `mathLessonsSeeded` g�
 | MATH-31 | Bông không đè đồ | iPad ngang / dọc, đo khung chữ nhật |
 | MATH-32 | Giảm chuyển động | Không nhún / lắc / quay; sai = viền cam; không nhấp nháy |
 
+**Ôn tập (L7, 0.81.0)**
+
+| ID | Kiểm tra | Mong đợi |
+|---|---|---|
+| MATH-33 | 500 lượt mỗi mức | Có To – nhỏ, Nhiều – ít, Nhỏ – vừa – to, Nặng – nhẹ; đúng một trong Cao – thấp / Dài – ngắn (cả hai đều gặp); hai câu liền nhau khác bài; kiểu câu đúng mức của bài nguồn; trái / phải cân bằng; *the same* ≤ 1 |
+| MATH-34 | Kiểu câu, kiểu hay sai | Hợp kiểu L1–L6 theo mức; kiểu hay sai có mặt; thẻ bài 6 đồ khác nhau |
+| MATH-35 | Lượt chơi mức 1 | Không có xem mẫu, *"Let's review! Look and tap!"*; trả lời được cả câu kéo; xong → +2⭐, lên mức 2 |
+| MATH-36 | Thoát giữa lượt | Học tiếp vào đúng câu, câu đã sinh giữ nguyên, không nói lại câu mở đầu |
+
 ## 11. Đã chốt
 
 1. **Tên nút:** 🧮 Math / Toán (2026-11-10).
 2. **Nhiều – ít:** *more / fewer / the same* (đồ luôn đếm được), không dùng *less*. Bông làm mẫu *fewer* nhiều lần, không bắt bé nói.
 3. **Không có nói theo bằng mic** ở M-a / M-b.
-4. **Chưa đưa vào Trò chơi tổng hợp / Ôn tập.** Tính lại sau khi có dữ liệu dùng thật.
+4. **Chưa đưa vào Trò chơi tổng hợp / Ôn tập** (mục chung của app). Tính lại sau khi có dữ liệu dùng thật. Trong mục Toán đã có bài **L7 Ôn tập** (0.81.0, mục 4.8).
 5. **L5** dùng bộ từ *small – medium – big* (draft3).

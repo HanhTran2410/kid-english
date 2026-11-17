@@ -1,10 +1,12 @@
 // Chạy một bài Toán (SPEC-math mục 3): xem Bông làm mẫu (3 lượt) → bé chơi 6 câu → Hoan hô.
+// Bài Ôn tập (mục 4.8): không có phần xem mẫu — Bông nói câu mở đầu rồi vào 6 câu trộn.
 // Học tiếp: lượt đang dở (6 câu đã sinh, câu đang ở, kết quả) lưu vào `lesson.resume` sau mỗi lần đổi trạng thái.
 
 import { isAbort } from '../timing.js';
 import { getProgress, updateProgress } from '../db.js';
 import {
   isMathLesson, mathKey, makeMathRound, applyMathRound, addMathType, weakType, typesFor, clampLevel, DEMO_STEPS,
+  isReviewLesson, REVIEW_INTRO,
 } from '../math.js';
 import { activityLayout } from './layout.js';
 import { Teacher } from './teacher.js';
@@ -43,12 +45,15 @@ export function mathLessonScreen(app, { lessonId, start = 'begin', continueDirec
 
     // Lượt đang dở (Học tiếp, hoặc quay lại từ nền); "Học lại" thì sinh lượt mới ở mức hiện tại.
     let st = (start === 'resume' || continueDirectly) && lesson.resume?.stage === 'math' ? lesson.resume : null;
+    const review = isReviewLesson(lesson);
+    const demoSteps = review ? 0 : DEMO_STEPS;
+    const fresh = !st;
     if (!st) {
       const level = clampLevel(rec.level);
       const weak = weakType(rec, typesFor(lesson, level));
-      st = { stage: 'math', phase: 'demo', demoIndex: 0, index: 0, level, questions: makeMathRound(lesson, level, { weak }), results: [] };
+      st = { stage: 'math', phase: demoSteps ? 'demo' : 'play', demoIndex: 0, index: 0, level, questions: makeMathRound(lesson, level, { weak }), results: [] };
     }
-    const total = DEMO_STEPS + st.questions.length;
+    const total = demoSteps + st.questions.length;
     const save = async () => {
       const done = st.demoIndex + st.index;
       lesson.resume = { ...st, savedAt: Date.now(), progress: done / total };
@@ -69,8 +74,14 @@ export function mathLessonScreen(app, { lessonId, start = 'begin', continueDirec
       await runSkippable(ctx, signal, () => runDemo(ctx, st.demoIndex));
       layout.nextBtn.classList.remove('mt-next-hint');
       st.demoIndex++;
-      if (st.demoIndex >= DEMO_STEPS) st.phase = 'play';
+      if (st.demoIndex >= demoSteps) st.phase = 'play';
       await save();
+    }
+
+    // Bài Ôn tập: câu mở đầu (lượt mới; Học tiếp thì vào thẳng câu đang dở).
+    if (review && fresh) {
+      layout.stage.dataset.stage = 'math-play';
+      await teacher.say(REVIEW_INTRO.en);
     }
 
     // B. Bé chơi 6 câu.

@@ -184,8 +184,9 @@ export async function readBackup(input, { JSZip = globalThis.JSZip } = {}) {
   const lessons = [];
   for (const file of zip.file(/^lessons\/[^/]+\.json$/)) {
     const lesson = await readJson(file.name);
-    // Bài Toán (SPEC-math mục 7.1) chỉ có cấu hình, không có danh sách từ / câu / số.
-    const isMath = lesson?.kind === 'math' && typeof lesson.skill === 'string' && Array.isArray(lesson.config?.itemIds);
+    // Bài Toán (SPEC-math mục 7.1) chỉ có cấu hình, không có danh sách từ / câu / số; bài Ôn tập (4.8) có `parts` thay `itemIds`.
+    const isMath = lesson?.kind === 'math' && typeof lesson.skill === 'string'
+      && (Array.isArray(lesson.config?.itemIds) || Array.isArray(lesson.config?.parts));
     if (!lesson?.id || !lesson.title || !(isMath || Array.isArray(lesson.words) || Array.isArray(lesson.phrases) || Array.isArray(lesson.numbers) || Array.isArray(lesson.letters) || Array.isArray(lesson.turns) || Array.isArray(lesson.slots) || Array.isArray(lesson.actions) || Array.isArray(lesson.pairs))) {
       throw new BackupError(`File sao lưu bị hỏng (${file.name}).`);
     }

@@ -30,10 +30,10 @@ const longestRun = (list) => list.reduce((acc, x, i) => {
 const DAY = 24 * 60 * 60 * 1000;
 const NOW = Date.UTC(2026, 10, 10, 3);
 
-test('MATH-07: bài có sẵn L1–L6; mọi itemIds có trong MATH_ITEMS và đúng `uses`', () => {
-  assert.deepEqual(builtInMathLessons().map((l) => l.builtin), ['math-l1', 'math-l2', 'math-l3', 'math-l4', 'math-l5', 'math-l6']);
-  assert.deepEqual(builtInMathLessons().map(useOf), ['size', 'tall', 'long', 'count', 'order', 'weight']);
-  for (const lesson of builtInMathLessons()) {
+test('MATH-07: bài có sẵn L1–L6 + L7 Ôn tập; mọi itemIds có trong MATH_ITEMS và đúng `uses`', () => {
+  assert.deepEqual(builtInMathLessons().map((l) => l.builtin), ['math-l1', 'math-l2', 'math-l3', 'math-l4', 'math-l5', 'math-l6', 'math-l7']);
+  assert.deepEqual(builtInMathLessons().map(useOf), ['size', 'tall', 'long', 'count', 'order', 'weight', 'review']);
+  for (const lesson of builtInMathLessons().slice(0, 6)) {
     assert.ok(isMathLesson(lesson));
     for (const id of lesson.config.itemIds) {
       assert.ok(MATH_ITEM.has(id), id);
@@ -243,6 +243,9 @@ test('MATH-06: sao lưu → khôi phục (gộp và thay toàn bộ) giữ nguy�
   const src = await openDatabase('math-src', new IDBFactory());
   const lesson = { ...createLessonRecord(L4), id: 'm4', resume: null };
   await src.put('lessons', lesson);
+  // Bài Ôn tập (L7) không có itemIds mà có parts — file sao lưu vẫn hợp lệ (lỗi gặp ở 0.81.0 trước khi sửa).
+  const review = builtInMathLessons()[6];
+  await src.put('lessons', { ...createLessonRecord(review), id: 'm7', resume: null });
   await src.put('progress', { ...emptyProgress('math:l4'), mastery: 3, level: 2, types: { more: { asked: 4, first: 3, wrong: 1 } } });
   const zip = await createBackup(src, { JSZip, now: NOW });
   for (const mode of ['merge', 'replace']) {
@@ -251,6 +254,7 @@ test('MATH-06: sao lưu → khôi phục (gộp và thay toàn bộ) giữ nguy�
     const got = await dst.get('lessons', 'm4');
     assert.equal(got.kind, 'math');
     assert.deepEqual(got.config, L4.config);
+    assert.deepEqual((await dst.get('lessons', 'm7')).config, review.config);
     const p = await dst.get('progress', 'math:l4');
     assert.equal(p.mastery, 3);
     assert.equal(p.level, 2);
@@ -365,4 +369,55 @@ test('ảnh Toán: 16 đồ dùng emoji có mô tả vẽ (một ảnh lưới 4
   for (const lesson of builtInMathLessons()) {
     for (const it of lessonItems(lesson)) if (!it.svg) assert.ok(MATH_PICTURE_ITEMS.some((p) => p.id === it.id), it.id);
   }
+});
+
+// ---------- L7 Ôn tập (mục 4.8) ----------
+const L7 = builtInMathLessons()[6];
+for (const level of [1, 2, 3]) {
+  test(`MATH-33: Ôn tập mức ${level} — 500 lượt: đủ To – nhỏ / Nhiều – ít / Nhỏ – vừa – to / Nặng – nhẹ, đúng một trong Cao – thấp / Dài – ngắn; hai câu liền nhau khác bài; kiểu câu đúng mức của bài nguồn`, () => {
+    const rng = seeded(300 + level);
+    const parts = new Map(builtInMathLessons().slice(0, 6).map((l) => [l.builtin, l]));
+    let tall = 0;
+    let long = 0;
+    for (let run = 0; run < 500; run++) {
+      const qs = makeMathRound(L7, level, { rng });
+      assert.equal(qs.length, 6);
+      const ids = qs.map((q) => q.part);
+      for (const id of ['math-l1', 'math-l4', 'math-l5', 'math-l6']) assert.ok(ids.includes(id), id);
+      const dims = ids.filter((id) => id === 'math-l2' || id === 'math-l3');
+      assert.equal(new Set(dims).size, 1, '"short" chỉ một nghĩa trong lượt');
+      assert.equal(dims.length, 1);
+      if (dims[0] === 'math-l2') tall++;
+      else long++;
+      assert.ok(ids.every((id, i) => !i || id !== ids[i - 1]), 'hai câu liền nhau khác bài');
+      assert.ok(qs.filter((q) => q.type === 'same').length <= 1);
+      for (const q of qs) {
+        assert.ok(typesFor(parts.get(q.part), level).includes(q.type), `${q.part} ${q.type}`);
+        assert.equal(q.level, level);
+        assert.ok(askLine(q).en && answerLine(q).en);
+      }
+      const sides = qs.filter((q) => q.answer === 'left' || q.answer === 'right').map((q) => q.answer);
+      assert.ok(sides.filter((x) => x === 'left').length <= 4 && sides.filter((x) => x === 'right').length <= 4);
+      assert.ok(longestRun(sides) <= 3);
+      // Hai câu cùng bài (câu thêm) không cùng đồ.
+      const twice = ids.find((id, i) => ids.indexOf(id) !== i);
+      if (twice) {
+        const [a, b] = qs.filter((q) => q.part === twice);
+        if (twice !== 'math-l6') assert.notEqual(a.item, b.item);
+      }
+    }
+    assert.ok(tall > 150 && long > 150, 'Cao – thấp và Dài – ngắn xuất hiện gần đều');
+  });
+}
+
+test('MATH-34: Ôn tập — kiểu câu là hợp các bài L1–L6 theo mức; kiểu hay sai được hỏi ở một câu; thẻ bài có một đồ mỗi bài', () => {
+  assert.deepEqual(typesFor(L7, 1).sort(), ['big', 'heavy', 'long', 'more', 'order', 'tall']);
+  assert.ok(typesFor(L7, 3).includes('same'));
+  const rng = seeded(77);
+  for (let run = 0; run < 200; run++) {
+    assert.ok(makeMathRound(L7, 2, { rng, weak: 'light' }).some((q) => q.type === 'light'));
+    assert.equal(makeMathRound(L7, 3, { rng, weak: 'same' }).filter((q) => q.type === 'same').length, 1);
+  }
+  assert.equal(lessonItems(L7).length, 6);
+  assert.equal(mathKey(L7), 'math:l7');
 });

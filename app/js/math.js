@@ -1,5 +1,5 @@
 // Mục "Toán" (SPEC-math.md): so sánh to – nhỏ, cao – thấp, dài – ngắn, nhiều – ít, nặng – nhẹ, xếp từ nhỏ đến to
-// cho bé 3–5 tuổi. Dữ liệu bài, đồ vật, bộ sinh câu hỏi, câu Bông nói, sao và mức.
+// cho bé 3–5 tuổi; bài Ôn tập (L7) trộn câu của các bài trên. Dữ liệu bài, đồ vật, bộ sinh câu hỏi, câu Bông nói, sao và mức.
 // Các hàm đều thuần (không phụ thuộc DOM), test được trong Node.
 
 import { dayKey } from './text.js';
@@ -102,10 +102,14 @@ const lesson = (builtin, title, titleVi, emoji, skill, config) => ({
 });
 
 /**
- * Bài có sẵn (M-a: L1, L4; M-b: L2, L3, L5, L6). `builtin` là mã cố định (có tiền tố như các loại bài khác) để biết bài
- * nào đã thêm và gắn tiến độ.
+ * Bài có sẵn (M-a: L1, L4; M-b: L2, L3, L5, L6; L7 Ôn tập). `builtin` là mã cố định (có tiền tố như các loại bài khác)
+ * để biết bài nào đã thêm và gắn tiến độ.
  */
 export function builtInMathLessons() {
+  return [...partLessons(), lesson('math-l7', 'Review', 'Ôn tập', '🌟', 'review', { parts: REVIEW_PARTS })];
+}
+/** Các bài L1–L6 (nguồn câu của bài Ôn tập). */
+function partLessons() {
   return [
     lesson('math-l1', 'Big and small', 'To và nhỏ', '🍎', 'size', { dimension: 'size', itemIds: ['apple', 'ball', 'teddy', 'star', 'duck', 'car'] }),
     lesson('math-l2', 'Tall and short', 'Cao và thấp', '🌳', 'size', { dimension: 'tall', itemIds: ['tree', 'flower', 'candle'] }),
@@ -117,6 +121,10 @@ export function builtInMathLessons() {
     }),
   ];
 }
+const REVIEW_PARTS = ['math-l1', 'math-l2', 'math-l3', 'math-l4', 'math-l5', 'math-l6'];
+/** Bài nguồn của bài Ôn tập (luôn lấy cấu hình trong code — bài đã lưu trên máy có thể cũ). */
+export const reviewParts = () => partLessons();
+export const isReviewLesson = (lesson) => lesson?.skill === 'review';
 
 export const isMathLesson = (lesson) => lesson?.kind === MATH_KIND;
 
@@ -129,6 +137,14 @@ export const useOf = (lesson) => (lesson.skill === 'size' ? lesson.config?.dimen
 
 /** Đồ vật của bài dùng được cho kiểu bài `use` (mặc định: kiểu của bài). */
 export function lessonItems(lesson, use = useOf(lesson)) {
+  if (use === 'review') { // thẻ bài: mỗi bài nguồn một đồ, không trùng
+    const out = [];
+    for (const part of reviewParts()) {
+      const items = lessonItems(part);
+      out.push(items.find((x) => !out.includes(x)) ?? items[0]);
+    }
+    return out;
+  }
   return (lesson.config?.itemIds ?? []).map((id) => MATH_ITEM.get(id)).filter((x) => x?.uses.includes(use));
 }
 
@@ -157,7 +173,9 @@ export const SCATTER_CELLS = 12; // mức 3: đồ rải trong lưới 4 × 3 ô
 
 export const clampLevel = (level) => Math.min(MAX_LEVEL, Math.max(1, Math.round(Number(level) || 1)));
 /** Các kiểu câu của bài ở mức `level`. */
-export const typesFor = (lesson, level) => TYPES[useOf(lesson)][clampLevel(level)];
+export const typesFor = (lesson, level) => (useOf(lesson) === 'review'
+  ? [...new Set(reviewParts().flatMap((part) => typesFor(part, level)))]
+  : TYPES[useOf(lesson)][clampLevel(level)]);
 
 function shuffle(list, rng) {
   const a = [...list];
@@ -304,6 +322,7 @@ const pairKey = (q) => (q.type === 'order' ? `${q.item}|${q.tray}`
  * @param {{ rng?: () => number, weak?: string|null }} [options] weak: kiểu câu bé hay sai (mục 6.3)
  */
 export function makeMathRound(lesson, level, { rng = Math.random, weak = null } = {}) {
+  if (useOf(lesson) === 'review') return makeReviewRound(level, { rng, weak, n: lesson.rounds ?? MATH_ROUNDS });
   const lv = clampLevel(level);
   const n = lesson.rounds ?? MATH_ROUNDS;
   const use = useOf(lesson);
@@ -323,6 +342,59 @@ export function makeMathRound(lesson, level, { rng = Math.random, weak = null } 
     }
     used.set(pairKey(q), (used.get(pairKey(q)) ?? 0) + 1);
     return q;
+  });
+}
+
+/** Bộ sinh câu của một bài nguồn (L1–L6). */
+const makerFor = (part, rng) => {
+  const use = useOf(part);
+  return use === 'count' ? countQuestion : use === 'order' ? orderQuestion : use === 'weight' ? weightQuestion(part, rng) : sizeQuestion(use);
+};
+
+/**
+ * Bài Ôn tập (L7, mục 4.8): 6 câu trộn từ các bài L1–L6, mỗi câu sinh bằng đúng bộ sinh của bài nguồn ở mức của bài
+ * Ôn tập. Một lượt có To – nhỏ, Nhiều – ít, Nhỏ – vừa – to, Nặng – nhẹ, MỘT trong Cao – thấp / Dài – ngắn (để "short"
+ * chỉ một nghĩa trong lượt, mục 4.1) và một câu thêm của To – nhỏ / Nhiều – ít / Nặng – nhẹ. Hai câu liền nhau không cùng
+ * bài; đáp án trái / phải gần đều; "the same" tối đa 1 câu; kiểu hay sai được hỏi ở một câu (nếu bài có kiểu đó).
+ */
+export function makeReviewRound(level, { rng = Math.random, weak = null, n = MATH_ROUNDS } = {}) {
+  const lv = clampLevel(level);
+  const by = new Map(reviewParts().map((part) => [useOf(part), part]));
+  const tallOrLong = rng() < 0.5 ? 'tall' : 'long';
+  const extra = ['size', 'count', 'weight'][Math.floor(rng() * 3)];
+  const bag = ['size', 'count', 'order', 'weight', tallOrLong, extra].slice(0, n);
+  let uses = bag;
+  for (let tries = 0; tries < 200; tries++) {
+    uses = shuffle(bag, rng);
+    if (uses.every((u, i) => !i || u !== uses[i - 1])) break;
+  }
+  let weakLeft = weak ? 1 : 0;
+  let sameLeft = 1;
+  const types = uses.map((use) => {
+    const list = typesFor(by.get(use), lv);
+    if (weakLeft && list.includes(weak)) {
+      weakLeft = 0;
+      if (weak === 'same') sameLeft = 0;
+      return weak;
+    }
+    const pool = list.filter((t) => t !== 'same' || sameLeft > 0);
+    const t = pool[Math.floor(rng() * pool.length)];
+    if (t === 'same') sameLeft = 0;
+    return t;
+  });
+  const sides = pickSides(types.filter((t) => t !== 'same' && t !== 'order').length, rng);
+  const usedItems = new Map();
+  let k = 0;
+  return uses.map((use, i) => {
+    const part = by.get(use);
+    const type = types[i];
+    const side = type === 'same' || type === 'order' ? null : sides[k++];
+    const items = lessonItems(part);
+    const seen = usedItems.get(use) ?? [];
+    const fresh = items.filter((x) => !seen.includes(x.id));
+    const item = (fresh.length ? fresh : items)[Math.floor(rng() * (fresh.length || items.length))];
+    usedItems.set(use, [...seen, item.id]);
+    return { ...makerFor(part, rng)(type, lv, item, side, rng), part: part.builtin };
   });
 }
 
@@ -436,6 +508,9 @@ export function weakType(rec, types) {
   stats.sort((a, b) => a[1].first / a[1].asked - b[1].first / b[1].asked);
   return stats[0]?.[0] ?? null;
 }
+
+/** Bài Ôn tập: Bông mở đầu lượt (thay phần xem mẫu). */
+export const REVIEW_INTRO = { en: "Let's review! Look and tap!", vi: 'Mình ôn bài nào! Con nhìn rồi chạm nhé!' };
 
 /** Tên kiểu câu cho bố mẹ. */
 export const TYPE_VI = {
