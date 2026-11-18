@@ -7,7 +7,7 @@ import {
   toolWrongLine, decorAskLine, decorWrongLine, stepLine,
   DISHES, TEMP_COMBOS, CLEAN_ITEMS, tempMatches, cleanOk, replacedByTemp, makeTempCase, makeClean,
   feelLine, somethingLine, tempAskLine, tempWrongLine, cleanAskLine, placeWrongLine, itemWrongLine,
-  makeHungryCase, hungryRound, hungryCleanAvoid, dishActions, E_STEPS, E_TOOLS, FRUITS,
+  makeHungryCase, hungryRound, hungryCleanAvoid, dishActions, E_STEPS, E_TOOLS, FRUITS, TOPPINGS, toppingAskLine, toppingWrongLine, sayLine,
   saladAskLine, fruitWrongLine, noFruitLine, fruitOneLine, eChainLine, eNextLine, eToolWrongLine, menuLine, chosenLine, feelWrongLine,
 } from '../../app/js/jobs/chef.js';
 
@@ -140,13 +140,22 @@ test('câu nói: gọi lớp, cả món, "No …", nhầm lớp, chuỗi bước
   assert.equal(decorWrongLine('blueberry', ['strawberry'])[0], "That's a blueberry. Strawberries, please!");
 });
 
-test('ca E (SPEC-jobs5): thực đơn 2 món; mức 3 thẻ mặt có hungry; cơm nắm 2 / 3 bước bắt đầu bằng scoop; salad luôn có chuối, mức 3 có quả "No"; đồ nhiễu mức 2–3', () => {
+test('ca E (SPEC-jobs5): thực đơn mức 1 hai món ít làm nhất, mức 2–3 ba món; mức 3 thẻ mặt có hungry; cơm nắm 2 / 3 bước bắt đầu bằng scoop; salad luôn có chuối, mức 3 có quả "No"; đồ nhiễu mức 2–3', () => {
   for (const level of [1, 2, 3]) {
     const rng = seeded(level * 7);
     for (let i = 0; i < 500; i++) {
       const c = makeHungryCase(level, { rng });
       assert.ok(caseOk(c, level), JSON.stringify(c));
-      assert.deepEqual([...c.menu].sort(), ['rice-ball', 'salad']);
+      if (level >= 2) assert.deepEqual([...c.menu].sort(), ['pizza', 'rice-ball', 'salad']);
+      else assert.equal(c.menu.length, 2);
+      // Pizza: mức 1 không có nhân; mức 2 hai lát một loại; mức 3 1 + 1 hai loại; khay có loại không được gọi (mức 2–3).
+      const z = c.pizza;
+      assert.equal(dishActions(c, 'pizza'), level <= 1 ? 3 : 5);
+      assert.deepEqual(z.want.map((w) => w.n), level <= 1 ? [] : level === 2 ? [2] : [1, 1]);
+      if (level >= 2) assert.ok(z.tray.some((id) => !z.want.some((w) => w.id === id)));
+      for (const id of z.tray) assert.ok(TOPPINGS[id]);
+      // JOBS5-20: bát sốt / bát phô mai → dọn bếp không có cái bát.
+      assert.ok(hungryCleanAvoid(c).includes('bowl'));
       assert.equal(c.rice.steps.length, level <= 1 ? 2 : 3);
       assert.equal(c.salad.fruits[0], 'banana');
       assert.equal(dishActions(c, 'salad'), 4); // JOBS5-11: chọn 2 quả + bóc + trộn
@@ -163,6 +172,9 @@ test('ca E (SPEC-jobs5): thực đơn 2 món; mức 3 thẻ mặt có hungry; c�
       for (const f of c.salad.tray) assert.ok(FRUITS.includes(f));
     }
   }
+  // Mức 1: món ít làm nhất lên thực đơn (salad đã làm nhiều → không có).
+  const r1 = seeded(5);
+  for (let i = 0; i < 50; i++) assert.ok(!makeHungryCase(1, { rng: r1, seen: { 'dish:salad': 4 } }).menu.includes('salad'));
   // Quả ít gặp trước: táo đã gặp nhiều thì không được gọi.
   const rng = seeded(3);
   for (let i = 0; i < 50; i++) assert.notEqual(makeHungryCase(2, { rng, seen: { 'fruit:apple': 9 } }).salad.fruits[1], 'apple');
@@ -189,4 +201,14 @@ test('câu ca E: chuỗi bước, bước kế, đồ sai, gọi quả, "No …"
   assert.equal(menuLine('rice-ball')[0], 'A rice ball?');
   assert.equal(chosenLine('salad')[0], "A fruit salad! Let's make it!");
   assert.equal(feelWrongLine('sleepy')[0], "That's sleepy.");
+});
+
+test('câu pizza + lượt nói: số ít / nhiều, a / an', () => {
+  assert.equal(toppingAskLine([{ id: 'tomato', n: 2 }])[0], 'Two tomatoes!');
+  assert.equal(toppingAskLine([{ id: 'tomato', n: 1 }, { id: 'mushroom', n: 1 }])[0], 'One tomato and one mushroom!');
+  assert.equal(toppingWrongLine('pineapple', ['tomato'])[0], "That's a pineapple. Tomatoes, please!");
+  assert.equal(toppingWrongLine('mushroom', ['tomato', 'pineapple'])[0], "That's a mushroom. Tomatoes and pineapples, please!");
+  assert.equal(sayLine('rice-ball')[0], 'Rice ball, please!');
+  assert.equal(sayLine('pizza')[0], 'Pizza, please!');
+  assert.equal(E_STEPS.bake.tool, 'oven');
 });

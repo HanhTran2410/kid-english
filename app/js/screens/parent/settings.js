@@ -250,6 +250,11 @@ const JOB_LEVELS = [
 function jobsSection(app, save) {
   const clean = (v) => cleanJobState(v);
   return section('Đóng vai nghề',
+    // Lượt nói (SPEC-jobs5 mục 5): mặc định tắt; không ghi âm; không xin quyền mic giữa trò chơi.
+    h('label.check', {},
+      h('input', { type: 'checkbox', checked: Boolean(app.settings.jobsTalk), onchange: (e) => save('jobsTalk', e.target.checked) }),
+      h('span', { text: 'Cho bé nói khi chơi nghề (Đầu bếp nhí, mức 2–3)' })),
+    h('p.field-hint', { text: 'Bé được mời nói câu ngắn ("I’m hungry!", "Rice ball, please!"). Không nói cũng chơi tiếp, không tính sai. App đo âm lượng trên máy, không cần mạng; nếu bật "Dùng nhận dạng giọng nói" thì trình duyệt có thể gửi tiếng nói lên dịch vụ nhận dạng của trình duyệt (Google / Apple), như bài học chính. Lượt nói không bao giờ ghi âm. Chỉ chạy khi mic đã được cho phép từ lúc bấm "Bắt đầu".' }),
     // Bác sĩ nhí (SPEC-doctor mục 7.3, D2): dữ liệu riêng (`seen` theo ca).
     field('Mức chơi Bác sĩ nhí', levelSelect(app, save, 'doctorGame', (v) => cleanDoctorState(v), [
       ['1', 'Mức 1 — chạm chỗ đau, bạn thú xin đồ có tên (5 ca)'],

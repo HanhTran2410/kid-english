@@ -11,6 +11,7 @@ import { bongSvg } from '../bong.js';
 import { loadFeedImages, foodFace } from './feed.js';
 import { play } from '../speech/sfx.js';
 import { markPracticed } from '../player/track.js';
+import { listen, RESULT } from '../speech/listen.js';
 import { patientSvg } from '../patients.js';
 import { PATIENT_BY_ID } from '../doctor.js';
 import { cleanJobState, afterJobRound, afterSeen, claims } from '../jobs/levels.js';
@@ -30,6 +31,7 @@ import {
   MENU, E_STEPS, E_TOOLS, FEELS, fruitFood, ARE_HUNGRY_LINE, YES_HUNGRY_LINE, HOW_FEEL_LINE, LISTEN_FEEL_LINE, YOU_HUNGRY_LINE,
   feelWrongLine, WANT_LINE, menuLine, chosenLine, eStepLine, eVerbLine, eChainLine, eNextLine, eToolWrongLine,
   fruitOneLine, saladAskLine, fruitWrongLine, noFruitLine, YUMMY_Q_LINE, BONG_YUMMY_LINE, BONG_FULL_LINE,
+  TOPPINGS, PIZZA_STEPS, toppingAskLine, toppingWrongLine, sayLine, chosenShortLine, LETS_MAKE_LINE, GREAT_TALK_LINE, GOOD_LINE,
 } from '../jobs/chef.js';
 
 const JOB = 'chef';
@@ -41,7 +43,12 @@ const HOT_MS = 2000;
 const EAT_IDLE_MS = 5000; // ca E: 5 giây không chạm thì món tự hết (SPEC-jobs5 4.3)
 const BITES = 3;
 const ACTIVE = ['wash', 'layer', 'serve', 'bake', 'decor', 'temp', 'clean', 'feel', 'menu', 'cook', 'fruit'];
-const TRAY_STATES = ['layer', 'decor', 'temp', 'fruit'];
+const TRAY_STATES = ['layer', 'decor', 'temp', 'fruit', 'topping'];
+const TALK_MS = 4000; // lượt nói: nghe tối đa ~4 giây, giới hạn cứng 6 giây (SPEC-jobs5 mục 5)
+const TALK_CAP_MS = 6000;
+const IM_HUNGRY_LINE = ["I'm hungry!", 'Con đói rồi!'];
+/** Chỗ đặt nhân trên mặt pizza (phần trăm khung). */
+const PIZZA_SPOTS = [[34, 36], [64, 34], [50, 58], [30, 64], [70, 64]];
 const INK = '#3d2c5e';
 const BOWL_SVG = `<svg viewBox="0 0 120 80" aria-hidden="true"><path class="cf-batter" d="M14 30 H106 Q100 72 60 74 Q20 72 14 30 Z" fill="#fff3bf"/><path class="cf-yolk" d="M48 40 a12 9 0 1 0 24 0 a12 9 0 1 0 -24 0" fill="#ffd43b"/><path d="M6 28 H114 Q108 78 60 78 Q12 78 6 28 Z" fill="none" stroke="${INK}" stroke-width="5" stroke-linejoin="round"/><path d="M6 28 H114" stroke="#74c0fc" stroke-width="9" stroke-linecap="round" opacity="0.7"/></svg>`;
 const OVEN_SVG = `<svg viewBox="0 0 120 120" aria-hidden="true"><rect x="6" y="6" width="108" height="108" rx="14" fill="#dee2e6" stroke="${INK}" stroke-width="5"/><rect x="6" y="6" width="108" height="22" rx="10" fill="#adb5bd" stroke="${INK}" stroke-width="4"/><circle cx="26" cy="17" r="5" fill="#fff" stroke="${INK}" stroke-width="2"/><circle cx="44" cy="17" r="5" fill="#fff" stroke="${INK}" stroke-width="2"/><circle class="cf-oven-lamp" cx="98" cy="17" r="5" fill="#868e96"/><rect class="cf-oven-door" x="18" y="40" width="84" height="62" rx="8" fill="#495057" stroke="${INK}" stroke-width="4"/><rect x="30" y="46" width="60" height="6" rx="3" fill="#ced4da"/></svg>`;
@@ -92,7 +99,11 @@ const RICE_BALL_SVG = `<svg viewBox="0 0 120 100" aria-hidden="true"><path class
 /** Bát salad (viewBox 120 × 80) — quả nằm trong `.cf-sfruits` ở trên miệng bát. */
 const SALAD_BOWL_SVG = `<svg viewBox="0 0 120 80" aria-hidden="true"><path d="M6 28 H114 Q108 78 60 78 Q12 78 6 28 Z" fill="#fff" stroke="${INK}" stroke-width="5" stroke-linejoin="round"/><path d="M6 28 H114" stroke="#69db7c" stroke-width="9" stroke-linecap="round" opacity="0.8"/></svg>`;
 /** Đồ trên bàn ca E không có emoji hợp: rong biển (lá vuông xanh đậm). */
+/** Pizza (viewBox 120 × 120): đế nặn sẵn → sốt đỏ (spread) → phô mai (sprinkle); nhân nằm trong `.cf-pz-tops`. */
+const PIZZA_SVG = `<svg viewBox="0 0 120 120" aria-hidden="true"><circle cx="60" cy="60" r="54" fill="#f3c47a" stroke="${INK}" stroke-width="5"/><circle class="cf-pz-sauce" cx="60" cy="60" r="43" fill="#e03131"/><g class="cf-pz-cheese" fill="#ffe066">${[[40, 40], [62, 32], [80, 46], [34, 62], [56, 56], [78, 70], [44, 82], [64, 84], [86, 60], [50, 44], [70, 58], [40, 72]].map(([x, y]) => `<circle cx="${x}" cy="${y}" r="5"/>`).join('')}</g></svg>`;
 const E_TOOL_SVG = {
+  sauce: `<svg viewBox="0 0 100 100" aria-hidden="true"><path d="M12 40 H88 Q84 86 50 86 Q16 86 12 40 Z" fill="#fff" stroke="${INK}" stroke-width="5" stroke-linejoin="round"/><ellipse cx="50" cy="42" rx="36" ry="8" fill="#e03131" stroke="${INK}" stroke-width="4"/></svg>`,
+  cheese: `<svg viewBox="0 0 100 100" aria-hidden="true"><path d="M12 40 H88 Q84 86 50 86 Q16 86 12 40 Z" fill="#fff" stroke="${INK}" stroke-width="5" stroke-linejoin="round"/><ellipse cx="50" cy="42" rx="36" ry="8" fill="#ffe066" stroke="${INK}" stroke-width="4"/><g fill="#fcc419"><circle cx="38" cy="36" r="4"/><circle cx="54" cy="32" r="4"/><circle cx="64" cy="38" r="4"/></g></svg>`,
   seaweed: `<svg viewBox="0 0 100 100" aria-hidden="true"><rect x="16" y="16" width="68" height="68" rx="8" fill="#2b8a3e" stroke="${INK}" stroke-width="5"/><path d="M28 36 H72 M28 52 H72 M28 68 H72" stroke="#51cf66" stroke-width="3" opacity="0.7"/></svg>`,
 };
 const layerSide = (id, i) => (id === 'bread' ? (i === 0 ? LAYER_SIDE.breadBottom : LAYER_SIDE.breadTop) : LAYER_SIDE[id]);
@@ -140,7 +151,7 @@ export function chefScreen(app, params = {}) {
   const stack = plate.firstElementChild;
   const tools = h('div.cf-tools');
   const bowl = h('button.cf-bowl', { type: 'button', 'aria-label': 'Cái bát', dataset: { tool: 'bowl' }, onclick: () => tapTool('bowl') }, h('span', { html: BOWL_SVG }));
-  const oven = h('button.cf-oven', { type: 'button', 'aria-label': 'Lò nướng', onclick: () => tapTool('bowl') }, h('span', { html: OVEN_SVG }));
+  const oven = h('button.cf-oven', { type: 'button', 'aria-label': 'Lò nướng', onclick: () => (hungry() ? tapETool('oven') : tapTool('bowl')) }, h('span', { html: OVEN_SVG }));
   const cake = h('button.cf-cake', { type: 'button', 'aria-label': 'Cái bánh', onclick: () => tapCake() }, h('span.cf-cake-art', { html: CAKE_SVG }), h('span.cf-tops'), h('span.cf-steam', { text: '♨️' }));
   const tops = cake.querySelector('.cf-tops');
   const table = h('div.cf-table', { 'aria-hidden': 'true' });
@@ -151,7 +162,9 @@ export function chefScreen(app, params = {}) {
   const bongEl = h('div.cf-bong', { 'aria-hidden': 'true', html: bongSvg({ mood: 'happy' }) });
   const feels = h('div.cf-feels');
   const menuEl = h('div.cf-menu');
-  const work = h('div.cf-work');
+  const work = h('div.cf-work', { onclick: () => tapHotPizza() });
+  const micEl = h('div.cf-mic', { 'aria-hidden': 'true', text: '🎤', hidden: true }); // lượt nói (SPEC-jobs5 mục 5)
+  const starEl = h('div.cf-talk-star', { 'aria-hidden': 'true', text: '⭐', hidden: true });
   const ktools = h('div.cf-ktools');
 
   const kit = jobScreen(app, {
@@ -179,18 +192,18 @@ export function chefScreen(app, params = {}) {
     },
     tray: {
       // Ca E: khay là quả salad (dâu tây trùng mã với đồ trang trí — xem loại ca trước).
-      face: (id) => (hungry() ? fruitFace(id) : DISHES[id] ? dishFace(id, 'span.cf-item.cf-dish') : LAYERS[id] ? layerFace(id, 'span.cf-item') : decorFace(id, 'span.cf-item')),
-      label: (id) => (hungry() ? fruitFood(id).en : DISHES[id]?.name ?? LAYERS[id]?.name ?? DECOR[id].one),
+      face: (id) => (hungry() ? (TOPPINGS[id] && dish === 'pizza' ? h('span.cf-item', { text: TOPPINGS[id].emoji }) : fruitFace(id)) : DISHES[id] ? dishFace(id, 'span.cf-item.cf-dish') : LAYERS[id] ? layerFace(id, 'span.cf-item') : decorFace(id, 'span.cf-item')),
+      label: (id) => (hungry() ? (dish === 'pizza' ? TOPPINGS[id].one : fruitFood(id).en) : DISHES[id]?.name ?? LAYERS[id]?.name ?? DECOR[id].one),
       canGive: () => TRAY_STATES.includes(state),
       dropOk: (x, y) => {
-        const r = (state === 'decor' ? cake : state === 'fruit' ? work : plate).getBoundingClientRect();
+        const r = (state === 'decor' ? cake : state === 'fruit' || state === 'topping' ? work : plate).getBoundingClientRect();
         return x >= r.left - 30 && x <= r.right + 30 && y >= r.top - 40 && y <= r.bottom + 30;
       },
-      give: (id, from) => (state === 'layer' ? giveLayer(id, from) : state === 'temp' ? giveDish(id, from) : state === 'fruit' ? giveFruit(id, from) : giveDecor(id, from)),
+      give: (id, from) => (state === 'layer' ? giveLayer(id, from) : state === 'temp' ? giveDish(id, from) : state === 'fruit' ? giveFruit(id, from) : state === 'topping' ? giveTopping(id, from) : giveDecor(id, from)),
     },
   });
   const { stage, count, talk } = kit;
-  stage.append(table, sink, card, plate, tools, bowl, oven, cake, custEl, cleanRoom, bongEl, work, ktools, feels, menuEl);
+  stage.append(table, sink, card, plate, tools, bowl, oven, cake, custEl, cleanRoom, bongEl, work, ktools, feels, menuEl, micEl, starEl);
   const stepKey = () => `${kit.epoch}:${caseIdx}:${state}:${si}:${taken.list().length}`;
 
   function setState(s) {
@@ -253,8 +266,10 @@ export function chefScreen(app, params = {}) {
     if (state === 'feel') return [C(HOW_FEEL_LINE)];
     if (state === 'menu') return [C(WANT_LINE)];
     if (state === 'fruit') return [fruitAsk()];
+    if (state === 'topping') return [toppingAsk()];
     if (state === 'cook') {
       if (dish === 'salad') return [C(eStepLine(saladPhase()))];
+      if (dish === 'pizza') return [C(eStepLine(pizzaPhase()))];
       const r = c.rice;
       return r.ordered ? [C(short ? eNextLine(r.steps, si) : eChainLine(r.steps))] : [C(eStepLine(r.steps[si]))];
     }
@@ -271,6 +286,7 @@ export function chefScreen(app, params = {}) {
     else if (state === 'feel') restartAnim(feels.querySelector('[data-feel="hungry"]'), 'nudge');
     else if (state === 'menu') for (const el of menuEl.children) restartAnim(el, 'nudge');
     else if (state === 'fruit') kit.setHint(missingFruits()[0]);
+    else if (state === 'topping') kit.setHint(missingTops()[0]);
     else if (state === 'cook') restartAnim(eToolEl(E_STEPS[eWant()].tool), 'nudge');
     else if (state === 'clean') {
       const target = cleanTarget();
@@ -296,7 +312,7 @@ export function chefScreen(app, params = {}) {
     cake.hidden = kind !== 'decor';
     custEl.hidden = kind === 'wash' || kind === 'clean' || kind === 'hungry';
     bongEl.hidden = kind !== 'hungry';
-    for (const el of [feels, menuEl, work, ktools]) el.hidden = true;
+    for (const el of [feels, menuEl, work, ktools, micEl]) el.hidden = true;
     kit.renderTray([]);
     if (plan) count.textContent = `${Math.min(caseIdx + 1, plan.cases.length)}/${plan.cases.length}`;
   }
@@ -721,9 +737,66 @@ export function chefScreen(app, params = {}) {
     if (missingFruits().length) return 'fruit';
     return taken.has('mix') ? 'done' : 'mix';
   }
+  /** Pizza: phết sốt → rắc phô mai → đặt nhân (mức 2–3) → vào lò (SPEC-jobs5 4.1). */
+  const placedTop = (id) => taken.list().filter((k) => k.startsWith(`t:${id}:`)).length;
+  const missingTops = () => cur().pizza.want.filter((w) => placedTop(w.id) < w.n).map((w) => w.id);
+  function pizzaPhase() {
+    for (const st of ['spread', 'sprinkle']) if (!taken.has(st)) return st;
+    if (missingTops().length) return 'topping';
+    return taken.has('bake') ? 'done' : 'bake';
+  }
+  const toppingAsk = () => ({ ...C(toppingAskLine(cur().pizza.want)), slow: level >= 3 });
   /** Động từ đang chờ ở bước nấu. */
-  const eWant = () => (dish === 'salad' ? saladPhase() : cur().rice.steps[si]);
-  const eToolEl = (id) => (id === 'banana' ? work.querySelector('.cf-sbanana') : ktools.querySelector(`[data-tool="${id}"]`));
+  const eWant = () => (dish === 'salad' ? saladPhase() : dish === 'pizza' ? pizzaPhase() : cur().rice.steps[si]);
+  const eToolEl = (id) => (id === 'banana' ? work.querySelector('.cf-sbanana') : id === 'oven' ? oven : ktools.querySelector(`[data-tool="${id}"]`));
+
+  /**
+   * Lượt nói (SPEC-jobs5 mục 5): chỉ khi bố mẹ bật "Cho bé nói khi chơi nghề", mức 2–3 và mic đã sẵn sàng từ trước — trò
+   * nghề không bao giờ xin quyền mic. Bông đọc câu mẫu, nghe ≤ 4 giây (không ghi âm, giới hạn cứng 6 giây). Không bao giờ
+   * tính nhầm, không bắt nói lại; lỗi gì cũng bỏ qua. Test UI đặt `window.__kidTest.chefTalkResult` để giả kết quả nghe.
+   */
+  const talkOn = () => level >= 2 && Boolean(app.settings.jobsTalk) && app.mic.ready && globalThis.__kidTest?.chefTalk !== false;
+  async function talkTurn(line, keywords) {
+    if (!talkOn()) return;
+    const e = kit.epoch;
+    setState('talk');
+    snap();
+    await talk([B(line)]);
+    if (e !== kit.epoch) return;
+    micEl.hidden = false;
+    let result = null;
+    try {
+      const forced = globalThis.__kidTest?.chefTalkResult;
+      if (forced === 'error') throw new Error('mic');
+      if (forced) {
+        await wait(300);
+        result = forced;
+      } else {
+        const onDemand = app.settings.micOnlyWhenListening;
+        if (onDemand) await app.mic.start();
+        try {
+          const cap = new Promise((resolve) => { setTimeout(() => resolve(null), TALK_CAP_MS); });
+          const out = await Promise.race([listen({ mic: app.mic, recognizer: app.recognizer, keywords, record: false, maxMs: TALK_MS, signal: kit.signal }), cap]);
+          result = out?.result ?? null;
+        } finally {
+          if (onDemand) app.mic.release();
+        }
+      }
+    } catch {
+      result = null; // mic / nhận dạng lỗi giữa lượt: bỏ qua, đi tiếp
+    }
+    micEl.hidden = true;
+    if (e !== kit.epoch) return;
+    if (result === RESULT.MATCH) {
+      play('ding');
+      starEl.hidden = false;
+      restartAnim(starEl, 'fly');
+      progress = afterSeen(progress, 'talk:chef'); // mỗi câu khớp +1 (mục 7)
+      await talk([C(GREAT_TALK_LINE)]);
+      starEl.hidden = true;
+    } else if (result === RESULT.VOICE) await talk([C(GOOD_LINE), C(line)]);
+    else if (result === RESULT.SILENT) await talk([C(line)]);
+  }
   /** Câu gọi quả: mức 1 từng quả ("A banana, please!"); mức 2–3 cả hai quả, mức 3 thêm "No …!" và đọc chậm. */
   const fruitAsk = () => (level <= 1 ? C(fruitOneLine(missingFruits()[0])) : { ...C(saladAskLine(cur().salad)), slow: level >= 3 });
 
@@ -736,6 +809,8 @@ export function chefScreen(app, params = {}) {
       restartAnim(bongEl, 'hop');
       // Mức 1–2: Bông nói mẫu "Yes! I'm hungry!"; mức 3 bé tự chọn mặt.
       await talk(level >= 3 ? [] : [C(ARE_HUNGRY_LINE), B(YES_HUNGRY_LINE)]);
+      if (e !== kit.epoch) return;
+      if (level === 2) await talkTurn(IM_HUNGRY_LINE, ['hungry']);
       if (e !== kit.epoch) return;
     }
     if (c.feel && !taken.has('feel')) return askFeel(e);
@@ -803,7 +878,14 @@ export function chefScreen(app, params = {}) {
     play('pop');
     menuEl.classList.add('picked');
     menuEl.querySelector(`[data-dish="${id}"]`).classList.add('chosen');
-    await talk([C(chosenLine(id))]);
+    if (talkOn()) {
+      // Chú nhắc tên món → bé nói "Rice ball, please!" → "Let's make it!" (SPEC-jobs5 mục 4).
+      await talk([C(chosenShortLine(id))]);
+      if (e !== kit.epoch) return;
+      await talkTurn(sayLine(id), MENU[id].keys);
+      if (e !== kit.epoch) return;
+      await talk([C(LETS_MAKE_LINE)]);
+    } else await talk([C(chosenLine(id))]);
     if (e !== kit.epoch) return;
     startCook(false);
   }
@@ -813,7 +895,27 @@ export function chefScreen(app, params = {}) {
     ktools.hidden = false;
     menuEl.hidden = true;
     work.dataset.dish = dish;
-    if (dish === 'rice-ball') {
+    oven.hidden = dish !== 'pizza';
+    oven.classList.remove('on');
+    work.classList.toggle('baked', taken.has('bake'));
+    if (dish === 'pizza') {
+      const z = cur().pizza;
+      let k = 0;
+      work.replaceChildren(h('span.cf-pz', { dataset: { sauce: String(taken.has('spread')), cheese: String(taken.has('sprinkle')) } },
+        h('span.cf-pz-art', { html: PIZZA_SVG }), h('span.cf-pz-tops', {}, ...z.want.flatMap((w) => Array.from({ length: placedTop(w.id) }, () => {
+          const [left, top] = PIZZA_SPOTS[k++ % PIZZA_SPOTS.length];
+          return h('span.cf-pz-top', { text: TOPPINGS[w.id].emoji, style: { left: `${left}%`, top: `${top}%` } });
+        }))), h('span.cf-wsteam', { text: '♨️', 'aria-hidden': 'true' })));
+      ktools.replaceChildren(...z.tools.map((id) => h('button.cf-tool', {
+        type: 'button', 'aria-label': E_TOOLS[id].vi, dataset: { tool: id },
+        class: (id === 'sauce' && taken.has('spread')) || (id === 'cheese' && taken.has('sprinkle')) ? 'used' : '',
+        onclick: () => tapETool(id),
+      }, eToolFace(id))));
+      const phase = pizzaPhase();
+      kit.renderTray(phase === 'topping' ? z.tray : []);
+      for (const w of z.want) kit.trayItem(w.id)?.classList.toggle('full', placedTop(w.id) >= w.n);
+      work.dataset.tops = z.want.map((w) => `${w.id}:${w.n}`).join(','); // cho test
+    } else if (dish === 'rice-ball') {
       work.replaceChildren(h('span.cf-rb', { html: RICE_BALL_SVG, dataset: { step: String(si) } }));
       work.dataset.step = String(si);
       ktools.replaceChildren(...c.rice.tools.map((id) => h('button.cf-tool', {
@@ -839,6 +941,7 @@ export function chefScreen(app, params = {}) {
     work.dataset.missing = dish === 'salad' ? missingFruits().join(',') : '';
     // Mức 1: chỉ đồ của bước đang làm sáng (làm quen, không có nhầm).
     for (const t of [...ktools.children, ...work.querySelectorAll('[data-tool]')]) t.classList.toggle('lit', level <= 1 && E_STEPS[want]?.tool === t.dataset.tool);
+    oven.classList.toggle('lit', level <= 1 && want === 'bake');
     if (want === 'fruit' && level <= 1) kit.setHint(missingFruits()[0]);
   }
   /** Bắt đầu / làm tiếp bước nấu. `resume`: quay lại từ nền — nói câu ngắn của bước đang làm. */
@@ -846,8 +949,9 @@ export function chefScreen(app, params = {}) {
     const c = cur();
     renderCook();
     const want = eWant();
-    if (!want || want === 'done') return dishDone(kit.epoch);
+    if (!want || want === 'done') return dish === 'pizza' ? hotPizza(kit.epoch) : dishDone(kit.epoch);
     if (want === 'fruit') return ask([fruitAsk()], 'fruit');
+    if (want === 'topping') return ask([toppingAsk()], 'topping');
     if (dish === 'rice-ball' && c.rice.ordered && !resume && si === 0) return ask([C(eChainLine(c.rice.steps))], 'cook');
     if (dish === 'rice-ball' && c.rice.ordered) {
       setState('cook');
@@ -866,6 +970,7 @@ export function chefScreen(app, params = {}) {
     const wantTool = E_STEPS[want].tool;
     if (id !== wantTool) {
       if (dish === 'rice-ball' && c.rice.steps.slice(0, si).some((s) => E_STEPS[s].tool === id)) return; // đồ đã dùng: không tính
+      if (dish !== 'rice-ball' && Object.keys(E_STEPS).some((st) => E_STEPS[st].tool === id && taken.has(st))) return;
       if (id === 'banana') return; // chuối đã bóc
       if (level <= 1) {
         restartAnim(eToolEl(wantTool), 'nudge');
@@ -881,7 +986,7 @@ export function chefScreen(app, params = {}) {
       if (k === stepKey()) kit.armNudge();
       return;
     }
-    if (!taken.take(dish === 'salad' ? want : `step:${si}`)) return;
+    if (!taken.take(dish === 'rice-ball' ? `step:${si}` : want)) return;
     setState('busy');
     kit.clearNudge();
     const firstTry = wrongs === 0;
@@ -890,11 +995,13 @@ export function chefScreen(app, params = {}) {
     if (level >= 2 && firstTry && want === 'scoop') record('rice', 'rice', '🍚');
     if (level >= 2 && firstTry && want === 'peel') record('banana', 'banana', '🍌');
     seen(`verb:${want}`);
+    if (want === 'bake') return bakePizza(e);
     // Hoạt ảnh của động từ + chú nói lại động từ đúng lúc (như bánh nướng).
     const el = eToolEl(id);
     el?.classList.add(want === 'mix' ? 'stir' : 'pour');
     work.classList.add(`do-${want}`);
     if (dish === 'rice-ball') work.dataset.step = work.querySelector('.cf-rb').dataset.step = String(si);
+    if (want === 'spread' || want === 'sprinkle') work.querySelector('.cf-pz').dataset[want === 'spread' ? 'sauce' : 'cheese'] = 'true';
     play(want === 'squeeze' || want === 'mix' ? 'whoosh' : 'pop');
     await Promise.all([talk([C(eVerbLine(want))]), wait(ANIM_MS)]);
     if (e !== kit.epoch) return;
@@ -951,6 +1058,77 @@ export function chefScreen(app, params = {}) {
     }
     startCook(false);
   }
+  /** Pizza vào lò: cửa đóng, đèn cam, tick-tock ~2 giây, ding (như bánh nướng). */
+  async function bakePizza(e) {
+    play('whoosh');
+    work.classList.add('in-oven');
+    await Promise.all([talk([C(eVerbLine('bake'))]), wait(ANIM_MS / 2)]);
+    if (e !== kit.epoch) return;
+    oven.classList.add('on');
+    for (let t = 0; t < 4; t++) {
+      play('tick');
+      await wait(OVEN_MS / 4);
+      if (e !== kit.epoch) return;
+    }
+    play('ding');
+    oven.classList.remove('on');
+    work.classList.remove('in-oven');
+    wrongs = 0;
+    nudges = 0;
+    hotPizza(e);
+  }
+  /** Bánh ra lò còn nóng 2 giây: chạm bánh → rung + "Hot! Wait!" (không tính nhầm); hết hơi thì tự ra đĩa (SPEC-jobs5 4.3). */
+  async function hotPizza(e) {
+    if (e !== kit.epoch) return;
+    renderCook();
+    work.classList.add('baked', 'hot');
+    setState('hot');
+    snap();
+    await Promise.all([talk([C(HOT_LINE)]), wait(HOT_MS)]);
+    if (e !== kit.epoch) return;
+    work.classList.remove('hot');
+    dishDone(e);
+  }
+  function tapHotPizza() {
+    if (state !== 'hot' || !hungry()) return;
+    restartAnim(work, 'shake');
+    talk([C(HOT_LINE)]);
+  }
+  async function giveTopping(id, from) {
+    if (state !== 'topping') return;
+    const e = kit.epoch;
+    const w = cur().pizza.want.find((x) => x.id === id);
+    if (!w) {
+      if (!countWrong(`tp:${id}`)) return;
+      kit.setHint(missingTops()[0]);
+      const k = stepKey();
+      await talk([C(toppingWrongLine(id, missingTops()))]);
+      if (k === stepKey()) kit.armNudge();
+      return;
+    }
+    if (placedTop(id) >= w.n) {
+      // Loại này đủ rồi: không nhận, không tính nhầm; loại kia vẫn đặt được (như ca Trang trí).
+      talk([C(ENOUGH_LINE)]);
+      return;
+    }
+    const n = placedTop(id) + 1;
+    if (!taken.take(`t:${id}:${n - 1}`)) return;
+    kit.clearNudge();
+    kit.setHint(null);
+    const done = !missingTops().length;
+    if (done) setState('busy');
+    snap();
+    const g = await kit.flyTo(h('span.cf-item.cf-fly', { text: TOPPINGS[id].emoji }), from, center(work.getBoundingClientRect()));
+    kit.removeGhost(g);
+    if (e !== kit.epoch) return;
+    play('pop');
+    renderCook();
+    const k = stepKey();
+    await talk([C(countLine(n))]);
+    if (e !== kit.epoch) return;
+    if (done) return startCook(false);
+    if (k === stepKey()) kit.armNudge();
+  }
   async function dishDone(e) {
     if (e !== kit.epoch) return;
     setState('busy');
@@ -966,6 +1144,7 @@ export function chefScreen(app, params = {}) {
     if (dish === 'salad') art.append(...work.querySelectorAll('.cf-sfruits'));
     work.hidden = true;
     ktools.hidden = true;
+    oven.hidden = true;
     menuEl.hidden = true;
     kit.renderTray([]);
     stack.replaceChildren(h('span.cf-eat', { dataset: { dish } }, art));

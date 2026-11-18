@@ -23,6 +23,7 @@ export const DEFAULT_SETTINGS = {
   talkPhone: true, // 📞 Bông gọi điện khi bắt đầu bài Nói chuyện (SPEC-talk mục 14) — tắt được trong Cài đặt
   puzzleFamily: true, // Ghép hình: nhóm ảnh Gia đình (SPEC-puzzle mục 5.1) — tắt được trong Cài đặt
   hideSeekSwap: true, // Bông trốn tìm: lượt đổi vai (bé đi trốn, SPEC-hide mục 4) — tắt được trong Cài đặt
+  jobsTalk: false, // Đóng vai nghề: lượt nói của bé (SPEC-jobs5 mục 5) — mặc định tắt, bố mẹ tự bật
   feedSilly: true, // Cho Bông ăn: "bất ngờ vui" — đồ không ăn được trong khay ở mức 2 (SPEC-feed mục 4)
   childProfile: null, // Hồ sơ của bé (SPEC-talk mục 3): { name, age, color, food, family } — chỉ lưu trên máy
   driveClientId: '', // Google Drive (SPEC-drive.md): Client ID do bố mẹ tạo

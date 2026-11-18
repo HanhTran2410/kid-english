@@ -1,6 +1,6 @@
 # SPEC — 👨‍🍳 Đầu bếp nhí: ca "Bé đói rồi!" (bé chọn món, bé nấu)
 
-> Phiên bản spec: **draft2** (sửa theo review, mục 10) · Ngày: 2026-11-18 · Dựa trên app 0.81.0. **Bố mẹ đã duyệt draft2 (2026-11-18)**, chốt theo mục 9; làm theo 2 bản ở mục 8. **Đã làm:** 0.82.0 (C4) — ghi chú mục 11.
+> Phiên bản spec: **draft2** (sửa theo review, mục 10) · Ngày: 2026-11-18 · Dựa trên app 0.81.0. **Bố mẹ đã duyệt draft2 (2026-11-18)**, chốt theo mục 9; làm theo 2 bản ở mục 8. **Đã làm:** 0.82.0 (C4), 0.83.0 (C5) — đủ 2 bản, ghi chú mục 11.
 > - **draft2, sửa theo review:**
 >   - lượt nói **mặc định tắt**, không ghi âm, chỉ dùng nhận dạng khi cài đặt "Dùng nhận dạng giọng nói" bật, có lỗi gì cũng bỏ qua (5);
 >   - mức 3 chọn sai cảm xúc thì chọn lại ngay (3);
@@ -126,7 +126,7 @@ Quả trong khay: *banana, apple, strawberry, mango, grapes*, lấy từ `feed.j
   - Câu salad đọc **chậm** (tốc độ giọng × 0.85), và thẻ gọi món hiện hình 🍌 🍎 + 🍇 bị gạch chéo.
   - Thả quả "No" vào bát salad: chú chỉ nói *"No grapes, please!"*, quả không vào bát, tính nhầm.
   - Câu *"One tomato and one mushroom!"* cũng đọc chậm, thẻ hiện 🍅 ×1 + 🍄 ×1.
-- Nhân pizza: lát cà chua 🍅, nấm 🍄, ô liu 🫒. Lát nào đã đủ số thì chỉ lát đó mờ đi, giống ca Trang trí.
+- Nhân pizza: lát cà chua 🍅, nấm 🍄, dứa 🍍 (0.83.0: thay ô liu 🫒 vì emoji ô liu không hiện trên máy cũ). Lát nào đã đủ số thì chỉ lát đó mờ đi, giống ca Trang trí.
 
 ### 4.3 Ăn
 - Món xong bay ra đĩa trước mặt bé (góc dưới màn), chú nói *"It's ready!"*.
@@ -318,3 +318,30 @@ Test cũ `jobs3.spec.js` và `jobs4.spec.js` của Đầu bếp đặt `chefHung
   - unit `chef.test.js`: 500 seed theo `rounds % 3`, ca E, dọn bếp tránh đồ ca E, câu nói;
   - UI `jobs5.spec.js`: JOBS5-01…05, 07, 08, 10, 11, 12, 18, 20.
   - Các mã còn lại làm ở 0.83.0 (pizza, lượt nói) hoặc kiểm tay: 13–16 (micro), 17 (chọn lại món — không có gì chặn), 19 (pizza), 21 (thiếu ảnh → emoji, cùng cách của trò Bán hàng), 22 (unit kiểm `rounds`, kế hoạch lưu trong bản lưu như mọi nghề).
+
+### 0.83.0 — C5: pizza + lượt nói
+- **Code:**
+  - `jobs/chef.js` thêm `MENU.pizza`, các bước `spread` / `sprinkle` / `bake`, đồ `sauce` / `cheese` / `oven`, `TOPPINGS`, `PIZZA_STEPS`, câu nói pizza và lượt nói.
+  - Thực đơn: mức 1 có 2 món ít làm nhất (`seen` `dish:<mã>`), mức 2–3 đủ 3 món.
+  - `screens/chef.js` thêm trạng thái `topping`, `hot` (pizza), `talk`. Lò nướng là đồ chạm ở bước *bake*.
+  - `settings.js`: thêm `jobsTalk: false`. Cài đặt → Đóng vai nghề có ô "Cho bé nói khi chơi nghề" kèm ghi chú quyền riêng tư.
+- **Pizza:**
+  - Đế, sốt đỏ, phô mai và nhân vẽ SVG / emoji. Bát sốt, bát phô mai vẽ SVG.
+  - Pizza vào lò (thu nhỏ bay vào), đèn cam, tick ×4, ding. Sau đó nóng 2 giây ♨️, chạm bánh thì rung + *"Hot! Wait!"*, rồi *"It's ready!"* và tự ra đĩa.
+  - **Nhân: cà chua 🍅, nấm 🍄, dứa 🍍.** Không dùng ô liu 🫒 như spec: emoji này mới (2020), hiện thành ô trống trên Windows / máy cũ.
+  - Nhân sai loại: *"That's a pineapple. Tomatoes, please!"* (tính nhầm). Loại đã đủ: *"That's enough!"* (không tính).
+  - Câu nhân mức 3 đọc chậm.
+- **Lượt nói:**
+  - Chỉ chạy khi ô đã bật, ở mức 2–3, và `app.mic.ready` (mic được cho phép lúc bấm "Bắt đầu").
+  - Có hai chỗ: mức 2 *"I'm hungry!"* sau khi Bông nói mẫu; mức 2–3 tên món (*"Rice ball, please!"*, *"Fruit salad, please!"*, *"Pizza, please!"*).
+  - Diễn biến: Bông đọc câu mẫu, 🎤 nhấp nháy, `listen` với `record: false`, nghe tối đa 4 giây (cắt cứng ở 6 giây).
+    - KHỚP: ding, ⭐ bay, *"Great talking!"*, `seen` `talk:chef` +1.
+    - CÓ TIẾNG: *"Good!"* rồi chú nói lại câu.
+    - IM LẶNG: chú nói thay.
+    - Lỗi / hết giờ / chỉ nghe: đi tiếp.
+  - Khi bật "Chỉ bật mic khi đang nghe bé" thì bật mic lúc nghe rồi tắt, như bài học.
+  - Test giả kết quả nghe bằng `window.__kidTest.chefTalkResult` (`match` / `voice` / `silent` / `error`).
+- Test:
+  - unit: thực đơn theo mức, pizza theo mức, dọn bếp tránh bát, câu nói;
+  - UI `jobs5.spec.js`: JOBS5-06, 09, 13, 15, 16, 19, pizza mức 1, ô Cài đặt.
+  - Chưa thử micro thật trên iPad Safari / Android Chrome. Bố mẹ thử khi bật ô.
