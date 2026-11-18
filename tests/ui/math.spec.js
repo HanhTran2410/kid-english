@@ -387,9 +387,8 @@ test('MATH-35: Ôn tập mức 1 — không có phần xem mẫu, Bông "Let\'s 
   await expect(page.locator('.done-btn')).toBeVisible({ timeout: 15000 });
   for (const t of ['big', 'more', 'order', 'heavy']) expect(types).toContain(t);
   expect(types.filter((t) => t === 'tall' || t === 'long')).toHaveLength(1);
-  const p = await progressOf(page, 'math:l7');
-  expect(p.mastery).toBe(2);
-  expect(p.level).toBe(2);
+  // Tiến độ ghi ngay sau màn Hoan hô — chờ tới khi ghi xong (máy chậm).
+  await expect.poll(async () => { const p = await progressOf(page, 'math:l7'); return [p?.mastery, p?.level]; }).toEqual([2, 2]);
 });
 
 test('MATH-36: Ôn tập — thoát giữa lượt → Học tiếp vào đúng câu, không nói lại câu mở đầu, câu vẫn là câu đã sinh', async ({ page }) => {

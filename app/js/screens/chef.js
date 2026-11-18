@@ -1,10 +1,14 @@
 // Trò Đầu bếp nhí (SPEC-jobs3.md mục 5): chú đầu bếp bên trái, khách (bạn thú) bên phải. Mở đầu rửa tay; ca A xếp
 // bánh mì kẹp theo thẻ công thức; ca B làm bánh nướng — mỗi động từ một hoạt ảnh rõ (sữa chảy, trứng nứt, thìa khuấy,
 // lò đèn cam), bánh còn nóng thì "Hot! Wait!" (không tính nhầm); ca C trang trí bánh (đếm); ca D món nóng – món lạnh
-// (SPEC-jobs4 3.1); mức 2–3 cuối lượt dọn bếp (3.2). Không dao, không lửa bếp.
-// Trạng thái: start → wash → enter → layer | serve | bake | hot | decor | temp ⇄ busy → leave → ca sau | clean → done.
+// (SPEC-jobs4 3.1); ca E "Bé đói rồi!" (SPEC-jobs5: bụng kêu → chọn mặt (mức 3) → thực đơn → nấu → ăn cùng Bông);
+// mức 2–3 cuối lượt dọn bếp (3.2). Không dao, không lửa bếp.
+// Trạng thái: start → wash → enter → layer | serve | bake | hot | decor | temp | feel | menu | cook | fruit | eat ⇄ busy
+// → leave → ca sau | clean → done.
 
 import { h } from '../ui.js';
+import { bongSvg } from '../bong.js';
+import { loadFeedImages, foodFace } from './feed.js';
 import { play } from '../speech/sfx.js';
 import { markPracticed } from '../player/track.js';
 import { patientSvg } from '../patients.js';
@@ -23,6 +27,9 @@ import {
   decorAskLine, decorWrongLine, countLine,
   DISHES, CLEAN_ITEMS, PLACES, PLACE_ORDER, tempMatches, feelLine, somethingLine, tempAskLine, tempWrongLine,
   CAREFUL_LINE, PHEW_LINE, BRR_LINE, THANK_YOU_LINE, CLEAN_LINE, ALL_CLEAN_LINE, cleanAskLine, placeWrongLine, itemWrongLine,
+  MENU, E_STEPS, E_TOOLS, FEELS, fruitFood, ARE_HUNGRY_LINE, YES_HUNGRY_LINE, HOW_FEEL_LINE, LISTEN_FEEL_LINE, YOU_HUNGRY_LINE,
+  feelWrongLine, WANT_LINE, menuLine, chosenLine, eStepLine, eVerbLine, eChainLine, eNextLine, eToolWrongLine,
+  fruitOneLine, saladAskLine, fruitWrongLine, noFruitLine, YUMMY_Q_LINE, BONG_YUMMY_LINE, BONG_FULL_LINE,
 } from '../jobs/chef.js';
 
 const JOB = 'chef';
@@ -31,8 +38,10 @@ const LEAVE_MS = 600;
 const ANIM_MS = 900; // hoạt ảnh một động từ
 const OVEN_MS = 2000;
 const HOT_MS = 2000;
-const ACTIVE = ['wash', 'layer', 'serve', 'bake', 'decor', 'temp', 'clean'];
-const TRAY_STATES = ['layer', 'decor', 'temp'];
+const EAT_IDLE_MS = 5000; // ca E: 5 giây không chạm thì món tự hết (SPEC-jobs5 4.3)
+const BITES = 3;
+const ACTIVE = ['wash', 'layer', 'serve', 'bake', 'decor', 'temp', 'clean', 'feel', 'menu', 'cook', 'fruit'];
+const TRAY_STATES = ['layer', 'decor', 'temp', 'fruit'];
 const INK = '#3d2c5e';
 const BOWL_SVG = `<svg viewBox="0 0 120 80" aria-hidden="true"><path class="cf-batter" d="M14 30 H106 Q100 72 60 74 Q20 72 14 30 Z" fill="#fff3bf"/><path class="cf-yolk" d="M48 40 a12 9 0 1 0 24 0 a12 9 0 1 0 -24 0" fill="#ffd43b"/><path d="M6 28 H114 Q108 78 60 78 Q12 78 6 28 Z" fill="none" stroke="${INK}" stroke-width="5" stroke-linejoin="round"/><path d="M6 28 H114" stroke="#74c0fc" stroke-width="9" stroke-linecap="round" opacity="0.7"/></svg>`;
 const OVEN_SVG = `<svg viewBox="0 0 120 120" aria-hidden="true"><rect x="6" y="6" width="108" height="108" rx="14" fill="#dee2e6" stroke="${INK}" stroke-width="5"/><rect x="6" y="6" width="108" height="22" rx="10" fill="#adb5bd" stroke="${INK}" stroke-width="4"/><circle cx="26" cy="17" r="5" fill="#fff" stroke="${INK}" stroke-width="2"/><circle cx="44" cy="17" r="5" fill="#fff" stroke="${INK}" stroke-width="2"/><circle class="cf-oven-lamp" cx="98" cy="17" r="5" fill="#868e96"/><rect class="cf-oven-door" x="18" y="40" width="84" height="62" rx="8" fill="#495057" stroke="${INK}" stroke-width="4"/><rect x="30" y="46" width="60" height="6" rx="3" fill="#ced4da"/></svg>`;
@@ -75,6 +84,17 @@ const CLEAN_SVG = {
   bowl: `<svg viewBox="0 0 100 100" aria-hidden="true"><path d="M10 40 H90 Q86 86 50 86 Q14 86 10 40 Z" fill="#fff" stroke="${INK}" stroke-width="5" stroke-linejoin="round"/><path d="M10 40 H90" stroke="#74c0fc" stroke-width="7" stroke-linecap="round"/>${DIRTY}</svg>`,
   cup: `<svg viewBox="0 0 100 100" aria-hidden="true"><path d="M22 28 H70 V78 Q70 88 60 88 H32 Q22 88 22 78 Z" fill="#fff" stroke="${INK}" stroke-width="5" stroke-linejoin="round"/><path d="M70 40 Q90 40 88 56 Q86 70 70 68" fill="none" stroke="${INK}" stroke-width="5"/><path d="M22 28 H70" stroke="#ff8787" stroke-width="7" stroke-linecap="round"/>${DIRTY}</svg>`,
 };
+/**
+ * Ca E — cơm nắm trên đôi tay đeo găng (viewBox 120 × 100): scoop → nắm cơm tròn, squeeze → hình tam giác,
+ * wrap → rong biển quấn đáy. Mỗi phần hiện theo `data-step` (CSS).
+ */
+const RICE_BALL_SVG = `<svg viewBox="0 0 120 100" aria-hidden="true"><path class="cf-rb-hands" d="M8 78 Q18 58 60 66 Q102 58 112 78 Q102 96 60 94 Q18 96 8 78 Z" fill="#d0ebff" stroke="${INK}" stroke-width="4" stroke-linejoin="round"/><ellipse class="cf-rb-blob" cx="60" cy="58" rx="30" ry="16" fill="#fff" stroke="${INK}" stroke-width="4"/><path class="cf-rb-tri" d="M60 16 Q67 16 90 60 Q93 72 80 72 H40 Q27 72 30 60 Q53 16 60 16 Z" fill="#fff" stroke="${INK}" stroke-width="4" stroke-linejoin="round"/><g class="cf-rb-grain" fill="#e9ecef"><circle cx="52" cy="44" r="2.5"/><circle cx="64" cy="38" r="2.5"/><circle cx="70" cy="54" r="2.5"/><circle cx="54" cy="58" r="2.5"/></g><rect class="cf-rb-nori" x="42" y="52" width="36" height="21" rx="3" fill="#2b8a3e" stroke="${INK}" stroke-width="3"/></svg>`;
+/** Bát salad (viewBox 120 × 80) — quả nằm trong `.cf-sfruits` ở trên miệng bát. */
+const SALAD_BOWL_SVG = `<svg viewBox="0 0 120 80" aria-hidden="true"><path d="M6 28 H114 Q108 78 60 78 Q12 78 6 28 Z" fill="#fff" stroke="${INK}" stroke-width="5" stroke-linejoin="round"/><path d="M6 28 H114" stroke="#69db7c" stroke-width="9" stroke-linecap="round" opacity="0.8"/></svg>`;
+/** Đồ trên bàn ca E không có emoji hợp: rong biển (lá vuông xanh đậm). */
+const E_TOOL_SVG = {
+  seaweed: `<svg viewBox="0 0 100 100" aria-hidden="true"><rect x="16" y="16" width="68" height="68" rx="8" fill="#2b8a3e" stroke="${INK}" stroke-width="5"/><path d="M28 36 H72 M28 52 H72 M28 68 H72" stroke="#51cf66" stroke-width="3" opacity="0.7"/></svg>`,
+};
 const layerSide = (id, i) => (id === 'bread' ? (i === 0 ? LAYER_SIDE.breadBottom : LAYER_SIDE.breadTop) : LAYER_SIDE[id]);
 
 export function chefScreen(app, params = {}) {
@@ -91,17 +111,25 @@ export function chefScreen(app, params = {}) {
   let washed = false;
   let lastWrong = { key: '', at: 0 };
   let pics = null; // ảnh món của bố mẹ (Góc bố mẹ → Ảnh Đóng vai); chưa có thì emoji
+  let feedPics = null; // ảnh món của Cho Bông ăn (ca E: thẻ thực đơn, quả salad)
+  let dish = null; // ca E: món bé chọn
+  let eatTok = 0;
 
   const cur = () => plan?.cases[caseIdx];
   const customer = () => PATIENT_BY_ID.get(plan?.customers?.[caseIdx] ?? 'teddy');
   const C = (line) => ({ who: 'chef', line });
   const K = (line) => ({ who: 'customer', line });
+  const B = (line) => ({ who: 'bong', line });
+  const hungry = () => cur()?.kind === 'hungry';
   // Trứng ốp (lớp bánh mì kẹp) và quả trứng (làm bánh) là hai ảnh khác nhau.
   const layerFace = (id, tag, props = {}) => itemFace(pics, id === 'egg' ? 'fried-egg' : id, tag, { ...props, text: LAYERS[id].emoji });
   const decorFace = (id, tag, props = {}) => itemFace(pics, id, tag, { ...props, text: DECOR[id].emoji });
   const toolFace = (id, tag) => itemFace(pics, id, tag, { text: TOOLS[id].emoji });
   const dishFace = (id, tag) => itemFace(pics, id, tag, { html: `<svg viewBox="0 0 100 100" aria-hidden="true">${DISH_SVG[id]}</svg>` });
   const cleanFace = (id, tag) => itemFace(pics, `clean-${id}`, tag, CLEAN_SVG[id] ? { html: CLEAN_SVG[id] } : { text: CLEAN_ITEMS[id].emoji });
+  const fruitFace = (id, cls = 'cf-fruit') => foodFace(fruitFood(id), feedPics, cls);
+  const eToolFace = (id) => (E_TOOL_SVG[id] ? h('span', { html: E_TOOL_SVG[id] }) : toolPic(id));
+  const toolPic = (id) => (id === 'banana' ? fruitFace('banana') : itemFace(pics, id, 'span', { text: E_TOOLS[id].emoji }));
 
   const custEl = h('div.cf-customer');
   const sink = h('button.cf-sink', { type: 'button', 'aria-label': 'Vòi nước', onclick: () => tapSink() },
@@ -119,16 +147,22 @@ export function chefScreen(app, params = {}) {
   const places = h('div.cf-places');
   const counter = h('div.cf-counter');
   const cleanRoom = h('div.cf-clean', { hidden: true }, places, counter);
+  // Ca E: Bông đứng chỗ khách (ăn cùng bé), thẻ mặt, thực đơn, chỗ nấu (cơm nắm / bát salad), kệ đồ.
+  const bongEl = h('div.cf-bong', { 'aria-hidden': 'true', html: bongSvg({ mood: 'happy' }) });
+  const feels = h('div.cf-feels');
+  const menuEl = h('div.cf-menu');
+  const work = h('div.cf-work');
+  const ktools = h('div.cf-ktools');
 
   const kit = jobScreen(app, {
     job: JOB, background: { lessonId: JOBS_BG_IMAGES, word: JOB }, className: 'cf-play', stageClass: 'cf-stage', title: '👨‍🍳 Chef',
     helperLabel: 'Nghe lại', cap: 'chef', resetLabel: 'Nấu lại', trayLabel: 'Đồ ăn',
     host: { svg: CHEF_SVG, label: 'chef' },
     roles: {
-      of: (who) => (who === 'chef' ? kit.host : who === 'customer' ? custEl : null),
-      all: () => [kit.host, custEl].filter((el) => !el.closest('[hidden]')),
+      of: (who) => (who === 'chef' ? kit.host : who === 'customer' ? custEl : who === 'bong' ? bongEl : null),
+      all: () => [kit.host, custEl, bongEl].filter((el) => !el.closest('[hidden]')),
     },
-    icon: (who) => (who === 'chef' ? '👨‍🍳' : customer()?.emoji ?? ''),
+    icon: (who) => (who === 'chef' ? '👨‍🍳' : who === 'bong' ? '🐰' : customer()?.emoji ?? ''),
     pitch: (who) => (who === 'customer' ? customer()?.pitch : undefined),
     onTalk: (who) => custEl.classList.toggle('talking', who === 'customer'),
     onReset: () => restart(),
@@ -144,18 +178,19 @@ export function chefScreen(app, params = {}) {
       },
     },
     tray: {
-      face: (id) => (DISHES[id] ? dishFace(id, 'span.cf-item.cf-dish') : LAYERS[id] ? layerFace(id, 'span.cf-item') : decorFace(id, 'span.cf-item')),
-      label: (id) => (DISHES[id]?.name ?? LAYERS[id]?.name ?? DECOR[id].one),
+      // Ca E: khay là quả salad (dâu tây trùng mã với đồ trang trí — xem loại ca trước).
+      face: (id) => (hungry() ? fruitFace(id) : DISHES[id] ? dishFace(id, 'span.cf-item.cf-dish') : LAYERS[id] ? layerFace(id, 'span.cf-item') : decorFace(id, 'span.cf-item')),
+      label: (id) => (hungry() ? fruitFood(id).en : DISHES[id]?.name ?? LAYERS[id]?.name ?? DECOR[id].one),
       canGive: () => TRAY_STATES.includes(state),
       dropOk: (x, y) => {
-        const r = (state === 'decor' ? cake : plate).getBoundingClientRect();
+        const r = (state === 'decor' ? cake : state === 'fruit' ? work : plate).getBoundingClientRect();
         return x >= r.left - 30 && x <= r.right + 30 && y >= r.top - 40 && y <= r.bottom + 30;
       },
-      give: (id, from) => (state === 'layer' ? giveLayer(id, from) : state === 'temp' ? giveDish(id, from) : giveDecor(id, from)),
+      give: (id, from) => (state === 'layer' ? giveLayer(id, from) : state === 'temp' ? giveDish(id, from) : state === 'fruit' ? giveFruit(id, from) : giveDecor(id, from)),
     },
   });
   const { stage, count, talk } = kit;
-  stage.append(table, sink, card, plate, tools, bowl, oven, cake, custEl, cleanRoom);
+  stage.append(table, sink, card, plate, tools, bowl, oven, cake, custEl, cleanRoom, bongEl, work, ktools, feels, menuEl);
   const stepKey = () => `${kit.epoch}:${caseIdx}:${state}:${si}:${taken.list().length}`;
 
   function setState(s) {
@@ -164,7 +199,7 @@ export function chefScreen(app, params = {}) {
     app.root.dataset.case = cur()?.kind ?? '';
   }
   let cleanOn = false; // đang dọn bếp (bản lưu: quay lại không nói lại "Clean up time!")
-  const snap = (extra = {}) => saveSnap(JOB, { level, plan, caseIdx, si, wrongs, nudges, taken: taken.list(), recorded: [...recorded], washed, cleanOn, ...extra });
+  const snap = (extra = {}) => saveSnap(JOB, { level, plan, caseIdx, si, wrongs, nudges, taken: taken.list(), recorded: [...recorded], washed, cleanOn, dish, ...extra });
   const snapNext = () => saveSnap(JOB, { level, plan, caseIdx: caseIdx + 1, si: 0, wrongs: 0, nudges: 0, taken: [], recorded: [...recorded], washed });
   function countWrong(key) {
     const now = Date.now();
@@ -215,6 +250,14 @@ export function chefScreen(app, params = {}) {
     if (state === 'bake') return c.ordered && !short ? [C(chainLine(c.steps))] : [C(c.ordered ? firstLine(c.steps[si]) : stepLine(c.steps[si]))];
     if (state === 'decor') return [K(decorAskLine(c.want))];
     if (state === 'temp') return level <= 1 ? [C(somethingLine(c.want))] : [K(tempAskLine(c))];
+    if (state === 'feel') return [C(HOW_FEEL_LINE)];
+    if (state === 'menu') return [C(WANT_LINE)];
+    if (state === 'fruit') return [fruitAsk()];
+    if (state === 'cook') {
+      if (dish === 'salad') return [C(eStepLine(saladPhase()))];
+      const r = c.rice;
+      return r.ordered ? [C(short ? eNextLine(r.steps, si) : eChainLine(r.steps))] : [C(eStepLine(r.steps[si]))];
+    }
     return [];
   }
   function nudgeTarget() {
@@ -225,6 +268,10 @@ export function chefScreen(app, params = {}) {
     else if (state === 'bake') restartAnim(toolEl(BAKE_STEPS[c.steps[si]].tool), 'nudge');
     else if (state === 'decor') kit.setHint(missing()[0]);
     else if (state === 'temp') kit.setHint(tempMatches(c)[0]);
+    else if (state === 'feel') restartAnim(feels.querySelector('[data-feel="hungry"]'), 'nudge');
+    else if (state === 'menu') for (const el of menuEl.children) restartAnim(el, 'nudge');
+    else if (state === 'fruit') kit.setHint(missingFruits()[0]);
+    else if (state === 'cook') restartAnim(eToolEl(E_STEPS[eWant()].tool), 'nudge');
     else if (state === 'clean') {
       const target = cleanTarget();
       const sel = level <= 2 || taken.has(`sel:${target}`);
@@ -247,7 +294,9 @@ export function chefScreen(app, params = {}) {
     bowl.hidden = kind !== 'bake';
     oven.hidden = kind !== 'bake';
     cake.hidden = kind !== 'decor';
-    custEl.hidden = kind === 'wash' || kind === 'clean';
+    custEl.hidden = kind === 'wash' || kind === 'clean' || kind === 'hungry';
+    bongEl.hidden = kind !== 'hungry';
+    for (const el of [feels, menuEl, work, ktools]) el.hidden = true;
     kit.renderTray([]);
     if (plan) count.textContent = `${Math.min(caseIdx + 1, plan.cases.length)}/${plan.cases.length}`;
   }
@@ -340,6 +389,7 @@ export function chefScreen(app, params = {}) {
     if (c.kind === 'sandwich') return startSandwich(resume);
     if (c.kind === 'bake') return startBake(resume);
     if (c.kind === 'temp') return startTemp(resume);
+    if (c.kind === 'hungry') return startHungry(resume);
     return startDecor(resume);
   }
 
@@ -397,6 +447,7 @@ export function chefScreen(app, params = {}) {
     await ask([C(READY_LINE)], 'serve');
   }
   async function tapPlate() {
+    if (state === 'eat') return bite();
     if (state !== 'serve' || !['sandwich', 'temp'].includes(cur().kind)) return;
     serve(plate);
   }
@@ -660,6 +711,308 @@ export function chefScreen(app, params = {}) {
     play('pop');
     stack.replaceChildren(dishFace(id, 'span.cf-dish'));
     askServe(plate);
+  }
+
+  // Ca E — Bé đói rồi! (SPEC-jobs5): bụng kêu → (mức 3) chọn mặt → thực đơn → nấu → ăn cùng Bông.
+  const missingFruits = () => cur().salad.fruits.filter((f) => !taken.has(`f:${f}`));
+  /** Salad: chuối vào bát rồi thì bóc ngay; đủ quả thì trộn (SPEC-jobs5 4.2). */
+  function saladPhase() {
+    if (taken.has('f:banana') && !taken.has('peel')) return 'peel';
+    if (missingFruits().length) return 'fruit';
+    return taken.has('mix') ? 'done' : 'mix';
+  }
+  /** Động từ đang chờ ở bước nấu. */
+  const eWant = () => (dish === 'salad' ? saladPhase() : cur().rice.steps[si]);
+  const eToolEl = (id) => (id === 'banana' ? work.querySelector('.cf-sbanana') : ktools.querySelector(`[data-tool="${id}"]`));
+  /** Câu gọi quả: mức 1 từng quả ("A banana, please!"); mức 2–3 cả hai quả, mức 3 thêm "No …!" và đọc chậm. */
+  const fruitAsk = () => (level <= 1 ? C(fruitOneLine(missingFruits()[0])) : { ...C(saladAskLine(cur().salad)), slow: level >= 3 });
+
+  async function startHungry(resume) {
+    const e = kit.epoch;
+    const c = cur();
+    dish = resume?.dish ?? null;
+    if (!resume) {
+      play('rumble');
+      restartAnim(bongEl, 'hop');
+      // Mức 1–2: Bông nói mẫu "Yes! I'm hungry!"; mức 3 bé tự chọn mặt.
+      await talk(level >= 3 ? [] : [C(ARE_HUNGRY_LINE), B(YES_HUNGRY_LINE)]);
+      if (e !== kit.epoch) return;
+    }
+    if (c.feel && !taken.has('feel')) return askFeel(e);
+    if (!dish) return askMenu(Boolean(resume));
+    return startCook(Boolean(resume));
+  }
+  async function askFeel(e) {
+    feels.hidden = false;
+    feels.replaceChildren(...cur().feel.map((f) => h('button.cf-feel', {
+      type: 'button', 'aria-label': f, dataset: { feel: f }, text: FEELS[f], onclick: () => tapFeel(f),
+    })));
+    if (e === kit.epoch) await ask([C(HOW_FEEL_LINE)], 'feel');
+  }
+  async function tapFeel(f) {
+    if (state !== 'feel') return;
+    const e = kit.epoch;
+    const el = feels.querySelector(`[data-feel="${f}"]`);
+    if (f !== 'hungry') {
+      // Thẻ sai rung rồi về chỗ, thẻ còn nguyên; bụng kêu lại, chú hỏi lại (SPEC-jobs5 mục 3).
+      if (!countWrong(`fe:${f}`)) return;
+      restartAnim(el, 'shake');
+      if (wrongs >= 2) restartAnim(feels.querySelector('[data-feel="hungry"]'), 'nudge');
+      const k = stepKey();
+      await talk([C(feelWrongLine(f))]);
+      if (k !== stepKey()) return;
+      play('rumble');
+      await talk([C(LISTEN_FEEL_LINE)]);
+      if (k === stepKey()) kit.armNudge();
+      return;
+    }
+    if (!taken.take('feel')) return;
+    kit.clearNudge();
+    setState('busy');
+    if (wrongs === 0) record('hungry', 'hungry', '😋');
+    wrongs = 0;
+    nudges = 0;
+    snap();
+    el.classList.add('chosen');
+    play('pop');
+    await talk([C(YOU_HUNGRY_LINE)]);
+    if (e !== kit.epoch) return;
+    feels.hidden = true;
+    askMenu(false);
+  }
+  async function askMenu(resume) {
+    const c = cur();
+    menuEl.hidden = false;
+    menuEl.classList.remove('picked');
+    menuEl.replaceChildren(...c.menu.map((id) => {
+      const food = MENU[id].food ? fruitFood(MENU[id].food) : null;
+      return h('button.cf-mcard', { type: 'button', 'aria-label': MENU[id].a, dataset: { dish: id }, onclick: () => tapMenu(id) },
+        food ? foodFace(food, feedPics, 'cf-mface') : h('span.cf-mface.emoji', { text: MENU[id].emoji, 'aria-hidden': 'true' }));
+    }));
+    // Chọn món là lựa chọn, không phải câu hỏi: thẻ nào cũng đúng (SPEC-jobs5 mục 2).
+    await ask(resume ? [C(WANT_LINE)] : [C(WANT_LINE), ...c.menu.map((id) => C(menuLine(id)))], 'menu');
+  }
+  async function tapMenu(id) {
+    if (state !== 'menu' || !taken.take('dish')) return;
+    const e = kit.epoch;
+    kit.clearNudge();
+    setState('busy');
+    dish = id;
+    nudges = 0;
+    snap();
+    play('pop');
+    menuEl.classList.add('picked');
+    menuEl.querySelector(`[data-dish="${id}"]`).classList.add('chosen');
+    await talk([C(chosenLine(id))]);
+    if (e !== kit.epoch) return;
+    startCook(false);
+  }
+  function renderCook() {
+    const c = cur();
+    work.hidden = false;
+    ktools.hidden = false;
+    menuEl.hidden = true;
+    work.dataset.dish = dish;
+    if (dish === 'rice-ball') {
+      work.replaceChildren(h('span.cf-rb', { html: RICE_BALL_SVG, dataset: { step: String(si) } }));
+      work.dataset.step = String(si);
+      ktools.replaceChildren(...c.rice.tools.map((id) => h('button.cf-tool', {
+        type: 'button', 'aria-label': E_TOOLS[id].vi, dataset: { tool: id },
+        class: c.rice.steps.slice(0, si).some((s) => E_STEPS[s].tool === id) ? 'used' : '',
+        onclick: () => tapETool(id),
+      }, eToolFace(id))));
+    } else {
+      const inBowl = c.salad.fruits.filter((f) => taken.has(`f:${f}`));
+      work.replaceChildren(h('span.cf-sbowl-art', { html: SALAD_BOWL_SVG }), h('span.cf-sfruits', {}, ...inBowl.map((f) => (f === 'banana'
+        ? h('button.cf-sbanana', { type: 'button', 'aria-label': 'Quả chuối', dataset: { tool: 'banana' }, class: taken.has('peel') ? 'peeled' : '', onclick: () => tapETool('banana') },
+          taken.has('peel') ? h('span.cf-slices', { text: '🟡🟡🟡', 'aria-hidden': 'true' }) : fruitFace('banana'))
+        : h('span.cf-sfruit', {}, fruitFace(f))))));
+      work.classList.toggle('mixed', taken.has('mix'));
+      ktools.replaceChildren(...c.salad.tools.map((id) => h('button.cf-tool', {
+        type: 'button', 'aria-label': E_TOOLS[id].vi, dataset: { tool: id }, class: taken.has('mix') && id === 'spoon' ? 'used' : '',
+        onclick: () => tapETool(id),
+      }, eToolFace(id))));
+      kit.renderTray(c.salad.tray.filter((f) => !taken.has(`f:${f}`)));
+    }
+    const want = eWant();
+    work.dataset.want = want ?? ''; // cho test; bé không thấy
+    work.dataset.missing = dish === 'salad' ? missingFruits().join(',') : '';
+    // Mức 1: chỉ đồ của bước đang làm sáng (làm quen, không có nhầm).
+    for (const t of [...ktools.children, ...work.querySelectorAll('[data-tool]')]) t.classList.toggle('lit', level <= 1 && E_STEPS[want]?.tool === t.dataset.tool);
+    if (want === 'fruit' && level <= 1) kit.setHint(missingFruits()[0]);
+  }
+  /** Bắt đầu / làm tiếp bước nấu. `resume`: quay lại từ nền — nói câu ngắn của bước đang làm. */
+  async function startCook(resume) {
+    const c = cur();
+    renderCook();
+    const want = eWant();
+    if (!want || want === 'done') return dishDone(kit.epoch);
+    if (want === 'fruit') return ask([fruitAsk()], 'fruit');
+    if (dish === 'rice-ball' && c.rice.ordered && !resume && si === 0) return ask([C(eChainLine(c.rice.steps))], 'cook');
+    if (dish === 'rice-ball' && c.rice.ordered) {
+      setState('cook');
+      snap();
+      if (resume) await talk([C(eNextLine(c.rice.steps, si))]);
+      kit.armNudge();
+      return;
+    }
+    await ask([C(eStepLine(want))], 'cook');
+  }
+  async function tapETool(id) {
+    if (state !== 'cook') return;
+    const e = kit.epoch;
+    const c = cur();
+    const want = eWant();
+    const wantTool = E_STEPS[want].tool;
+    if (id !== wantTool) {
+      if (dish === 'rice-ball' && c.rice.steps.slice(0, si).some((s) => E_STEPS[s].tool === id)) return; // đồ đã dùng: không tính
+      if (id === 'banana') return; // chuối đã bóc
+      if (level <= 1) {
+        restartAnim(eToolEl(wantTool), 'nudge');
+        return;
+      }
+      if (!countWrong(`et:${id}`)) return;
+      restartAnim(eToolEl(id), 'shake');
+      if (wrongs >= 2) restartAnim(eToolEl(wantTool), 'nudge');
+      // Mức 3 làm sai thứ tự: chỉ nói bước cần làm, không đọc lại cả chuỗi (SPEC-jobs5 4.2).
+      const order = dish === 'rice-ball' && c.rice.ordered && c.rice.steps.some((s) => E_STEPS[s].tool === id);
+      const k = stepKey();
+      await talk([C(order ? eNextLine(c.rice.steps, si) : eToolWrongLine(id, want))]);
+      if (k === stepKey()) kit.armNudge();
+      return;
+    }
+    if (!taken.take(dish === 'salad' ? want : `step:${si}`)) return;
+    setState('busy');
+    kit.clearNudge();
+    const firstTry = wrongs === 0;
+    if (dish === 'rice-ball') si += 1;
+    snap();
+    if (level >= 2 && firstTry && want === 'scoop') record('rice', 'rice', '🍚');
+    if (level >= 2 && firstTry && want === 'peel') record('banana', 'banana', '🍌');
+    seen(`verb:${want}`);
+    // Hoạt ảnh của động từ + chú nói lại động từ đúng lúc (như bánh nướng).
+    const el = eToolEl(id);
+    el?.classList.add(want === 'mix' ? 'stir' : 'pour');
+    work.classList.add(`do-${want}`);
+    if (dish === 'rice-ball') work.dataset.step = work.querySelector('.cf-rb').dataset.step = String(si);
+    play(want === 'squeeze' || want === 'mix' ? 'whoosh' : 'pop');
+    await Promise.all([talk([C(eVerbLine(want))]), wait(ANIM_MS)]);
+    if (e !== kit.epoch) return;
+    work.classList.remove(`do-${want}`);
+    wrongs = 0;
+    nudges = 0;
+    if (dish === 'rice-ball' && c.rice.ordered && si < c.rice.steps.length) {
+      renderCook();
+      setState('cook');
+      snap();
+      kit.armNudge();
+      return;
+    }
+    startCook(false);
+  }
+  async function giveFruit(id, from) {
+    if (state !== 'fruit') return;
+    const e = kit.epoch;
+    const s = cur().salad;
+    const missing = missingFruits();
+    const target = missing[0];
+    if (!missing.includes(id) || (level <= 1 && id !== target)) {
+      if (level <= 1) {
+        kit.setHint(target); // mức 1: quả cần chọn nhún, không tính nhầm
+        return;
+      }
+      if (!countWrong(`fr:${id}`)) return;
+      if (wrongs >= 2) kit.setHint(target);
+      const k = stepKey();
+      await talk([id === s.no ? { ...C(noFruitLine(id)), slow: true } : C(fruitWrongLine(id, missing))]);
+      if (k === stepKey()) kit.armNudge();
+      return;
+    }
+    if (!taken.take(`f:${id}`)) return;
+    kit.clearNudge();
+    kit.setHint(null);
+    setState('busy');
+    if (id !== 'banana') seen(`fruit:${id}`);
+    snap();
+    const g = await kit.flyTo(fruitFace(id, 'cf-fruit'), from, center(work.getBoundingClientRect()));
+    kit.removeGhost(g);
+    if (e !== kit.epoch) return;
+    play('pop');
+    wrongs = 0;
+    nudges = 0;
+    const next = saladPhase();
+    if (next === 'fruit' && level >= 2) {
+      // Mức 2–3 đã nghe cả câu gọi quả: chọn quả tiếp không nói lại.
+      renderCook();
+      setState('fruit');
+      snap();
+      kit.armNudge();
+      return;
+    }
+    startCook(false);
+  }
+  async function dishDone(e) {
+    if (e !== kit.epoch) return;
+    setState('busy');
+    kit.renderTray([]);
+    work.classList.add('ready');
+    await talk([C(READY_LINE)]);
+    if (e !== kit.epoch) return;
+    startEat();
+  }
+  /** Ăn (SPEC-jobs5 4.3): 3 lần chạm hết đĩa, Bông ăn cùng; 5 giây không chạm thì món tự hết. */
+  function startEat() {
+    const art = work.firstElementChild?.cloneNode(true) ?? h('span', { text: MENU[dish].emoji });
+    if (dish === 'salad') art.append(...work.querySelectorAll('.cf-sfruits'));
+    work.hidden = true;
+    ktools.hidden = true;
+    menuEl.hidden = true;
+    kit.renderTray([]);
+    stack.replaceChildren(h('span.cf-eat', { dataset: { dish } }, art));
+    plate.hidden = false;
+    plate.classList.remove('ready');
+    const n = bites();
+    plate.dataset.bites = String(n);
+    if (n >= BITES) return eatAll(kit.epoch);
+    setState('eat');
+    snap();
+    armEat();
+  }
+  const bites = () => taken.list().filter((k) => k.startsWith('bite:')).length;
+  async function armEat() {
+    const tok = ++eatTok;
+    const e = kit.epoch;
+    // Giờ thật (không rút ngắn ở chế độ chạy nhanh của test): bé luôn có đủ 5 giây để tự chạm ăn.
+    await new Promise((resolve) => setTimeout(resolve, EAT_IDLE_MS));
+    if (tok === eatTok && e === kit.epoch && state === 'eat') eatAll(e);
+  }
+  function bite() {
+    const n = bites();
+    if (state !== 'eat' || !taken.take(`bite:${n}`)) return;
+    play('munch');
+    restartAnim(bongEl, 'hop');
+    plate.dataset.bites = String(n + 1);
+    snap();
+    if (n + 1 >= BITES) eatAll(kit.epoch);
+    else armEat();
+  }
+  async function eatAll(e) {
+    if (e !== kit.epoch) return;
+    eatTok += 1;
+    setState('busy');
+    plate.dataset.bites = String(BITES);
+    seen(`dish:${dish}`);
+    snapNext();
+    await talk([C(YUMMY_Q_LINE), B(BONG_YUMMY_LINE)]);
+    if (e !== kit.epoch) return;
+    restartAnim(bongEl, 'rub');
+    play('burp');
+    await talk([B(BONG_FULL_LINE)]);
+    if (e !== kit.epoch) return;
+    plate.hidden = true;
+    delete plate.dataset.bites;
+    dish = null;
+    nextCase(e);
   }
 
   // Dọn bếp (SPEC-jobs4 3.2) — cuối lượt, mức 2–3.

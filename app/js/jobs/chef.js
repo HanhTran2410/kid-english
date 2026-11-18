@@ -1,10 +1,12 @@
 // Trò Đầu bếp nhí (SPEC-jobs3.md mục 5, SPEC-jobs4.md mục 3): rửa tay mở đầu; ca A làm bánh mì kẹp (xếp lớp theo thẻ
 // công thức, mức 3 có "No tomato, please!"), ca B làm bánh nướng (động từ pour / crack / mix / bake, mức 3 theo thứ tự),
-// ca C trang trí bánh (đếm, mức 3 hai loại), ca D món nóng – món lạnh (thay A / C luân phiên); cuối lượt mức 2–3 dọn bếp.
+// ca C trang trí bánh (đếm, mức 3 hai loại), ca D món nóng – món lạnh (thay A / C luân phiên), ca E "Bé đói rồi!"
+// (SPEC-jobs5: bé tự chọn món rồi nấu — thay bánh nướng cứ 3 lượt một lần); cuối lượt mức 2–3 dọn bếp.
 // Không dao, không lửa bếp. File thuần: dữ liệu, kế hoạch lượt (bất biến mục 2.2), câu nói.
 
 import { planChecked, shuffle, pick, randInt, leastSeen, NUMBER_WORDS, cap } from './levels.js';
 import { PATIENTS } from '../doctor.js';
+import { BUILTIN_FOODS, requestPhrase, thatPhrase } from '../feed.js';
 
 export const MAX_LEVEL = 3;
 export const CASES_PER_ROUND = 3;
@@ -73,6 +75,39 @@ export const PLACES = {
 };
 export const PLACE_ORDER = ['sink', 'fridge', 'cupboard'];
 
+// ---------- Ca E — Bé đói rồi! (SPEC-jobs5) ----------
+/** Món bé chọn trên thực đơn (0.82.0: cơm nắm + salad; pizza ở 0.83.0). `food`: món của Cho Bông ăn (ảnh bố mẹ thêm). */
+export const MENU = {
+  'rice-ball': { a: 'a rice ball', vi: 'cơm nắm', emoji: '🍙', food: 'rice-ball' },
+  salad: { a: 'a fruit salad', vi: 'salad hoa quả', emoji: '🥗', food: null },
+};
+const MENU_IDS = Object.keys(MENU);
+/** Bước ca E: đồ cần chạm (`tool`), câu, động từ chú nói lúc hoạt ảnh chạy. */
+export const E_STEPS = {
+  scoop: { tool: 'rice', say: 'Scoop the rice!', verb: 'Scoop!', vi: 'Xúc cơm nào!' },
+  squeeze: { tool: 'gloves', say: 'Squeeze!', verb: 'Squeeze, squeeze, squeeze!', vi: 'Nắm chặt nào!' },
+  wrap: { tool: 'seaweed', say: 'Wrap it!', verb: 'Wrap!', vi: 'Cuốn rong biển nào!' },
+  peel: { tool: 'banana', say: 'Peel the banana!', verb: 'Peel!', vi: 'Bóc chuối nào!' },
+  mix: { tool: 'spoon', say: 'Mix!', verb: 'Mix, mix, mix!', vi: 'Trộn đều nào!' },
+};
+/** Đồ trên bàn ca E (cả đồ nhiễu sữa / trứng lấy từ bếp). `clean`: đồ Dọn bếp trùng với đồ này (để tránh — SPEC-jobs5 mục 6). */
+export const E_TOOLS = {
+  rice: { that: "That's the rice.", emoji: '🍚', vi: 'nồi cơm' },
+  gloves: { that: 'Those are the gloves.', emoji: '🧤', vi: 'găng tay' },
+  seaweed: { that: "That's the seaweed.", emoji: '🟩', vi: 'rong biển' },
+  banana: { that: "That's the banana.", emoji: '🍌', vi: 'quả chuối' },
+  spoon: { that: "That's the spoon.", emoji: '🥄', vi: 'cái thìa' },
+  milk: { that: "That's the milk.", emoji: '🥛', vi: 'sữa', clean: 'milk' },
+  egg: { that: "That's the egg.", emoji: '🥚', vi: 'quả trứng', clean: 'eggs' },
+};
+const E_DISTRACTORS = ['milk', 'egg'];
+/** Quả cho salad (món của Cho Bông ăn); chuối luôn là một quả được gọi (SPEC-jobs5 4.2). */
+export const FRUITS = ['banana', 'apple', 'strawberry', 'mango', 'grapes'];
+export const fruitFood = (id) => BUILTIN_FOODS.find((f) => f.id === id);
+/** Mặt cảm xúc mức 3 (bài Feelings). */
+export const FEELS = { hungry: '😋', sleepy: '😴', happy: '😊' };
+const FEEL_VI = { hungry: 'đói', sleepy: 'buồn ngủ', happy: 'vui' };
+
 // ---------- Kế hoạch từng ca ----------
 /**
  * Ca A — bánh mì kẹp: { kind: 'sandwich', layers: [mã lớp từ dưới lên], tray, no }.
@@ -134,6 +169,33 @@ export function makeTempCase(level, { rng = Math.random, seen = {} } = {}) {
   const dish = leastSeen(DISH_IDS, seen, rng)[0];
   return { kind: 'temp', want: DISHES[dish].hot ? 'hot' : 'cold', dish, tray: shuffle(TEMP_COMBOS[dish], rng) };
 }
+/**
+ * Ca E — Bé đói rồi! (SPEC-jobs5): { kind: 'hungry', menu, feel, rice, salad }. Bé tự chọn món nên kế hoạch có sẵn cách
+ * làm của mọi món trên thực đơn. `feel`: mức 3 có 3 thẻ mặt (đáp án *hungry*). Cơm nắm: { steps, tools, ordered } như
+ * bánh nướng. Salad: { fruits: [banana, quả khác], no, tray, tools }; mức 3 có một quả "No …" trong khay.
+ * Mức 2–3 mỗi món có thêm một đồ nhiễu lấy từ bếp (sữa / trứng).
+ */
+export function makeHungryCase(level, { rng = Math.random, seen = {} } = {}) {
+  const menu = shuffle(MENU_IDS, rng);
+  const feel = level >= 3 ? shuffle(Object.keys(FEELS), rng) : null;
+  const extra = () => (level >= 2 ? [pick(E_DISTRACTORS, rng)] : []);
+  const steps = level <= 1 ? ['scoop', 'squeeze'] : ['scoop', 'squeeze', 'wrap'];
+  const rice = { steps, tools: shuffle([...steps.map((s) => E_STEPS[s].tool), ...extra()], rng), ordered: level >= 3 };
+  // Quả ít gặp trước (`seen` của nghề ghi `fruit:<mã>` — khác mã đồ trang trí dâu tây).
+  const fseen = Object.fromEntries(FRUITS.map((id) => [id, seen[`fruit:${id}`] ?? 0]));
+  const [other, no, more] = leastSeen(FRUITS.filter((id) => id !== 'banana'), fseen, rng);
+  const fruits = ['banana', other];
+  const tray = shuffle(level <= 1 ? [...fruits, no] : [...fruits, no, more], rng);
+  const salad = { fruits, no: level >= 3 ? no : null, tray, tools: shuffle(['spoon', ...extra()], rng) };
+  return { kind: 'hungry', menu, feel, rice, salad };
+}
+/** Số thao tác con của từng món (chọn quả + bóc + trộn; bước cơm nắm). Chọn món, chọn mặt, ăn không tính (SPEC-jobs5 mục 2). */
+export const dishActions = (c, dish) => (dish === 'salad' ? c.salad.fruits.length + 2 : c.rice.steps.length);
+/** Đồ Dọn bếp trùng với đồ đã ở trên bàn ca E (bát salad, đồ nhiễu) — mọi món trên thực đơn, vì bé chọn sau. */
+export const hungryCleanAvoid = (c) => [
+  ...(c.menu.includes('salad') ? ['bowl'] : []),
+  ...[...c.rice.tools, ...c.salad.tools].map((t) => E_TOOLS[t].clean).filter(Boolean),
+];
 /** Món khớp yêu cầu của ca D. */
 export const tempMatches = (c) => c.tray.filter((id) => (c.dish ? id === c.dish : DISHES[id].hot === (c.want === 'hot')));
 
@@ -141,8 +203,8 @@ export const tempMatches = (c) => c.tray.filter((id) => (c.dish ? id === c.dish 
  * Dọn bếp (mức 2–3): { items: [đồ trên bàn], asks: [2 đồ cần cất, theo thứ tự] }. Hai đồ cần cất ở hai chỗ khác nhau;
  * mức 3 thêm 1 đồ nhiễu trên bàn. Không dùng đồ có từ đã là đáp án ở ca D (`avoid` — SPEC-jobs3 2.7).
  */
-export function makeClean(level, { rng = Math.random, avoid = [] } = {}) {
-  const ids = shuffle(Object.keys(CLEAN_ITEMS).filter((id) => !avoid.includes(CLEAN_ITEMS[id].word)), rng);
+export function makeClean(level, { rng = Math.random, avoid = [], avoidIds = [] } = {}) {
+  const ids = shuffle(Object.keys(CLEAN_ITEMS).filter((id) => !avoid.includes(CLEAN_ITEMS[id].word) && !avoidIds.includes(id)), rng);
   const first = ids[0];
   const second = ids.find((id) => CLEAN_ITEMS[id].place !== CLEAN_ITEMS[first].place);
   const asks = [first, second];
@@ -158,6 +220,18 @@ export function cleanOk(cl, level) {
 
 /** Bất biến của một ca (SPEC-jobs3 mục 2.2). */
 export function caseOk(c, level) {
+  if (c.kind === 'hungry') {
+    if (new Set(c.menu).size !== c.menu.length || c.menu.length < 2 || !c.menu.every((id) => MENU[id])) return false;
+    if (level >= 3 ? !(c.feel?.length === 3 && c.feel.includes('hungry')) : c.feel !== null) return false;
+    const r = c.rice;
+    if (r.steps.length !== (level <= 1 ? 2 : 3) || r.steps[0] !== 'scoop' || r.ordered !== level >= 3) return false;
+    if (!r.steps.every((s) => r.tools.includes(E_STEPS[s].tool)) || r.tools.length !== r.steps.length + (level >= 2 ? 1 : 0)) return false;
+    const s = c.salad;
+    if (s.fruits[0] !== 'banana' || s.fruits.length !== 2 || s.fruits[1] === 'banana') return false;
+    if (!s.fruits.every((f) => s.tray.includes(f)) || new Set(s.tray).size !== s.tray.length || s.tray.length !== (level <= 1 ? 3 : 4)) return false;
+    if (level >= 3 ? !s.no || s.fruits.includes(s.no) || !s.tray.includes(s.no) : s.no !== null) return false;
+    return s.tools.includes('spoon') && s.tools.length === (level >= 2 ? 2 : 1);
+  }
   if (c.kind === 'temp') {
     if (new Set(c.tray).size !== c.tray.length || !c.tray.every((id) => DISHES[id])) return false;
     if (c.tray.length !== (level <= 1 ? 2 : level === 2 ? 3 : 4) || tempMatches(c).length !== 1) return false;
@@ -184,10 +258,22 @@ export function caseOk(c, level) {
   return false;
 }
 /** Số thao tác con của bé trong ca (đưa đĩa / bánh cho khách tính một; bánh trang trí tự mang ra). */
-export const caseActions = (c) => (c.kind === 'temp' ? 2 : c.kind === 'sandwich' ? c.layers.length + 1 : c.kind === 'bake' ? c.steps.length + 1 : c.want.reduce((n, w) => n + w.n, 0));
+export const caseActions = (c) => (c.kind === 'hungry' ? Math.max(...c.menu.map((d) => dishActions(c, d)))
+  : c.kind === 'temp' ? 2 : c.kind === 'sandwich' ? c.layers.length + 1 : c.kind === 'bake' ? c.steps.length + 1 : c.want.reduce((n, w) => n + w.n, 0));
 
-/** Ca D thay bánh mì kẹp ở lượt lẻ (`rounds` chẵn: lượt 1, 3…), thay trang trí ở lượt chẵn (SPEC-jobs4 3.1). */
-export const replacedByTemp = (rounds) => ((rounds ?? 0) % 2 === 0 ? 'sandwich' : 'decor');
+/**
+ * Xếp ca theo `rounds % 3` (SPEC-jobs5 mục 6): 0 → D thay bánh mì kẹp, 1 → D thay trang trí (như SPEC-jobs4 3.1),
+ * 2 → bánh mì kẹp + trang trí + ca E (thay bánh nướng, không có D). Chỉ test UI đặt `window.__kidTest.chefHungryAt`
+ * (-1 = không có ca E, số khác = lượt có ca E).
+ */
+export function hungryRound(rounds) {
+  const pinned = globalThis.__kidTest?.chefHungryAt;
+  if (pinned === -1) return false;
+  if (pinned != null) return true;
+  return (rounds ?? 0) % 3 === 2;
+}
+/** Ca D thay bánh mì kẹp hay trang trí (lượt không có ca E). */
+export const replacedByTemp = (rounds) => ((rounds ?? 0) % 3 === 0 ? 'sandwich' : 'decor');
 /** Từ bài Food là đáp án của ca D (để dọn bếp tránh — SPEC-jobs3 2.7). */
 const tempWords = (cases) => cases.filter((c) => c.kind === 'temp' && c.dish).map((c) => DISHES[c.dish].word).filter(Boolean);
 
@@ -196,18 +282,22 @@ const tempWords = (cases) => cases.filter((c) => c.kind === 'temp' && c.dish).ma
  * mức 1 và 3 theo thứ tự, mức 2 xáo. Mức 2–3 có dọn bếp cuối lượt (`clean`).
  */
 export function planRound(level, { rng = Math.random, seen = {}, rounds = 0 } = {}) {
+  const hungry = hungryRound(rounds);
   const make = () => {
-    const base = ['sandwich', 'bake', 'decor'].map((k) => (k === replacedByTemp(rounds) ? 'temp' : k));
-    const kinds = level === 2 ? shuffle(base, rng) : base;
-    const maker = { sandwich: makeSandwichCase, bake: makeBakeCase, decor: makeDecorCase, temp: makeTempCase };
+    // Lượt có ca E: bánh mì kẹp + trang trí (mức 2 xáo) rồi ca E luôn là ca nghề cuối (SPEC-jobs5 mục 6).
+    const base = hungry ? ['sandwich', 'decor'] : ['sandwich', 'bake', 'decor'].map((k) => (k === replacedByTemp(rounds) ? 'temp' : k));
+    const kinds = [...(level === 2 ? shuffle(base, rng) : base), ...(hungry ? ['hungry'] : [])];
+    const maker = { sandwich: makeSandwichCase, bake: makeBakeCase, decor: makeDecorCase, temp: makeTempCase, hungry: makeHungryCase };
     const cases = kinds.map((k) => maker[k](level, { rng, seen }));
-    const clean = level >= 2 ? makeClean(level, { rng, avoid: tempWords(cases) }) : null;
+    const clean = level >= 2 ? makeClean(level, { rng, avoid: tempWords(cases), avoidIds: cleanAvoidIds(cases) }) : null;
     return { cases, customers: shuffle(PATIENTS.map((p) => p.id), rng).slice(0, CASES_PER_ROUND), clean };
   };
   const ok = (p) => p.cases.length === CASES_PER_ROUND && p.cases.every((c) => caseOk(c, level) && caseActions(c) <= 5)
-    && (level <= 1 ? p.clean === null : cleanOk(p.clean, level) && !p.clean.asks.some((id) => tempWords(p.cases).includes(CLEAN_ITEMS[id].word)));
+    && (level <= 1 ? p.clean === null : cleanOk(p.clean, level) && !p.clean.asks.some((id) => tempWords(p.cases).includes(CLEAN_ITEMS[id].word))
+      && !p.clean.items.some((id) => cleanAvoidIds(p.cases).includes(id)));
   return planChecked(make, ok, () => fallbackPlan(level, rounds));
 }
+const cleanAvoidIds = (cases) => cases.filter((c) => c.kind === 'hungry').flatMap(hungryCleanAvoid);
 export function fallbackPlan(level, rounds = 0) {
   const sandwich = level <= 1
     ? { kind: 'sandwich', layers: ['bread', 'cheese', 'bread'], tray: ['bread', 'cheese', 'tomato'], no: null }
@@ -219,6 +309,16 @@ export function fallbackPlan(level, rounds = 0) {
   const temp = level <= 1 ? { kind: 'temp', want: 'hot', dish: null, tray: ['soup', 'ice-cream'] }
     : level === 2 ? { kind: 'temp', want: 'cold', dish: null, tray: ['ice-cream', 'soup', 'hot-milk'] }
       : { kind: 'temp', want: 'hot', dish: 'soup', tray: TEMP_COMBOS.soup };
+  if (hungryRound(rounds)) {
+    const steps = level <= 1 ? ['scoop', 'squeeze'] : ['scoop', 'squeeze', 'wrap'];
+    const hungry = {
+      kind: 'hungry', menu: ['rice-ball', 'salad'], feel: level >= 3 ? ['sleepy', 'hungry', 'happy'] : null,
+      rice: { steps, tools: [...steps.map((s) => E_STEPS[s].tool), ...(level >= 2 ? ['milk'] : [])], ordered: level >= 3 },
+      salad: { fruits: ['banana', 'apple'], no: level >= 3 ? 'grapes' : null, tray: level <= 1 ? ['apple', 'banana', 'grapes'] : ['apple', 'banana', 'grapes', 'mango'], tools: level >= 2 ? ['spoon', 'milk'] : ['spoon'] },
+    };
+    const clean = level >= 2 ? { items: level >= 3 ? ['cup', 'bread', 'juice'] : ['cup', 'bread'], asks: ['cup', 'bread'] } : null;
+    return { cases: [sandwich, decor, hungry], customers: ['teddy', 'kitty', 'puppy'], clean };
+  }
   const cases = [sandwich, bake, decor].map((c) => (c.kind === replacedByTemp(rounds) ? temp : c));
   const clean = level >= 2 ? { items: level >= 3 ? ['bowl', 'bread', 'juice'] : ['bowl', 'bread'], asks: ['bowl', 'bread'] } : null;
   return { cases, customers: ['teddy', 'kitty', 'puppy'], clean };
@@ -291,3 +391,40 @@ export function cleanAskLine(id, level, second = false) {
 export const placeWrongLine = (place, id) => [`That's the ${PLACES[place].name}. In the ${PLACES[placeOf(id)].name}, please!`, `Đó là ${PLACES[place].vi}. Cất vào ${PLACES[placeOf(id)].vi} nhé!`];
 /** Mức 3 chạm đồ sai: "That's the bowl. The bread, please!". */
 export const itemWrongLine = (given, id) => [`That's ${itemThe(given)}. ${cap(itemThe(id))}, please!`, `Đó là ${CLEAN_ITEMS[given].vi}. Lấy ${CLEAN_ITEMS[id].vi} nhé!`];
+
+// ---------- Ca E — Bé đói rồi! (SPEC-jobs5) ----------
+export const ARE_HUNGRY_LINE = ['Are you hungry?', 'Con có đói không?'];
+export const YES_HUNGRY_LINE = ["Yes! I'm hungry!", 'Có! Đói quá rồi!'];
+export const HOW_FEEL_LINE = ['How do you feel?', 'Con thấy thế nào?'];
+export const LISTEN_FEEL_LINE = ['Listen! How do you feel?', 'Nghe này! Con thấy thế nào?'];
+export const YOU_HUNGRY_LINE = ["You're hungry! Let's cook!", 'Con đói rồi! Mình nấu ăn nào!'];
+export const feelWrongLine = (f) => [`That's ${f}.`, `Đó là ${FEEL_VI[f]}.`];
+export const WANT_LINE = ['What do you want?', 'Con muốn ăn gì?'];
+/** Chú đọc tên món khi thẻ hiện ra: "A rice ball?". */
+export const menuLine = (id) => [`${cap(MENU[id].a)}?`, `${cap(MENU[id].vi)}?`];
+export const chosenLine = (id) => [`${cap(MENU[id].a)}! Let's make it!`, `${cap(MENU[id].vi)}! Mình làm nhé!`];
+export const eStepLine = (s) => [E_STEPS[s].say, E_STEPS[s].vi];
+export const eVerbLine = (s) => [E_STEPS[s].verb, E_STEPS[s].vi];
+/** Mức 3 cơm nắm: "First, scoop the rice. Then, squeeze. Then, wrap it!". */
+export function eChainLine(steps) {
+  const en = steps.map((s, i) => `${i ? 'Then' : 'First'}, ${lower(E_STEPS[s].say)}.`).join(' ').replace(/\.$/, '!');
+  return [en, steps.map((s, i) => { const t = E_STEPS[s].vi.replace(/ nào!$/, ''); return i ? t.charAt(0).toLowerCase() + t.slice(1) : t; }).join(', rồi ')];
+}
+/** Mức 3 làm sai thứ tự: chỉ nói bước cần làm ("First, scoop the rice!" / "Now, squeeze!"), không đọc lại cả chuỗi. */
+export const eNextLine = (steps, si) => [`${si ? 'Now' : 'First'}, ${lower(E_STEPS[steps[si]].say)}!`, `${si ? 'Giờ thì' : 'Trước tiên,'} ${E_STEPS[steps[si]].vi.toLowerCase()}`];
+export const eToolWrongLine = (tool, s) => [`${E_TOOLS[tool].that} ${E_STEPS[s].say}`, `Đó là ${E_TOOLS[tool].vi}. ${E_STEPS[s].vi}`];
+const fruitList = (ids) => ids.map((id, i) => (i ? fruitFood(id).en : cap(fruitFood(id).en))).join(' and ');
+const fruitListVi = (ids) => ids.map((id) => fruitFood(id).vi).join(' và ');
+const fruitMany = (id) => fruitFood(id).plural ?? fruitFood(id).en;
+/** Mức 1: "A banana, please!"; mức 2–3: "Banana and apple, please!" (+ mức 3 "No grapes!"). */
+export const fruitOneLine = (id) => [`${cap(requestPhrase(fruitFood(id)))}, please!`, `Cho ${fruitFood(id).vi} vào nhé!`];
+export function saladAskLine(s) {
+  const no = s.no ? [` No ${fruitMany(s.no)}!`, ` Không cho ${fruitFood(s.no).vi} nhé!`] : ['', ''];
+  return [`${fruitList(s.fruits)}, please!${no[0]}`, `Cho ${fruitListVi(s.fruits)} nhé!${no[1]}`];
+}
+/** Quả không được gọi: "That's a mango. Banana and apple, please!" (gọi các quả còn thiếu). */
+export const fruitWrongLine = (given, missing) => [`${cap(thatPhrase(fruitFood(given)))}. ${missing.length > 1 ? fruitList(missing) : cap(requestPhrase(fruitFood(missing[0])))}, please!`, `Đó là ${fruitFood(given).vi}. Cho ${fruitListVi(missing)} nhé!`];
+export const noFruitLine = (id) => [`No ${fruitMany(id)}, please!`, `Không cho ${fruitFood(id).vi} nhé!`];
+export const YUMMY_Q_LINE = ['Yummy?', 'Ngon không?'];
+export const BONG_YUMMY_LINE = ['Yummy!', 'Ngon quá!'];
+export const BONG_FULL_LINE = ["I'm full!", 'No quá rồi!'];

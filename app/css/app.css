@@ -3720,7 +3720,7 @@ img.dr-admin-face { width: 100%; height: 100%; object-fit: contain; }
 .cf-item.jb-pic, .cf-top.jb-pic, .cf-card-row .jb-pic, .cf-card-no .jb-pic, .cf-tool .jb-pic { display: inline-block; width: 1.25em; height: 1.25em; vertical-align: middle; }
 .jb-pic > img { display: block; width: 100%; height: 100%; object-fit: contain; pointer-events: none; }
 .cf-fly { font-size: 64px; }
-.cf-tools { position: absolute; left: 24%; bottom: 43%; display: flex; gap: 12px; padding: 0 12px 6px; border-bottom: 10px solid #c2855a; border-radius: 0 0 6px 6px; } /* kệ trên tường */
+.cf-tools, .cf-ktools { position: absolute; left: 24%; bottom: 43%; display: flex; gap: 12px; padding: 0 12px 6px; border-bottom: 10px solid #c2855a; border-radius: 0 0 6px 6px; } /* kệ trên tường */
 .cf-tool { width: clamp(64px, 11vmin, 100px); aspect-ratio: 1; border-radius: 22px; border: 4px solid #3d2c5e; background: #fff; padding: 0; font-family: var(--emoji); font-size: clamp(38px, 7vmin, 62px); line-height: 1; box-shadow: var(--shadow); }
 .cf-tool.lit, .cf-bowl.lit { outline: 5px solid #fcc419; outline-offset: 3px; }
 .cf-tool.used { opacity: 0.35; }
@@ -3783,7 +3783,7 @@ img.dr-admin-face { width: 100%; height: 100%; object-fit: contain; }
   .cf-card { left: 6%; transform: none; top: 4%; }
   .cf-plate, .cf-cake { width: 52%; }
   .cf-sink { width: 50%; }
-  .cf-tools { left: 4%; bottom: 40%; }
+  .cf-tools, .cf-ktools { left: 4%; bottom: 40%; }
   .cf-places { left: 2%; right: 2%; }
   .cf-place { width: 30%; }
   .cf-counter { top: 34%; }
@@ -3798,6 +3798,65 @@ img.dr-admin-face { width: 100%; height: 100%; object-fit: contain; }
   .cf-citem { transition: none; }
   .cf-customer.leave { animation: dr-fade 0.3s forwards; }
   .cf-water, .cf-soap, .cf-bowl.in-oven, .cf-bowl .cf-batter, .cf-bowl .cf-yolk { transition: none; }
+}
+
+/* Ca E — Bé đói rồi! (SPEC-jobs5): Bông chỗ khách, thẻ mặt, thực đơn, cơm nắm / bát salad, ăn. */
+.cf-bong { position: absolute; right: 3%; bottom: 10%; height: 52%; aspect-ratio: 1; }
+.cf-bong svg { display: block; width: 100%; height: 100%; }
+.cf-bong.hop { animation: dr-hop 0.5s ease-in-out 1; }
+.cf-bong.rub { animation: cf-rub 0.4s ease-in-out 3; }
+@keyframes cf-rub { 50% { transform: rotate(-6deg) scale(1.04); } }
+.cf-feels, .cf-menu { position: absolute; left: 50%; top: 8%; transform: translateX(-50%); display: flex; gap: clamp(12px, 3vmin, 24px); z-index: 2; }
+.cf-feel { width: clamp(84px, 15vmin, 130px); aspect-ratio: 1; border-radius: 24px; border: 5px solid #3d2c5e; background: #fff; padding: 0; font-family: var(--emoji); font-size: clamp(50px, 10vmin, 86px); line-height: 1; box-shadow: var(--shadow); }
+.cf-feel.chosen { outline: 6px solid #fcc419; outline-offset: 3px; transform: scale(1.1); }
+.cf-feel.shake, .cf-mcard.shake { animation: dr-shake 0.45s; }
+.cf-feel.nudge, .cf-mcard.nudge { animation: hint-hop 0.5s ease-in-out 3; }
+.cf-mcard { width: clamp(120px, 22vmin, 190px); aspect-ratio: 0.9; border-radius: 26px; border: 5px solid #3d2c5e; background: #fff; padding: 8px; display: flex; align-items: center; justify-content: center; box-shadow: var(--shadow); transition: transform 0.25s, opacity 0.25s; }
+.cf-mface { width: 86%; height: 86%; object-fit: contain; pointer-events: none; }
+.cf-mface.emoji { width: auto; height: auto; font-family: var(--emoji); font-size: clamp(64px, 13vmin, 110px); line-height: 1; }
+.cf-menu.picked .cf-mcard:not(.chosen) { opacity: 0.3; }
+.cf-mcard.chosen { transform: scale(1.12); outline: 6px solid #fcc419; outline-offset: 3px; }
+.cf-work { position: absolute; left: 50%; bottom: 8%; transform: translateX(-50%); width: min(22%, 200px); aspect-ratio: 120 / 100; }
+.cf-work[data-dish="salad"] { aspect-ratio: 120 / 80; width: min(28%, 240px); bottom: 10%; }
+.cf-work.ready { filter: drop-shadow(0 0 12px #ffe066); }
+.cf-rb, .cf-rb svg, .cf-sbowl-art, .cf-sbowl-art svg { display: block; width: 100%; height: 100%; }
+.cf-rb .cf-rb-blob, .cf-rb .cf-rb-tri, .cf-rb .cf-rb-grain, .cf-rb .cf-rb-nori { opacity: 0; transition: opacity 0.4s; }
+.cf-rb[data-step="1"] .cf-rb-blob { opacity: 1; }
+.cf-rb[data-step="2"] .cf-rb-tri, .cf-rb[data-step="3"] .cf-rb-tri, .cf-rb[data-step="2"] .cf-rb-grain, .cf-rb[data-step="3"] .cf-rb-grain, .cf-rb[data-step="3"] .cf-rb-nori { opacity: 1; }
+.cf-eat .cf-rb-hands { display: none; }
+.cf-eat[data-dish="rice-ball"] { margin-bottom: -16%; }
+.cf-work.do-scoop .cf-rb { animation: cf-drop 0.4s ease-out; }
+.cf-work.do-squeeze .cf-rb { animation: cf-squeeze 0.3s ease-in-out 3; }
+@keyframes cf-squeeze { 50% { transform: scale(0.88, 1.08); } }
+.cf-work.do-wrap .cf-rb-nori { animation: cf-drop 0.5s ease-out; }
+.cf-work.do-mix .cf-sfruits, .cf-work.mixed .cf-sfruits { animation: cf-stir 0.3s linear 3; }
+.cf-sbowl-art { position: absolute; inset: 0; }
+.cf-sfruits { position: absolute; left: 10%; right: 10%; top: -12%; display: flex; justify-content: center; align-items: flex-end; gap: 4px; }
+.cf-sfruit, .cf-sbanana { font-family: var(--emoji); font-size: clamp(34px, 6vmin, 52px); line-height: 1; }
+.cf-sfruit .cf-fruit, .cf-sbanana .cf-fruit { width: 1.2em; height: 1.2em; object-fit: contain; }
+.cf-sbanana { padding: 4px; border: 0; border-radius: 16px; background: none; }
+.cf-sbanana.lit { outline: 5px solid #fcc419; outline-offset: 2px; background: #fff9db; }
+.cf-sbanana.nudge { animation: cf-glow 0.6s ease-in-out 3; }
+.cf-slices { font-size: 0.5em; letter-spacing: -2px; }
+.cf-fruit.emoji { font-family: var(--emoji); font-size: 52px; line-height: 1; }
+.jb-tray .cf-fruit:not(.emoji) { width: 56px; height: 56px; object-fit: contain; }
+.cf-ktools .cf-tool svg { display: block; width: 80%; height: 80%; margin: auto; }
+.cf-eat { display: block; width: 72%; margin-bottom: 4%; transition: transform 0.3s, opacity 0.3s; animation: cf-drop 0.3s ease-out; }
+.cf-eat > * { display: block; width: 100%; position: relative; }
+.cf-eat .cf-sfruits { position: absolute; }
+.cf-plate[data-bites="1"] .cf-eat { transform: scale(0.78); }
+.cf-plate[data-bites="2"] .cf-eat { transform: scale(0.55); }
+.cf-plate[data-bites="3"] .cf-eat { transform: scale(0.2); opacity: 0; }
+@media (max-width: 600px), (orientation: portrait) {
+  .cf-bong { right: 2%; bottom: auto; top: 4%; height: 30%; }
+  .cf-feels, .cf-menu { top: 36%; }
+  .cf-work { width: 40%; }
+  .cf-work[data-dish="salad"] { width: 56%; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .cf-bong.hop, .cf-bong.rub, .cf-feel.shake, .cf-mcard.shake, .cf-feel.nudge, .cf-mcard.nudge, .cf-work.do-scoop .cf-rb, .cf-work.do-squeeze .cf-rb,
+  .cf-work.do-wrap .cf-rb-nori, .cf-work.do-mix .cf-sfruits, .cf-work.mixed .cf-sfruits, .cf-sbanana.nudge, .cf-eat { animation: none; }
+  .cf-mcard, .cf-eat, .cf-rb .cf-rb-blob, .cf-rb .cf-rb-tri, .cf-rb .cf-rb-grain, .cf-rb .cf-rb-nori { transition: none; }
 }
 
 /* ---------- Thợ xây (SPEC-jobs3 mục 6): bãi đất, mũ bảo hộ, bản vẽ nhà (ô từng phần), đường + ổ gà, khối đá ---------- */

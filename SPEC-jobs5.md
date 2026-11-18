@@ -1,6 +1,6 @@
 # SPEC — 👨‍🍳 Đầu bếp nhí: ca "Bé đói rồi!" (bé chọn món, bé nấu)
 
-> Phiên bản spec: **draft2** (sửa theo review, mục 10) · Ngày: 2026-11-18 · Dựa trên app 0.81.0. **Bố mẹ đã duyệt draft2 (2026-11-18)**, chốt theo mục 9; làm theo 2 bản ở mục 8.
+> Phiên bản spec: **draft2** (sửa theo review, mục 10) · Ngày: 2026-11-18 · Dựa trên app 0.81.0. **Bố mẹ đã duyệt draft2 (2026-11-18)**, chốt theo mục 9; làm theo 2 bản ở mục 8. **Đã làm:** 0.82.0 (C4) — ghi chú mục 11.
 > - **draft2, sửa theo review:**
 >   - lượt nói **mặc định tắt**, không ghi âm, chỉ dùng nhận dạng khi cài đặt "Dùng nhận dạng giọng nói" bật, có lỗi gì cũng bỏ qua (5);
 >   - mức 3 chọn sai cảm xúc thì chọn lại ngay (3);
@@ -176,8 +176,8 @@ Hiện mỗi lượt có 3 ca. Bánh nướng (B) luôn có, còn ca D (món nó
 
 | `rounds % 3` | 3 ca |
 |---|---|
-| 0 | A bánh mì kẹp + B bánh nướng + D nóng / lạnh |
-| 1 | D nóng / lạnh + B bánh nướng + C trang trí |
+| 0 | D nóng / lạnh + B bánh nướng + C trang trí |
+| 1 | A bánh mì kẹp + B bánh nướng + D nóng / lạnh |
 | 2 | A bánh mì kẹp + C trang trí + **E bé đói** |
 
 - **`rounds` ổn định:**
@@ -296,3 +296,25 @@ Test cũ `jobs3.spec.js` và `jobs4.spec.js` của Đầu bếp đặt `chefHung
 | Thêm test biên | Mục 8: JOBS5-11…22 |
 
 **Một điểm mình giữ khác review:** review đề xuất "chạm nhầm tính vào giới hạn 5 thao tác". Mình **không** tính nhầm vào giới hạn. Giới hạn 5 là để lập kế hoạch ca không quá dài. Nếu tính cả nhầm thì bé nhầm nhiều có thể "vượt giới hạn" và kẹt, đúng điều review lo ở lưu ý của mục 2.4. Nhầm vẫn được tính vào sao và đáp án nhún như mọi ca.
+
+## 11. Ghi chú khi làm
+### 0.82.0 — C4: ca E (cơm nắm + salad)
+- **Code:**
+  - `jobs/chef.js` thêm `MENU`, `E_STEPS`, `E_TOOLS`, `FRUITS`, `FEELS`, `makeHungryCase`, `hungryRound`, `hungryCleanAvoid`, `dishActions` và câu nói ca E.
+  - `planRound` xếp ca theo `rounds % 3`; lượt có ca E thì dọn bếp tránh đồ ca E (`avoidIds`).
+  - `screens/chef.js` thêm trạng thái `feel` → `menu` → `cook` / `fruit` → `eat`.
+  - `jobs/kit.js`: câu có `slow: true` đọc chậm × 0.85.
+- **Khác bảng mục 6 (đã sửa bảng):** `rounds % 3 = 0` là D thay bánh mì kẹp, `= 1` là D thay trang trí. Như vậy hai lượt đầu giữ đúng như bản cũ (`rounds` 0 / 1), test cũ không phải đổi. Ca E ở `rounds % 3 = 2`.
+- **Thực đơn 0.82.0 chỉ có 2 món** (cơm nắm, salad) ở mọi mức. Mức 2–3 có 3 thẻ khi thêm pizza ở 0.83.0.
+- **Ảnh:**
+  - Thẻ cơm nắm và quả salad dùng ảnh món của Cho Bông ăn (nếu bố mẹ đã thêm), không có thì emoji. Thẻ salad là emoji 🥗.
+  - Nồi cơm 🍚, găng tay 🧤, thìa, sữa, trứng dùng emoji (hoặc ảnh Đóng vai). Rong biển vẽ SVG.
+  - Nắm cơm vẽ SVG theo bước: tròn → tam giác → quấn rong biển.
+- **Bông** đứng chỗ khách: nói *"Yes! I'm hungry!"* (mức 1–2), nhún mỗi miếng bé ăn, xoa bụng *"I'm full!"* (có tiếng ợ nhỏ). Lúc ăn, chú hỏi *"Yummy?"* trước.
+- **Ăn:** 5 giây chờ chạy theo **giờ thật**, kể cả ở chế độ chạy nhanh của test, để bé luôn có đủ thời gian tự chạm.
+- **Salad mức 2–3:** sau khi bóc chuối, nếu còn quả chưa chọn thì chú nhắc lại cả câu gọi quả.
+- **`seen` quả** ghi `fruit:<mã>` (dâu tây trùng mã với đồ trang trí).
+- Test:
+  - unit `chef.test.js`: 500 seed theo `rounds % 3`, ca E, dọn bếp tránh đồ ca E, câu nói;
+  - UI `jobs5.spec.js`: JOBS5-01…05, 07, 08, 10, 11, 12, 18, 20.
+  - Các mã còn lại làm ở 0.83.0 (pizza, lượt nói) hoặc kiểm tay: 13–16 (micro), 17 (chọn lại món — không có gì chặn), 19 (pizza), 21 (thiếu ảnh → emoji, cùng cách của trò Bán hàng), 22 (unit kiểm `rounds`, kế hoạch lưu trong bản lưu như mọi nghề).

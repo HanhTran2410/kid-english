@@ -1,5 +1,5 @@
 // 👨‍🍳 Đầu bếp nhí (SPEC-jobs3.md mục 5, SPEC-jobs4.md mục 3): kế hoạch lượt thỏa bất biến (500 seed mỗi mức), câu nói,
-// ca D món nóng – món lạnh (thay A / C luân phiên), dọn bếp cuối lượt.
+// ca D món nóng – món lạnh (thay A / C luân phiên), ca E "Bé đói rồi!" (SPEC-jobs5), dọn bếp cuối lượt.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
@@ -7,6 +7,8 @@ import {
   toolWrongLine, decorAskLine, decorWrongLine, stepLine,
   DISHES, TEMP_COMBOS, CLEAN_ITEMS, tempMatches, cleanOk, replacedByTemp, makeTempCase, makeClean,
   feelLine, somethingLine, tempAskLine, tempWrongLine, cleanAskLine, placeWrongLine, itemWrongLine,
+  makeHungryCase, hungryRound, hungryCleanAvoid, dishActions, E_STEPS, E_TOOLS, FRUITS,
+  saladAskLine, fruitWrongLine, noFruitLine, fruitOneLine, eChainLine, eNextLine, eToolWrongLine, menuLine, chosenLine, feelWrongLine,
 } from '../../app/js/jobs/chef.js';
 
 function seeded(seed = 1) {
@@ -17,16 +19,19 @@ function seeded(seed = 1) {
   };
 }
 
-test('500 seed mỗi mức: đủ 3 ca (ca D thay A / C luân phiên — JOBS4-06), bất biến, ≤ 5 thao tác con; egg chỉ là đáp án ở bước "Crack the egg!"', () => {
+test('500 seed mỗi mức: đủ 3 ca theo rounds % 3 (JOBS5-10: 0 → D thay A, 1 → D thay C, 2 → A + C + E), bất biến, ≤ 5 thao tác con; egg chỉ là đáp án ở bước "Crack the egg!"', () => {
   for (const level of [1, 2, 3]) {
     const rng = seeded(level * 11);
     for (let i = 0; i < 500; i++) {
-      const rounds = i % 4;
+      const rounds = i % 6;
       const { cases, clean } = planRound(level, { rng, rounds });
       const kinds = cases.map((c) => c.kind);
-      // Lượt lẻ (rounds chẵn) không có bánh mì kẹp; lượt chẵn không có trang trí; luôn có bánh nướng.
-      assert.deepEqual([...kinds].sort(), (rounds % 2 === 0 ? ['bake', 'decor', 'temp'] : ['bake', 'sandwich', 'temp']).sort());
-      if (level !== 2) assert.deepEqual(kinds, ['sandwich', 'bake', 'decor'].map((k) => (k === replacedByTemp(rounds) ? 'temp' : k)));
+      assert.deepEqual([...kinds].sort(), [['bake', 'decor', 'temp'], ['bake', 'sandwich', 'temp'], ['decor', 'hungry', 'sandwich']][rounds % 3]);
+      // Ca E luôn là ca nghề cuối, không cùng lượt với bánh nướng (SPEC-jobs5 mục 6).
+      if (rounds % 3 === 2) {
+        assert.equal(kinds[2], 'hungry');
+        if (level !== 2) assert.deepEqual(kinds, ['sandwich', 'decor', 'hungry']);
+      } else if (level !== 2) assert.deepEqual(kinds, ['sandwich', 'bake', 'decor'].map((k) => (k === replacedByTemp(rounds) ? 'temp' : k)));
       for (const c of cases) {
         assert.ok(caseOk(c, level), `mức ${level}: ${JSON.stringify(c)}`);
         assert.ok(caseActions(c) <= 5);
@@ -38,8 +43,10 @@ test('500 seed mỗi mức: đủ 3 ca (ca D thay A / C luân phiên — JOBS4-0
         assert.ok(!s.layers.includes('egg'));
         assert.equal(Boolean(s.no), level >= 3);
       }
-      assert.equal(b.ordered, level >= 3);
-      assert.equal(b.steps.includes('crack'), level >= 2);
+      if (b) {
+        assert.equal(b.ordered, level >= 3);
+        assert.equal(b.steps.includes('crack'), level >= 2);
+      }
       if (d) {
         assert.equal(d.want.length, level >= 3 ? 2 : 1);
         if (level >= 3) assert.equal(d.tray.length, 3);
@@ -49,13 +56,16 @@ test('500 seed mỗi mức: đủ 3 ca (ca D thay A / C luân phiên — JOBS4-0
         assert.ok(cleanOk(clean, level), JSON.stringify(clean));
         // JOBS4-17: dọn bếp không dùng từ đã là đáp án ở ca D.
         const t = cases.find((c) => c.kind === 'temp');
-        const tWord = t.dish ? DISHES[t.dish].word : null;
+        const tWord = t?.dish ? DISHES[t.dish].word : null;
+        // JOBS5-20: dọn bếp không có đồ nào đã ở trên bàn ca E (bát salad, đồ nhiễu).
+        const e = cases.find((c) => c.kind === 'hungry');
+        if (e) for (const id of hungryCleanAvoid(e)) assert.ok(!clean.items.includes(id), `${id} ${clean.items}`);
         if (tWord) assert.ok(!clean.asks.some((id) => CLEAN_ITEMS[id].word === tWord), `${tWord} ${clean.asks}`);
       }
     }
   }
   for (const level of [1, 2, 3]) {
-    for (const rounds of [0, 1]) {
+    for (const rounds of [0, 1, 2]) {
       const f = fallbackPlan(level, rounds);
       for (const c of f.cases) assert.ok(caseOk(c, level));
       assert.ok(level <= 1 ? f.clean === null : cleanOk(f.clean, level));
@@ -128,4 +138,55 @@ test('câu nói: gọi lớp, cả món, "No …", nhầm lớp, chuỗi bước
   assert.equal(decorAskLine([{ id: 'strawberry', n: 2 }, { id: 'cherry', n: 1 }])[0], 'Two strawberries and one cherry, please!');
   assert.equal(decorAskLine([{ id: 'candle', n: 1 }])[0], 'One candle, please!');
   assert.equal(decorWrongLine('blueberry', ['strawberry'])[0], "That's a blueberry. Strawberries, please!");
+});
+
+test('ca E (SPEC-jobs5): thực đơn 2 món; mức 3 thẻ mặt có hungry; cơm nắm 2 / 3 bước bắt đầu bằng scoop; salad luôn có chuối, mức 3 có quả "No"; đồ nhiễu mức 2–3', () => {
+  for (const level of [1, 2, 3]) {
+    const rng = seeded(level * 7);
+    for (let i = 0; i < 500; i++) {
+      const c = makeHungryCase(level, { rng });
+      assert.ok(caseOk(c, level), JSON.stringify(c));
+      assert.deepEqual([...c.menu].sort(), ['rice-ball', 'salad']);
+      assert.equal(c.rice.steps.length, level <= 1 ? 2 : 3);
+      assert.equal(c.salad.fruits[0], 'banana');
+      assert.equal(dishActions(c, 'salad'), 4); // JOBS5-11: chọn 2 quả + bóc + trộn
+      assert.ok(caseActions(c) <= 5);
+      if (level >= 2) {
+        const extra = c.rice.tools.filter((t) => !c.rice.steps.some((s) => E_STEPS[s].tool === t));
+        assert.equal(extra.length, 1);
+        assert.ok(['milk', 'egg'].includes(extra[0]));
+      }
+      if (level >= 3) {
+        assert.ok(!c.salad.fruits.includes(c.salad.no));
+        assert.ok(c.salad.tray.includes(c.salad.no));
+      }
+      for (const f of c.salad.tray) assert.ok(FRUITS.includes(f));
+    }
+  }
+  // Quả ít gặp trước: táo đã gặp nhiều thì không được gọi.
+  const rng = seeded(3);
+  for (let i = 0; i < 50; i++) assert.notEqual(makeHungryCase(2, { rng, seen: { 'fruit:apple': 9 } }).salad.fruits[1], 'apple');
+  assert.equal(hungryRound(2), true);
+  assert.equal(hungryRound(5), true);
+  assert.equal(hungryRound(0), false);
+  assert.equal(hungryRound(1), false);
+  for (const t of Object.values(E_STEPS)) assert.ok(E_TOOLS[t.tool]);
+});
+
+test('câu ca E: chuỗi bước, bước kế, đồ sai, gọi quả, "No …", thực đơn', () => {
+  assert.equal(eChainLine(['scoop', 'squeeze', 'wrap'])[0], 'First, scoop the rice. Then, squeeze. Then, wrap it!');
+  assert.equal(eNextLine(['scoop', 'squeeze', 'wrap'], 0)[0], 'First, scoop the rice!');
+  assert.equal(eNextLine(['scoop', 'squeeze', 'wrap'], 1)[0], 'Now, squeeze!');
+  assert.equal(eToolWrongLine('milk', 'scoop')[0], "That's the milk. Scoop the rice!");
+  assert.equal(eToolWrongLine('gloves', 'wrap')[0], 'Those are the gloves. Wrap it!');
+  assert.equal(saladAskLine({ fruits: ['banana', 'apple'], no: null })[0], 'Banana and apple, please!');
+  assert.equal(saladAskLine({ fruits: ['banana', 'apple'], no: 'grapes' })[0], 'Banana and apple, please! No grapes!');
+  assert.equal(fruitWrongLine('mango', ['banana', 'apple'])[0], "That's a mango. Banana and apple, please!");
+  assert.equal(fruitWrongLine('grapes', ['apple'])[0], 'Those are grapes. An apple, please!');
+  assert.equal(noFruitLine('grapes')[0], 'No grapes, please!');
+  assert.equal(noFruitLine('strawberry')[0], 'No strawberries, please!');
+  assert.equal(fruitOneLine('banana')[0], 'A banana, please!');
+  assert.equal(menuLine('rice-ball')[0], 'A rice ball?');
+  assert.equal(chosenLine('salad')[0], "A fruit salad! Let's make it!");
+  assert.equal(feelWrongLine('sleepy')[0], "That's sleepy.");
 });

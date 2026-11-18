@@ -164,21 +164,22 @@ export function jobScreen(app, opts) {
     box.style.setProperty('--tail', `${Math.round(mid - target)}px`); // đuôi bong bóng chỉ đúng chỗ người nói
   }
   /**
-   * Một hàng nói: câu mới thay câu cũ. `lines`: [{ who, line: [en, vi] }]. Trả về false nếu bị thay / rời màn.
+   * Một hàng nói: câu mới thay câu cũ. `lines`: [{ who, line: [en, vi], slow? }]. Trả về false nếu bị thay / rời màn.
    * Giọng đọc lỗi thì vẫn đi tiếp (phụ đề vẫn hiện), bé không bị kẹt.
    */
   async function talk(lines) {
     const gen = ++talkGen;
     talking = true;
     try {
-      for (const { who, line: [en, vi] } of lines) {
+      for (const { who, line: [en, vi], slow } of lines) {
         if (gen !== talkGen || signal.aborted) return false;
         setSpeaker(who);
         caption(en, vi, who);
         opts.onTalk?.(who);
         try {
           // Nhân vật khác Bông (bạn thú, khách, cô giáo, học sinh…) nói giọng thứ hai cho dễ phân biệt lượt.
-          await app.speaker.speak(en, { signal, pitch: opts.pitch?.(who), role: (opts.altVoice ? opts.altVoice(who) : who && who !== 'bong') ? 'alt' : undefined });
+          // `slow`: câu dài mức 3 đọc chậm hơn một chút (SPEC-jobs5 4.2).
+          await app.speaker.speak(en, { signal, rate: slow ? (app.speaker.rate ?? 0.8) * 0.85 : undefined, pitch: opts.pitch?.(who), role:(opts.altVoice ? opts.altVoice(who) : who && who !== 'bong') ? 'alt' : undefined });
         } catch {
           if (signal.aborted) return false;
         }
