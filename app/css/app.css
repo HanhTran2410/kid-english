@@ -3891,6 +3891,112 @@ img.dr-admin-face { width: 100%; height: 100%; object-fit: contain; }
   .cf-work.in-oven, .cf-pz .cf-pz-sauce, .cf-pz .cf-pz-cheese { transition: none; }
 }
 
+/* ---------- Siêu nhân an toàn (SPEC-safety.md): cảnh vẽ sẵn, hình đặt theo % (x = tâm, y = đáy), nút ✋ No / 👍 Yes ---------- */
+.home-btn.game-safety { background: #ffe3e3; }
+.jb-cap-hero::after { content: '★'; font-size: 15px; font-weight: 900; line-height: 1; color: #f03e3e; }
+.sf-stage { background: #fff8f0; }
+.sf-scene { position: absolute; inset: 0; container-type: size; overflow: hidden; touch-action: none; transition: filter 600ms; }
+.sf-scene[data-scene="kitchen"] { background-image: linear-gradient(#fff3e0 0 60%, transparent 60%), repeating-linear-gradient(90deg, #ffe8cc 0 40px, #ffd8a8 40px 80px); }
+.sf-scene[data-scene="room"] { background: linear-gradient(#e7f5ff 0 66%, #d0bfff 66% 67%, #f3d9fa 67%); }
+.sf-scene[data-scene="bedroom"] { background: linear-gradient(#d0ebff 0 66%, #bac8ff 66% 67%, #e5dbff 67%); }
+.sf-scene[data-scene="hall"] { background: linear-gradient(#fff9db 0 66%, #ced4da 66% 67%, #f1f3f5 67%); }
+.sf-scene[data-scene="street"] { background: linear-gradient(#d0ebff 0 44%, #868e96 44% 76%, #dee2e6 76% 78%, #f1f3f5 78%); }
+.sf-scene[data-scene="street"]::before { content: ''; position: absolute; left: 32%; width: 22%; top: 46%; height: 28%; background: repeating-linear-gradient(90deg, #fff 0 10%, transparent 10% 20%); opacity: 0.85; }
+.sf-scene[data-scene="park"] { background: linear-gradient(#d3f9d8 0 62%, #8ce99a 62%); }
+.sf-scene[data-scene="yard"] { background: linear-gradient(#e7f5ff 0 66%, #b2f2bb 66%); }
+.sf-scene[data-scene="smoke"] { background: linear-gradient(#f1f3f5 0 66%, #ced4da 66% 67%, #e9ecef 67%); }
+/* Khói xám nhạt trên trần (không có lửa): khói bay lên cao, gần sàn thì sạch. */
+.sf-scene[data-scene="smoke"]::before { content: ''; position: absolute; inset: 0 0 auto; height: 34%; background: radial-gradient(ellipse at 20% 30%, rgba(173, 181, 189, 0.9), transparent 45%), radial-gradient(ellipse at 50% 20%, rgba(206, 212, 218, 0.9), transparent 50%), radial-gradient(ellipse at 80% 35%, rgba(173, 181, 189, 0.85), transparent 45%), linear-gradient(rgba(134, 142, 150, 0.5), rgba(134, 142, 150, 0)); filter: blur(6px); pointer-events: none; animation: sf-smoke 4s ease-in-out infinite alternate; }
+@keyframes sf-smoke { to { transform: translateX(3%); } }
+.sf-scene.dark { filter: brightness(0.55) saturate(0.8); }
+
+.sf-sp { position: absolute; translate: -50% -100%; display: grid; place-items: center; transition-property: left, top, opacity; transition-duration: 650ms; transition-timing-function: ease-in-out; pointer-events: auto; }
+.sf-sp svg { display: block; width: 100%; height: 100%; pointer-events: none; }
+.sf-sp[hidden] { display: none; }
+.sf-emo { font-family: var(--emoji); font-size: calc(var(--h) * 0.85cqh); line-height: 1; pointer-events: none; }
+.sf-sp.sf-bong { z-index: 3; }
+.sf-sp.sf-mummy, .sf-sp.sf-daddy, .sf-sp.sf-stranger { z-index: 2; }
+.sf-sp.sf-helmet, .sf-sp.sf-belt, .sf-sp.sf-hands, .sf-sp.sf-hug { z-index: 4; }
+.sf-sp.sf-helmet.worn { z-index: 5; }
+/* Áo choàng đỏ của Bông (siêu nhân), sau lưng. */
+.sf-bong.caped::before { content: ''; position: absolute; z-index: -1; left: -8%; right: -8%; top: 62%; bottom: -10%; background: linear-gradient(90deg, #c92a2a, #f03e3e 30% 70%, #c92a2a); clip-path: polygon(30% 0, 70% 0, 100% 100%, 82% 90%, 66% 100%, 50% 90%, 34% 100%, 18% 90%, 0 100%); }
+.sf-bong.walk svg { animation: dr-hop 0.5s ease-in-out infinite; }
+.sf-bong.brake { animation: sf-brake 0.5s ease-out; }
+@keyframes sf-brake { 30% { transform: translateX(-10%) rotate(-8deg); } 60% { transform: translateX(4%) rotate(3deg); } }
+.sf-bong.freeze { animation: sf-freeze 0.9s ease-in-out; }
+@keyframes sf-freeze { 0%, 100% { transform: none; } 20% { transform: scale(1.05, 0.95); } 40%, 80% { transform: rotate(-4deg); } 60% { transform: rotate(4deg); } }
+.sf-sp.hop { animation: dr-hop 0.5s ease-in-out 2; }
+.sf-bong.low { transform: scale(1.05, 0.72); transform-origin: 50% 100%; }
+.sf-bong.low::after { content: '✋'; position: absolute; left: 50%; top: 58%; translate: -50% 0; font-family: var(--emoji); font-size: calc(var(--h) * 0.24cqh); }
+.sf-bong.sleep svg { transform: rotate(-80deg); transform-origin: 50% 80%; }
+.sf-bong.sleep::after { content: 'z Z'; position: absolute; right: -20%; top: 0; font-weight: 900; color: #4dabf7; font-size: calc(var(--h) * 0.2cqh); animation: float 2s ease-in-out infinite; }
+.sf-bong.fly { animation: sf-fly 1.6s ease-in-out; }
+@keyframes sf-fly { 30% { transform: translateY(-40%) rotate(-10deg); } 60% { transform: translate(20%, -55%) rotate(8deg); } }
+.sf-sp.glow { animation: sf-glow 0.6s ease-in-out 3; }
+@keyframes sf-glow { 50% { filter: drop-shadow(0 0 14px #ffd43b) brightness(1.15); transform: scale(1.08); } }
+.sf-sp.pop { animation: pop 0.4s ease-out; }
+.sf-sp.nudge { animation: hint-hop 0.5s ease-in-out 3; }
+.sf-sp.sf-target, .sf-sp.sf-drag { cursor: pointer; filter: drop-shadow(0 0 8px #ffd43b); }
+.sf-sp.dragging { transition: none; z-index: 10; filter: drop-shadow(0 8px 6px rgba(61, 44, 94, 0.35)); }
+.sf-pot.steam::after, .sf-house .sf-puff { animation: fr-puff 1.6s ease-out infinite; }
+.sf-pot.steam::after { content: '♨️'; position: absolute; left: 50%; top: -30%; translate: -50% 0; font-family: var(--emoji); font-size: calc(var(--h) * 0.5cqh); }
+.sf-tv.off .sf-screen { fill: #212529; }
+.sf-tv.off .sf-cartoon { display: none; }
+.sf-tv.off .sf-power { fill: #fa5252; }
+.sf-lamp.off .sf-glow { display: none; }
+.sf-lamp.off .sf-shade { fill: #868e96; }
+.sf-timer.ring, .sf-alarm.ring { animation: bell-ring 1s ease-in-out infinite; }
+.sf-timer.quiet { animation: none; }
+.sf-tap.on::after { content: '💧'; position: absolute; left: 30%; top: 90%; font-family: var(--emoji); font-size: calc(var(--h) * 0.35cqh); animation: fx-drop 0.8s ease-in infinite; }
+.sf-fan .sf-blades { animation: ff-spin 0.6s linear infinite; }
+.sf-toybox:not(.full) .sf-boxtoys { display: none; }
+.sf-helmet.worn, .sf-belt.worn { animation: pop 0.4s ease-out; }
+.sf-hand { position: absolute; z-index: 9; translate: -10% -30%; font-family: var(--emoji); font-size: clamp(34px, 8cqh, 64px); pointer-events: none; animation: hint-hop 0.9s ease-in-out infinite; }
+.sf-hand[hidden] { display: none; }
+
+/* Sao trên áo choàng (một sao mỗi tình huống). */
+.sf-stars { position: absolute; z-index: 6; top: 10px; right: 12px; display: flex; gap: 4px; padding: 4px 10px; border-radius: 999px; background: rgba(255, 255, 255, 0.85); box-shadow: var(--shadow); pointer-events: none; }
+.sf-star { font-family: var(--emoji); font-size: clamp(20px, 4vmin, 30px); line-height: 1; color: #adb5bd; }
+.sf-star.on { color: inherit; }
+.sf-star.pop { animation: pop 0.5s ease-out 2; }
+
+/* Mức 2: hai tranh to bằng nhau (≥ 40% bề ngang), cảnh vẽ nhỏ bên trong. */
+.sf-cards { position: absolute; inset: 0; z-index: 7; display: grid; grid-template-columns: 1fr 1fr; gap: 4%; padding: 5% 4% 4%; align-items: center; }
+.sf-cards[hidden] { display: none; }
+.sf-card { position: relative; aspect-ratio: 4 / 3; width: 100%; max-height: 100%; padding: 0; border: 5px solid #fff; border-radius: 24px; overflow: hidden; background: #fff; box-shadow: var(--shadow); cursor: pointer; }
+.sf-card .sf-scene { pointer-events: none; }
+.sf-card.chosen { border-color: #51cf66; box-shadow: 0 0 0 6px rgba(81, 207, 102, 0.45), var(--shadow); }
+.sf-card.dim { opacity: 0.55; }
+.sf-card.shake { animation: as-shake 0.4s; }
+.sf-card.nudge { animation: hint-hop 0.5s ease-in-out 3; }
+
+/* Hai nút trả lời (mức 1): hình + chữ, không chỉ khác màu. */
+.sf-play .jb-tray { gap: clamp(16px, 5vw, 48px); align-items: center; }
+.sf-btn { display: flex; align-items: center; gap: 10px; min-width: 140px; min-height: 92px; padding: 8px 22px; border: 4px solid #3d2c5e; border-radius: 26px; font: inherit; color: #3d2c5e; box-shadow: var(--shadow); cursor: pointer; }
+.sf-btn:disabled { opacity: 0.55; cursor: default; }
+.sf-stop { background: #ffc9c9; }
+.sf-ok { background: #b2f2bb; }
+.sf-btn-icon { font-family: var(--emoji); font-size: 48px; line-height: 1; }
+.sf-btn-text { display: grid; text-align: left; }
+.sf-btn-text b { font-size: 28px; line-height: 1.1; }
+.sf-btn-text small { font-size: 15px; opacity: 0.8; }
+.sf-btn.nudge { animation: hint-hop 0.5s ease-in-out 3; }
+.sf-empty { position: absolute; left: 6%; right: 6%; top: 74%; margin: 0; text-align: center; font-size: clamp(18px, 3.4vmin, 26px); font-weight: 800; color: #3d2c5e; }
+.check-list { display: grid; gap: 6px; }
+@media (max-width: 600px), (orientation: portrait) {
+  /* Màn dọc: cảnh giữ khung ngang 4 : 3 ở giữa (hình đặt theo % nên không bị to, đè nhau). */
+  .sf-stage > .sf-scene { inset: auto 0; top: 50%; translate: 0 -50%; aspect-ratio: 4 / 3; border-radius: 20px; }
+  .sf-cards { grid-template-columns: 1fr; grid-template-rows: 1fr 1fr; gap: 3%; padding: 4% 8%; }
+  .sf-card { aspect-ratio: auto; height: 100%; }
+  .sf-btn { min-width: 0; flex: 1; padding: 8px 12px; }
+  .sf-btn-icon { font-size: 40px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .sf-sp, .sf-scene { transition: none !important; }
+  .sf-bong.walk svg, .sf-bong.brake, .sf-bong.freeze, .sf-bong.fly, .sf-sp.hop, .sf-sp.glow, .sf-sp.nudge, .sf-hand, .sf-card.shake, .sf-card.nudge,
+  .sf-btn.nudge, .sf-timer.ring, .sf-alarm.ring, .sf-fan .sf-blades, .sf-scene[data-scene="smoke"]::before, .sf-pot.steam::after, .sf-house .sf-puff, .sf-tap.on::after { animation: none; }
+}
+
 /* ---------- Thợ xây (SPEC-jobs3 mục 6): bãi đất, mũ bảo hộ, bản vẽ nhà (ô từng phần), đường + ổ gà, khối đá ---------- */
 .bd-stage { background: linear-gradient(#e7f5ff 0 50%, #f3d9a4 50%); }
 .bd-stage [hidden] { display: none !important; }

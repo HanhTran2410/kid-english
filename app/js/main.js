@@ -33,6 +33,7 @@ import { shopScreen } from './screens/shop.js';
 import { postScreen } from './screens/post.js';
 import { teacherScreen } from './screens/teacher.js';
 import { policeScreen } from './screens/police.js';
+import { safetyScreen } from './screens/safety.js';
 import { fireScreen } from './screens/fire.js';
 import { farmScreen } from './screens/farm.js';
 import { chefScreen } from './screens/chef.js';
@@ -168,6 +169,8 @@ async function boot() {
   app.register('chef', chefScreen);
   app.register('build', buildScreen);
   app.register('bus', busScreen);
+  // Siêu nhân an toàn (SPEC-safety.md): thẻ trong Trò chơi.
+  app.register('safety', safetyScreen);
   app.register('sleep', sleepScreen);
   app.register('parent', parentScreen);
 

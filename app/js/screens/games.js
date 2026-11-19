@@ -1,4 +1,4 @@
-// Góc trò chơi (nút 🎲 Play, SPEC-scenes mục 11): mỗi trò một thẻ to — Dán tranh, Mặc đồ, Tô màu, Cho Bông ăn, Trốn tìm, Ghép hình, Tìm đồ còn thiếu, Ai kêu thế?, Bắt bong bóng, Đóng vai nghề, Chọn từ (trò tổng hợp).
+// Góc trò chơi (nút 🎲 Play, SPEC-scenes mục 11): mỗi trò một thẻ to — Dán tranh, Mặc đồ, Tô màu, Cho Bông ăn, Trốn tìm, Ghép hình, Tìm đồ còn thiếu, Ai kêu thế?, Bắt bong bóng, Đóng vai nghề, Siêu nhân an toàn, Chọn từ (trò tổng hợp).
 // Trò Chọn số đã có ở mục Số đếm nên không nhắc lại ở đây.
 
 import { h } from '../ui.js';
@@ -30,6 +30,8 @@ export function gamesScreen(app) {
     card('🐮', 'Who says moo?', 'Ai kêu thế?', '.game-sounds', () => app.go('animal-sounds')),
     card('🧼', 'Pop the bubbles', 'Bắt bong bóng', '.game-bubbles', () => app.go('bubbles')),
     card('👨‍⚕️', 'Jobs', 'Đóng vai', '.game-jobs', () => app.go('jobs')),
+    // Siêu nhân an toàn (SPEC-safety.md): việc nên làm / không nên làm, Bông hỏi, bé chạm No / Yes.
+    card('🦸', 'Safety Hero', 'Siêu nhân an toàn', '.game-safety', () => app.go('safety')),
     card('🎲', 'Pick it', 'Chọn từ', '.game-mix', () => app.go('play-mix')),
   );
   app.speaker.speak("Let's play a game!").catch(() => {});

@@ -37,10 +37,10 @@ export { cleanJobState, afterJobRound, afterSeen, ROUNDS_TO_LEVEL_UP, claims } f
 const snapshots = new Map();
 export const saveSnap = (job, data) => snapshots.set(job, { ...data, savedAt: Date.now() });
 export const clearSnap = (job) => snapshots.delete(job);
-/** Bản lưu còn dùng được: màn được dựng lại sau khi ra nền, chưa quá 10 phút, cùng mức. */
+/** Bản lưu còn dùng được: màn được dựng lại sau khi ra nền, chưa quá 10 phút, cùng mức (không truyền `level`: mức nào cũng được). */
 export function takeSnap(job, { level, continueDirectly }) {
   const s = snapshots.get(job);
-  return continueDirectly && s && Date.now() - s.savedAt < SNAPSHOT_MS && s.level === level ? s : null;
+  return continueDirectly && s && Date.now() - s.savedAt < SNAPSHOT_MS && (level === undefined || s.level === level) ? s : null;
 }
 
 /**
@@ -49,7 +49,7 @@ export function takeSnap(job, { level, continueDirectly }) {
  * - `icon(who)`: hình người nói ở phụ đề ('bong' → 🐰); `onTalk(who | null)`: ai đang nói (để nhân vật nhún);
  * - `pitch(who)`: cao độ giọng của người nói (không có = giọng thường);
  * - `altVoice(who)`: người nói dùng giọng thứ hai không (mặc định: mọi người trừ 'bong');
- * - `onReset()` (🧹), `onHelper()` (chạm Bông);
+ * - `onReset()` (🧹), `onHelper()` (chạm Bông); `backTo` / `backLabel`: nút 🎲 và hết lượt về đâu (mặc định trang chọn nghề);
  * - `nudge`: { ready(), key(), fire(rearm) } — nhắc sau 10 giây không thao tác;
  * - `tray`: { face(id), label(id), canGive(), dropOk(x, y), give(id, from) } — kéo / chạm đồ trong khay;
  * - `background`: { lessonId, word } — ảnh nền bố mẹ thêm (Ảnh Đóng vai), không có thì nền vẽ sẵn.
@@ -74,10 +74,10 @@ export function jobScreen(app, opts) {
     },
   }, bunny.el, h(`span.jb-cap.jb-cap-${opts.cap ?? 'nurse'}`, { 'aria-hidden': 'true' }));
   const back = h('button.sp-back', {
-    type: 'button', 'aria-label': 'Chọn nghề', text: '🎲',
+    type: 'button', 'aria-label': opts.backLabel ?? 'Chọn nghề', text: '🎲',
     onclick: () => {
       play('tap');
-      app.go('jobs');
+      app.go(opts.backTo ?? 'jobs');
     },
   });
   const resetBtn = h('button.sp-back', {
@@ -164,14 +164,15 @@ export function jobScreen(app, opts) {
     box.style.setProperty('--tail', `${Math.round(mid - target)}px`); // đuôi bong bóng chỉ đúng chỗ người nói
   }
   /**
-   * Một hàng nói: câu mới thay câu cũ. `lines`: [{ who, line: [en, vi], slow? }]. Trả về false nếu bị thay / rời màn.
+   * Một hàng nói: câu mới thay câu cũ. `lines`: [{ who, line: [en, vi], slow?, viVoice? }]. Trả về false nếu bị thay / rời màn.
+   * `viVoice`: đọc thêm câu tiếng Việt bằng giọng (Siêu nhân an toàn — bé 3 tuổi chưa đọc phụ đề); máy không có giọng Việt thì bỏ qua.
    * Giọng đọc lỗi thì vẫn đi tiếp (phụ đề vẫn hiện), bé không bị kẹt.
    */
   async function talk(lines) {
     const gen = ++talkGen;
     talking = true;
     try {
-      for (const { who, line: [en, vi], slow } of lines) {
+      for (const { who, line: [en, vi], slow, viVoice } of lines) {
         if (gen !== talkGen || signal.aborted) return false;
         setSpeaker(who);
         caption(en, vi, who);
@@ -180,6 +181,7 @@ export function jobScreen(app, opts) {
           // Nhân vật khác Bông (bạn thú, khách, cô giáo, học sinh…) nói giọng thứ hai cho dễ phân biệt lượt.
           // `slow`: câu dài mức 3 đọc chậm hơn một chút (SPEC-jobs5 4.2).
           await app.speaker.speak(en, { signal, rate: slow ? (app.speaker.rate ?? 0.8) * 0.85 : undefined, pitch: opts.pitch?.(who), role:(opts.altVoice ? opts.altVoice(who) : who && who !== 'bong') ? 'alt' : undefined });
+          if (viVoice && vi && gen === talkGen && !signal.aborted) await app.speaker.speak(vi, { lang: 'vi', signal });
         } catch {
           if (signal.aborted) return false;
         }
@@ -362,7 +364,7 @@ export function jobScreen(app, opts) {
     const teacher = new Teacher(app, { signal, bunny, stage });
     try {
       await runCompletion({ app, teacher, stage, signal });
-      if (!signal.aborted) app.go('jobs');
+      if (!signal.aborted) app.go(opts.backTo ?? 'jobs');
     } catch {
       // rời màn giữa chừng
     }

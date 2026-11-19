@@ -128,8 +128,8 @@ export function homeScreen(app) {
   );
 
   app.db.getAll('progress').then((list) => {
-    // Ôn tập chung từ, câu, số (SPEC-mix mục 2): sáng khi bé đã học bất kỳ loại nào.
-    if (!list.some((r) => isLearned(r) && !isMathKey(r.word))) reviewBtn.classList.add('disabled');
+    // Ôn tập chung từ, câu, số (SPEC-mix mục 2): sáng khi bé đã học bất kỳ loại nào (không tính Toán, Siêu nhân an toàn).
+    if (!list.some((r) => isLearned(r) && !isMathKey(r.word) && !String(r.word).startsWith('safe:'))) reviewBtn.classList.add('disabled');
   });
   return () => bunny.destroy();
 }

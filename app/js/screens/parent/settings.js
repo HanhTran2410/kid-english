@@ -18,6 +18,7 @@ import { cleanSoundsState } from '../../animal-sounds.js';
 import { cleanBubblesState } from '../../bubbles.js';
 import { cleanJobState } from '../../jobs/levels.js';
 import { cleanDoctorState } from '../../doctor.js';
+import { cleanSafetyState, TOPICS, TOPIC_IDS } from '../../jobs/safety.js';
 
 export function settingsView(app) {
   const body = parentLayout(app, { title: 'Cài đặt & chẩn đoán', back: () => goParent(app) });
@@ -119,6 +120,7 @@ export function settingsView(app) {
     soundsSection(app, save),
     bubblesSection(app, save),
     jobsSection(app, save),
+    safetySection(app, save),
     section('Thời gian',
       field('Giới hạn mỗi buổi', limit, `Giới hạn mềm: hết giờ vẫn cho học hết bài. Khi ${characterName(app)} ngủ, bố mẹ nhấn giữ 🌙 3 giây để cho thêm 15 phút.`)),
     driveSettingsSection(app),
@@ -264,6 +266,35 @@ function jobsSection(app, save) {
     ...JOB_LEVELS.map(([key, name, labels]) => field(`Mức chơi ${name}`,
       levelSelect(app, save, key, clean, labels.map((text, i) => [String(i + 1), text])),
       'Tự lên mức sau 3 lượt chơi xong. Khóa mức thì không đếm lượt.')));
+}
+
+/** Siêu nhân an toàn (SPEC-safety mục 9): giọng tiếng Việt, khóa mức, chủ đề ưu tiên, bật / tắt chủ đề. */
+function safetySection(app, save) {
+  const state = cleanSafetyState(app.settings.safetyGame);
+  const update = (patch) => save('safetyGame', { ...cleanSafetyState(app.settings.safetyGame), ...patch });
+  const level = levelSelect(app, save, 'safetyGame', cleanSafetyState,
+    [['1', 'Mức 1 — Bông hỏi, bé chạm ✋ No / 👍 Yes'], ['2', 'Mức 2 — chọn tranh an toàn trong hai tranh']]);
+  const focus = h('select', { onchange: (e) => update({ focus: e.target.value === 'none' ? null : e.target.value }) },
+    h('option', { value: 'none', text: 'Không ưu tiên', selected: state.focus === null }),
+    ...TOPIC_IDS.map((id) => h('option', { value: id, text: `${TOPICS[id].emoji} ${TOPICS[id].vi}`, selected: state.focus === id })));
+  const topics = h('div.check-list', {}, ...TOPIC_IDS.map((id) => h('label.check', {},
+    h('input', {
+      type: 'checkbox', checked: !state.off.includes(id), dataset: { topic: id },
+      onchange: (e) => {
+        const off = cleanSafetyState(app.settings.safetyGame).off.filter((t) => t !== id);
+        update({ off: e.target.checked ? off : [...off, id] });
+      },
+    }),
+    h('span', { text: `${TOPICS[id].emoji} ${TOPICS[id].vi}` }))));
+  return section('Siêu nhân an toàn',
+    h('label.check', {},
+      h('input', { type: 'checkbox', checked: app.settings.safetyVi !== false, onchange: (e) => save('safetyVi', e.target.checked) }),
+      h('span', { text: 'Bông nói thêm câu tiếng Việt (câu hỏi, câu giải thích, việc cần làm)' })),
+    h('p.field-hint', { text: 'Bé 3 tuổi chưa đọc phụ đề: bật để bé hiểu đúng quy tắc an toàn; tiếng Anh vẫn nói trước. Máy không có giọng tiếng Việt thì chỉ có phụ đề.' }),
+    field('Mức chơi', level, 'Tự lên mức 2 sau 3 lượt chơi xong. Bé mới làm quen nên khóa mức 1.'),
+    field('Chủ đề ưu tiên', focus, 'Lượt nào cũng có 2 tình huống của chủ đề này.'),
+    field('Chủ đề', topics, 'Tắt chủ đề chưa muốn nói với bé. Còn dưới 3 tình huống thì trò báo bố mẹ bật thêm.'),
+    h('p.field-hint', { text: 'App chỉ giúp bé nhớ câu và việc nên làm; bố mẹ vẫn là người dạy và trông bé.' }));
 }
 
 function diagnostics(app) {

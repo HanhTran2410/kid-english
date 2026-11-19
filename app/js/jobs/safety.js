@@ -1,0 +1,565 @@
+// 🦸 Siêu nhân an toàn (SPEC-safety.md): Bông định làm việc nguy hiểm, bé chạm ✋ "Stop!" (hoặc 👍 với việc nên làm),
+// Bông giải thích một câu ngắn rồi bé làm một thao tác sửa. File thuần: bảng tình huống, cảnh (hình đặt ở đâu), bốc lượt,
+// dữ liệu lưu, câu nói — test được trong node. Màn chơi ở screens/safety.js.
+//
+// Cảnh: mỗi hình là { id, k, x, y, h, hidden?, cls? } — x là tâm ngang, y là đáy (phần trăm của khung), h là chiều cao
+// (phần trăm chiều cao khung). Mức 2 dùng cùng cảnh, vẽ nhỏ trong thẻ: thẻ "nguy hiểm" là lúc Bông vừa đi tới (chưa làm gì),
+// thẻ "an toàn" là cảnh sau thao tác sửa (`sceneAt`).
+
+import { shuffle } from './levels.js';
+
+export const MAX_LEVEL = 2; // S1 (0.84.0): mức 1–2; mức 3 (chuyện 2 bước) ở S2
+export const ROUND_LEN = 5;
+export const MIN_ROUND = 3;
+export const DEFAULT_FOCUS = 'habits';
+
+/** Chủ đề (thứ tự hiện ở Góc bố mẹ). S1: 🌙 🍳 🏠 🚦 🚪 🚨. */
+export const TOPICS = {
+  habits: { emoji: '🌙', vi: 'Thói quen tốt (TV, đi ngủ)' },
+  kitchen: { emoji: '🍳', vi: 'Trong bếp' },
+  home: { emoji: '🏠', vi: 'Trong nhà' },
+  road: { emoji: '🚦', vi: 'Trên đường' },
+  stranger: { emoji: '🚪', vi: 'Người lạ' },
+  fire: { emoji: '🚨', vi: 'Khi có cháy' },
+};
+export const TOPIC_IDS = Object.keys(TOPICS);
+
+const S = (k, x, y, h, extra = {}) => ({ id: extra.id ?? k, k, x, y, h, ...extra });
+const CALL_MOMMY = ['Call Mommy! Tap Mommy.', 'Gọi mẹ nào! Chạm vào mẹ nhé.'];
+const CALL_DADDY = ['Call Daddy! Tap Daddy.', 'Gọi bố nào! Chạm vào bố nhé.'];
+
+/**
+ * Tình huống. `kind`: 'no' (🚫, đáp án ✋) | 'yes' (✅, đáp án 👍).
+ * `ask` Bông hỏi · `why` câu giải thích khi bé chọn đúng · `short` câu ngắn nhắc lại sau thao tác sửa ·
+ * `hint` mức 1 chọn nhầm · `look` mức 2 chọn thẻ nhầm · `set` các hình trong cảnh (Bông thêm sau, đứng ở x = 16) ·
+ * `walk` chỗ Bông đi tới · `fix`: { how: 'tap' | 'drag', target, item? (hình được kéo), say } · `done`: việc xảy ra sau
+ * thao tác sửa — ['move', id, x, y] | ['show', id] | ['hide', id] | ['add', id, cls] | ['scene', cls].
+ * Bé không bao giờ kéo / cầm đồ nguy hiểm (mục 5): dao, bật lửa, thuốc, nồi, ổ điện, quạt — chạm gọi bố mẹ, hoặc kéo Bông ra xa.
+ */
+export const RULES = [
+  // ---------- 🌙 Thói quen tốt (draft4, bố mẹ ưu tiên) ----------
+  {
+    id: 'tv-long', topic: 'habits', kind: 'no', scene: 'room', emoji: '📺',
+    ask: ['One more cartoon?', 'Xem thêm một phim nữa nhé?'],
+    why: ["No! TV off. Let's play!", 'Không! Tắt TV đi. Mình chơi nào!'],
+    short: ['TV off!', 'Tắt TV!'],
+    hint: ['Hmm… wait! TV time is over!', 'Ơ… khoan! Hết giờ xem TV rồi!'],
+    look: ['Hmm… TV still on? Look again!', 'Ơ… TV vẫn bật à? Nhìn lại nhé!'],
+    set: [S('tv', 72, 66, 34), S('ball', 40, 92, 12, { hidden: true })],
+    walk: 50,
+    fix: { how: 'tap', target: 'tv', say: ['Tap the TV!', 'Chạm vào TV để tắt nhé!'] },
+    done: [['add', 'tv', 'off'], ['show', 'ball'], ['move', 'bong', 30, 94], ['add', 'bong', 'hop']],
+  },
+  {
+    id: 'video-bed', topic: 'habits', kind: 'no', scene: 'bedroom', emoji: '📱',
+    ask: ['Videos in bed?', 'Xem video trên giường nhé?'],
+    why: ['No more videos. Time to sleep.', 'Không xem video nữa. Đến giờ ngủ rồi.'],
+    short: ['Time to sleep!', 'Đi ngủ thôi!'],
+    hint: ['Hmm… wait! Bed is for sleeping!', 'Ơ… khoan! Giường là để ngủ mà!'],
+    look: ['Hmm… videos in bed? Look again!', 'Ơ… xem video trên giường à? Nhìn lại nhé!'],
+    set: [S('bed', 62, 94, 26), S('tablet', 62, 76, 12), S('shelf', 86, 42, 8), S('teddy', 50, 80, 10, { hidden: true })],
+    walk: 42,
+    fix: { how: 'tap', target: 'tablet', say: ['Tap the tablet! Put it away.', 'Chạm vào máy tính bảng để cất đi nhé!'] },
+    done: [['move', 'tablet', 86, 36], ['show', 'teddy'], ['move', 'bong', 48, 80], ['add', 'bong', 'sleep']],
+  },
+  {
+    id: 'stay-up', topic: 'habits', kind: 'no', scene: 'bedroom', emoji: '🌙',
+    ask: ['Play some more?', 'Chơi thêm nữa nhé?'],
+    why: ["No! It's bedtime. Good night!", 'Không! Đến giờ ngủ rồi. Chúc ngủ ngon!'],
+    short: ['Bedtime!', 'Đi ngủ thôi!'],
+    hint: ['Hmm… wait! Look, the moon!', 'Ơ… khoan! Trăng lên rồi kìa!'],
+    look: ['Hmm… playing at night? Look again!', 'Ơ… tối rồi còn chơi à? Nhìn lại nhé!'],
+    set: [S('moon', 84, 26, 14), S('toys', 70, 92, 16), S('bed', 26, 94, 26)],
+    walk: 54,
+    fix: { how: 'tap', target: 'bed', say: ['Tap the bed!', 'Chạm vào giường nhé!'] },
+    done: [['move', 'bong', 26, 80], ['add', 'bong', 'sleep'], ['scene', 'dark']],
+  },
+  {
+    id: 'tv-timer', topic: 'habits', kind: 'yes', scene: 'room', emoji: '⏰',
+    ask: ['Ding! TV off now?', 'Reng! Tắt TV bây giờ nhé?'],
+    why: ['Yes! TV off. Good job!', 'Đúng rồi! Tắt TV. Giỏi lắm!'],
+    short: ['Ding! TV off!', 'Reng! Tắt TV!'],
+    hint: ["It's OK! The timer says TV off.", 'Không sao đâu! Chuông báo tắt TV mà.'],
+    look: ['Hmm… TV still on? Look again!', 'Ơ… TV vẫn bật à? Nhìn lại nhé!'],
+    set: [S('tv', 72, 66, 34), S('timer', 44, 40, 12, { cls: 'ring' }), S('book', 34, 92, 10, { hidden: true })],
+    walk: 50,
+    fix: { how: 'tap', target: 'tv', say: ['Tap the TV!', 'Chạm vào TV để tắt nhé!'] },
+    done: [['add', 'tv', 'off'], ['add', 'timer', 'quiet'], ['show', 'book'], ['move', 'bong', 22, 94], ['add', 'bong', 'hop']],
+  },
+  {
+    id: 'bedtime', topic: 'habits', kind: 'yes', scene: 'bedroom', emoji: '🛏️',
+    ask: ["I'm sleepy. Bed now?", 'Tớ buồn ngủ rồi. Đi ngủ nhé?'],
+    why: ['Yes! Time for bed. Good night!', 'Đúng rồi! Đến giờ ngủ. Chúc ngủ ngon!'],
+    short: ['Good night!', 'Chúc ngủ ngon!'],
+    hint: ["It's OK! Sleepy means bedtime.", 'Không sao đâu! Buồn ngủ thì đi ngủ thôi.'],
+    look: ['Hmm… not sleeping? Look again!', 'Ơ… chưa ngủ à? Nhìn lại nhé!'],
+    set: [S('bed', 54, 94, 26), S('lamp', 84, 74, 22), S('teddy', 64, 80, 10, { hidden: true })],
+    walk: 36,
+    fix: { how: 'tap', target: 'lamp', say: ['Tap the lamp!', 'Chạm vào đèn ngủ để tắt nhé!'] },
+    done: [['add', 'lamp', 'off'], ['move', 'bong', 50, 80], ['show', 'teddy'], ['add', 'bong', 'sleep'], ['scene', 'dark']],
+  },
+
+  // ---------- 🍳 Trong bếp ----------
+  {
+    id: 'knife', topic: 'kitchen', kind: 'no', scene: 'kitchen', emoji: '🔪',
+    ask: ['A knife! Can I touch it?', 'Con dao! Tớ sờ được không?'],
+    why: ['No! Sharp! Call Mommy.', 'Không! Dao sắc lắm! Gọi mẹ nhé.'],
+    short: ['Sharp! Call Mommy.', 'Sắc lắm! Gọi mẹ.'],
+    hint: ["Hmm… wait! It's sharp!", 'Ơ… khoan! Sắc lắm đấy!'],
+    look: ['Hmm… a knife? Look again!', 'Ơ… cầm dao à? Nhìn lại nhé!'],
+    set: [S('counter', 64, 94, 30), S('knife', 64, 64, 12), S('shelf', 64, 28, 8), S('mummy', 90, 94, 52)],
+    walk: 44,
+    fix: { how: 'tap', target: 'mummy', say: CALL_MOMMY },
+    done: [['move', 'mummy', 78, 94], ['move', 'knife', 64, 22]],
+  },
+  {
+    id: 'stove', topic: 'kitchen', kind: 'no', scene: 'kitchen', emoji: '🍲',
+    ask: ['Can I touch the pot?', 'Tớ sờ cái nồi được không?'],
+    why: ["No! It's hot! Stay back.", 'Không! Nóng lắm! Lùi xa ra nhé.'],
+    short: ['Hot! Stay back.', 'Nóng! Lùi xa ra.'],
+    hint: ["Hmm… wait! Look, steam! It's hot!", 'Ơ… khoan! Bốc hơi kìa! Nóng đấy!'],
+    look: ['Hmm… so close to the pot? Look again!', 'Ơ… đứng sát nồi à? Nhìn lại nhé!'],
+    set: [S('counter', 72, 94, 30), S('pot', 72, 64, 16, { cls: 'steam' }), S('line', 22, 97, 4)],
+    walk: 52,
+    fix: { how: 'drag', item: 'bong', target: 'line', say: ['Move me back! To the yellow line.', 'Kéo tớ lùi lại, ra vạch vàng nhé!'] },
+    done: [['move', 'bong', 18, 94]],
+  },
+  {
+    id: 'medicine', topic: 'kitchen', kind: 'no', scene: 'kitchen', emoji: '💊',
+    ask: ['A pill! Can I eat it?', 'Viên thuốc! Tớ ăn được không?'],
+    why: ['No! Ask Mommy first.', 'Không! Hỏi mẹ trước nhé. Thuốc chỉ uống khi bố mẹ cho.'],
+    short: ['Ask Mommy!', 'Hỏi mẹ!'],
+    hint: ["Hmm… wait! It's medicine!", 'Ơ… khoan! Là thuốc đấy!'],
+    look: ['Hmm… eating medicine? Look again!', 'Ơ… tự ăn thuốc à? Nhìn lại nhé!'],
+    set: [S('counter', 64, 94, 30), S('medicine', 64, 64, 12), S('shelf', 64, 28, 8), S('mummy', 90, 94, 52)],
+    walk: 44,
+    fix: { how: 'tap', target: 'mummy', say: CALL_MOMMY },
+    done: [['move', 'mummy', 78, 94], ['move', 'medicine', 64, 22]],
+  },
+  {
+    id: 'wash-hands', topic: 'kitchen', kind: 'yes', scene: 'kitchen', emoji: '🧼',
+    ask: ['Wash my hands first?', 'Rửa tay trước nhé?'],
+    why: ['Yes! Wash hands, then eat.', 'Đúng rồi! Rửa tay rồi mới ăn.'],
+    short: ['Clean hands!', 'Tay sạch!'],
+    hint: ["It's OK! Washing hands is good.", 'Không sao đâu! Rửa tay là tốt mà.'],
+    look: ['Hmm… dirty hands? Look again!', 'Ơ… tay bẩn à? Nhìn lại nhé!'],
+    set: [S('sink', 66, 94, 34), S('tap', 66, 58, 12), S('soap', 80, 64, 8), S('bubbles', 56, 60, 14, { hidden: true })],
+    walk: 48,
+    fix: { how: 'tap', target: 'tap', say: ['Tap the water!', 'Chạm vào vòi nước nhé!'] },
+    done: [['add', 'tap', 'on'], ['show', 'bubbles'], ['add', 'bong', 'hop']],
+  },
+
+  // ---------- 🏠 Trong nhà ----------
+  {
+    id: 'socket', topic: 'home', kind: 'no', scene: 'room', emoji: '🔌',
+    ask: ['Can I touch it?', 'Tớ sờ ổ điện được không?'],
+    why: ["No! Don't touch! Call Mommy.", 'Không! Đừng sờ ổ điện! Gọi mẹ nhé.'],
+    short: ["Don't touch!", 'Đừng sờ!'],
+    hint: ['Hmm… wait! Sockets are not toys!', 'Ơ… khoan! Ổ điện không phải đồ chơi!'],
+    look: ['Hmm… touching the socket? Look again!', 'Ơ… sờ ổ điện à? Nhìn lại nhé!'],
+    // Mẹ đậy nắp an toàn (bé không tự ấn đồ vào ổ điện, kể cả nắp nhựa).
+    set: [S('socket', 66, 76, 12), S('cover', 66, 76, 12, { hidden: true }), S('mummy', 90, 94, 52)],
+    walk: 50,
+    fix: { how: 'tap', target: 'mummy', say: CALL_MOMMY },
+    done: [['move', 'mummy', 78, 94], ['show', 'cover'], ['move', 'bong', 34, 94]],
+  },
+  {
+    id: 'window', topic: 'home', kind: 'no', scene: 'room', emoji: '🪟',
+    ask: ['Can I climb up?', 'Tớ trèo lên được không?'],
+    why: ['No! Get down. Call Mommy.', 'Không! Xuống đi. Gọi mẹ nhé.'],
+    short: ['Get down!', 'Xuống thôi!'],
+    hint: ['Hmm… wait! The window is high!', 'Ơ… khoan! Cửa sổ cao lắm!'],
+    look: ['Hmm… climbing? Look again!', 'Ơ… trèo à? Nhìn lại nhé!'],
+    set: [S('window', 70, 58, 38), S('stool', 70, 94, 16), S('mummy', 92, 94, 52)],
+    walk: 56,
+    fix: { how: 'tap', target: 'mummy', say: CALL_MOMMY },
+    done: [['move', 'mummy', 76, 94], ['move', 'bong', 50, 94], ['add', 'bong', 'hold']],
+  },
+  {
+    id: 'fan', topic: 'home', kind: 'no', scene: 'room', emoji: '🌀',
+    ask: ['Can I touch the fan?', 'Tớ sờ cái quạt được không?'],
+    why: ['No! Fingers away! Stay back.', 'Không! Để tay xa quạt! Lùi ra nhé.'],
+    short: ['Fingers away!', 'Tay để xa!'],
+    hint: ["Hmm… wait! It's spinning fast!", 'Ơ… khoan! Quạt quay nhanh lắm!'],
+    look: ['Hmm… so close to the fan? Look again!', 'Ơ… sát quạt thế à? Nhìn lại nhé!'],
+    set: [S('fan', 72, 94, 44), S('rug', 22, 97, 5)],
+    walk: 52,
+    fix: { how: 'drag', item: 'bong', target: 'rug', say: ['Move me back! To the rug.', 'Kéo tớ lùi ra tấm thảm nhé!'] },
+    done: [['move', 'bong', 22, 94]],
+  },
+  {
+    id: 'lighter', topic: 'home', kind: 'no', scene: 'room', emoji: '🔥',
+    ask: ['Can I play with it?', 'Tớ nghịch bật lửa được không?'],
+    why: ["No! Don't touch! Call Daddy.", 'Không! Đừng sờ bật lửa! Gọi bố nhé.'],
+    short: ["Don't touch! Call Daddy.", 'Đừng sờ! Gọi bố.'],
+    hint: ['Hmm… wait! It makes fire!', 'Ơ… khoan! Nó ra lửa đấy!'],
+    look: ['Hmm… a lighter? Look again!', 'Ơ… nghịch bật lửa à? Nhìn lại nhé!'],
+    set: [S('table', 62, 94, 22), S('lighter', 62, 72, 10), S('shelf', 62, 30, 8), S('daddy', 90, 94, 54)],
+    walk: 42,
+    fix: { how: 'tap', target: 'daddy', say: CALL_DADDY },
+    done: [['move', 'daddy', 78, 94], ['move', 'lighter', 62, 24]],
+  },
+  {
+    id: 'small-toy', topic: 'home', kind: 'no', scene: 'room', emoji: '🔵',
+    ask: ['Can I put it in my mouth?', 'Tớ cho vào miệng được không?'],
+    why: ['No! Not in your mouth. Call Daddy.', 'Không! Không cho vào miệng. Gọi bố nhé.'],
+    short: ['Not in your mouth!', 'Không cho vào miệng!'],
+    hint: ["Hmm… wait! It's so small!", 'Ơ… khoan! Nó bé tí ấy!'],
+    look: ['Hmm… in the mouth? Look again!', 'Ơ… cho vào miệng à? Nhìn lại nhé!'],
+    // Bé không tự nhặt đồ nhỏ (dễ hóc): gọi bố tới cất.
+    set: [S('marble', 58, 94, 7), S('toybox', 80, 94, 18), S('daddy', 94, 94, 54)],
+    walk: 42,
+    fix: { how: 'tap', target: 'daddy', say: CALL_DADDY },
+    done: [['move', 'daddy', 68, 94], ['move', 'marble', 80, 82], ['hide', 'marble'], ['add', 'toybox', 'full']],
+  },
+  {
+    id: 'stairs', topic: 'home', kind: 'yes', scene: 'room', emoji: '👣',
+    ask: ["Stairs! Hold Mommy's hand?", 'Cầu thang! Nắm tay mẹ nhé?'],
+    why: ["Yes! Hold Mommy's hand. Walk slowly.", 'Đúng rồi! Nắm tay mẹ. Đi chậm thôi.'],
+    short: ['Hold hands! Slowly.', 'Nắm tay! Đi chậm.'],
+    hint: ["It's OK! Mommy helps on the stairs.", 'Không sao đâu! Mẹ giúp tớ đi cầu thang mà.'],
+    look: ['Hmm… stairs alone? Look again!', 'Ơ… đi cầu thang một mình à? Nhìn lại nhé!'],
+    set: [S('stairs', 74, 94, 62), S('mummy', 26, 94, 52)],
+    walk: 44,
+    fix: { how: 'tap', target: 'mummy', say: ["Tap Mommy's hand!", 'Chạm tay mẹ nhé!'] },
+    done: [['move', 'mummy', 34, 94], ['add', 'bong', 'hold'], ['move', 'mummy', 52, 90], ['move', 'bong', 60, 86]],
+  },
+
+  // ---------- 🚦 Trên đường (người lớn quyết định lúc qua; đèn xanh không có nghĩa là bé tự qua) ----------
+  {
+    id: 'cross-alone', topic: 'road', kind: 'no', scene: 'street', emoji: '🚸',
+    ask: ['Can I cross the road?', 'Tớ qua đường được không?'],
+    why: ["No! Hold Mommy's hand.", 'Không! Nắm tay mẹ, mẹ dắt qua nhé.'],
+    short: ['Hold hands!', 'Nắm tay!'],
+    hint: ['Hmm… wait! Cars on the road!', 'Ơ… khoan! Đường có xe mà!'],
+    look: ['Hmm… alone? Look again!', 'Ơ… một mình à? Nhìn lại nhé!'],
+    set: [S('car', 86, 66, 14), S('mummy', 10, 94, 52), S('hands', 19, 86, 9, { hidden: true })],
+    walk: 40,
+    fix: { how: 'tap', target: 'mummy', say: ["Tap Mommy's hand!", 'Chạm tay mẹ nhé!'] },
+    done: [['move', 'bong', 28, 94], ['add', 'bong', 'hold'], ['show', 'hands']],
+  },
+  {
+    id: 'ball-road', topic: 'road', kind: 'no', scene: 'street', emoji: '⚽',
+    ask: ['My ball! Can I get it?', 'Bóng của tớ! Tớ chạy ra nhặt được không?'],
+    why: ['Stop! Stay here! Ask Daddy.', 'Dừng lại! Đứng yên đây! Nhờ bố nhặt nhé.'],
+    short: ['Stay here!', 'Đứng yên!'],
+    hint: ['Hmm… wait! The ball is on the road!', 'Ơ… khoan! Bóng ở dưới đường!'],
+    look: ['Hmm… running to the road? Look again!', 'Ơ… chạy ra đường à? Nhìn lại nhé!'],
+    set: [S('ball', 62, 66, 10), S('daddy', 90, 94, 54)],
+    walk: 40,
+    fix: { how: 'tap', target: 'daddy', say: CALL_DADDY },
+    done: [['move', 'daddy', 66, 94], ['move', 'ball', 52, 92]],
+  },
+  {
+    id: 'helmet', topic: 'road', kind: 'yes', scene: 'street', emoji: '🛵',
+    ask: ['Helmet on?', 'Đội mũ bảo hiểm nhé?'],
+    why: ['Yes! Helmet on!', 'Đúng rồi! Đội mũ vào!'],
+    short: ['Helmet on! Click!', 'Đội mũ! Cạch!'],
+    hint: ["It's OK! A helmet keeps me safe.", 'Không sao đâu! Mũ bảo hiểm giữ tớ an toàn mà.'],
+    look: ['Hmm… no helmet? Look again!', 'Ơ… không đội mũ à? Nhìn lại nhé!'],
+    // Bé đội mũ cho Bông; bố cài quai ("click") — bé không phải tự kiểm tra quai.
+    set: [S('scooter', 76, 94, 32), S('helmet', 26, 94, 14), S('daddy', 91, 94, 54)],
+    walk: 50,
+    fix: { how: 'drag', item: 'helmet', target: 'bong', say: ['Put the helmet on me!', 'Đội mũ cho tớ nhé!'] },
+    done: [['move', 'helmet', 50, 72], ['add', 'helmet', 'worn'], ['move', 'daddy', 66, 94], ['add', 'helmet', 'click']],
+  },
+  {
+    id: 'seat-belt', topic: 'road', kind: 'yes', scene: 'street', emoji: '🚗',
+    ask: ['Seat belt on?', 'Thắt dây an toàn nhé?'],
+    why: ['Yes! Daddy clicks it.', 'Đúng rồi! Bố thắt dây cho nhé.'],
+    short: ['Seat belt on! Click!', 'Thắt dây! Cạch!'],
+    hint: ["It's OK! A seat belt keeps me safe.", 'Không sao đâu! Dây an toàn giữ tớ an toàn mà.'],
+    look: ['Hmm… no seat belt? Look again!', 'Ơ… không thắt dây à? Nhìn lại nhé!'],
+    // Bố thắt dây (bé không phải tự cài).
+    set: [S('carseat', 56, 94, 50), S('belt', 56, 92, 14, { hidden: true }), S('daddy', 92, 94, 54)],
+    walk: 56,
+    fix: { how: 'tap', target: 'daddy', say: CALL_DADDY },
+    done: [['move', 'daddy', 78, 94], ['show', 'belt'], ['add', 'belt', 'worn']],
+  },
+  {
+    id: 'hold-hands', topic: 'road', kind: 'yes', scene: 'street', emoji: '🤝',
+    ask: ["Hold Daddy's hand?", 'Nắm tay bố nhé?'],
+    why: ['Yes! Hold hands outside.', 'Đúng rồi! Ra đường thì nắm tay nhé.'],
+    short: ['Hold hands!', 'Nắm tay!'],
+    hint: ["It's OK! Holding hands keeps me safe.", 'Không sao đâu! Nắm tay bố là an toàn mà.'],
+    look: ['Hmm… alone on the street? Look again!', 'Ơ… đi một mình à? Nhìn lại nhé!'],
+    set: [S('daddy', 74, 94, 54), S('car', 86, 66, 14), S('hands', 65, 86, 9, { hidden: true })],
+    walk: 44,
+    fix: { how: 'tap', target: 'daddy', say: ["Tap Daddy's hand!", 'Chạm tay bố nhé!'] },
+    done: [['move', 'bong', 56, 94], ['add', 'bong', 'hold'], ['show', 'hands']],
+  },
+
+  // ---------- 🚪 Người lạ (vẽ bình thường, mỉm cười; không dùng he / she; Mommy luôn ở gần) ----------
+  {
+    id: 'door', topic: 'stranger', kind: 'no', scene: 'hall', emoji: '🚪', sound: 'doorbell',
+    ask: ['Ding dong! Open the door?', 'Kính coong! Tớ mở cửa nhé?'],
+    why: ['No! Call Mommy first.', 'Không! Gọi mẹ trước nhé.'],
+    short: ['Call Mommy first!', 'Gọi mẹ trước!'],
+    hint: ['Hmm… wait! Who is it?', 'Ơ… khoan! Ai thế nhỉ?'],
+    look: ['Hmm… opening the door alone? Look again!', 'Ơ… tự mở cửa à? Nhìn lại nhé!'],
+    set: [S('door', 74, 94, 66), S('mummy', 10, 94, 52)],
+    walk: 52,
+    fix: { how: 'tap', target: 'mummy', say: CALL_MOMMY },
+    done: [['move', 'mummy', 60, 94], ['move', 'bong', 30, 94]],
+  },
+  {
+    id: 'candy', topic: 'stranger', kind: 'no', scene: 'park', emoji: '🍬',
+    ask: ['Candy! Can I take it?', 'Kẹo! Tớ cầm được không?'],
+    why: ['No, thank you! Ask Mommy first.', 'Không, cảm ơn! Hỏi mẹ trước đã.'],
+    short: ['No, thank you!', 'Không, cảm ơn!'],
+    hint: ["Hmm… wait! I don't know that person!", 'Ơ… khoan! Tớ không quen người đó!'],
+    look: ['Hmm… taking the candy? Look again!', 'Ơ… cầm kẹo của người lạ à? Nhìn lại nhé!'],
+    set: [S('stranger', 82, 94, 50), S('candy', 70, 62, 9), S('mummy', 8, 94, 52)],
+    walk: 52,
+    fix: { how: 'tap', target: 'mummy', say: CALL_MOMMY },
+    done: [['move', 'bong', 22, 94], ['add', 'bong', 'hold']],
+  },
+  {
+    id: 'go-with', topic: 'stranger', kind: 'no', scene: 'park', emoji: '🙅',
+    ask: ['Can I go with them?', 'Tớ đi theo người đó được không?'],
+    why: ['No! Stay with Mommy.', 'Không! Ở cạnh mẹ nhé.'],
+    short: ['Stay with Mommy!', 'Ở cạnh mẹ!'],
+    hint: ["Hmm… wait! I don't know that person!", 'Ơ… khoan! Tớ không quen người đó!'],
+    look: ['Hmm… going away from Mommy? Look again!', 'Ơ… rời mẹ đi à? Nhìn lại nhé!'],
+    set: [S('stranger', 84, 94, 50), S('mummy', 8, 94, 52)],
+    walk: 52,
+    fix: { how: 'tap', target: 'mummy', say: CALL_MOMMY },
+    done: [['move', 'bong', 20, 94], ['add', 'bong', 'hold']],
+  },
+  {
+    id: 'tell', topic: 'stranger', kind: 'yes', scene: 'hall', emoji: '🤗',
+    ask: ['I feel scared. Tell Mommy?', 'Tớ thấy sợ. Kể với mẹ nhé?'],
+    why: ['Yes! Tell Mommy. Mommy can help.', 'Đúng rồi! Kể với mẹ. Mẹ sẽ giúp.'],
+    short: ['Tell Mommy!', 'Kể với mẹ!'],
+    hint: ["It's OK! Mommy wants to know.", 'Không sao đâu! Mẹ muốn biết mà.'],
+    look: ['Hmm… keeping it a secret? Look again!', 'Ơ… giấu không kể à? Nhìn lại nhé!'],
+    set: [S('mummy', 74, 94, 54), S('hug', 62, 40, 12, { hidden: true })],
+    walk: 46,
+    fix: { how: 'tap', target: 'mummy', say: ['Tap Mommy!', 'Chạm vào mẹ nhé!'] },
+    done: [['move', 'bong', 60, 94], ['show', 'hug'], ['add', 'bong', 'hop']],
+  },
+  // ---------- 🚨 Khi có cháy (bố mẹ thêm, draft5): không có lửa trên người / nhà cháy — chỉ chuông báo + khói xám ----------
+  {
+    id: 'fire-low', topic: 'fire', kind: 'yes', scene: 'smoke', emoji: '🚨', sound: 'alarm',
+    ask: ['Beep beep! Smoke! Get low?', 'Bíp bíp! Có khói! Cúi thấp xuống nhé?'],
+    why: ['Yes! Get low. Cover your mouth.', 'Đúng rồi! Cúi thấp. Che miệng lại.'],
+    short: ['Get low!', 'Cúi thấp!'],
+    hint: ["It's OK! Smoke goes up. Get low!", 'Không sao đâu! Khói bay lên cao, mình cúi thấp!'],
+    look: ['Hmm… standing up tall? Look again!', 'Ơ… đứng thẳng à? Nhìn lại nhé!'],
+    set: [S('alarm', 20, 22, 12, { cls: 'ring' }), S('door', 84, 94, 62), S('mummy', 68, 94, 52)],
+    walk: 40,
+    fix: { how: 'tap', target: 'bong', say: ['Tap me! Get low.', 'Chạm vào tớ để cúi thấp nhé!'] },
+    done: [['add', 'bong', 'low']],
+  },
+  {
+    id: 'fire-hide', topic: 'fire', kind: 'no', scene: 'smoke', emoji: '🛏️', sound: 'alarm',
+    ask: ['Smoke! Can I hide under the bed?', 'Có khói! Tớ trốn dưới gầm giường được không?'],
+    why: ["No! Don't hide. Go out with Mommy.", 'Không! Đừng trốn. Đi ra ngoài cùng mẹ nhé.'],
+    short: ["Don't hide! Go out!", 'Đừng trốn! Ra ngoài!'],
+    hint: ["Hmm… wait! Mommy can't find me there!", 'Ơ… khoan! Trốn thì mẹ không tìm thấy tớ!'],
+    look: ['Hmm… hiding? Look again!', 'Ơ… trốn à? Nhìn lại nhé!'],
+    set: [S('alarm', 20, 22, 12, { cls: 'ring' }), S('bed', 70, 94, 26), S('mummy', 8, 94, 52)],
+    walk: 54,
+    fix: { how: 'tap', target: 'mummy', say: CALL_MOMMY },
+    done: [['move', 'mummy', 30, 94], ['add', 'bong', 'low'], ['move', 'bong', 40, 94], ['move', 'mummy', -20, 94], ['move', 'bong', -10, 94]],
+    card: [['move', 'mummy', 30, 94], ['add', 'bong', 'low'], ['add', 'bong', 'hold'], ['move', 'bong', 42, 94]],
+  },
+  {
+    id: 'fire-out', topic: 'fire', kind: 'yes', scene: 'smoke', emoji: '🚪', sound: 'alarm',
+    ask: ['Go out with Mommy?', 'Đi ra ngoài cùng mẹ nhé?'],
+    why: ['Yes! Follow Mommy out.', 'Đúng rồi! Theo mẹ ra ngoài. Cúi thấp nhé.'],
+    short: ['Go out!', 'Ra ngoài!'],
+    hint: ["It's OK! Outside is safe.", 'Không sao đâu! Ra ngoài là an toàn.'],
+    look: ['Hmm… staying inside? Look again!', 'Ơ… ở lại trong nhà à? Nhìn lại nhé!'],
+    set: [S('alarm', 20, 22, 12, { cls: 'ring' }), S('door', 84, 94, 62), S('exit', 84, 24, 10), S('mummy', 70, 94, 52)],
+    walk: 42,
+    fix: { how: 'tap', target: 'mummy', say: ["Tap Mommy's hand!", 'Chạm tay mẹ nhé!'] },
+    done: [['add', 'bong', 'low'], ['add', 'bong', 'hold'], ['move', 'bong', 62, 94], ['move', 'mummy', 120, 94], ['move', 'bong', 112, 94]],
+    card: [['add', 'bong', 'low'], ['add', 'bong', 'hold'], ['move', 'bong', 62, 94]],
+  },
+  {
+    id: 'fire-back', topic: 'fire', kind: 'no', scene: 'yard', emoji: '🧸',
+    ask: ['My teddy! Can I go back in?', 'Gấu bông của tớ! Tớ chạy vào lấy được không?'],
+    why: ['No! Stay outside with Mommy.', 'Không! Ở ngoài cùng mẹ nhé. Chú lính cứu hỏa sẽ lo.'],
+    short: ['Stay outside!', 'Ở ngoài!'],
+    hint: ['Hmm… wait! Inside is smoky!', 'Ơ… khoan! Trong nhà toàn khói!'],
+    look: ['Hmm… going back in? Look again!', 'Ơ… quay vào nhà à? Nhìn lại nhé!'],
+    set: [S('house', 74, 94, 60), S('truck', 40, 94, 22), S('mummy', 8, 94, 52)],
+    walk: 58,
+    fix: { how: 'tap', target: 'mummy', say: CALL_MOMMY },
+    done: [['move', 'bong', 20, 94], ['add', 'bong', 'hold']],
+  },
+];
+export const RULE_BY_ID = new Map(RULES.map((r) => [r.id, r]));
+export const BONG_START = 16;
+
+/** Hình người lớn (chỗ chạm "gọi bố mẹ"). */
+export const ADULTS = new Set(['mummy', 'daddy']);
+/** Đồ bé không bao giờ kéo / cầm (mục 5, review 3+): đồ nguy hiểm, đồ nhỏ dễ hóc, nắp ổ điện, dây an toàn (bố mẹ cài). */
+export const DANGEROUS = new Set(['knife', 'pot', 'medicine', 'socket', 'cover', 'lighter', 'fan', 'marble', 'stranger', 'candy', 'belt']);
+
+/** Các hình của cảnh lúc bắt đầu (Bông ở x = 16). */
+export function sceneStart(rule) {
+  return [...rule.set, ...(rule.extra ?? []), S('bong', BONG_START, 94, 44)].map((s) => ({ ...s }));
+}
+/** Áp một việc `done` lên danh sách hình (bản sao). Trả về { sprites, scene }. */
+export function applyOps(sprites, ops, sceneCls = []) {
+  const out = sprites.map((s) => ({ ...s, cls: s.cls }));
+  const scene = [...sceneCls];
+  const get = (id) => out.find((s) => s.id === id);
+  for (const [op, id, a, b] of ops) {
+    if (op === 'scene') scene.push(id);
+    const s = get(id);
+    if (!s) continue;
+    if (op === 'move') Object.assign(s, { x: a, y: b });
+    if (op === 'show') s.hidden = false;
+    if (op === 'hide') s.hidden = true;
+    if (op === 'add') s.cls = [s.cls, a].filter(Boolean).join(' ');
+  }
+  return { sprites: out, scene };
+}
+/**
+ * Cảnh vẽ trong thẻ mức 2: 'risky' = Bông một mình vừa đi tới (lúc định làm, chưa làm gì; không có bố mẹ);
+ * 'safe' = sau thao tác sửa. Việc nên làm (✅): 'risky' là chưa làm (chưa đội mũ, TV vẫn bật…).
+ * Hai tranh khác nhau ở hành động / có bố mẹ hay không — nhìn là thấy (review 3+).
+ */
+export function sceneAt(rule, which) {
+  const start = applyOps(sceneStart(rule), [['move', 'bong', rule.walk, 94]]);
+  if (which === 'risky') return { ...start, sprites: start.sprites.map((s) => (ADULTS.has(s.k) ? { ...s, hidden: true } : s)) };
+  const fixOps = rule.fix.how === 'drag' ? dragOps(rule) : [];
+  // `card`: cảnh an toàn vẽ trong thẻ khi `done` đưa người ra khỏi khung (đi ra ngoài lúc có cháy).
+  return applyOps(start.sprites, [...fixOps, ...(rule.card ?? rule.done)], start.scene);
+}
+/** Kéo xong: đồ kéo về đúng chỗ đích (Bông về chỗ đích; mũ / dây lên người Bông được vẽ bằng class 'worn'). */
+export function dragOps(rule) {
+  const { item, target } = rule.fix;
+  if (target === 'bong') return [];
+  if (item === 'bong') return []; // vị trí cuối của Bông nằm trong `done`
+  const t = [...rule.set, ...(rule.extra ?? [])].find((s) => s.id === target);
+  return t ? [['move', item, t.x, t.y]] : [];
+}
+
+// ---------- Dữ liệu lưu (mục 7, 8.1) ----------
+/** `safetyGame` → { level, rounds, lock, seen, firstOk, off, focus }; dữ liệu hỏng thì về mặc định, mã lạ bị bỏ. */
+export function cleanSafetyState(saved) {
+  const s = saved && typeof saved === 'object' ? saved : {};
+  const okLevel = (n) => Number.isInteger(n) && n >= 1 && n <= MAX_LEVEL;
+  const lock = okLevel(s.lock) ? s.lock : null;
+  const seen = {};
+  if (s.seen && typeof s.seen === 'object') {
+    for (const [id, n] of Object.entries(s.seen)) if (RULE_BY_ID.has(id) && Number.isInteger(n) && n > 0) seen[id] = n;
+  }
+  const firstOk = {};
+  if (s.firstOk && typeof s.firstOk === 'object') {
+    for (const [id, v] of Object.entries(s.firstOk)) if (RULE_BY_ID.has(id) && v === true) firstOk[id] = true;
+  }
+  const off = Array.isArray(s.off) ? [...new Set(s.off.filter((t) => TOPIC_IDS.includes(t)))] : [];
+  const focus = s.focus === null ? null : TOPIC_IDS.includes(s.focus) ? s.focus : DEFAULT_FOCUS;
+  return {
+    level: lock ?? (okLevel(s.level) ? s.level : 1),
+    rounds: Number.isInteger(s.rounds) && s.rounds >= 0 ? s.rounds : 0,
+    lock, seen, firstOk, off, focus,
+  };
+}
+/** Tình huống xong hẳn (đã chọn đúng + làm xong thao tác sửa): `seen` +1 đúng một lần; đúng ngay lần đầu thì `firstOk`. */
+export function afterRule(state, id, { firstTry }) {
+  return {
+    ...state,
+    seen: { ...state.seen, [id]: (state.seen[id] ?? 0) + 1 },
+    firstOk: firstTry || state.firstOk[id] ? { ...state.firstOk, [id]: true } : state.firstOk,
+  };
+}
+/** Huy hiệu chủ đề (S2 hiện album): mọi tình huống của chủ đề đã `firstOk`. Tích lũy — không bao giờ mất. */
+export const badgeOf = (state, topic, rules = RULES) => {
+  const list = rules.filter((r) => r.topic === topic);
+  return list.length > 0 && list.every((r) => state.firstOk[r.id] === true);
+};
+
+// ---------- Bốc lượt (mục 2.1) ----------
+/** Ít gặp trước: sắp theo `seen`, bằng nhau thì ngẫu nhiên (xáo trước rồi sắp ổn định). */
+const bySeen = (list, seen, rng) => shuffle(list, rng).sort((a, b) => (seen[a.id] ?? 0) - (seen[b.id] ?? 0));
+
+/**
+ * Kế hoạch một lượt: [{ id, safeLeft }] hoặc null (dưới 3 tình huống — báo bố mẹ bật thêm chủ đề).
+ * Thứ tự ưu tiên: (1) bỏ chủ đề tắt; (2) không lặp, độ dài = min(5, N); (3) 3 🚫 + 2 ✅ (lượt 3–4: ✅ = ⌊độ dài / 2⌋),
+ * thiếu loại nào bù loại kia, có ✅ thì ít nhất 1 ✅; (4) chủ đề ưu tiên: 2 tình huống (1 🚫 + 1 ✅ nếu có);
+ * (5) ít gặp trước; (6) tránh hai tình huống liền nhau cùng chủ đề.
+ * `safeLeft`: thẻ an toàn bên trái (mức 2), cân bằng trong lượt.
+ */
+export function planRound({ off = [], focus = null, seen = {}, rng = Math.random, rules = RULES } = {}) {
+  const pool = rules.filter((r) => !off.includes(r.topic));
+  if (pool.length < MIN_ROUND) return null;
+  const len = Math.min(ROUND_LEN, pool.length);
+  const nos = pool.filter((r) => r.kind === 'no');
+  const yeses = pool.filter((r) => r.kind === 'yes');
+  let wantYes = Math.min(yeses.length, len === ROUND_LEN ? 2 : Math.floor(len / 2));
+  if (yeses.length) wantYes = Math.max(1, wantYes);
+  wantYes = Math.max(wantYes, len - nos.length); // thiếu 🚫 thì bù ✅
+  const wantNo = len - wantYes;
+
+  const picked = [];
+  /** Lấy `n` tình huống: ít gặp trước; bằng nhau thì chủ đề chưa có trong lượt trước (dễ xếp xen kẽ), rồi ngẫu nhiên. */
+  const take = (list, n) => {
+    const topicCount = (t) => picked.filter((r) => r.topic === t).length;
+    for (; n > 0; n--) {
+      const left = list.filter((r) => !picked.includes(r));
+      if (!left.length) return;
+      const key = (r) => (seen[r.id] ?? 0) * 100 + topicCount(r.topic);
+      picked.push(left.reduce((best, r) => (key(r) < key(best) ? r : best)));
+    }
+  };
+  const count = (kind) => picked.filter((r) => r.kind === kind).length;
+  // Chủ đề ưu tiên (đang bật): 2 tình huống của chủ đề đó trước — 1 🚫 + 1 ✅ nếu có (ít gặp trước),
+  // trong giới hạn số 🚫 / ✅ của lượt; chủ đề chỉ có một loại thì 2 tình huống loại đó.
+  const focusOn = Boolean(focus) && !off.includes(focus);
+  if (focusOn) {
+    const fNo = bySeen(nos.filter((r) => r.topic === focus), seen, rng);
+    const fYes = bySeen(yeses.filter((r) => r.topic === focus), seen, rng);
+    if (wantNo > 0) take(fNo, 1);
+    if (wantYes > 0) take(fYes, 1);
+    if (picked.length < 2) take(fNo, Math.min(2 - picked.length, wantNo - count('no')));
+    if (picked.length < 2) take(fYes, Math.min(2 - picked.length, wantYes - count('yes')));
+  }
+  const notFocus = (r) => !focusOn || r.topic !== focus;
+  take(bySeen(nos.filter(notFocus), seen, rng), wantNo - count('no'));
+  take(bySeen(yeses.filter(notFocus), seen, rng), wantYes - count('yes'));
+  // Thiếu (chủ đề ưu tiên chiếm nhiều loại…): bù từ phần còn lại, ít gặp trước.
+  if (picked.length < len) take(bySeen(pool, seen, rng), len - picked.length);
+
+  const order = arrange(picked, rng);
+  const sides = shuffle(order.map((_, i) => i % 2 === 0), rng);
+  return order.map((r, i) => ({ id: r.id, safeLeft: sides[i] }));
+}
+/** Xếp thứ tự ít cặp liền nhau cùng chủ đề nhất: lượt ≤ 5 nên thử hết hoán vị (≤ 120), bắt đầu từ thứ tự ngẫu nhiên. */
+export function arrange(list, rng = Math.random) {
+  let best = shuffle(list, rng);
+  let bestBad = adjacentSame(best);
+  const walk = (prefix, rest) => {
+    if (bestBad === 0) return;
+    if (!rest.length) {
+      const bad = adjacentSame(prefix);
+      if (bad < bestBad) [best, bestBad] = [prefix, bad];
+      return;
+    }
+    for (let i = 0; i < rest.length; i++) walk([...prefix, rest[i]], [...rest.slice(0, i), ...rest.slice(i + 1)]);
+  };
+  walk([], best);
+  return best;
+}
+export const adjacentSame = (list) => list.slice(1).filter((r, i) => r.topic === list[i].topic).length;
+
+// ---------- Câu nói chung ----------
+// Bông hỏi "Can I…?" nên bé trả lời No / Yes (review 3+: nhất quán hơn Stop / OK).
+export const NO_BTN = ['No!', 'Không!'];
+export const YES_BTN = ['Yes!', 'Có!'];
+export const SHOULD_I_LINE = ['Should I?', 'Có nên không nhỉ?'];
+export const OOPS_LINE = ['Oops!', 'Ối!'];
+export const WHICH_LINE = ['Which one is safe?', 'Tranh nào an toàn?'];
+export const ANSWER_NO_LINE = ['Tap No!', 'Chạm nút Không nhé!'];
+export const ANSWER_YES_LINE = ['Tap Yes!', 'Chạm nút Có nhé!'];
+export const ANSWER_CARD_LINE = ['This one is safe. Tap it!', 'Tranh này an toàn. Chạm vào nhé!'];
+export const THANKS_LINE = ['Thank you, Safety Hero!', 'Cảm ơn Siêu nhân an toàn!'];
+/** Câu khi chọn đúng: 🚫 "Oops!" rồi câu giải thích; ✅ chỉ câu giải thích. */
+export const rightLines = (rule) => (rule.kind === 'no' ? [OOPS_LINE, rule.why] : [rule.why]);
+/** Mọi câu của một tình huống (test: không rỗng, không dùng he / she cho người lạ, không dùng grown-up). */
+export const allLines = (rule) => [rule.ask, rule.why, rule.short, rule.hint, rule.look, rule.fix.say];
