@@ -1,12 +1,13 @@
 // 🦸 Siêu nhân an toàn (SPEC-safety.md, S1 0.84.0, S2 0.85.0): bốc lượt theo thứ tự ưu tiên mục 2.1 (500 seed), chủ đề ưu tiên,
 // dữ liệu lưu (seen / firstOk / huy hiệu), cảnh mức 2, câu nói hợp bé 3 tuổi, bé không bao giờ kéo đồ nguy hiểm;
 // S2: chủ đề 🛒 💧 🐕, mức 3 chỉ qua khóa mức, chuyện 2 bước (planStory), "Say it!" (từ khóa), gợi ý cho bố mẹ, ảnh thay được.
+// 0.87.0 (SPEC-body): chủ đề 🫶 bố mẹ tự bật (optIn), tối đa 2 / lượt, không 3 ✋ liền nhau, huy hiệu chỉ khi bật.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   RULES, RULE_BY_ID, TOPICS, TOPIC_IDS, ADULTS, DANGEROUS, MAX_LEVEL, AUTO_MAX_LEVEL, DEFAULT_FOCUS, STORIES, STORY_COUNT, TIPS,
   SAFETY_ITEMS, SAFETY_SCENES, SAFETY_PEOPLE, planRound, planStory, adjacentSame, cleanSafetyState, afterRule, badgeOf, badgesOf,
-  sceneStart, sceneAt, applyOps, allLines, rightLines, sayKeywords,
+  sceneStart, sceneAt, applyOps, allLines, rightLines, sayKeywords, OPT_IN_TOPICS, offTopics, shownTopics, kindRuns, BODY_IF_TOLD, BODY_DONT_SAY,
 } from '../../app/js/jobs/safety.js';
 import { afterJobRound } from '../../app/js/jobs/levels.js';
 
@@ -19,6 +20,9 @@ function seeded(seed = 1) {
 }
 const kinds = (plan) => plan.map((p) => RULE_BY_ID.get(p.id).kind);
 const topicsOf = (plan) => plan.map((p) => RULE_BY_ID.get(p.id).topic);
+/** Tình huống thường (không tính chủ đề bố mẹ tự bật). */
+const BASE = RULES.filter((r) => !OPT_IN_TOPICS.includes(r.topic));
+const BODY = RULES.filter((r) => r.topic === 'body');
 /** Xếp lại được để không có hai chủ đề liền nhau không (đếm chủ đề nhiều nhất ≤ ⌈n / 2⌉). */
 const avoidable = (plan) => {
   const n = plan.length;
@@ -27,10 +31,11 @@ const avoidable = (plan) => {
   return Math.max(...Object.values(counts)) <= Math.ceil(n / 2);
 };
 
-test('bảng tình huống: 9 chủ đề, 38 tình huống (25 🚫 + 13 ✅); mã duy nhất; chủ đề nào cũng có cả 🚫 và ✅; có pond-toy', () => {
-  assert.deepEqual(TOPIC_IDS, ['habits', 'kitchen', 'home', 'road', 'stranger', 'fire', 'shop', 'water', 'dog']);
-  assert.equal(RULES.length, 38);
-  assert.equal(RULES.filter((r) => r.kind === 'no').length, 25);
+test('bảng tình huống: 9 chủ đề thường, 38 tình huống (25 🚫 + 13 ✅) + 🫶 bố mẹ bật (6); mã duy nhất; chủ đề nào cũng có cả 🚫 và ✅; có pond-toy', () => {
+  assert.deepEqual(TOPIC_IDS, ['habits', 'kitchen', 'home', 'road', 'stranger', 'fire', 'shop', 'water', 'dog', 'body']);
+  assert.deepEqual(OPT_IN_TOPICS, ['body']);
+  assert.equal(BASE.length, 38);
+  assert.equal(BASE.filter((r) => r.kind === 'no').length, 25);
   assert.equal(new Set(RULES.map((r) => r.id)).size, RULES.length);
   for (const t of TOPIC_IDS) {
     assert.ok(RULES.some((r) => r.topic === t && r.kind === 'no'), t);
@@ -130,8 +135,9 @@ test('ít gặp trước: bật đủ chủ đề, không ưu tiên, chơi 9 lư
     for (let round = 0; round < 9; round++) {
       for (const { id } of planRound({ rng, focus: state.focus, seen: state.seen })) state = afterRule(state, id, { firstTry: true });
     }
+    assert.ok(!Object.keys(state.seen).some((id) => RULE_BY_ID.get(id).topic === 'body'), 'chưa bật 🫶');
     // 9 lượt × 3 🚫 = 27 ≥ 25 🚫; ✅ 9 × 2 = 18 ≥ 13.
-    assert.equal(Object.keys(state.seen).length, RULES.length, `seed ${seed}`);
+    assert.equal(Object.keys(state.seen).length, BASE.length, `seed ${seed}`);
   }
 });
 
@@ -140,7 +146,7 @@ test('dữ liệu lưu: cleanSafetyState làm sạch mã lạ / hỏng; afterRul
     level: 9, rounds: -1, lock: 2, seen: { knife: 2, nope: 3, tv: 'x' }, firstOk: { knife: true, stove: 'yes', ghost: true },
     off: ['road', 'road', 'moon'], focus: 'moon',
   });
-  assert.deepEqual(s, { level: 2, rounds: 0, lock: 2, seen: { knife: 2 }, firstOk: { knife: true }, off: ['road'], focus: 'habits' });
+  assert.deepEqual(s, { level: 2, rounds: 0, lock: 2, seen: { knife: 2 }, firstOk: { knife: true }, off: ['road'], focus: 'habits', optIn: [] });
   assert.equal(cleanSafetyState({ focus: null }).focus, null);
   assert.equal(cleanSafetyState(null).level, 1);
   assert.equal(cleanSafetyState({ level: 3 }).level, 1); // mức 3 không tự lên: chỉ qua khóa mức
@@ -191,14 +197,14 @@ test('câu nói hợp bé 3 tuổi (review 3+): không rỗng; câu hỏi ≤ 7 
   assert.doesNotMatch(RULE_BY_ID.get('medicine').ask[0], /candy/i);
 });
 
-test('mục 5 + review 3+: bé không bao giờ kéo đồ nguy hiểm / đồ nhỏ; kéo chỉ là Bông hoặc mũ bảo hiểm; chỗ chạm / kéo có trong cảnh', () => {
+test('mục 5 + review 3+: bé không bao giờ kéo đồ nguy hiểm / đồ nhỏ; kéo chỉ là Bông, mũ bảo hiểm hoặc khăn tắm; chỗ chạm / kéo có trong cảnh', () => {
   for (const r of RULES) {
     const ids = new Set(sceneStart(r).map((s) => s.id));
     assert.ok(ids.has(r.fix.target), `${r.id}: ${r.fix.target}`);
     assert.ok(!DANGEROUS.has(r.fix.target) || ADULTS.has(r.fix.target), r.id);
     if (r.fix.how === 'drag') {
       assert.ok(ids.has(r.fix.item), r.id);
-      assert.ok(['bong', 'helmet'].includes(r.fix.item), `${r.id}: kéo ${r.fix.item}`);
+      assert.ok(['bong', 'helmet', 'towel'].includes(r.fix.item), `${r.id}: kéo ${r.fix.item}`);
     } else assert.equal(r.fix.how, 'tap');
   }
 });
@@ -280,9 +286,75 @@ test('S2 huy hiệu (badgesOf): thứ tự chủ đề; 🐕 cần đủ 3 tình
 test('S2 Góc bố mẹ: tình huống nào cũng có gợi ý "Nói thêm với bé"; mọi đồ vật trong cảnh (trừ hiệu ứng nhỏ) có mục ảnh; cảnh nào cũng có prompt nền', () => {
   for (const r of RULES) assert.ok(TIPS[r.id]?.length > 20, r.id);
   assert.deepEqual(Object.keys(TIPS).sort(), RULES.map((r) => r.id).sort());
-  const effects = new Set(['line', 'rug', 'bubbles', 'cover', 'hands', 'belt', 'hug', 'exit']);
+  // 🫶: bong bóng, bàn tay đập tay là hiệu ứng (không có mục ảnh — SPEC-body mục 6).
+  const effects = new Set(['line', 'rug', 'bubbles', 'cover', 'hands', 'belt', 'hug', 'exit', 'hugbub', 'shhbub', 'askbub', 'five']);
   const kinds = new Set(RULES.flatMap((r) => r.set.map((s) => s.k)));
   for (const k of kinds) if (!ADULTS.has(k) && !effects.has(k)) assert.ok(SAFETY_ITEMS.some((it) => it.id === k), k);
   for (const sc of new Set(RULES.map((r) => r.scene))) assert.ok(SAFETY_SCENES.some((s) => s.id === sc), sc);
   assert.deepEqual(SAFETY_PEOPLE.map((p) => p.id), ['bong', 'mummy', 'daddy']);
+});
+
+// ---------- 🫶 Cơ thể của bé (SPEC-body, 0.87.0) ----------
+test('BODY: 6 tình huống (3 👍 private / bath-help / doctor + 3 ✋ hug-no / secret / no-touch); gentle; câu nhẹ, không dọa; không người lạ; chỉ bố mẹ', () => {
+  assert.deepEqual(BODY.map((r) => [r.id, r.kind]), [
+    ['private', 'yes'], ['bath-help', 'yes'], ['doctor', 'yes'], ['hug-no', 'no'], ['secret', 'no'], ['no-touch', 'no'],
+  ]);
+  for (const r of BODY) {
+    assert.equal(r.gentle, true, r.id);
+    for (const [en] of [...allLines(r), ...(r.after ? [r.after] : [])]) assert.doesNotMatch(en, /\b(bad|scary|hurt|stranger)\b/i, r.id);
+    for (const s of sceneStart(r)) assert.ok(s.k === 'bong' || ADULTS.has(s.k) || s.k !== 'stranger', `${r.id}: ${s.k}`);
+    assert.ok(!sceneStart(r).some((s) => s.k === 'stranger'), r.id);
+    assert.deepEqual(rightLines(r), [r.why]); // không "Oops!"
+  }
+  assert.equal(RULE_BY_ID.get('bath-help').set.find((s) => ADULTS.has(s.k)).k, 'mummy');
+  assert.equal(RULE_BY_ID.get('doctor').set.find((s) => ADULTS.has(s.k)).k, 'daddy');
+  assert.match(RULE_BY_ID.get('no-touch').after[1], /Không phải lỗi của con/);
+  assert.match(RULE_BY_ID.get('secret').after[1], /Không phải lỗi của con/);
+  assert.ok(STORIES.every((p) => p.every((id) => RULE_BY_ID.get(id).topic !== 'body')));
+  assert.equal(BODY_IF_TOLD.length, 8);
+  assert.ok(BODY_IF_TOLD.some((t) => t.includes('111')));
+  assert.ok(BODY_DONT_SAY.length >= 4);
+});
+
+test('BODY nâng cấp: state 0.86.0 (không optIn) → 🫶 tắt, mọi trường khác giữ; optIn giữ qua cleanSafetyState; mã lạ bỏ; 🫶 không là chủ đề ưu tiên', () => {
+  const old = { level: 2, rounds: 4, lock: null, seen: { knife: 3 }, firstOk: { knife: true }, off: ['road'], focus: 'kitchen' };
+  const s = cleanSafetyState(old);
+  assert.deepEqual(s, { ...old, optIn: [] });
+  assert.deepEqual(offTopics(s), ['road', 'body']);
+  assert.deepEqual(shownTopics(s), TOPIC_IDS.filter((t) => t !== 'body'));
+  const on = cleanSafetyState({ ...old, optIn: ['body', 'body', 'moon'] });
+  assert.deepEqual(on.optIn, ['body']);
+  assert.deepEqual(offTopics(on), ['road']);
+  assert.deepEqual(cleanSafetyState(on), on);
+  assert.equal(cleanSafetyState({ focus: 'body', optIn: ['body'] }).focus, 'habits');
+});
+
+test('BODY bốc lượt (500 seed): chưa bật → không có 🫶; bật đủ → ≤ 2 🫶 / lượt, vẫn 5 tình huống; chỉ bật 🫶 → 5, 3 ✋ + 2 👍, không 3 ✋ liền; planStory không có 🫶', () => {
+  const rng = seeded(23);
+  for (let i = 0; i < 500; i++) {
+    assert.ok(!topicsOf(planRound({ rng, focus: 'habits' })).includes('body'));
+    const plan = planRound({ rng, off: [], focus: rng() < 0.5 ? 'habits' : null, seen: { private: 0 } });
+    assert.equal(plan.length, 5);
+    assert.ok(topicsOf(plan).filter((t) => t === 'body').length <= 2, JSON.stringify(topicsOf(plan)));
+    const only = planRound({ rng, off: TOPIC_IDS.filter((t) => t !== 'body') });
+    assert.equal(only.length, 5);
+    assert.deepEqual(kinds(only).sort(), ['no', 'no', 'no', 'yes', 'yes']);
+    assert.equal(kindRuns(only.map((p) => RULE_BY_ID.get(p.id))), 0, JSON.stringify(kinds(only)));
+    assert.ok(!topicsOf(planStory({ rng, off: [] }) ?? []).includes('body'));
+  }
+  // Ít gặp trước: 🫶 chưa gặp lần nào nhưng vẫn chỉ 2.
+  const seen = Object.fromEntries(BASE.map((r) => [r.id, 5]));
+  assert.equal(topicsOf(planRound({ rng, off: [], seen })).filter((t) => t === 'body').length, 2);
+  // 🫶 + một chủ đề 1–2 tình huống còn bật: dưới 3 tình huống dùng được thì không có lượt.
+  assert.equal(planRound({ rules: [...BODY, RULES[0]], off: [] })?.length, 3);
+});
+
+test('BODY huy hiệu: chỉ tính khi đang bật; tắt rồi bật lại → huy hiệu, firstOk còn nguyên', () => {
+  let st = cleanSafetyState({ optIn: ['body'] });
+  for (const r of BODY) st = afterRule(st, r.id, { firstTry: true });
+  assert.deepEqual(badgesOf(st), ['body']);
+  const offAgain = cleanSafetyState({ ...st, optIn: [] });
+  assert.deepEqual(badgesOf(offAgain), []);
+  assert.equal(offAgain.firstOk['no-touch'], true);
+  assert.deepEqual(badgesOf(cleanSafetyState({ ...offAgain, optIn: ['body'] })), ['body']);
 });

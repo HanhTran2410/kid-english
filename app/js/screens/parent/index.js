@@ -29,7 +29,7 @@ import { doctorAdminView } from './doctor.js';
 import { jobsAdminView } from './jobs.js';
 import { mathImagesView } from './math-images.js';
 import { safetyImagesView, safetyTipsView } from './safety.js';
-import { RULE_BY_ID, TOPICS, TOPIC_IDS, cleanSafetyState, badgesOf } from '../../jobs/safety.js';
+import { RULE_BY_ID, RULES, TOPICS, cleanSafetyState, badgesOf, shownTopics, topicShown } from '../../jobs/safety.js';
 import { frameSummary } from '../../patterns2.js';
 
 const VIEWS = {
@@ -178,7 +178,10 @@ function progressView(app) {
     // Siêu nhân an toàn (S2): theo thứ tự bảng tình huống; mã đã bỏ khỏi bảng thì không hiện.
     const order = [...RULE_BY_ID.keys()];
     // Bản ghi chỉ có `attempts` (chọn đúng ngay / sai), không có lần luyện nói.
-    const safety = list.filter((r) => String(r.word).startsWith('safe:') && r.attempts && RULE_BY_ID.has(r.word.slice(5)))
+    // 🫶 chưa bật (hoặc đã tắt lại): không hiện, tiến độ vẫn giữ.
+    const safetyState = cleanSafetyState(app.settings.safetyGame);
+    const safeOn = (id) => RULE_BY_ID.has(id) && topicShown(safetyState, RULE_BY_ID.get(id).topic);
+    const safety = list.filter((r) => String(r.word).startsWith('safe:') && r.attempts && safeOn(r.word.slice(5)))
       .sort((a, b) => order.indexOf(a.word.slice(5)) - order.indexOf(b.word.slice(5)));
     // Sao khung của Mẫu câu mở rộng (SPEC-patterns2 mục 5): số hành động / đồ khác nhau bé đã nói được CẢ CÂU (có sao).
     const frames = frameSummary(list);
@@ -219,8 +222,9 @@ function progressView(app) {
           r.attempts ? ` · chọn: đúng ngay ${r.attempts.right}, sai ${r.attempts.wrong}` : '')))));
     }
     if (safety.length) {
-      const badges = badgesOf(cleanSafetyState(app.settings.safetyGame));
-      body.append(section(`🦸 Siêu nhân an toàn — ${safety.length}/${RULE_BY_ID.size} tình huống đã chơi · huy hiệu ${badges.length}/${TOPIC_IDS.length}`,
+      const badges = badgesOf(safetyState);
+      const total = RULES.filter((r) => safeOn(r.id)).length;
+      body.append(section(`🦸 Siêu nhân an toàn — ${safety.length}/${total} tình huống đã chơi · huy hiệu ${badges.length}/${shownTopics(safetyState).length}`,
         h('p.muted', { text: `Huy hiệu: ${badges.length ? badges.map((t) => `${TOPICS[t].emoji} ${TOPICS[t].vi}`).join(', ') : 'chưa có'}. Sao chỉ tăng khi bé chọn đúng ngay lần đầu; chọn nhầm không bị trừ. Đây là thành tích chơi game — bố mẹ vẫn là người dạy bé ngoài đời.` }),
         h('ul.progress-list', {}, ...safety.map((r) => {
           const rule = RULE_BY_ID.get(r.word.slice(5));

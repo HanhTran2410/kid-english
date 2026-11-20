@@ -4,6 +4,8 @@
 // ⭐ lên áo choàng Bông; đủ sao → "Thank you, Safety Hero!" → sticker. Nhầm: Bông đứng sững, gợi ý, hỏi lại; không âm "sai".
 // Bông không bao giờ làm việc nguy hiểm trên màn hình. Trạng thái: ask | pick → right → fix → fixed → (tình huống sau) | hero.
 // Hết lượt: album huy hiệu (huy hiệu mới nảy lên). Ảnh của bố mẹ (Góc bố mẹ → Ảnh Siêu nhân an toàn) thay từng hình / nền.
+// 🫶 Cơ thể của bé (SPEC-body, bố mẹ bật): tình huống `gentle` luôn chơi kiểu No / Yes ở mọi mức, câu hỏi đọc chậm,
+// tiếng Việt luôn đọc, không "Oops!"; sau câu nhắc lại có câu "không phải lỗi của con" (`after`).
 // Khung chung ở jobs/kit.js (phụ đề, giọng đọc, lưu khi ra nền, hoan hô + sticker).
 
 import { h } from '../ui.js';
@@ -18,7 +20,7 @@ import { mediaBlob } from '../db.js';
 import { listen, RESULT } from '../speech/listen.js';
 import { jobScreen, saveSnap, takeSnap, clearSnap, restartAnim, wait, WRONG_LOCK_MS, MAX_NUDGES } from '../jobs/kit.js';
 import {
-  AUTO_MAX_LEVEL, RULE_BY_ID, TOPICS, TOPIC_IDS, cleanSafetyState, afterRule, badgesOf, planRound, planStory, sceneStart, sceneAt,
+  AUTO_MAX_LEVEL, RULE_BY_ID, TOPICS, shownTopics, offTopics, cleanSafetyState, afterRule, badgesOf, planRound, planStory, sceneStart, sceneAt,
   applyOps, dragOps, rightLines, sayKeywords, ADULTS,
   NO_BTN, YES_BTN, SHOULD_I_LINE, WHICH_LINE, ANSWER_NO_LINE, ANSWER_YES_LINE, ANSWER_CARD_LINE, THANKS_LINE, NEW_BADGE_LINE,
   STORY_LINE, NEXT_LINE, SAY_IT_LINE, GREAT_TALK_LINE, GOOD_LINE, SAFETY_PEOPLE_IMAGES, SAFETY_ITEM_IMAGES, SAFETY_BG_IMAGES,
@@ -40,6 +42,9 @@ const INK = '#3d2c5e';
 /** Hình vẽ của cảnh: `svg` (viewBox w × h) hoặc `emoji`; `ar` = rộng / cao. */
 const svg = (w, hgt, body) => ({ ar: w / hgt, svg: `<svg viewBox="0 0 ${w} ${hgt}" aria-hidden="true">${body}</svg>` });
 const emo = (e) => ({ ar: 1, emoji: e });
+/** Bong bóng lời nói có một emoji (🫶: thay cho người kia — không vẽ người). */
+const bubble = (e) => svg(120, 110, `<path d="M60 6 c32 0 54 18 54 42 s-22 42 -54 42 c-6 0 -12 -1 -18 -2 l-22 16 l4 -22 c-12 -8 -18 -20 -18 -34 c0 -24 22 -42 54 -42 z" fill="#fff" stroke="${INK}" stroke-width="5" stroke-linejoin="round"/>
+  <text x="60" y="62" font-size="44" text-anchor="middle" font-family="'Noto Color Emoji','Apple Color Emoji','Segoe UI Emoji',sans-serif">${e}</text>`);
 const ART = {
   ball: emo('⚽'), moon: emo('🌙'), toys: emo('🧸'), teddy: emo('🧸'), timer: emo('⏰'), book: emo('📖'),
   knife: emo('🔪'), pot: emo('🍲'), medicine: emo('💊'), tap: emo('🚰'), soap: emo('🧼'), car: emo('🚗'), hands: emo('🤝'),
@@ -106,6 +111,16 @@ const ART = {
     <circle cx="94" cy="104" r="7" fill="#ffd43b" stroke="${INK}" stroke-width="3"/><circle cx="60" cy="40" r="6" fill="#e7f5ff" stroke="${INK}" stroke-width="2"/>`),
   // S2: 🛒 💧 🐕
   cashier: emo('👩'), fish: emo('🐟'), dog: emo('🐕'),
+  // 🫶 (SPEC-body): bong bóng chỉ có emoji — không vẽ người kia; bàn tay đập tay đứng riêng, không đặt lên người Bông.
+  hugbub: bubble('🤗'), shhbub: bubble('🤫'), askbub: bubble('❓'), five: emo('🖐️'), duck: emo('🦆'), stetho: emo('🩺'),
+  towel: svg(100, 80, `<rect x="6" y="6" width="88" height="68" rx="10" fill="#74c0fc" stroke="${INK}" stroke-width="5"/>
+    <path d="M6 26 h88 M6 54 h88" stroke="#fff" stroke-width="8"/>`),
+  rack: svg(120, 20, `<rect x="4" y="4" width="112" height="12" rx="6" fill="#adb5bd" stroke="${INK}" stroke-width="4"/>`),
+  tub: svg(220, 90, `<path d="M6 10 h208 v30 q0 44 -44 44 h-120 q-44 0 -44 -44 z" fill="#fff" stroke="${INK}" stroke-width="5" stroke-linejoin="round"/>
+    <path d="M10 14 h200 v8 h-200 z" fill="#a5d8ff"/><path d="M50 84 l-8 6 M170 84 l8 6" stroke="${INK}" stroke-width="5" stroke-linecap="round"/>`),
+  foam: svg(160, 70, `<g fill="#fff" stroke="#a5d8ff" stroke-width="3"><circle cx="30" cy="44" r="22"/><circle cx="62" cy="30" r="26"/><circle cx="98" cy="32" r="24"/><circle cx="130" cy="46" r="22"/><circle cx="80" cy="52" r="18"/></g>`),
+  desk2: svg(140, 90, `<rect x="6" y="6" width="128" height="16" rx="5" fill="#e7f5ff" stroke="${INK}" stroke-width="5"/>
+    <path d="M22 22 v62 M118 22 v62" stroke="${INK}" stroke-width="6" stroke-linecap="round"/>`),
   bowl: svg(120, 60, `<path d="M8 14 h104 l-12 40 h-80 z" fill="#ff8787" stroke="${INK}" stroke-width="5" stroke-linejoin="round"/>
     <g fill="#a9714b" stroke="${INK}" stroke-width="2"><circle cx="34" cy="12" r="7"/><circle cx="50" cy="8" r="7"/><circle cx="66" cy="11" r="7"/><circle cx="82" cy="8" r="7"/></g>`),
   aisle: svg(130, 200, `<rect x="6" y="6" width="118" height="190" rx="6" fill="#e9ecef" stroke="${INK}" stroke-width="5"/>
@@ -169,8 +184,12 @@ export function safetyScreen(app, params = {}) {
   const okBtn = h('button.sf-btn.sf-ok', { type: 'button', 'aria-label': 'Yes', dataset: { answer: 'yes' }, onclick: () => answer('yes') },
     h('span.sf-btn-icon', { text: '👍' }), h('span.sf-btn-text', {}, h('b', { text: YES_BTN[0] }), h('small', { text: YES_BTN[1] })));
   // Bé 3 tuổi chưa đọc phụ đề: câu giải thích + việc cần làm đọc thêm bằng giọng tiếng Việt (Cài đặt, mặc định bật).
+  // 🫶 (`gentle`): tiếng Việt luôn đọc — bé phải hiểu, không cần hiểu hết tiếng Anh.
   const viVoice = app.settings.safetyVi !== false;
-  const BV = (line) => ({ who: 'bong', line, viVoice });
+  const gentle = () => Boolean(plan?.[idx] && rule()?.gentle);
+  const BV = (line) => ({ who: 'bong', line, viVoice: viVoice || gentle() });
+  /** Chơi kiểu No / Yes: mức 1, hoặc tình huống 🫶 ở mọi mức (không có tranh "chưa an toàn"). */
+  const askMode = () => level === 1 || gentle();
 
   const kit = jobScreen(app, {
     job: JOB, className: 'sf-play', stageClass: 'sf-stage', title: '🦸 Safety Hero', helperLabel: name, cap: 'hero',
@@ -196,7 +215,7 @@ export function safetyScreen(app, params = {}) {
     state = s;
     const choosing = s === 'ask';
     kit.setState(s, choosing);
-    kit.trayEl.classList.toggle('off', !(level === 1 && (s === 'ask' || s === 'right')));
+    kit.trayEl.classList.toggle('off', !(askMode() && (s === 'ask' || s === 'right')));
     for (const b of [stopBtn, okBtn]) b.disabled = !choosing;
   }
   const snap = () => saveSnap(JOB, { level, plan, idx, stars, missed, nudges, step: state === 'fix' ? 'fix' : 'ask' });
@@ -276,14 +295,14 @@ export function safetyScreen(app, params = {}) {
     }
     sprites = sceneStart(r);
     drawScene(scene, sprites, [], r);
-    setState(level === 1 ? 'ask' : 'intro');
+    setState(askMode() ? 'ask' : 'intro');
     snap();
-    if (level === 1) {
+    if (askMode()) {
       playCue(r);
       // Bông đi chậm tới đồ vật trong lúc hỏi; bé chạm lúc nào cũng được. Tới nơi mà bé chưa chọn: "Should I?".
       place('bong', r.walk, 94, WALK_MS);
       spriteEl('bong')?.classList.add('walk');
-      await Promise.all([talk([BV(r.ask)]), wait(WALK_MS)]);
+      await Promise.all([talk([{ ...BV(r.ask), slow: Boolean(r.gentle) }]), wait(WALK_MS)]);
       spriteEl('bong')?.classList.remove('walk');
       if (e !== kit.epoch || state !== 'ask') return;
       await talk([B(SHOULD_I_LINE)]);
@@ -398,7 +417,7 @@ export function safetyScreen(app, params = {}) {
     }
     await talk(rightLines(r).map(BV));
     if (e !== kit.epoch) return;
-    if (level >= 2) {
+    if (was === 'pick') {
       cards.hidden = true;
       cards.replaceChildren();
       scene.hidden = false;
@@ -438,7 +457,7 @@ export function safetyScreen(app, params = {}) {
   function showHand() {
     const { target, item } = fixTargets();
     const at = item ?? target;
-    if (level !== 1 || !at) return;
+    if (!askMode() || !at) return;
     const s = sprites.find((p) => p.id === at.dataset.id);
     Object.assign(hand.style, { left: `${s.x}%`, top: `${s.y}%` });
     hand.hidden = false;
@@ -553,6 +572,8 @@ export function safetyScreen(app, params = {}) {
     restartAnim(starsEl.children[stars - 1], 'pop');
     await talk([B(r.short)]);
     if (e !== kit.epoch) return;
+    if (r.after) await talk([BV(r.after)]);
+    if (e !== kit.epoch) return;
     await sayIt(r);
     if (e !== kit.epoch) return;
     await wait(400);
@@ -607,7 +628,7 @@ export function safetyScreen(app, params = {}) {
     const have = badgesOf(progress);
     if (!have.length) return;
     const fresh = have.filter((t) => !badgesBefore.includes(t));
-    album.replaceChildren(h('div.sf-album-row', {}, ...TOPIC_IDS.map((t) => h(`span.sf-badge${have.includes(t) ? '.on' : ''}${fresh.includes(t) ? '.new' : ''}`, {
+    album.replaceChildren(h('div.sf-album-row', {}, ...shownTopics(progress).map((t) => h(`span.sf-badge${have.includes(t) ? '.on' : ''}${fresh.includes(t) ? '.new' : ''}`, {
       dataset: { topic: t }, title: TOPICS[t].vi,
     }, h('span.sf-badge-emoji', { text: TOPICS[t].emoji }), h('small', { text: TOPICS[t].en })))));
     album.hidden = false;
@@ -695,7 +716,7 @@ export function safetyScreen(app, params = {}) {
   function repeatPrompt() {
     const k = stepKey();
     const again = () => k === stepKey() && (state === 'fix' ? armFixTimer(FIX_AGAIN_MS) : kit.armNudge());
-    if (state === 'ask') talk([BV(rule().ask)]).then(again);
+    if (state === 'ask') talk([{ ...BV(rule().ask), slow: Boolean(rule().gentle) }]).then(again);
     else if (state === 'pick') talk([B(WHICH_LINE)]).then(again);
     else if (state === 'fix') talk([BV(rule().fix.say)]).then(again);
   }
@@ -735,7 +756,7 @@ export function safetyScreen(app, params = {}) {
       } else startRule(s);
       return;
     }
-    const opts = { off: progress.off, focus: progress.focus, seen: progress.seen };
+    const opts = { off: offTopics(progress), focus: progress.focus, seen: progress.seen };
     // Mức 3: 2 chuyện × 2 bước; không đủ chuyện (bố mẹ tắt gần hết chủ đề) thì lượt thường, vẫn chơi kiểu chọn tranh.
     plan = (level === 3 && planStory(opts)) || planRound(opts);
     if (globalThis.__kidTest?.safetyPlan) plan = globalThis.__kidTest.safetyPlan; // test UI cố định tình huống

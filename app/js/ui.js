@@ -98,10 +98,10 @@ export function toast(message, ms = 2500) {
 }
 
 /**
- * Hộp thoại xác nhận cho bố mẹ.
- * @returns {Promise<boolean>}
+ * Hộp thoại xác nhận cho bố mẹ. `extraText`: nút thứ ba (trả về 'extra').
+ * @returns {Promise<boolean | 'extra'>}
  */
-export function confirmDialog(message, { okText = 'Đồng ý', cancelText = 'Hủy', danger = false } = {}) {
+export function confirmDialog(message, { okText = 'Đồng ý', cancelText = 'Hủy', danger = false, extraText = null } = {}) {
   return new Promise((resolve) => {
     const close = (value) => {
       overlay.remove();
@@ -112,6 +112,7 @@ export function confirmDialog(message, { okText = 'Đồng ý', cancelText = 'H�
         h('p', { text: message }),
         h('div.dialog-actions', {},
           h('button.btn', { type: 'button', text: cancelText, onclick: () => close(false) }),
+          extraText ? h('button.btn', { type: 'button', text: extraText, onclick: () => close('extra') }) : null,
           h(`button.btn.${danger ? 'danger' : 'primary'}`, { type: 'button', text: okText, onclick: () => close(true) }),
         )));
     document.body.append(overlay);

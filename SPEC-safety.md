@@ -1,6 +1,6 @@
 # SPEC — 🦸 Siêu nhân an toàn: "Bông ơi, dừng lại!" (Safety Hero)
 
-> Phiên bản spec: **draft5** (theo review cho bé 3+, mục 14) · Ngày: 2026-11-19 · Dựa trên app 0.83.0. **Đã làm S1 (0.84.0), S2 (0.85.0) và thêm 🐕 (0.86.0)**, ghi chú mục 15.
+> Phiên bản spec: **draft5** (theo review cho bé 3+, mục 14) · Ngày: 2026-11-19 · Dựa trên app 0.83.0. **Đã làm S1 (0.84.0), S2 (0.85.0), thêm 🐕 (0.86.0)**, ghi chú mục 15. Chủ đề 🫶 Cơ thể của bé (bố mẹ bật): `SPEC-body.md` (0.87.0).
 > - **S2 (0.85.0), bố mẹ thêm:** thay được ảnh từng hình trong cảnh (Bông, mẹ, bố, đồ vật) và ảnh nền từng cảnh — mục 9.1.
 > - **draft5:**
 >   - **Review lại cho bé 3 tuổi (3+)**, không phải 6 tuổi (mục 14):
@@ -331,7 +331,7 @@ Review 3+ SAFE-28…35:
 - Ảnh AI cho từng cảnh (như SPEC-art); chỗ chạm trên ảnh AI hay lệch, nên S1 dùng SVG / emoji.
 - Bài hát / vè (*"Stop, look, hold hands!"*).
 - Số điện thoại, tên bố mẹ (bố mẹ tự dạy, app không lưu).
-- An toàn cơ thể (body safety): nhạy cảm, bố mẹ quyết định riêng.
+- ~~An toàn cơ thể (body safety)~~ → đã làm ở `SPEC-body.md` (0.87.0, mặc định tắt, bố mẹ bật).
 - Bản cho Olly English (6 tuổi): câu dài hơn, thêm "khăn ướt", lối thoát hiểm…
 
 ## 12. Đã chốt (2026-11-19 — bố mẹ trả lời)

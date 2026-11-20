@@ -1,6 +1,6 @@
 // Cài đặt và thông tin chẩn đoán (SPEC 4.6).
 
-import { h, toast, formatBytes } from '../../ui.js';
+import { h, toast, formatBytes, confirmDialog } from '../../ui.js';
 import { englishVoices, isNoveltyVoice } from '../../speech/tts.js';
 import { CHILD_VOICE } from '../../player/talk-stages.js';
 import { pickMimeType } from '../../speech/recorder.js';
@@ -18,7 +18,7 @@ import { cleanSoundsState } from '../../animal-sounds.js';
 import { cleanBubblesState } from '../../bubbles.js';
 import { cleanJobState } from '../../jobs/levels.js';
 import { cleanDoctorState } from '../../doctor.js';
-import { cleanSafetyState, badgesOf, TOPICS, TOPIC_IDS } from '../../jobs/safety.js';
+import { cleanSafetyState, badgesOf, shownTopics, TOPICS, TOPIC_IDS, OPT_IN_TOPICS, BODY_ENABLE_MSG } from '../../jobs/safety.js';
 
 export function settingsView(app) {
   const body = parentLayout(app, { title: 'Cài đặt & chẩn đoán', back: () => goParent(app) });
@@ -278,8 +278,9 @@ function safetySection(app, save) {
   const badges = badgesOf(state);
   const focus = h('select', { onchange: (e) => update({ focus: e.target.value === 'none' ? null : e.target.value }) },
     h('option', { value: 'none', text: 'Không ưu tiên', selected: state.focus === null }),
-    ...TOPIC_IDS.map((id) => h('option', { value: id, text: `${TOPICS[id].emoji} ${TOPICS[id].vi}`, selected: state.focus === id })));
-  const topics = h('div.check-list', {}, ...TOPIC_IDS.map((id) => h('label.check', {},
+    ...TOPIC_IDS.filter((id) => !OPT_IN_TOPICS.includes(id))
+      .map((id) => h('option', { value: id, text: `${TOPICS[id].emoji} ${TOPICS[id].vi}`, selected: state.focus === id })));
+  const topics = h('div.check-list', {}, ...TOPIC_IDS.filter((id) => !OPT_IN_TOPICS.includes(id)).map((id) => h('label.check', {},
     h('input', {
       type: 'checkbox', checked: !state.off.includes(id), dataset: { topic: id },
       onchange: (e) => {
@@ -287,7 +288,27 @@ function safetySection(app, save) {
         update({ off: e.target.checked ? off : [...off, id] });
       },
     }),
-    h('span', { text: `${TOPICS[id].emoji} ${TOPICS[id].vi}` }))));
+    h('span', { text: `${TOPICS[id].emoji} ${TOPICS[id].vi}` }))),
+  // 🫶 Cơ thể của bé (SPEC-body mục 7): mặc định tắt; bật thì hỏi lại (đọc gợi ý trước). Tắt không xóa tiến độ / huy hiệu.
+  ...OPT_IN_TOPICS.map((id) => h('label.check', {},
+    h('input', {
+      type: 'checkbox', checked: state.optIn.includes(id) && !state.off.includes(id), dataset: { topic: id },
+      onchange: async (e) => {
+        const cur = cleanSafetyState(app.settings.safetyGame);
+        const optIn = cur.optIn.filter((t) => t !== id);
+        if (!e.target.checked) {
+          update({ optIn });
+          return;
+        }
+        const ok = await confirmDialog(BODY_ENABLE_MSG, { okText: 'Bật', cancelText: 'Thôi', extraText: 'Đọc gợi ý' });
+        if (ok === true) update({ optIn: [...optIn, id], off: cur.off.filter((t) => t !== id) });
+        else {
+          e.target.checked = false;
+          if (ok === 'extra') goParent(app, 'safety-tips');
+        }
+      },
+    }),
+    h('span', { text: `${TOPICS[id].emoji} ${TOPICS[id].vi} (tắt — bố mẹ bật khi sẵn sàng)` }))));
   return section('Siêu nhân an toàn',
     h('label.check', {},
       h('input', { type: 'checkbox', checked: app.settings.safetyVi !== false, onchange: (e) => save('safetyVi', e.target.checked) }),
@@ -300,7 +321,7 @@ function safetySection(app, save) {
     h('p.field-hint', { text: 'Tùy chọn, mặc định tắt. Chỉ khi mic đã bật sẵn (trò không hỏi quyền mic), không ghi âm; bé không nói cũng không sao, không ảnh hưởng sao hay huy hiệu.' }),
     field('Chủ đề ưu tiên', focus, 'Lượt nào cũng có 2 tình huống của chủ đề này.'),
     field('Chủ đề', topics, 'Tắt chủ đề chưa muốn nói với bé. Còn dưới 3 tình huống thì trò báo bố mẹ bật thêm.'),
-    h('p.field-hint', { text: `Huy hiệu: ${badges.length}/${TOPIC_IDS.length}${badges.length ? ` (${badges.map((t) => TOPICS[t].emoji).join(' ')})` : ''} — mở khi mọi tình huống của chủ đề được chọn đúng ngay lần đầu (một lần là đủ, không bao giờ mất). Huy hiệu là thành tích chơi game, không phải chứng nhận bé đã có kỹ năng ngoài đời.` }),
+    h('p.field-hint', { text: `Huy hiệu: ${badges.length}/${shownTopics(state).length}${badges.length ? ` (${badges.map((t) => TOPICS[t].emoji).join(' ')})` : ''} — mở khi mọi tình huống của chủ đề được chọn đúng ngay lần đầu (một lần là đủ, không bao giờ mất). Huy hiệu là thành tích chơi game, không phải chứng nhận bé đã có kỹ năng ngoài đời.` }),
     h('div.actions', {},
       h('button.btn', { type: 'button', text: '💬 Nói thêm với bé…', onclick: () => goParent(app, 'safety-tips') }),
       h('button.btn', { type: 'button', text: '🖼️ Ảnh Siêu nhân an toàn…', onclick: () => goParent(app, 'safety-images') })),

@@ -435,7 +435,7 @@ test('SAFE-S2-07: Góc bố mẹ — mức 3 + "Say it!" trong Cài đặt; tran
   await expect.poll(() => page.evaluate(() => window.kidEnglish.settings.safetyTalk)).toBe(true);
   await page.getByRole('button', { name: '💬 Nói thêm với bé…' }).click();
   await expect(page.locator('.sf-tips li[data-rule="pond-toy"]')).toContainText('bố mẹ lấy');
-  await expect(page.locator('.sf-tips li')).toHaveCount(38);
+  await expect(page.locator('.sf-tips li')).toHaveCount(44); // 38 + 6 🫶 (trang gợi ý luôn có 🫶 để bố mẹ đọc trước khi bật)
   await page.evaluate(() => window.kidEnglish.go('parent', { view: 'safety-images' }));
   await expect(page.locator('.sp-admin-item[data-item="dog"]')).toBeVisible();
   await expect(page.locator('.jb-admin-person[data-person="bong"]')).toBeVisible();
@@ -498,4 +498,175 @@ test('SAFE-D-02: mức 3 — chuyện 🐕: bước 1 không vuốt chó lạ, b
   await solve(page);
   await ruleIs(page, 'knife');
   expect((await game(page)).seen['dog-still']).toBe(1);
+});
+
+// ---------- 🫶 Cơ thể của bé (SPEC-body, 0.87.0): bố mẹ bật, luôn No / Yes, tiếng Việt luôn đọc ----------
+const BODY_ON = { optIn: ['body'] };
+
+test('BODY-01: mặc định không gặp 🫶; Cài đặt có dòng tắt; bật → hộp xác nhận: Thôi → vẫn tắt, Bật → optIn có body', async ({ page }) => {
+  await openSafety(page, { state: { focus: null } });
+  await finish(page);
+  const g = await game(page);
+  expect(Object.keys(g.seen).filter((id) => ['private', 'bath-help', 'doctor', 'hug-no', 'secret', 'no-touch'].includes(id))).toHaveLength(0);
+  await page.evaluate(() => window.kidEnglish.go('parent', { view: 'settings' }));
+  const box = page.locator('input[data-topic="body"]');
+  await expect(box).not.toBeChecked();
+  await expect(page.getByText('Cơ thể của bé (tắt — bố mẹ bật khi sẵn sàng)')).toBeVisible();
+  await expect(page.locator('select option[value="body"]')).toHaveCount(0); // không là chủ đề ưu tiên
+  await box.click();
+  await expect(page.locator('.dialog')).toContainText('cơ thể của bé là của bé');
+  await page.locator('.dialog').getByRole('button', { name: 'Thôi' }).click();
+  await expect(box).not.toBeChecked();
+  expect((await game(page)).optIn ?? []).toEqual([]);
+  await box.click();
+  await page.locator('.dialog').getByRole('button', { name: 'Bật' }).click();
+  await expect.poll(async () => (await game(page)).optIn).toEqual(['body']);
+  await expect(box).toBeChecked();
+  expect((await game(page)).off).toEqual(g.off); // không đụng chủ đề khác
+  await box.click(); // tắt: không hỏi
+  await expect.poll(async () => (await game(page)).optIn).toEqual([]);
+});
+
+test('BODY-02: no-touch — tiếng Việt đọc dù tắt giọng Việt; ✋ → "No! Say NO. Tell Mommy." (không "Oops!") → chạm mẹ → ôm + "không phải lỗi của con"', async ({ page }) => {
+  await openSafety(page, { ids: ['no-touch', 'knife', 'private'], state: BODY_ON, vi: false });
+  await ruleIs(page, 'no-touch');
+  await expect(page.locator('.sf-sp.sf-askbub')).toBeVisible();
+  await expect.poll(() => spoken(page)).toContain('Có người chạm vào chỗ đồ bơi che của tớ. Được không?');
+  await stateIs(page, 'ask');
+  await page.locator('.sf-btn[data-answer="no"]').click();
+  await stateIs(page, 'fix');
+  let said = await spoken(page);
+  expect(said).toContain('No! Say NO. Tell Mommy.');
+  expect(said).toContain('Không! Nói thật to: Không! Rồi kể với bố mẹ, hoặc người lớn con tin.');
+  expect(said).not.toContain('Oops!');
+  await page.locator('.sf-sp.sf-mummy').click();
+  await expect.poll(() => spoken(page)).toContain('Con kể là đúng rồi. Không phải lỗi của con.');
+  await ruleIs(page, 'knife');
+  await expect.poll(() => spoken(page)).toContain('A knife! Can I touch it?');
+  said = await spoken(page);
+  expect(said.filter((t) => /Con dao/.test(t))).toHaveLength(0); // tình huống thường: vẫn theo cài đặt (tắt giọng Việt)
+  expect((await game(page)).firstOk['no-touch']).toBe(true);
+});
+
+test('BODY-03: hug-no → ✋ → chạm bàn tay (đập tay); private: chọn nhầm → câu nhắc nhẹ, không âm sai → 👍 → kéo khăn lên Bông', async ({ page }) => {
+  await openSafety(page, { ids: ['hug-no', 'private', 'knife'], state: BODY_ON });
+  await ruleIs(page, 'hug-no');
+  await stateIs(page, 'ask');
+  await page.locator('.sf-btn[data-answer="no"]').click();
+  await stateIs(page, 'fix');
+  await expect(page.locator('.sf-sp.sf-five')).toBeVisible();
+  await expect(page.locator('.sf-sp.sf-five')).toHaveClass(/sf-target/);
+  await page.locator('.sf-sp.sf-five').click();
+  await expect.poll(() => spoken(page)).toContain('High five!');
+  await ruleIs(page, 'private');
+  await expect(page.locator('.sf-sp.sf-bong')).toHaveClass(/swim/);
+  await stateIs(page, 'ask');
+  await page.locator('.sf-btn[data-answer="no"]').click();
+  await expect.poll(() => spoken(page)).toContain("It's OK! My body is mine.");
+  await page.locator('.sf-btn[data-answer="yes"]').click();
+  await stateIs(page, 'fix');
+  await expect(page.locator('.sf-sp.sf-towel')).toHaveClass(/sf-drag/);
+  await solve(page);
+  await expect.poll(() => spoken(page)).toContain('My body is mine!');
+  await ruleIs(page, 'knife');
+  const g = await game(page);
+  expect(g.seen.private).toBe(1);
+  expect(g.firstOk.private).toBeUndefined();
+});
+
+test('BODY-04: mức 2 — tình huống 🫶 vẫn nút No / Yes (không thẻ tranh); tình huống thường vẫn chọn tranh', async ({ page }) => {
+  await openSafety(page, { ids: ['secret', 'knife', 'doctor'], state: { ...BODY_ON, level: 2, lock: 2 } });
+  await ruleIs(page, 'secret');
+  await stateIs(page, 'ask');
+  await expect(page.locator('.sf-card')).toHaveCount(0);
+  await expect(page.locator('.jb-tray')).not.toHaveClass(/off/);
+  await page.locator('.sf-btn[data-answer="no"]').click();
+  await stateIs(page, 'fix');
+  await page.locator('.sf-sp.sf-mummy').click();
+  await ruleIs(page, 'knife');
+  await stateIs(page, 'pick');
+  await expect(page.locator('.sf-card')).toHaveCount(2);
+  await solve(page);
+  await stateIs(page, 'fix');
+  await solve(page);
+  await ruleIs(page, 'doctor');
+  await stateIs(page, 'ask');
+  await page.locator('.sf-btn[data-answer="yes"]').click();
+  await stateIs(page, 'fix');
+  await page.locator('.sf-sp.sf-daddy').click();
+  await expect.poll(() => spoken(page)).toContain('Daddy is here!');
+});
+
+test('BODY-05: album 10 ô khi bật (huy hiệu 🫶 mới); tắt lại → huy hiệu ẩn, firstOk còn; trang gợi ý có "Nếu bé kể với bạn", "Bố mẹ không nên nói"', async ({ page }) => {
+  const firstOk = { 'hug-no': true, secret: true, 'no-touch': true };
+  await openSafety(page, { ids: ['private', 'bath-help', 'doctor'], state: { ...BODY_ON, firstOk } });
+  await page.evaluate(() => {
+    window.__album = null;
+    new MutationObserver(() => {
+      const el = document.querySelector('.sf-album:not([hidden])');
+      if (el && !window.__album) window.__album = [...el.querySelectorAll('.sf-badge')].map((x) => ({ topic: x.dataset.topic, fresh: x.classList.contains('new') }));
+    }).observe(document.body, { subtree: true, childList: true, attributes: true });
+  });
+  await finish(page);
+  await expect.poll(() => spoken(page)).toContain('A new badge!');
+  const album = await page.evaluate(() => window.__album);
+  expect(album).toHaveLength(10);
+  expect(album.filter((x) => x.fresh).map((x) => x.topic)).toEqual(['body']);
+  await page.evaluate(() => window.kidEnglish.go('parent', { view: 'settings' }));
+  await expect(page.getByText(/Huy hiệu: 1\/10/)).toBeVisible();
+  await page.locator('input[data-topic="body"]').click(); // tắt lại
+  await expect.poll(async () => (await game(page)).optIn).toEqual([]);
+  await page.evaluate(() => window.kidEnglish.go('parent', { view: 'settings' }));
+  await expect(page.getByText(/Huy hiệu: 0\/9/)).toBeVisible();
+  expect((await game(page)).firstOk.private).toBe(true);
+  await page.evaluate(() => window.kidEnglish.go('parent', { view: 'safety-tips' }));
+  await expect(page.getByRole('heading', { name: 'Nếu bé kể với bạn' })).toBeVisible();
+  await expect(page.locator('.sf-told li')).toHaveCount(8);
+  await expect(page.locator('.sf-told')).toContainText('111');
+  await expect(page.locator('.sf-dont li')).toHaveCount(4);
+});
+
+test('BODY-06: ra nền giữa lượt có 2 tình huống 🫶 → vào lại đúng tình huống, đúng bước, kế hoạch giữ nguyên', async ({ page }) => {
+  await openSafety(page, { ids: ['secret', 'knife', 'no-touch'], state: BODY_ON });
+  await stateIs(page, 'ask');
+  await page.locator('.sf-btn[data-answer="no"]').click();
+  await stateIs(page, 'fix');
+  await setVisible(page, 'hidden');
+  await setVisible(page, 'visible');
+  await page.locator('.resume-overlay .start-btn').click();
+  await ruleIs(page, 'secret');
+  await stateIs(page, 'fix');
+  await page.locator('.sf-sp.sf-mummy').click();
+  await ruleIs(page, 'knife');
+  await solve(page);
+  await stateIs(page, 'fix');
+  await solve(page);
+  await ruleIs(page, 'no-touch');
+  expect((await game(page)).seen.secret).toBe(1);
+});
+
+test('BODY-07: ảnh bố mẹ thay bồn tắm, nền phòng tắm → câu, đáp án, thao tác không đổi', async ({ page }) => {
+  await page.addInitScript(() => { window.__kidTest = { safetyPlan: [{ id: 'bath-help', safeLeft: true }, { id: 'knife', safeLeft: true }, { id: 'tv-long', safeLeft: false }] }; });
+  await fakeSpeech(page);
+  await startApp(page);
+  await page.evaluate(async () => {
+    const db = await import('/js/db.js');
+    const png = await new Promise((r) => { const c = document.createElement('canvas'); c.width = 60; c.height = 30; c.getContext('2d').fillRect(5, 5, 50, 20); c.toBlob(r, 'image/png'); });
+    for (const [lessonId, word] of [['safety:items', 'tub'], ['safety:bg', 'bath']]) {
+      await db.setWordImage(window.kidEnglish.db, { lessonId, word, blob: png, mimeType: 'image/png', width: 60, height: 30 });
+    }
+    await window.kidEnglish.setSetting('safetyGame', { level: 1, rounds: 0, lock: null, optIn: ['body'] });
+  });
+  await page.getByRole('button', { name: 'Trò chơi' }).click();
+  await page.getByRole('button', { name: 'Siêu nhân an toàn' }).click();
+  await ruleIs(page, 'bath-help');
+  await expect(page.locator('.sf-sp.sf-tub img.sf-img')).toHaveCount(1);
+  await expect(page.locator('.sf-stage > .sf-scene')).toHaveClass(/pic/);
+  await expect.poll(() => spoken(page)).toContain('Mommy helps me wash. OK?');
+  await stateIs(page, 'ask');
+  await page.locator('.sf-btn[data-answer="yes"]').click();
+  await stateIs(page, 'fix');
+  await page.locator('.sf-sp.sf-duck').click();
+  await expect.poll(() => spoken(page)).toContain('Mommy helps!');
+  await ruleIs(page, 'knife');
 });

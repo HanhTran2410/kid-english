@@ -3931,6 +3931,12 @@ img.dr-admin-face { width: 100%; height: 100%; object-fit: contain; }
 .sf-bong.sleep svg { transform: rotate(-80deg); transform-origin: 50% 80%; }
 .sf-bong.still::after { content: '🌳'; position: absolute; left: 50%; top: -22%; translate: -50% 0; font-family: var(--emoji); font-size: calc(var(--h) * 0.22cqh); }
 .sf-bong.run { transform: rotate(-10deg); transform-origin: 50% 100%; }
+/* 🫶 (SPEC-body): đồ bơi là một emoji 🩱 che phần dưới — không vẽ dáng cơ thể. */
+.sf-bong.swim::after { content: '🩱'; position: absolute; left: 50%; bottom: -6%; translate: -50% 0; font-family: var(--emoji); font-size: calc(var(--h) * 0.26cqh); z-index: 1; }
+.sf-sp.sf-towel.worn { z-index: 5; }
+.sf-sp.sf-foam { z-index: 5; }
+.sf-sp.sf-hugbub, .sf-sp.sf-shhbub, .sf-sp.sf-askbub, .sf-sp.sf-five { z-index: 4; }
+.sf-told, .sf-dont { padding-left: 1.4em; line-height: 1.5; }
 .sf-bong.run::after { content: '💨'; position: absolute; right: -30%; top: 40%; font-family: var(--emoji); font-size: calc(var(--h) * 0.24cqh); }
 .sf-bong.sleep::after { content: 'z Z'; position: absolute; right: -20%; top: 0; font-weight: 900; color: #4dabf7; font-size: calc(var(--h) * 0.2cqh); animation: float 2s ease-in-out infinite; }
 .sf-bong.fly { animation: sf-fly 1.6s ease-in-out; }
@@ -3988,6 +3994,8 @@ img.dr-admin-face { width: 100%; height: 100%; object-fit: contain; }
 /* S2 (0.85.0): 🛒 💧 🐕, ảnh của bố mẹ, mức 3 (hình nhắc lại bước 1), "Say it!", album huy hiệu */
 .sf-scene[data-scene="shop"] { background: linear-gradient(#f8f9fa 0 64%, #ced4da 64% 65%, #e9ecef 65%); }
 .sf-scene[data-scene="pool"] { background: linear-gradient(#d0ebff 0 60%, #e9ecef 60%); }
+.sf-scene[data-scene="bath"] { background: repeating-linear-gradient(90deg, #e3fafc 0 38px, #c5f6fa 38px 40px) top / 100% 66% no-repeat, #dee2e6; }
+.sf-scene[data-scene="clinic"] { background: linear-gradient(#f1f3f5 0 66%, #b2f2bb 66% 67%, #e6fcf5 67%); }
 .sf-scene[data-scene="pond"] { background: linear-gradient(#e7f5ff 0 58%, #8ce99a 58%); }
 .sf-scene.pic { background-size: cover; background-position: center; }
 .sf-scene.pic::before { display: none; }

@@ -1,7 +1,8 @@
 // Góc bố mẹ → 🦸 Siêu nhân an toàn (SPEC-safety S2, 0.85.0):
 // - "Ảnh Siêu nhân an toàn": thay từng hình trong cảnh — Bông, mẹ, bố, từng đồ vật (chọn một ảnh, hoặc ảnh lưới AI), ảnh nền
 //   từng cảnh. Ảnh nằm gọn trong khung của hình vẽ nên chỗ chạm / chỗ thả không đổi. Chưa có ảnh thì dùng hình vẽ sẵn.
-// - "Nói thêm với bé": mỗi tình huống một gợi ý luyện ngoài đời (mục 9).
+// - "Nói thêm với bé": mỗi tình huống một gợi ý luyện ngoài đời (mục 9). 🫶 Cơ thể của bé (SPEC-body mục 7) luôn hiện ở đây
+//   (bố mẹ đọc trước khi bật), kèm "Nếu bé kể với bạn" và "Bố mẹ không nên nói".
 
 import { h, toast, copyText } from '../../ui.js';
 import { setWordImage, removeWordImage, mediaBlob } from '../../db.js';
@@ -9,7 +10,7 @@ import { resizeImage, cutOutSticker } from '../../image.js';
 import { dayKey } from '../../text.js';
 import { applyBackup, BackupError } from '../../backup.js';
 import {
-  RULES, TOPICS, TOPIC_IDS, TIPS, SAFETY_PEOPLE, SAFETY_ITEMS, SAFETY_SCENES,
+  RULES, TOPICS, TOPIC_IDS, TIPS, BODY_IF_TOLD, BODY_DONT_SAY, SAFETY_PEOPLE, SAFETY_ITEMS, SAFETY_SCENES,
   SAFETY_PEOPLE_IMAGES, SAFETY_ITEM_IMAGES, SAFETY_BG_IMAGES,
 } from '../../jobs/safety.js';
 import { bongSvg } from '../../bong.js';
@@ -160,5 +161,11 @@ export function safetyTipsView(app) {
         h('span.p-emoji', { text: r.emoji }),
         h('div', {},
           h('b', { text: r.short[0] }), h('span.muted', { text: ` — ${r.short[1]}` }),
-          h('p', { text: TIPS[r.id] }))))))));
+          h('p', { text: TIPS[r.id] }))))),
+      ...(t === 'body' ? [
+        h('h3', { text: 'Nếu bé kể với bạn' }),
+        h('ol.sf-told', {}, ...BODY_IF_TOLD.map((x) => h('li', { text: x }))),
+        h('h3', { text: 'Bố mẹ không nên nói' }),
+        h('ul.sf-dont', {}, ...BODY_DONT_SAY.map((x) => h('li', { text: x }))),
+      ] : []))));
 }
