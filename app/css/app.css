@@ -3929,6 +3929,9 @@ img.dr-admin-face { width: 100%; height: 100%; object-fit: contain; }
 .sf-bong.low { transform: scale(1.05, 0.72); transform-origin: 50% 100%; }
 .sf-bong.low::after { content: '✋'; position: absolute; left: 50%; top: 58%; translate: -50% 0; font-family: var(--emoji); font-size: calc(var(--h) * 0.24cqh); }
 .sf-bong.sleep svg { transform: rotate(-80deg); transform-origin: 50% 80%; }
+.sf-bong.still::after { content: '🌳'; position: absolute; left: 50%; top: -22%; translate: -50% 0; font-family: var(--emoji); font-size: calc(var(--h) * 0.22cqh); }
+.sf-bong.run { transform: rotate(-10deg); transform-origin: 50% 100%; }
+.sf-bong.run::after { content: '💨'; position: absolute; right: -30%; top: 40%; font-family: var(--emoji); font-size: calc(var(--h) * 0.24cqh); }
 .sf-bong.sleep::after { content: 'z Z'; position: absolute; right: -20%; top: 0; font-weight: 900; color: #4dabf7; font-size: calc(var(--h) * 0.2cqh); animation: float 2s ease-in-out infinite; }
 .sf-bong.fly { animation: sf-fly 1.6s ease-in-out; }
 @keyframes sf-fly { 30% { transform: translateY(-40%) rotate(-10deg); } 60% { transform: translate(20%, -55%) rotate(8deg); } }

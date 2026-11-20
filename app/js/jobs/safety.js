@@ -502,6 +502,34 @@ export const RULES = [
     done: [['move', 'bong', 24, 94], ['add', 'bong', 'hold'], ['move', 'dog', 120, 94]],
     card: [['move', 'bong', 24, 94], ['add', 'bong', 'hold']],
   },
+  {
+    id: 'dog-eat', topic: 'dog', kind: 'no', scene: 'yard', emoji: '🦴',
+    ask: ['Doggy is eating. Can I pet it?', 'Chú chó đang ăn. Tớ vuốt được không?'],
+    why: ['No! Let the doggy eat.', 'Không! Để chú chó ăn yên nhé. Chó đang ăn dễ cắn lắm.'],
+    short: ['Let it eat!', 'Để chó ăn!'],
+    hint: ['Hmm… wait! The doggy is eating!', 'Ơ… khoan! Chú chó đang ăn mà!'],
+    look: ['Hmm… touching an eating doggy? Look again!', 'Ơ… sờ chó đang ăn à? Nhìn lại nhé!'],
+    set: [S('bowl', 70, 94, 7), S('dog', 79, 94, 18), S('mummy', 8, 94, 52), S('ball', 40, 92, 10, { hidden: true })],
+    walk: 50,
+    fix: { how: 'tap', target: 'mummy', say: CALL_MOMMY },
+    done: [['move', 'bong', 24, 94], ['add', 'bong', 'hold'], ['show', 'ball'], ['add', 'bong', 'hop']],
+  },
+  {
+    // Chó chạy lại gần: đứng yên "như cái cây", không chạy, không la — bé chạm Bông; chó ngửi rồi đi, mẹ tới.
+    id: 'dog-still', topic: 'dog', kind: 'yes', scene: 'park', emoji: '🌳',
+    ask: ["Doggy's coming! Stand still?", 'Chó chạy lại kìa! Tớ đứng yên nhé?'],
+    why: ['Yes! Stand still like a tree.', 'Đúng rồi! Đứng yên như cái cây. Không chạy, không hét.'],
+    short: ['Stand still!', 'Đứng yên!'],
+    hint: ["It's OK! Don't run. Stand still.", 'Không sao đâu! Đừng chạy. Đứng yên nhé.'],
+    look: ['Hmm… running away? Look again!', 'Ơ… bỏ chạy à? Nhìn lại nhé!'],
+    set: [S('dog', 64, 94, 18), S('mummy', 14, 94, 52, { hidden: true })],
+    walk: 36,
+    fix: { how: 'tap', target: 'bong', say: ['Tap me! Stand still.', 'Chạm vào tớ để đứng yên nhé!'] },
+    done: [['add', 'bong', 'still'], ['move', 'dog', 120, 94], ['show', 'mummy']],
+    card: [['add', 'bong', 'still'], ['show', 'mummy']],
+    // Tranh chưa an toàn: Bông bỏ chạy (💨), chó đuổi theo.
+    risky: [['move', 'bong', 22, 94], ['add', 'bong', 'run'], ['move', 'dog', 50, 94]],
+  },
 ];
 export const RULE_BY_ID = new Map(RULES.map((r) => [r.id, r]));
 export const BONG_START = 16;
@@ -701,6 +729,7 @@ export const STORIES = [
   ['fire-low', 'fire-out'], ['fire-hide', 'fire-back'],
   ['hide-shop', 'lost'],
   ['pool-alone', 'swim-with'], ['pond', 'pond-toy'],
+  ['dog', 'dog-still'],
 ];
 export const STORY_COUNT = 2; // một lượt mức 3 = 2 chuyện = 4 bước (4 ⭐)
 export const STORY_LINE = ['Story time!', 'Kể chuyện nào!'];
@@ -775,6 +804,8 @@ export const TIPS = {
   'pond-toy': 'Đồ rơi xuống nước thì bố mẹ lấy (bằng sào, vợt) hoặc bỏ luôn. Bé đứng xa mép nước, gọi bố mẹ.',
   'swim-with': 'Phao tay không thay được bố mẹ: luôn ở sát cạnh bé khi bé ở dưới nước.',
   'dog': 'Gặp chó lạ: đứng cạnh bố mẹ, nhìn từ xa, không chạy, không vuốt. Muốn vuốt chó quen thì bố mẹ hỏi chủ trước.',
+  'dog-eat': 'Không lại gần chó đang ăn, đang ngủ hay đang gặm xương, kể cả chó nhà. Để chó ăn xong rồi mới chơi.',
+  'dog-still': 'Tập trò "làm cái cây": đứng yên, tay khoanh trước ngực, nhìn xuống chân. Chó chạy lại thì làm cây, không chạy, không hét, chờ bố mẹ.',
 };
 
 // ---------- Ảnh của bố mẹ (S2): thay từng hình trong cảnh, ảnh nền từng cảnh; chưa có ảnh thì dùng hình vẽ ----------
@@ -815,6 +846,7 @@ export const SAFETY_ITEMS = [
   ['pool', 'pool', 'bể bơi', 'a wide strip of swimming pool water seen from the side'], ['pondwater', 'pond', 'ao', 'a wide strip of pond water with reeds'],
   ['fish', 'fish', 'cá', 'a fish jumping'], ['pole', 'pole', 'cây sào', 'a long pole with a small net'],
   ['armbands', 'armbands', 'phao tay', 'a pair of inflatable swim armbands'], ['dog', 'dog', 'chó', 'a medium dog standing, calm'],
+  ['bowl', 'dog bowl', 'bát ăn của chó', 'a dog food bowl with kibble'],
 ].map(([id, en, vi, draw]) => ({ id, en, vi, draw }));
 /** Cảnh (ảnh nền): chỉ là nền, mọi hình vẫn đặt lên trên. */
 export const SAFETY_SCENES = [

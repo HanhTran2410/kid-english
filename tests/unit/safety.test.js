@@ -27,18 +27,20 @@ const avoidable = (plan) => {
   return Math.max(...Object.values(counts)) <= Math.ceil(n / 2);
 };
 
-test('bảng tình huống: 9 chủ đề, 36 tình huống (24 🚫 + 12 ✅); mã duy nhất; chủ đề nào cũng có 🚫, mọi chủ đề trừ 🐕 có ✅; có pond-toy', () => {
+test('bảng tình huống: 9 chủ đề, 38 tình huống (25 🚫 + 13 ✅); mã duy nhất; chủ đề nào cũng có cả 🚫 và ✅; có pond-toy', () => {
   assert.deepEqual(TOPIC_IDS, ['habits', 'kitchen', 'home', 'road', 'stranger', 'fire', 'shop', 'water', 'dog']);
-  assert.equal(RULES.length, 36);
-  assert.equal(RULES.filter((r) => r.kind === 'no').length, 24);
+  assert.equal(RULES.length, 38);
+  assert.equal(RULES.filter((r) => r.kind === 'no').length, 25);
   assert.equal(new Set(RULES.map((r) => r.id)).size, RULES.length);
   for (const t of TOPIC_IDS) {
     assert.ok(RULES.some((r) => r.topic === t && r.kind === 'no'), t);
-    if (t !== 'dog') assert.ok(RULES.some((r) => r.topic === t && r.kind === 'yes'), t);
+    assert.ok(RULES.some((r) => r.topic === t && r.kind === 'yes'), t);
+    assert.ok(RULES.filter((r) => r.topic === t).length >= 3, t); // bật riêng một chủ đề vẫn đủ một lượt
     assert.ok(TOPICS[t].emoji && TOPICS[t].vi && TOPICS[t].en);
   }
   assert.deepEqual(RULES.filter((r) => r.topic === 'water').map((r) => r.id).sort(), ['pond', 'pond-toy', 'pool-alone', 'swim-with']);
   assert.equal(RULE_BY_ID.get('pond-toy').fix.target, 'daddy'); // đồ rơi xuống nước: gọi bố, không tự lấy
+  assert.deepEqual(RULES.filter((r) => r.topic === 'dog').map((r) => r.id), ['dog', 'dog-eat', 'dog-still']);
   assert.equal(MAX_LEVEL, 3);
   assert.equal(AUTO_MAX_LEVEL, 2);
 });
@@ -121,14 +123,14 @@ test('mục 2.1: trùng chủ đề liền nhau chỉ khi không thể tránh (5
   }
 });
 
-test('ít gặp trước: bật đủ chủ đề, không ưu tiên, chơi 8 lượt liền thì mọi tình huống đã gặp', () => {
+test('ít gặp trước: bật đủ chủ đề, không ưu tiên, chơi 9 lượt liền thì mọi tình huống đã gặp', () => {
   for (let seed = 1; seed <= 50; seed++) {
     const rng = seeded(seed);
     let state = cleanSafetyState({ focus: null });
-    for (let round = 0; round < 8; round++) {
+    for (let round = 0; round < 9; round++) {
       for (const { id } of planRound({ rng, focus: state.focus, seen: state.seen })) state = afterRule(state, id, { firstTry: true });
     }
-    // 8 lượt × 3 🚫 = 24 = số 🚫; ✅ 8 × 2 = 16 ≥ 12.
+    // 9 lượt × 3 🚫 = 27 ≥ 25 🚫; ✅ 9 × 2 = 18 ≥ 13.
     assert.equal(Object.keys(state.seen).length, RULES.length, `seed ${seed}`);
   }
 });
@@ -264,10 +266,13 @@ test('S2 "Say it!": từ khóa của câu nhắc lại ngắn — từ ≥ 3 ch�
   for (const r of RULES) assert.ok(sayKeywords(r).length > 0, r.id);
 });
 
-test('S2 huy hiệu (badgesOf): thứ tự chủ đề; 🐕 chỉ một tình huống — đúng ngay lần đầu là có huy hiệu', () => {
+test('S2 huy hiệu (badgesOf): thứ tự chủ đề; 🐕 cần đủ 3 tình huống đúng ngay lần đầu', () => {
   let st = cleanSafetyState({});
   assert.deepEqual(badgesOf(st), []);
   st = afterRule(st, 'dog', { firstTry: true });
+  st = afterRule(st, 'dog-eat', { firstTry: true });
+  assert.deepEqual(badgesOf(st), []);
+  st = afterRule(st, 'dog-still', { firstTry: true });
   for (const r of RULES.filter((x) => x.topic === 'kitchen')) st = afterRule(st, r.id, { firstTry: true });
   assert.deepEqual(badgesOf(st), ['kitchen', 'dog']);
 });

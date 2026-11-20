@@ -187,8 +187,8 @@ test('SAFE-10, 11, 18: tắt 🚪 → không gặp người lạ; tắt gần h�
   await finish(page);
   const g = await game(page);
   expect(Object.keys(g.seen).filter((id) => ['door', 'candy', 'go-with', 'tell'].includes(id))).toHaveLength(0);
-  // Chỉ còn 🐕 (1 tình huống).
-  await page.evaluate(() => window.kidEnglish.setSetting('safetyGame', { level: 1, rounds: 0, lock: null, off: ['habits', 'kitchen', 'home', 'road', 'stranger', 'fire', 'shop', 'water'] }));
+  // Tắt hết chủ đề (chủ đề nào cũng có ≥ 3 tình huống).
+  await page.evaluate(() => window.kidEnglish.setSetting('safetyGame', { level: 1, rounds: 0, lock: null, off: ['habits', 'kitchen', 'home', 'road', 'stranger', 'fire', 'shop', 'water', 'dog'] }));
   await page.evaluate(() => window.kidEnglish.go('safety'));
   await stateIs(page, 'empty');
   await expect(page.locator('.sf-empty')).toHaveText('Bố mẹ bật thêm chủ đề trong Cài đặt nhé');
@@ -435,7 +435,7 @@ test('SAFE-S2-07: Góc bố mẹ — mức 3 + "Say it!" trong Cài đặt; tran
   await expect.poll(() => page.evaluate(() => window.kidEnglish.settings.safetyTalk)).toBe(true);
   await page.getByRole('button', { name: '💬 Nói thêm với bé…' }).click();
   await expect(page.locator('.sf-tips li[data-rule="pond-toy"]')).toContainText('bố mẹ lấy');
-  await expect(page.locator('.sf-tips li')).toHaveCount(36);
+  await expect(page.locator('.sf-tips li')).toHaveCount(38);
   await page.evaluate(() => window.kidEnglish.go('parent', { view: 'safety-images' }));
   await expect(page.locator('.sp-admin-item[data-item="dog"]')).toBeVisible();
   await expect(page.locator('.jb-admin-person[data-person="bong"]')).toBeVisible();
@@ -443,9 +443,59 @@ test('SAFE-S2-07: Góc bố mẹ — mức 3 + "Say it!" trong Cài đặt; tran
   await page.evaluate(async () => {
     const t = await import('/js/player/track.js');
     await t.markPhrasePick(window.kidEnglish, 'safe:dog', '🐕', { firstTry: true, award: true });
-    await window.kidEnglish.setSetting('safetyGame', { level: 1, rounds: 0, lock: null, firstOk: { dog: true } });
+    await window.kidEnglish.setSetting('safetyGame', { level: 1, rounds: 0, lock: null, firstOk: { dog: true, 'dog-eat': true, 'dog-still': true } });
   });
   await page.evaluate(() => window.kidEnglish.go('parent', { view: 'progress' }));
-  await expect(page.getByText(/Siêu nhân an toàn — 1\/36 tình huống đã chơi · huy hiệu 1\/9/)).toBeVisible();
+  await expect(page.getByText(/Siêu nhân an toàn — 1\/38 tình huống đã chơi · huy hiệu 1\/9/)).toBeVisible();
   await expect(page.locator('.progress-list').getByText('Wait! Stay with Mommy.', { exact: false })).toBeVisible();
+});
+
+// ---------- 🐕 thêm (0.86.0): chó đang ăn (🚫), chó chạy lại thì đứng yên (✅), chuyện 🐕 → đứng yên ----------
+test('SAFE-D-01: mức 1 — chó đang ăn: ✋ → "No! Let the doggy eat." → chạm mẹ; chó chạy lại: 👍 → chạm Bông → đứng yên, chó đi, mẹ tới', async ({ page }) => {
+  await openSafety(page, { ids: ['dog-eat', 'dog-still', 'knife'] });
+  await ruleIs(page, 'dog-eat');
+  await expect(page.locator('.sf-sp.sf-bowl')).toBeVisible();
+  await expect.poll(() => spoken(page)).toContain('Doggy is eating. Can I pet it?');
+  await stateIs(page, 'ask');
+  await page.locator('.sf-btn[data-answer="no"]').click();
+  await stateIs(page, 'fix');
+  expect(await spoken(page)).toContain('No! Let the doggy eat.');
+  await page.locator('.sf-sp.sf-mummy').click();
+  await ruleIs(page, 'dog-still');
+  await expect.poll(() => spoken(page)).toContain("Doggy's coming! Stand still?");
+  await stateIs(page, 'ask');
+  await page.locator('.sf-btn[data-answer="yes"]').click();
+  await stateIs(page, 'fix');
+  expect(await spoken(page)).toContain('Yes! Stand still like a tree.');
+  await expect(page.locator('.sf-sp.sf-bong')).toHaveClass(/sf-target/);
+  await page.locator('.sf-sp.sf-bong').click();
+  await expect(page.locator('.sf-sp.sf-bong')).toHaveClass(/still/);
+  await expect.poll(() => spoken(page)).toContain('Stand still!');
+  await ruleIs(page, 'knife');
+  const g = await game(page);
+  expect(g.seen['dog-eat']).toBe(1);
+  expect(g.firstOk['dog-still']).toBe(true);
+});
+
+test('SAFE-D-02: mức 3 — chuyện 🐕: bước 1 không vuốt chó lạ, bước 2 "What next?" chó chạy lại → chọn tranh đứng yên', async ({ page }) => {
+  await openPlan(page, [
+    { id: 'dog', safeLeft: true, story: 0, step: 1 }, { id: 'dog-still', safeLeft: false, story: 0, step: 2 },
+    { id: 'knife', safeLeft: true, story: 1, step: 1 }, { id: 'wash-hands', safeLeft: false, story: 1, step: 2 },
+  ], { state: { level: 3, lock: 3 } });
+  await ruleIs(page, 'dog');
+  await stateIs(page, 'pick');
+  await solve(page);
+  await stateIs(page, 'fix');
+  await solve(page);
+  await ruleIs(page, 'dog-still');
+  await expect.poll(() => spoken(page)).toContain('What next?');
+  await stateIs(page, 'pick');
+  await expect(page.locator('.sf-card')).toHaveCount(2);
+  await page.locator('.sf-card[data-safe="false"]').click(); // tranh Bông bỏ chạy (chưa an toàn)
+  await expect.poll(() => spoken(page)).toContain('Hmm… running away? Look again!');
+  await solve(page);
+  await stateIs(page, 'fix');
+  await solve(page);
+  await ruleIs(page, 'knife');
+  expect((await game(page)).seen['dog-still']).toBe(1);
 });

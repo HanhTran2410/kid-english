@@ -106,6 +106,8 @@ const ART = {
     <circle cx="94" cy="104" r="7" fill="#ffd43b" stroke="${INK}" stroke-width="3"/><circle cx="60" cy="40" r="6" fill="#e7f5ff" stroke="${INK}" stroke-width="2"/>`),
   // S2: 🛒 💧 🐕
   cashier: emo('👩'), fish: emo('🐟'), dog: emo('🐕'),
+  bowl: svg(120, 60, `<path d="M8 14 h104 l-12 40 h-80 z" fill="#ff8787" stroke="${INK}" stroke-width="5" stroke-linejoin="round"/>
+    <g fill="#a9714b" stroke="${INK}" stroke-width="2"><circle cx="34" cy="12" r="7"/><circle cx="50" cy="8" r="7"/><circle cx="66" cy="11" r="7"/><circle cx="82" cy="8" r="7"/></g>`),
   aisle: svg(130, 200, `<rect x="6" y="6" width="118" height="190" rx="6" fill="#e9ecef" stroke="${INK}" stroke-width="5"/>
     <path d="M6 66 h118 M6 128 h118" stroke="${INK}" stroke-width="5"/>
     <g stroke="${INK}" stroke-width="2"><rect x="16" y="26" width="22" height="38" rx="3" fill="#ff8787"/><rect x="44" y="34" width="20" height="30" rx="3" fill="#ffd43b"/><rect x="70" y="22" width="22" height="42" rx="3" fill="#74c0fc"/><rect x="98" y="34" width="18" height="30" rx="3" fill="#8ce99a"/>
@@ -592,7 +594,7 @@ export function safetyScreen(app, params = {}) {
     count.textContent = `${plan.length}/${plan.length}`;
     play('tada');
     const bong = spriteEl('bong');
-    bong?.classList.remove('sleep', 'hold');
+    bong?.classList.remove('sleep', 'hold', 'still', 'low');
     if (bong) restartAnim(bong, 'fly');
     await talk([B(THANKS_LINE)]);
     if (e !== kit.epoch) return;

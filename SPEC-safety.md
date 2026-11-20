@@ -1,6 +1,6 @@
 # SPEC — 🦸 Siêu nhân an toàn: "Bông ơi, dừng lại!" (Safety Hero)
 
-> Phiên bản spec: **draft5** (theo review cho bé 3+, mục 14) · Ngày: 2026-11-19 · Dựa trên app 0.83.0. **Đã làm S1 (0.84.0) và S2 (0.85.0)**, ghi chú mục 15.
+> Phiên bản spec: **draft5** (theo review cho bé 3+, mục 14) · Ngày: 2026-11-19 · Dựa trên app 0.83.0. **Đã làm S1 (0.84.0), S2 (0.85.0) và thêm 🐕 (0.86.0)**, ghi chú mục 15.
 > - **S2 (0.85.0), bố mẹ thêm:** thay được ảnh từng hình trong cảnh (Bông, mẹ, bố, đồ vật) và ảnh nền từng cảnh — mục 9.1.
 > - **draft5:**
 >   - **Review lại cho bé 3 tuổi (3+)**, không phải 6 tuổi (mục 14):
@@ -97,7 +97,7 @@ Chạm nhầm:
 - Chuyện 2 bước, **mỗi bước chơi được độc lập** (bé không phải nhớ nhiều từ bước trước; bước 2 có hình nhắc lại bước 1). Bước 1 sai thì không sang bước 2.
   - Một lượt = **2 chuyện × 2 bước = 4 tình huống (4 ⭐)**. Hai chuyện khác chủ đề; chủ đề ưu tiên (đang bật) có chuyện thì chuyện đó trước; còn lại ít gặp trước.
   - Mỗi bước chơi như mức 2 (chọn tranh an toàn → thao tác sửa). Bước 1: Bông *"Story time!"*; bước 2: *"What next?"* + hình nhỏ (góc trái trên) cảnh an toàn của bước 1, ẩn lúc hiện hai tranh để không che tranh.
-  - Chuyện (`STORIES`): 📺 hẹn giờ → đi ngủ; xem thêm phim → chơi khuya; dao → rửa tay; nồi → thuốc; cầu thang → cửa sổ; viên bi → ổ điện; mũ bảo hiểm → nắm tay bố; bóng ra đường → qua đường; chuông cửa → kể với mẹ; kẹo → đi theo; cúi thấp → ra ngoài; không trốn → không quay vào; trốn ở siêu thị → bị lạc; bể bơi một mình → bơi cùng bố; ao → đồ rơi xuống ao. (🐕 chưa có chuyện.)
+  - Chuyện (`STORIES`): 📺 hẹn giờ → đi ngủ; xem thêm phim → chơi khuya; dao → rửa tay; nồi → thuốc; cầu thang → cửa sổ; viên bi → ổ điện; mũ bảo hiểm → nắm tay bố; bóng ra đường → qua đường; chuông cửa → kể với mẹ; kẹo → đi theo; cúi thấp → ra ngoài; không trốn → không quay vào; trốn ở siêu thị → bị lạc; bể bơi một mình → bơi cùng bố; ao → đồ rơi xuống ao; chó lạ → chó chạy lại thì đứng yên (0.86.0).
   - Bật dưới 2 chuyện (bố mẹ tắt gần hết chủ đề): lượt thường, vẫn chơi kiểu chọn tranh.
 - **"Say it!"** hoàn toàn tùy chọn: dùng luật lượt nói SPEC-jobs5 mục 5; không ảnh hưởng ⭐, tiến độ, huy hiệu; không bắt phát âm đúng.
   - Cài đặt riêng *"Lượt Say it! ở mức 3"* (`safetyTalk`, mặc định tắt). Chỉ khi mic đã sẵn sàng từ trước (trò không xin quyền mic), không ghi âm.
@@ -183,6 +183,8 @@ Mẹ luôn đứng gần trong cảnh (bé thấy rõ Bông không rời mẹ). 
 | `pond-toy` | 💧 | 🚫 | *"My toy! Can I get it?"* (8 từ thì quá dài; tiếng Việt nói rõ "rơi xuống nước") | *"No! Stay back. Call Daddy."* | chạm bố → bố lấy đồ chơi bằng cây sào; Bông đứng xa mép nước |
 | `swim-with` | 💧 | ✅ | *"Swim with Daddy?"* | *"Yes! Stay with Daddy."* | chạm bố → bố xuống bể trước, sát cạnh; phao tay chỉ minh họa |
 | `dog` | 🐕 | 🚫 | *"A doggy! Can I pet it?"* | *"Wait! Stay with Mommy."* | chạm mẹ → đứng cạnh mẹ nhìn từ xa, chó đi qua |
+| `dog-eat` (0.86.0) | 🐕 | 🚫 | *"Doggy is eating. Can I pet it?"* (sân, bát ăn) | *"No! Let the doggy eat."* | chạm mẹ → nắm tay mẹ, chơi bóng |
+| `dog-still` (0.86.0) | 🐕 | ✅ | *"Doggy's coming! Stand still?"* | *"Yes! Stand still like a tree."* | chạm Bông → đứng yên (🌳), chó ngửi rồi đi, mẹ tới; tranh chưa an toàn: Bông bỏ chạy (💨), chó đuổi theo |
 
 - 🛒 `lost`: nhiều bước với bé 3 tuổi, nên chỉ giữ cốt lõi "đứng yên, nhờ cô ở quầy, không đi theo ai". Quầy vẽ ngay cạnh Bông, cô đứng **sau quầy**; không dựa vào đồng phục.
 - 💧 Thông điệp chung: không tự lại gần nước, không tự lấy đồ dưới nước, luôn nắm tay / ở sát bố mẹ. Phao tay không thay được bố mẹ. Không có cảnh Bông ở dưới nước một mình.
@@ -276,6 +278,7 @@ safetyVi: true               // giọng tiếng Việt (cài đặt riêng)
 |---|---|---|
 | 0.84.0 | **S1** | Thẻ Trò chơi; mức 1–2; 6 chủ đề 🌙 🍳 🏠 🚦 🚪 🚨 (28 tình huống); nút No / Yes; giọng tiếng Việt; chủ đề ưu tiên; bật / tắt chủ đề; thao tác sửa; ⭐; ghi `seen`, `firstOk`, tiến độ; bản lưu |
 | 0.85.0 | **S2** | 🛒 💧 🐕 (có `pond-toy`); mức 3 (bố mẹ bật) + Say it!; album huy hiệu; trang "Nói thêm với bé"; nhóm tiến độ |
+| 0.86.0 | **🐕 thêm** | `dog-eat` (🚫), `dog-still` (✅), chuyện `dog` → `dog-still` |
 
 **Unit** (`safety.test.js`):
 - bảng: 6 chủ đề, 28 tình huống (18 🚫 + 10 ✅), chủ đề nào cũng có cả hai loại;
@@ -378,3 +381,9 @@ Review 3+ SAFE-28…35:
 - Bé đã học: nhóm "🦸 Siêu nhân an toàn" — số tình huống đã chơi, huy hiệu, mỗi tình huống: câu ngắn, ⭐, số lần đúng ngay / sai.
 - Không chơi lại được tình huống đã ghi xong (nút "Chơi lại tình huống" bỏ qua lúc đang nói câu nhắc lại / "Say it!").
 - Test: unit (bảng 36, mức 3, `planStory` 500 seed, từ khóa Say it!, huy hiệu, gợi ý / ảnh), UI SAFE-S2-01…07.
+
+**0.86.0 — 🐕 thêm:**
+- `dog-eat` 🚫 (cảnh sân, bát ăn — ảnh thay được: `bowl`), `dog-still` ✅ (chạm Bông → class `still` 🌳; tranh chưa an toàn `risky`: Bông `run` 💨, chó đuổi) → **38 tình huống (25 🚫 + 13 ✅)**; chủ đề nào cũng có cả 🚫 và ✅, mỗi chủ đề ≥ 3 tình huống (bật riêng chủ đề nào cũng đủ một lượt).
+- Chuyện mức 3: `dog` → `dog-still` (16 chuyện). Huy hiệu 🐕 cần đủ 3 tình huống (theo mục 7: thêm tình huống thì cần cả tình huống mới; huy hiệu tính theo `firstOk` nên máy đã có huy hiệu 🐕 sẽ tạm tắt tới khi bé chơi đúng ngay 2 tình huống mới).
+- Gợi ý "Nói thêm với bé" cho 2 tình huống mới (trò "làm cái cây").
+- Test: unit (bảng 38, 9 lượt gặp đủ, huy hiệu 🐕 cần 3), UI SAFE-D-01, 02; SAFE-10 tắt hết chủ đề.
