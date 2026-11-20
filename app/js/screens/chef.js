@@ -32,6 +32,7 @@ import {
   feelWrongLine, WANT_LINE, menuLine, chosenLine, eStepLine, eVerbLine, eChainLine, eNextLine, eToolWrongLine,
   fruitOneLine, saladAskLine, fruitWrongLine, noFruitLine, YUMMY_Q_LINE, BONG_YUMMY_LINE, BONG_FULL_LINE,
   TOPPINGS, PIZZA_STEPS, toppingAskLine, toppingWrongLine, sayLine, chosenShortLine, LETS_MAKE_LINE, GREAT_TALK_LINE, GOOD_LINE,
+  matchDishAlts, SAY_OR_TOUCH_LINE, TOUCH_ONE_LINE, saidDishLine,
 } from '../jobs/chef.js';
 
 const JOB = 'chef';
@@ -178,7 +179,7 @@ export function chefScreen(app, params = {}) {
     icon: (who) => (who === 'chef' ? '👨‍🍳' : who === 'bong' ? '🐰' : customer()?.emoji ?? ''),
     pitch: (who) => (who === 'customer' ? customer()?.pitch : undefined),
     onTalk: (who) => custEl.classList.toggle('talking', who === 'customer'),
-    onReset: () => restart(),
+    onReset: () => { menuAbort?.abort(); restart(); },
     onHelper: () => repeatPrompt(),
     nudge: {
       ready: () => ACTIVE.includes(state) && nudges < MAX_NUDGES,
@@ -797,6 +798,52 @@ export function chefScreen(app, params = {}) {
     } else if (result === RESULT.VOICE) await talk([C(GOOD_LINE), C(line)]);
     else if (result === RESULT.SILENT) await talk([C(line)]);
   }
+  /**
+   * Mức 3 nói tên món để chọn (SPEC-jobs6 mục 2): cần lượt nói bật + mic sẵn sàng + nhận dạng giọng nói chạy được (chỉ đo
+   * âm lượng thì không biết món). Thiếu một điều kiện: chọn bằng chạm như cũ. Test: `chefTalkResult = { text, delay? }`.
+   */
+  const menuListenOn = () => level >= 3 && talkOn() && (Boolean(app.recognizer?.enabled) || typeof globalThis.__kidTest?.chefTalkResult === 'object');
+  let menuAbort = null;
+  /** Nghe một lần (≤ 6 giây). Trả mã món nghe ra, hoặc null (không khớp / im / lỗi / bé đã chạm). */
+  async function listenDish() {
+    const menu = cur().menu;
+    const ctl = new AbortController();
+    menuAbort = ctl;
+    const stop = () => ctl.abort();
+    kit.signal?.addEventListener('abort', stop, { once: true });
+    micEl.hidden = false;
+    let id = null;
+    try {
+      const forced = globalThis.__kidTest?.chefTalkResult;
+      if (forced === 'error' || forced?.error) throw new Error('mic');
+      if (forced && typeof forced === 'object') {
+        await new Promise((resolve) => { setTimeout(resolve, forced.delay ?? 300); }); // thời gian thật (test), không theo ?fast
+        if (!ctl.signal.aborted) id = matchDishAlts([forced.text], menu);
+      } else {
+        const onDemand = app.settings.micOnlyWhenListening;
+        if (onDemand) await app.mic.start();
+        try {
+          let heardId = null;
+          const matcher = (alts) => {
+            heardId = heardId ?? matchDishAlts(alts, menu);
+            return Boolean(heardId);
+          };
+          const cap = new Promise((resolve) => { setTimeout(() => resolve(null), TALK_CAP_MS); });
+          const out = await Promise.race([listen({ mic: app.mic, recognizer: app.recognizer, keywords: [], matcher, record: false, maxMs: TALK_CAP_MS, signal: ctl.signal }), cap]);
+          id = heardId ?? (out ? matchDishAlts(out.heard, menu) : null);
+        } finally {
+          if (onDemand) app.mic.release();
+        }
+      }
+    } catch {
+      id = null; // mic / nhận dạng lỗi, hoặc bé đã chạm thẻ: đi tiếp bằng chạm
+    } finally {
+      kit.signal?.removeEventListener('abort', stop);
+      if (menuAbort === ctl) menuAbort = null;
+      micEl.hidden = true;
+    }
+    return ctl.signal.aborted ? null : id;
+  }
   /** Câu gọi quả: mức 1 từng quả ("A banana, please!"); mức 2–3 cả hai quả, mức 3 thêm "No …!" và đọc chậm. */
   const fruitAsk = () => (level <= 1 ? C(fruitOneLine(missingFruits()[0])) : { ...C(saladAskLine(cur().salad)), slow: level >= 3 });
 
@@ -865,10 +912,26 @@ export function chefScreen(app, params = {}) {
         food ? foodFace(food, feedPics, 'cf-mface') : h('span.cf-mface.emoji', { text: MENU[id].emoji, 'aria-hidden': 'true' }));
     }));
     // Chọn món là lựa chọn, không phải câu hỏi: thẻ nào cũng đúng (SPEC-jobs5 mục 2).
-    await ask(resume ? [C(WANT_LINE)] : [C(WANT_LINE), ...c.menu.map((id) => C(menuLine(id)))], 'menu');
+    const lines = resume ? [C(WANT_LINE)] : [C(WANT_LINE), ...c.menu.map((id) => C(menuLine(id)))];
+    if (resume || !menuListenOn()) return ask(lines, 'menu');
+    // Mức 3: thẻ chạm được ngay, cùng lúc nghe một lần; không nghe ra món thì "Touch one!" và chờ chạm (không nghe lại).
+    const e = kit.epoch;
+    setState('menu');
+    snap();
+    await talk([...lines, C(SAY_OR_TOUCH_LINE)]);
+    if (e !== kit.epoch || state !== 'menu') return;
+    const id = await listenDish();
+    if (e !== kit.epoch || state !== 'menu') return;
+    if (id) return chooseDish(id, true);
+    for (const el of menuEl.children) restartAnim(el, 'nudge');
+    await talk([C(TOUCH_ONE_LINE)]);
+    if (e === kit.epoch && state === 'menu') kit.armNudge();
   }
-  async function tapMenu(id) {
+  const tapMenu = (id) => chooseDish(id, false);
+  /** Chọn món một lần duy nhất (`taken.take('dish')`): chạm hoặc giọng, cái nào tới trước thắng (SPEC-jobs6 mục 2). */
+  async function chooseDish(id, byVoice) {
     if (state !== 'menu' || !taken.take('dish')) return;
+    menuAbort?.abort();
     const e = kit.epoch;
     kit.clearNudge();
     setState('busy');
@@ -878,7 +941,14 @@ export function chefScreen(app, params = {}) {
     play('pop');
     menuEl.classList.add('picked');
     menuEl.querySelector(`[data-dish="${id}"]`).classList.add('chosen');
-    if (talkOn()) {
+    if (byVoice) {
+      play('ding');
+      starEl.hidden = false;
+      restartAnim(starEl, 'fly');
+      progress = afterSeen(progress, 'talk:chef');
+      await talk([C(saidDishLine(id))]);
+      starEl.hidden = true;
+    } else if (talkOn() && !menuListenOn()) {
       // Chú nhắc tên món → bé nói "Rice ball, please!" → "Let's make it!" (SPEC-jobs5 mục 4).
       await talk([C(chosenShortLine(id))]);
       if (e !== kit.epoch) return;

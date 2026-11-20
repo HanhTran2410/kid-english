@@ -9,6 +9,7 @@ import {
   feelLine, somethingLine, tempAskLine, tempWrongLine, cleanAskLine, placeWrongLine, itemWrongLine,
   makeHungryCase, hungryRound, hungryCleanAvoid, dishActions, E_STEPS, E_TOOLS, FRUITS, TOPPINGS, toppingAskLine, toppingWrongLine, sayLine,
   saladAskLine, fruitWrongLine, noFruitLine, fruitOneLine, eChainLine, eNextLine, eToolWrongLine, menuLine, chosenLine, feelWrongLine,
+  matchDish, matchDishAlts, saidDishLine,
 } from '../../app/js/jobs/chef.js';
 
 function seeded(seed = 1) {
@@ -211,4 +212,35 @@ test('câu pizza + lượt nói: số ít / nhiều, a / an', () => {
   assert.equal(sayLine('rice-ball')[0], 'Rice ball, please!');
   assert.equal(sayLine('pizza')[0], 'Pizza, please!');
   assert.equal(E_STEPS.bake.tool, 'oven');
+});
+
+test('SPEC-jobs6 mục 2: matchDish khớp theo cụm từ nguyên vẹn, chỉ món trên thực đơn, món nói trước, phủ định → không', () => {
+  const all = ['rice-ball', 'salad', 'pizza'];
+  assert.equal(matchDish('pizza please', all), 'pizza');
+  assert.equal(matchDish('Pizza, please!', all), 'pizza');
+  assert.equal(matchDish('I want pizza', all), 'pizza');
+  assert.equal(matchDish('pizzas', all), 'pizza');
+  assert.equal(matchDish('I like cake', all), null);
+  assert.equal(matchDish('salad', all), 'salad');
+  assert.equal(matchDish('fruit salad please', all), 'salad');
+  assert.equal(matchDish('rice ball', all), 'rice-ball');
+  assert.equal(matchDish('rice balls please', all), 'rice-ball');
+  assert.equal(matchDish('pizza and rice ball', all), 'pizza');
+  assert.equal(matchDish('rice ball and pizza', all), 'rice-ball');
+  assert.equal(matchDish('price', all), null);
+  assert.equal(matchDish('pizzeria', all), null);
+  assert.equal(matchDish('no pizza', all), null);
+  assert.equal(matchDish('not pizza', all), null);
+  assert.equal(matchDish("I don't want pizza", all), null);
+  assert.equal(matchDish('', all), null);
+  assert.equal(matchDish(undefined, all), null);
+  // Chỉ món đang có trên thực đơn.
+  assert.equal(matchDish('pizza', ['rice-ball', 'salad']), null);
+  assert.equal(matchDish('pizza and salad', ['rice-ball', 'salad']), 'salad');
+  // Phương án nhận dạng: phương án đầu tiên khớp.
+  assert.equal(matchDishAlts(['peter please', 'pizza please'], all), 'pizza');
+  assert.equal(matchDishAlts([], all), null);
+  assert.equal(saidDishLine('pizza')[0], 'Pizza! Great talking!');
+  assert.equal(saidDishLine('salad')[0], 'Fruit salad! Great talking!');
+  assert.equal(saidDishLine('rice-ball')[0], 'Rice ball! Great talking!');
 });

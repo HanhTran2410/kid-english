@@ -83,6 +83,33 @@ export const MENU = {
   pizza: { a: 'a pizza', vi: 'bánh pizza', emoji: '🍕', food: 'pizza', say: 'Pizza, please!', keys: ['pizza'] },
 };
 const MENU_IDS = Object.keys(MENU);
+/**
+ * Mức 3: bé nói tên món để chọn (SPEC-jobs6 mục 2). Khớp theo cụm từ nguyên vẹn (không khớp chuỗi con: "price" ≠ "rice"),
+ * cụm dài xét trước ("fruit salad" là một món); chỉ món đang có trên thực đơn; hai món → món nói trước; có từ phủ định → không khớp.
+ */
+const DISH_PHRASES = {
+  'rice-ball': ['rice ball', 'rice balls', 'rice'],
+  salad: ['fruit salad', 'salad', 'fruit'],
+  pizza: ['pizza', 'pizzas'],
+};
+const NEGATIONS = new Set(['no', 'not', "don't", 'dont']);
+export function matchDish(text, menu) {
+  const words = String(text ?? '').toLowerCase().replace(/[’]/g, "'").replace(/[^a-z' ]+/g, ' ').split(/\s+/).filter(Boolean);
+  if (words.some((w) => NEGATIONS.has(w))) return null;
+  const phrases = menu.flatMap((id) => (DISH_PHRASES[id] ?? []).map((p) => ({ id, w: p.split(' ') }))).sort((a, b) => b.w.length - a.w.length);
+  for (let i = 0; i < words.length; i++) {
+    for (const p of phrases) if (p.w.every((x, k) => words[i + k] === x)) return p.id;
+  }
+  return null;
+}
+/** Các phương án nhận dạng (tốt nhất trước): món của phương án đầu tiên khớp. */
+export function matchDishAlts(alts, menu) {
+  for (const alt of alts ?? []) {
+    const id = matchDish(alt, menu);
+    if (id) return id;
+  }
+  return null;
+}
 /** Bước ca E: đồ cần chạm (`tool`), câu, động từ chú nói lúc hoạt ảnh chạy. */
 export const E_STEPS = {
   scoop: { tool: 'rice', say: 'Scoop the rice!', verb: 'Scoop!', vi: 'Xúc cơm nào!' },
@@ -470,3 +497,6 @@ export const chosenShortLine = (id) => [`${cap(MENU[id].a)}!`, `${cap(MENU[id].v
 export const LETS_MAKE_LINE = ["Let's make it!", 'Mình làm nhé!'];
 export const GREAT_TALK_LINE = ['Great talking!', 'Con nói giỏi quá!'];
 export const GOOD_LINE = ['Good!', 'Tốt lắm!'];
+export const SAY_OR_TOUCH_LINE = ['Say it, or touch it!', 'Con nói tên món, hoặc chạm vào nhé!'];
+export const TOUCH_ONE_LINE = ['Touch one!', 'Con chạm vào một món nhé!'];
+export const saidDishLine = (id) => [`${MENU[id].say.replace(/, please!$/, '')}! Great talking!`, `${cap(MENU[id].vi)}! Con nói giỏi quá!`];
