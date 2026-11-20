@@ -8,19 +8,23 @@
 
 import { shuffle } from './levels.js';
 
-export const MAX_LEVEL = 2; // S1 (0.84.0): mức 1–2; mức 3 (chuyện 2 bước) ở S2
+export const MAX_LEVEL = 3; // mức 3 (chuyện 2 bước, S2) chỉ khi bố mẹ khóa mức 3 — không tự lên
+export const AUTO_MAX_LEVEL = 2; // tự lên tới mức 2
 export const ROUND_LEN = 5;
 export const MIN_ROUND = 3;
 export const DEFAULT_FOCUS = 'habits';
 
-/** Chủ đề (thứ tự hiện ở Góc bố mẹ). S1: 🌙 🍳 🏠 🚦 🚪 🚨. */
+/** Chủ đề (thứ tự hiện ở Góc bố mẹ). S1: 🌙 🍳 🏠 🚦 🚪 🚨; S2: 🛒 💧 🐕. `en`: tên huy hiệu. */
 export const TOPICS = {
-  habits: { emoji: '🌙', vi: 'Thói quen tốt (TV, đi ngủ)' },
-  kitchen: { emoji: '🍳', vi: 'Trong bếp' },
-  home: { emoji: '🏠', vi: 'Trong nhà' },
-  road: { emoji: '🚦', vi: 'Trên đường' },
-  stranger: { emoji: '🚪', vi: 'Người lạ' },
-  fire: { emoji: '🚨', vi: 'Khi có cháy' },
+  habits: { emoji: '🌙', vi: 'Thói quen tốt (TV, đi ngủ)', en: 'Bedtime' },
+  kitchen: { emoji: '🍳', vi: 'Trong bếp', en: 'Kitchen' },
+  home: { emoji: '🏠', vi: 'Trong nhà', en: 'Home' },
+  road: { emoji: '🚦', vi: 'Trên đường', en: 'Road' },
+  stranger: { emoji: '🚪', vi: 'Người lạ', en: 'Stranger' },
+  fire: { emoji: '🚨', vi: 'Khi có cháy', en: 'Fire' },
+  shop: { emoji: '🛒', vi: 'Ở siêu thị', en: 'Shop' },
+  water: { emoji: '💧', vi: 'Gần nước (bể bơi, ao hồ)', en: 'Water' },
+  dog: { emoji: '🐕', vi: 'Chó lạ', en: 'Doggy' },
 };
 export const TOPIC_IDS = Object.keys(TOPICS);
 
@@ -389,6 +393,115 @@ export const RULES = [
     fix: { how: 'tap', target: 'mummy', say: CALL_MOMMY },
     done: [['move', 'bong', 20, 94], ['add', 'bong', 'hold']],
   },
+
+  // ---------- 🛒 Ở siêu thị (S2): đứng yên, nhờ cô ở quầy, không đi theo ai ----------
+  {
+    id: 'hide-shop', topic: 'shop', kind: 'no', scene: 'shop', emoji: '🙈',
+    ask: ['Can I hide here?', 'Tớ trốn ở đây được không?'],
+    why: ['No! Stay with Mommy.', 'Không! Ở cạnh mẹ nhé. Trốn thì mẹ không thấy tớ.'],
+    short: ['Stay with Mommy!', 'Ở cạnh mẹ!'],
+    hint: ["Hmm… wait! Mommy can't see me!", 'Ơ… khoan! Mẹ không nhìn thấy tớ!'],
+    look: ['Hmm… hiding alone? Look again!', 'Ơ… trốn một mình à? Nhìn lại nhé!'],
+    set: [S('aisle', 66, 94, 58, { cls: 'front' }), S('cart', 84, 94, 22), S('mummy', 92, 94, 52)],
+    walk: 54,
+    fix: { how: 'tap', target: 'mummy', say: CALL_MOMMY },
+    done: [['move', 'mummy', 30, 94], ['move', 'cart', 44, 94], ['move', 'bong', 18, 94], ['add', 'bong', 'hold']],
+  },
+  {
+    id: 'run-off', topic: 'shop', kind: 'no', scene: 'shop', emoji: '🏃',
+    ask: ['Toys! Can I run there?', 'Đồ chơi kìa! Tớ chạy ra đó được không?'],
+    why: ['No! Wait for Mommy.', 'Không! Chờ mẹ đi cùng nhé.'],
+    short: ['Wait for Mommy!', 'Chờ mẹ!'],
+    hint: ['Hmm… wait! Mommy is here!', 'Ơ… khoan! Mẹ ở đây mà!'],
+    look: ['Hmm… running off alone? Look again!', 'Ơ… chạy đi một mình à? Nhìn lại nhé!'],
+    set: [S('toyshelf', 82, 94, 46), S('mummy', 8, 94, 52)],
+    walk: 50,
+    fix: { how: 'tap', target: 'mummy', say: CALL_MOMMY },
+    done: [['move', 'mummy', 30, 94], ['add', 'bong', 'hold'], ['move', 'mummy', 52, 94], ['move', 'bong', 62, 94]],
+  },
+  {
+    id: 'lost', topic: 'shop', kind: 'yes', scene: 'shop', emoji: '🧍',
+    ask: ["Where's Mommy? Stay here?", 'Mẹ đâu rồi? Tớ đứng yên đây nhé?'],
+    why: ['Yes! Stay here. Ask for help.', 'Đúng rồi! Đứng yên đây. Nhờ cô ở quầy giúp.'],
+    short: ['Stay here!', 'Đứng yên!'],
+    hint: ["It's OK! Stay here. Mommy comes back.", 'Không sao đâu! Đứng yên thì mẹ sẽ quay lại tìm.'],
+    look: ['Hmm… walking away? Look again!', 'Ơ… đi lung tung à? Nhìn lại nhé!'],
+    // Quầy vẽ ngay cạnh Bông, cô đứng sau quầy (không dựa vào đồng phục); bé không đi theo ai.
+    set: [S('cashier', 50, 70, 20), S('desk', 50, 94, 28), S('mummy', 120, 94, 52, { hidden: true })],
+    walk: 30,
+    fix: { how: 'tap', target: 'desk', say: ['Tap the desk! Ask for help.', 'Chạm vào quầy để nhờ cô giúp nhé!'] },
+    done: [['add', 'cashier', 'hop'], ['show', 'mummy'], ['move', 'mummy', 78, 94], ['add', 'bong', 'hop']],
+    // Tranh chưa an toàn: Bông đi lang thang xa quầy.
+    risky: [['move', 'bong', 84, 94]],
+  },
+
+  // ---------- 💧 Gần nước (S2): không tự lại gần nước, không tự lấy đồ dưới nước; luôn sát bố mẹ ----------
+  {
+    id: 'pool-alone', topic: 'water', kind: 'no', scene: 'pool', emoji: '🏊',
+    ask: ['Can I jump in?', 'Tớ nhảy xuống bể được không?'],
+    why: ["No! Hold Daddy's hand near water.", 'Không! Gần nước thì nắm tay bố nhé.'],
+    short: ['Hold hands near water!', 'Gần nước, nắm tay!'],
+    hint: ['Hmm… wait! Where is Daddy?', 'Ơ… khoan! Bố đâu rồi?'],
+    look: ['Hmm… alone by the water? Look again!', 'Ơ… một mình cạnh bể à? Nhìn lại nhé!'],
+    set: [S('pool', 82, 100, 26, { cls: 'front' }), S('daddy', 8, 94, 54)],
+    walk: 40,
+    fix: { how: 'tap', target: 'daddy', say: CALL_DADDY },
+    done: [['move', 'daddy', 18, 94], ['move', 'bong', 38, 94], ['add', 'bong', 'hold']],
+  },
+  {
+    id: 'pond', topic: 'water', kind: 'no', scene: 'pond', emoji: '🐟',
+    ask: ['Fish! Can I go close?', 'Cá kìa! Tớ lại gần được không?'],
+    why: ["No! Stay back. Hold Mommy's hand.", 'Không! Đứng xa ra. Nắm tay mẹ nhé.'],
+    short: ['Stay back!', 'Đứng xa ra!'],
+    hint: ['Hmm… wait! The water is deep!', 'Ơ… khoan! Nước sâu lắm!'],
+    look: ['Hmm… so close to the water? Look again!', 'Ơ… sát mép nước thế à? Nhìn lại nhé!'],
+    set: [S('pondwater', 80, 100, 26, { cls: 'front' }), S('fish', 80, 86, 9, { cls: 'float' }), S('mummy', 8, 94, 52)],
+    walk: 50,
+    fix: { how: 'tap', target: 'mummy', say: CALL_MOMMY },
+    done: [['move', 'mummy', 22, 94], ['move', 'bong', 32, 94], ['add', 'bong', 'hold']],
+  },
+  {
+    id: 'pond-toy', topic: 'water', kind: 'no', scene: 'pond', emoji: '⚽',
+    ask: ['My toy! Can I get it?', 'Đồ chơi rơi xuống nước rồi! Tớ lấy được không?'],
+    why: ['No! Stay back. Call Daddy.', 'Không! Đứng xa ra. Gọi bố lấy giúp nhé.'],
+    short: ['Stay back! Call Daddy.', 'Đứng xa! Gọi bố.'],
+    hint: ['Hmm… wait! The water is deep!', 'Ơ… khoan! Nước sâu lắm!'],
+    look: ['Hmm… reaching into the water? Look again!', 'Ơ… với xuống nước à? Nhìn lại nhé!'],
+    // Bố lấy đồ bằng cây sào; Bông đứng xa mép nước.
+    set: [S('pondwater', 80, 100, 26, { cls: 'front' }), S('ball', 80, 90, 9, { id: 'toy', cls: 'float' }), S('pole', 65, 90, 24, { hidden: true }), S('daddy', 8, 94, 54)],
+    walk: 48,
+    fix: { how: 'tap', target: 'daddy', say: CALL_DADDY },
+    done: [['move', 'bong', 18, 94], ['move', 'daddy', 46, 94], ['show', 'pole'], ['move', 'toy', 56, 94], ['hide', 'pole'], ['add', 'bong', 'hop']],
+    card: [['move', 'bong', 18, 94], ['move', 'daddy', 46, 94], ['show', 'pole']],
+  },
+  {
+    id: 'swim-with', topic: 'water', kind: 'yes', scene: 'pool', emoji: '🛟',
+    ask: ['Swim with Daddy?', 'Bơi cùng bố nhé?'],
+    why: ['Yes! Stay with Daddy.', 'Đúng rồi! Ở sát cạnh bố nhé.'],
+    short: ['Stay with Daddy!', 'Ở cạnh bố!'],
+    hint: ["It's OK! Daddy is with me.", 'Không sao đâu! Có bố ở cạnh mà.'],
+    look: ['Hmm… swimming alone? Look again!', 'Ơ… bơi một mình à? Nhìn lại nhé!'],
+    // Bố xuống bể trước, sát cạnh; phao tay chỉ minh họa (không thay được bố mẹ). Không có cảnh Bông một mình dưới nước.
+    set: [S('pool', 82, 100, 26, { cls: 'front' }), S('daddy', 30, 94, 54), S('armbands', 66, 82, 6, { hidden: true })],
+    walk: 42,
+    fix: { how: 'tap', target: 'daddy', say: ["Tap Daddy's hand!", 'Chạm tay bố nhé!'] },
+    done: [['move', 'daddy', 84, 98], ['move', 'bong', 66, 90], ['add', 'bong', 'hold'], ['show', 'armbands']],
+  },
+
+  // ---------- 🐕 Chó lạ (S2): chó vẽ thân thiện nhưng không quá dễ thương; đứng cạnh mẹ nhìn từ xa ----------
+  {
+    id: 'dog', topic: 'dog', kind: 'no', scene: 'park', emoji: '🐕',
+    ask: ['A doggy! Can I pet it?', 'Chó kìa! Tớ vuốt được không?'],
+    why: ['Wait! Stay with Mommy.', 'Khoan đã! Đứng cạnh mẹ, nhìn từ xa thôi.'],
+    short: ['Wait! Stay with Mommy.', 'Khoan! Ở cạnh mẹ.'],
+    hint: ["Hmm… wait! I don't know that doggy!", 'Ơ… khoan! Tớ không quen chú chó này!'],
+    look: ['Hmm… touching the doggy? Look again!', 'Ơ… sờ chó lạ à? Nhìn lại nhé!'],
+    set: [S('dog', 78, 94, 18), S('mummy', 8, 94, 52)],
+    walk: 52,
+    fix: { how: 'tap', target: 'mummy', say: CALL_MOMMY },
+    done: [['move', 'bong', 24, 94], ['add', 'bong', 'hold'], ['move', 'dog', 120, 94]],
+    card: [['move', 'bong', 24, 94], ['add', 'bong', 'hold']],
+  },
 ];
 export const RULE_BY_ID = new Map(RULES.map((r) => [r.id, r]));
 export const BONG_START = 16;
@@ -425,7 +538,11 @@ export function applyOps(sprites, ops, sceneCls = []) {
  */
 export function sceneAt(rule, which) {
   const start = applyOps(sceneStart(rule), [['move', 'bong', rule.walk, 94]]);
-  if (which === 'risky') return { ...start, sprites: start.sprites.map((s) => (ADULTS.has(s.k) ? { ...s, hidden: true } : s)) };
+  if (which === 'risky') {
+    // `risky`: tranh chưa an toàn riêng của tình huống (vd. `lost`: Bông đi lang thang xa quầy).
+    const r = applyOps(start.sprites, rule.risky ?? [], start.scene);
+    return { ...r, sprites: r.sprites.map((s) => (ADULTS.has(s.k) ? { ...s, hidden: true } : s)) };
+  }
   const fixOps = rule.fix.how === 'drag' ? dragOps(rule) : [];
   // `card`: cảnh an toàn vẽ trong thẻ khi `done` đưa người ra khỏi khung (đi ra ngoài lúc có cháy).
   return applyOps(start.sprites, [...fixOps, ...(rule.card ?? rule.done)], start.scene);
@@ -443,8 +560,9 @@ export function dragOps(rule) {
 /** `safetyGame` → { level, rounds, lock, seen, firstOk, off, focus }; dữ liệu hỏng thì về mặc định, mã lạ bị bỏ. */
 export function cleanSafetyState(saved) {
   const s = saved && typeof saved === 'object' ? saved : {};
-  const okLevel = (n) => Number.isInteger(n) && n >= 1 && n <= MAX_LEVEL;
-  const lock = okLevel(s.lock) ? s.lock : null;
+  const okLevel = (n) => Number.isInteger(n) && n >= 1 && n <= AUTO_MAX_LEVEL;
+  // Mức 3 chỉ có qua khóa mức (bố mẹ chọn); mức tự lên tối đa 2.
+  const lock = Number.isInteger(s.lock) && s.lock >= 1 && s.lock <= MAX_LEVEL ? s.lock : null;
   const seen = {};
   if (s.seen && typeof s.seen === 'object') {
     for (const [id, n] of Object.entries(s.seen)) if (RULE_BY_ID.has(id) && Number.isInteger(n) && n > 0) seen[id] = n;
@@ -563,3 +681,148 @@ export const THANKS_LINE = ['Thank you, Safety Hero!', 'Cảm ơn Siêu nhân an
 export const rightLines = (rule) => (rule.kind === 'no' ? [OOPS_LINE, rule.why] : [rule.why]);
 /** Mọi câu của một tình huống (test: không rỗng, không dùng he / she cho người lạ, không dùng grown-up). */
 export const allLines = (rule) => [rule.ask, rule.why, rule.short, rule.hint, rule.look, rule.fix.say];
+
+// ---------- Huy hiệu (S2, mục 6) ----------
+/** Các chủ đề đã có huy hiệu (thứ tự TOPIC_IDS). */
+export const badgesOf = (state, rules = RULES) => TOPIC_IDS.filter((t) => badgeOf(state, t, rules));
+export const NEW_BADGE_LINE = ['A new badge!', 'Huy hiệu mới!'];
+
+// ---------- Mức 3 — "Story time" (S2, mục 3.3; chỉ khi bố mẹ khóa mức 3) ----------
+/**
+ * Chuyện 2 bước: hai tình huống cùng chủ đề nối nhau. Mỗi bước chơi như mức 2 (chọn tranh an toàn), độc lập với bước
+ * trước; bước 2 có hình nhỏ nhắc lại bước 1. Bước 1 chưa đúng thì chưa sang bước 2 (như mọi tình huống).
+ */
+export const STORIES = [
+  ['tv-timer', 'bedtime'], ['tv-long', 'stay-up'],
+  ['knife', 'wash-hands'], ['stove', 'medicine'],
+  ['stairs', 'window'], ['small-toy', 'socket'],
+  ['helmet', 'hold-hands'], ['ball-road', 'cross-alone'],
+  ['door', 'tell'], ['candy', 'go-with'],
+  ['fire-low', 'fire-out'], ['fire-hide', 'fire-back'],
+  ['hide-shop', 'lost'],
+  ['pool-alone', 'swim-with'], ['pond', 'pond-toy'],
+];
+export const STORY_COUNT = 2; // một lượt mức 3 = 2 chuyện = 4 bước (4 ⭐)
+export const STORY_LINE = ['Story time!', 'Kể chuyện nào!'];
+export const NEXT_LINE = ['What next?', 'Rồi sao nữa nhỉ?'];
+
+/**
+ * Kế hoạch lượt mức 3: [{ id, safeLeft, story, step }] hoặc null (ít hơn 2 chuyện có cả hai bước đang bật — màn chơi
+ * dùng lượt thường). Chủ đề ưu tiên (đang bật) có chuyện thì chuyện đó trước; còn lại ít gặp trước (tổng `seen`), khác chủ đề.
+ */
+export function planStory({ off = [], focus = null, seen = {}, rng = Math.random, stories = STORIES } = {}) {
+  const ok = stories.filter((p) => p.every((id) => RULE_BY_ID.has(id) && !off.includes(RULE_BY_ID.get(id).topic)));
+  const topic = (p) => RULE_BY_ID.get(p[0]).topic;
+  const cost = (p) => p.reduce((n, id) => n + (seen[id] ?? 0), 0);
+  const order = shuffle(ok, rng).sort((a, b) => cost(a) - cost(b));
+  const picked = [];
+  const focusOn = Boolean(focus) && !off.includes(focus);
+  const first = focusOn ? order.find((p) => topic(p) === focus) : null;
+  if (first) picked.push(first);
+  for (const p of order) {
+    if (picked.length >= STORY_COUNT) break;
+    if (!picked.includes(p) && !picked.some((q) => topic(q) === topic(p))) picked.push(p);
+  }
+  if (picked.length < STORY_COUNT) return null;
+  const sides = shuffle(picked.flatMap(() => [true, false]), rng);
+  return picked.flatMap((p, story) => p.map((id, i) => ({ id, safeLeft: sides[story * 2 + i], story, step: i + 1 })));
+}
+
+// ---------- "Say it!" (S2, mức 3, tùy chọn — luật lượt nói SPEC-jobs5 mục 5; không ghi gì) ----------
+export const SAY_IT_LINE = ['Say it!', 'Con nói theo nhé!'];
+export const GREAT_TALK_LINE = ['Great talking!', 'Con nói giỏi quá!'];
+export const GOOD_LINE = ['Good!', 'Tốt lắm!'];
+const SAY_SKIP = new Set(['the', 'and', 'for', 'your', 'with']);
+/** Từ khóa nghe của câu nhắc lại ngắn: các từ ≥ 3 chữ cái, bỏ từ nối ("Stay back! Call Daddy." → stay, back, call, daddy). */
+export const sayKeywords = (rule) => [...new Set(rule.short[0].toLowerCase().replace(/[^a-z' ]/g, ' ').split(/\s+/)
+  .filter((w) => w.length >= 3 && !SAY_SKIP.has(w)))];
+
+// ---------- "Nói thêm với bé" (S2, mục 9): mỗi tình huống một gợi ý luyện ngoài đời cho bố mẹ ----------
+export const TIPS = {
+  'tv-long': 'Hẹn trước số tập ("hai tập thôi nhé"); hết tập thì cùng bé tắt TV và rủ chơi ngay một trò, nói "TV off. Let\'s play!".',
+  'video-bed': 'Để máy tính bảng / điện thoại ngoài phòng ngủ. Trước giờ ngủ đọc sách hoặc ôm gấu thay cho video.',
+  'stay-up': 'Giữ một nếp ngủ giống nhau mỗi tối (tắm → đánh răng → đọc truyện → tắt đèn). Nói "It\'s bedtime. Good night!".',
+  'tv-timer': 'Đặt hẹn giờ trước khi xem. Chuông kêu thì để bé tự bấm tắt TV, khen ngay: "Ding! TV off. Good job!".',
+  'bedtime': 'Dạy bé nhận ra lúc buồn ngủ (dụi mắt, ngáp) và tự nói "I\'m sleepy". Khen khi bé tự lên giường.',
+  'knife': 'Cất dao, kéo ở chỗ cao. Khi nấu ăn, chỉ cho bé "Sharp! Call Mommy." — bé muốn giúp thì giao việc an toàn (rửa rau, bóc trứng).',
+  'stove': 'Vẽ hoặc dán một vạch trên sàn bếp: lúc bếp đang nấu, bé đứng sau vạch. Tập "Hot! Stay back." như trò chơi.',
+  'medicine': 'Cất thuốc thật cao, có khóa. Không gọi thuốc là kẹo. Chỉ uống thuốc khi bố mẹ đưa.',
+  'wash-hands': 'Rửa tay cùng bé trước mỗi bữa ăn, vừa rửa vừa hát. Để xà phòng trong tầm tay bé.',
+  'socket': 'Lắp nắp che ổ điện. Bé chỉ vào ổ điện thì nhắc "Don\'t touch! Call Mommy." — bố mẹ là người đậy nắp.',
+  'window': 'Không để ghế, đồ chơi cao cạnh cửa sổ, ban công. Lắp chốt / lưới an toàn. Bé trèo lên thì bế xuống, nói "Get down".',
+  'fan': 'Dùng quạt có lưới dày. Tập "Fingers away!" khi đi qua quạt.',
+  'lighter': 'Cất bật lửa, diêm thật cao. Bé nhìn thấy thì không cầm, gọi bố mẹ: "Don\'t touch! Call Daddy."',
+  'small-toy': 'Cất đồ nhỏ (bi, pin cúc áo, nam châm) xa tầm tay bé. Bé thấy đồ nhỏ trên sàn thì gọi bố mẹ nhặt, không tự nhặt cho vào miệng.',
+  'stairs': 'Lắp chắn cầu thang. Đi cầu thang luôn nắm tay bé, từng bậc một: "Hold hands! Slowly."',
+  'cross-alone': 'Ra đường luôn nắm tay. Người lớn quyết định lúc qua đường; đèn xanh không có nghĩa bé tự qua.',
+  'ball-road': 'Tập trò "bóng lăn ra đường": bé đứng yên trên vỉa hè và gọi bố mẹ: "Stay here! Ask Daddy."',
+  'helmet': 'Đội mũ bảo hiểm mọi lần lên xe máy, xe đạp. Bố mẹ cài quai và kiểm tra ("click!").',
+  'seat-belt': 'Ngồi ghế ô tô trẻ em, bố mẹ thắt dây mỗi lần đi. Để bé nói "Click!" cùng bố mẹ.',
+  'hold-hands': 'Ra khỏi nhà là nắm tay. Đông người thì bé nắm tay hoặc nắm vạt áo bố mẹ.',
+  'door': 'Tập trò "kính coong": bé không tự mở cửa, chạy đi gọi bố mẹ: "Call Mommy first!".',
+  'candy': 'Tập nói "No, thank you!" với đồ ăn của người lạ, rồi quay về với bố mẹ. Người lạ không phải người xấu; chỉ cần hỏi bố mẹ trước.',
+  'go-with': 'Bé không đi theo ai khi chưa hỏi bố mẹ, kể cả người tỏ ra quen. Bố mẹ thống nhất với bé những ai được đón bé.',
+  'tell': 'Hỏi bé mỗi tối "Hôm nay có gì làm con sợ không?". Khen bé khi bé kể, không mắng.',
+  'fire-low': 'Tập "cúi thấp, che miệng" như trò chơi bò qua đường hầm. Cho bé nghe thử tiếng chuông báo cháy.',
+  'fire-hide': 'Nói rõ: khi có khói không trốn (gầm giường, tủ) — trốn thì bố mẹ không tìm thấy. Đi ra cùng bố mẹ.',
+  'fire-out': 'Cùng bé đi thử đường ra khỏi nhà; chỉ chỗ tập trung bên ngoài (gốc cây, cổng).',
+  'fire-back': 'Ra ngoài rồi thì không quay vào lấy đồ, kể cả đồ chơi yêu thích. Chú lính cứu hỏa sẽ lo.',
+  'hide-shop': 'Ở siêu thị không chơi trốn tìm. Cho bé nắm tay hoặc nắm xe đẩy cạnh bố mẹ.',
+  'run-off': 'Hẹn trước khi vào siêu thị: muốn xem đồ chơi thì gọi bố mẹ đi cùng: "Wait for Mommy!".',
+  'lost': 'Chỉ cho bé quầy thu ngân ở mỗi siêu thị. Lạc thì đứng yên, nhờ cô ở quầy; không đi theo ai ra ngoài.',
+  'pool-alone': 'Ở gần nước luôn ở sát bé, trong tầm với. Bé chỉ xuống bể khi bố mẹ đã xuống trước.',
+  'pond': 'Đi dạo ao hồ thì nắm tay, đứng xa mép nước. Ngắm cá từ xa.',
+  'pond-toy': 'Đồ rơi xuống nước thì bố mẹ lấy (bằng sào, vợt) hoặc bỏ luôn. Bé đứng xa mép nước, gọi bố mẹ.',
+  'swim-with': 'Phao tay không thay được bố mẹ: luôn ở sát cạnh bé khi bé ở dưới nước.',
+  'dog': 'Gặp chó lạ: đứng cạnh bố mẹ, nhìn từ xa, không chạy, không vuốt. Muốn vuốt chó quen thì bố mẹ hỏi chủ trước.',
+};
+
+// ---------- Ảnh của bố mẹ (S2): thay từng hình trong cảnh, ảnh nền từng cảnh; chưa có ảnh thì dùng hình vẽ ----------
+export const SAFETY_PEOPLE_IMAGES = 'safety:people';
+export const SAFETY_ITEM_IMAGES = 'safety:items';
+export const SAFETY_BG_IMAGES = 'safety:bg';
+const PERSON_RULES = 'Full body, standing, facing the viewer, cheerful, cute children\'s picture-book style, thick dark outline, soft flat colors. Pure flat white (#FFFFFF) background, no shadow, no scenery, no text.';
+/** Người: Bông (áo choàng đỏ vẽ thêm trong app), mẹ, bố. */
+export const SAFETY_PEOPLE = [
+  { id: 'bong', vi: 'Bông', emoji: '🐰', prompt: `A small cute plush bunny character named Bong for a toddler app. ${PERSON_RULES} No cape (the app adds a red superhero cape).` },
+  { id: 'mummy', vi: 'Mẹ', emoji: '👩', prompt: `A friendly young Vietnamese mom in casual clothes, smiling. ${PERSON_RULES}` },
+  { id: 'daddy', vi: 'Bố', emoji: '👨', prompt: `A friendly young Vietnamese dad in casual clothes, smiling. ${PERSON_RULES}` },
+];
+/** Đồ trong cảnh (theo `k` của hình). `draw`: mô tả cho prompt ảnh lưới. */
+export const SAFETY_ITEMS = [
+  ['tv', 'TV', 'TV', 'a TV showing a cartoon'], ['tablet', 'tablet', 'máy tính bảng', 'a tablet computer'],
+  ['bed', 'bed', 'giường', 'a small bed seen from the side'], ['lamp', 'lamp', 'đèn ngủ', 'a bedside lamp'],
+  ['teddy', 'teddy', 'gấu bông', 'a teddy bear'], ['toys', 'toys', 'đồ chơi', 'a pile of toys'],
+  ['moon', 'moon', 'mặt trăng', 'a crescent moon'], ['timer', 'timer', 'đồng hồ hẹn giờ', 'an alarm clock'],
+  ['book', 'book', 'sách', 'a picture book'], ['ball', 'ball', 'quả bóng', 'a ball'],
+  ['counter', 'counter', 'tủ bếp', 'a kitchen counter cabinet seen from the front'], ['shelf', 'shelf', 'kệ', 'a plain wall shelf'],
+  ['knife', 'knife', 'dao', 'a kitchen knife'], ['pot', 'pot', 'nồi', 'a cooking pot with steam'],
+  ['medicine', 'medicine', 'thuốc', 'a medicine pill'], ['sink', 'sink', 'bồn rửa', 'a kitchen sink cabinet seen from the front'],
+  ['tap', 'tap', 'vòi nước', 'a water tap'], ['soap', 'soap', 'xà phòng', 'a bar of soap'],
+  ['socket', 'socket', 'ổ điện', 'a wall power socket'], ['window', 'window', 'cửa sổ', 'a window'],
+  ['stool', 'stool', 'ghế đẩu', 'a small stool'], ['fan', 'fan', 'quạt', 'a standing electric fan'],
+  ['table', 'table', 'bàn', 'a low table'], ['lighter', 'lighter', 'bật lửa', 'a lighter'],
+  ['marble', 'marble', 'viên bi', 'a glass marble'], ['toybox', 'toy box', 'hộp đồ chơi', 'a toy box'],
+  ['stairs', 'stairs', 'cầu thang', 'indoor stairs with a handrail, seen from the side'],
+  ['car', 'car', 'ô tô', 'a small car'], ['scooter', 'scooter', 'xe máy', 'a motorbike scooter'],
+  ['helmet', 'helmet', 'mũ bảo hiểm', 'a child bike helmet'], ['carseat', 'car seat', 'ghế ô tô trẻ em', 'a child car seat'],
+  ['door', 'door', 'cửa ra vào', 'a front door'], ['stranger', 'person', 'người lạ', 'a smiling adult (ordinary clothes)'],
+  ['candy', 'candy', 'kẹo', 'a wrapped candy'], ['alarm', 'alarm', 'chuông báo cháy', 'a smoke alarm with a red light'],
+  ['house', 'house', 'ngôi nhà', 'a small house with a little grey smoke'], ['truck', 'fire truck', 'xe cứu hỏa', 'a fire truck'],
+  ['aisle', 'shop shelf', 'kệ siêu thị', 'a tall supermarket shelf full of products'], ['cart', 'cart', 'xe đẩy', 'a shopping cart'],
+  ['toyshelf', 'toy shelf', 'kệ đồ chơi', 'a shop shelf full of toys'], ['desk', 'checkout', 'quầy thu ngân', 'a shop checkout counter seen from the front'],
+  ['cashier', 'cashier', 'cô thu ngân', 'a smiling shop lady, upper body only'],
+  ['pool', 'pool', 'bể bơi', 'a wide strip of swimming pool water seen from the side'], ['pondwater', 'pond', 'ao', 'a wide strip of pond water with reeds'],
+  ['fish', 'fish', 'cá', 'a fish jumping'], ['pole', 'pole', 'cây sào', 'a long pole with a small net'],
+  ['armbands', 'armbands', 'phao tay', 'a pair of inflatable swim armbands'], ['dog', 'dog', 'chó', 'a medium dog standing, calm'],
+].map(([id, en, vi, draw]) => ({ id, en, vi, draw }));
+/** Cảnh (ảnh nền): chỉ là nền, mọi hình vẫn đặt lên trên. */
+export const SAFETY_SCENES = [
+  ['kitchen', 'Bếp', 'a bright kitchen'], ['room', 'Phòng khách', 'a living room'], ['bedroom', 'Phòng ngủ', 'a child bedroom'],
+  ['hall', 'Cửa nhà', 'a home entrance hall'], ['street', 'Đường phố', 'a quiet street with a sidewalk in the lower part'],
+  ['park', 'Công viên', 'a park lawn'], ['yard', 'Sân trước nhà', 'a front yard'], ['smoke', 'Nhà có khói', 'a living room with light grey smoke near the ceiling, no fire'],
+  ['shop', 'Siêu thị', 'a supermarket'], ['pool', 'Bể bơi', 'a swimming pool area'], ['pond', 'Ao / hồ', 'a park by a pond'],
+].map(([id, vi, draw]) => ({
+  id, vi,
+  prompt: `A wide 4:3 background picture of ${draw} for a toddler app, cute children's picture-book style, soft flat colors. EMPTY: no people, no animals, no text. Keep the lower third plain floor / ground (the app places characters there).`,
+}));

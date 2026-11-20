@@ -187,7 +187,8 @@ test('SAFE-10, 11, 18: tắt 🚪 → không gặp người lạ; tắt gần h�
   await finish(page);
   const g = await game(page);
   expect(Object.keys(g.seen).filter((id) => ['door', 'candy', 'go-with', 'tell'].includes(id))).toHaveLength(0);
-  await page.evaluate(() => window.kidEnglish.setSetting('safetyGame', { level: 1, rounds: 0, lock: null, off: ['habits', 'kitchen', 'home', 'road', 'stranger', 'fire'] }));
+  // Chỉ còn 🐕 (1 tình huống).
+  await page.evaluate(() => window.kidEnglish.setSetting('safetyGame', { level: 1, rounds: 0, lock: null, off: ['habits', 'kitchen', 'home', 'road', 'stranger', 'fire', 'shop', 'water'] }));
   await page.evaluate(() => window.kidEnglish.go('safety'));
   await stateIs(page, 'empty');
   await expect(page.locator('.sf-empty')).toHaveText('Bố mẹ bật thêm chủ đề trong Cài đặt nhé');
@@ -277,4 +278,174 @@ test('Cài đặt: mục Siêu nhân an toàn — tắt chủ đề, chủ đề
   await expect.poll(async () => (await game(page)).lock).toBe(1);
   await sec.getByLabel('Bông nói thêm câu tiếng Việt (câu hỏi, câu giải thích, việc cần làm)').uncheck();
   await expect.poll(() => page.evaluate(() => window.kidEnglish.settings.safetyVi)).toBe(false);
+});
+
+// ---------- S2 (0.85.0): 🛒 💧 🐕, mức 3 (chuyện 2 bước), "Say it!", album huy hiệu, ảnh của bố mẹ, trang bố mẹ ----------
+/** Mở trò với kế hoạch đầy đủ (có story / step) và cờ test khác (`kidTest`). */
+async function openPlan(page, plan, { state = {}, kidTest = {}, talk = false } = {}) {
+  await page.addInitScript(([p, k]) => { window.__kidTest = { safetyPlan: p, ...k }; }, [plan, kidTest]);
+  await fakeSpeech(page);
+  await startApp(page);
+  await page.evaluate((s) => window.kidEnglish.setSetting('safetyGame', { level: 1, rounds: 0, lock: null, ...s }), state);
+  if (talk) await page.evaluate(() => window.kidEnglish.setSetting('safetyTalk', true));
+  await page.getByRole('button', { name: 'Trò chơi' }).click();
+  await page.getByRole('button', { name: 'Siêu nhân an toàn' }).click();
+  await expect(play(page)).toBeVisible();
+}
+const STORY_PLAN = [
+  { id: 'pond', safeLeft: true, story: 0, step: 1 }, { id: 'pond-toy', safeLeft: false, story: 0, step: 2 },
+  { id: 'tv-timer', safeLeft: false, story: 1, step: 1 }, { id: 'bedtime', safeLeft: true, story: 1, step: 2 },
+];
+
+test('SAFE-S2-01: mức 1 đồ chơi rơi xuống ao — chạm ✋ No → "No! Stay back. Call Daddy." → chạm bố; 🐕 chạm mẹ; 🛒 lost chạm quầy', async ({ page }) => {
+  await openSafety(page, { ids: ['pond-toy', 'dog', 'lost'] });
+  await ruleIs(page, 'pond-toy');
+  await expect(page.locator('.sf-stage > .sf-scene')).toHaveAttribute('data-scene', 'pond');
+  await expect.poll(() => spoken(page)).toContain('My toy! Can I get it?');
+  await page.locator('.sf-btn[data-answer="no"]').click();
+  await stateIs(page, 'fix');
+  expect(await spoken(page)).toContain('No! Stay back. Call Daddy.');
+  await expect(page.locator('.sf-sp.sf-daddy')).toHaveClass(/sf-target/);
+  await page.locator('.sf-sp.sf-daddy').click();
+  await expect.poll(() => spoken(page)).toContain('Stay back! Call Daddy.');
+  await ruleIs(page, 'dog');
+  expect((await game(page)).seen['pond-toy']).toBe(1);
+  await stateIs(page, 'ask');
+  await page.locator('.sf-btn[data-answer="no"]').click();
+  await stateIs(page, 'fix');
+  await page.locator('.sf-sp.sf-mummy').click();
+  await ruleIs(page, 'lost');
+  await stateIs(page, 'ask');
+  await page.locator('.sf-btn[data-answer="yes"]').click();
+  await stateIs(page, 'fix');
+  await expect(page.locator('.sf-sp.sf-desk')).toHaveClass(/sf-target/);
+  await page.locator('.sf-sp.sf-desk').click();
+  await expect(page.locator('.sf-play.jb-done')).toHaveCount(1, { timeout: 20000 });
+});
+
+test('SAFE-S2-02: mức 3 (bố mẹ khóa) — "Story time!", chọn tranh; bước 2 "What next?" + hình nhắc lại bước 1; 4 ⭐; giữ mức 3; không có "Say it!" khi chưa bật', async ({ page }) => {
+  await openPlan(page, STORY_PLAN, { state: { level: 3, lock: 3 } });
+  await ruleIs(page, 'pond');
+  await expect.poll(() => spoken(page)).toContain('Story time!');
+  await stateIs(page, 'pick');
+  await expect(page.locator('.sf-card')).toHaveCount(2);
+  await expect(page.locator('.jb-tray')).toHaveClass(/off/);
+  await expect(page.locator('.sf-recap')).toBeHidden(); // bước 1: chưa có hình nhắc lại
+  await solve(page);
+  await stateIs(page, 'fix');
+  await solve(page);
+  await ruleIs(page, 'pond-toy');
+  await expect.poll(() => spoken(page)).toContain('What next?');
+  await expect(page.locator('.sf-recap')).toBeVisible();
+  await expect(page.locator('.sf-recap .sf-scene')).toHaveAttribute('data-scene', 'pond');
+  await stateIs(page, 'pick');
+  await expect(page.locator('.sf-recap')).toBeHidden(); // lúc chọn tranh: ẩn để không che tranh
+  await finish(page);
+  const said = await spoken(page);
+  expect(said.filter((t) => t === 'Story time!').length).toBe(2);
+  expect(said).toContain('Good night!'); // câu nhắc lại của bước cuối (bedtime)
+  const seen = (await game(page)).seen;
+  expect(STORY_PLAN.map((p) => seen[p.id])).toEqual([1, 1, 1, 1]);
+  expect(said).not.toContain('Say it!');
+  await expect.poll(() => game(page)).toMatchObject({ level: 3, lock: 3 });
+});
+
+test('SAFE-S2-03: "Say it!" (mức 3, bố mẹ bật) — Bông nói câu ngắn, nghe; khớp → "Great talking!"; ⭐ / tiến độ như thường', async ({ page }) => {
+  await openPlan(page, STORY_PLAN, { state: { level: 3, lock: 3 }, talk: true, kidTest: { safetyTalkResult: 'match' } });
+  await ruleIs(page, 'pond');
+  await stateIs(page, 'pick');
+  await solve(page);
+  await stateIs(page, 'fix');
+  await solve(page);
+  await expect.poll(() => spoken(page)).toContain('Great talking!');
+  const said = await spoken(page);
+  expect(said.lastIndexOf('Say it!')).toBeGreaterThan(said.indexOf('Stay back!'));
+  await ruleIs(page, 'pond-toy');
+  await expect(page.locator('.sf-star.on')).toHaveCount(1);
+  await expect.poll(() => progressOf(page, 'pond')).toMatchObject({ mastery: 1 });
+});
+
+test('SAFE-S2-04: "Say it!" lỗi mic → bỏ qua, chơi tiếp', async ({ page }) => {
+  await openPlan(page, STORY_PLAN, { state: { level: 3, lock: 3 }, talk: true, kidTest: { safetyTalkResult: 'error' } });
+  await stateIs(page, 'pick');
+  await solve(page);
+  await stateIs(page, 'fix');
+  await solve(page);
+  await ruleIs(page, 'pond-toy');
+  const said = await spoken(page);
+  expect(said).toContain('Say it!');
+  expect(said).not.toContain('Great talking!');
+});
+
+test('SAFE-S2-05: album huy hiệu — chủ đề 🍳 đủ firstOk sau lượt → huy hiệu mới nảy lên, "A new badge!"', async ({ page }) => {
+  const firstOk = { stove: true, medicine: true, 'wash-hands': true };
+  await openSafety(page, { ids: ['knife', 'tv-long', 'helmet'], state: { firstOk } });
+  // Album hiện sau "Thank you, Safety Hero!", trước màn hoan hô (chế độ nhanh: rất ngắn) — ghi lại lúc album hiện.
+  await page.evaluate(() => {
+    window.__album = null;
+    new MutationObserver(() => {
+      const el = document.querySelector('.sf-album:not([hidden])');
+      if (el && !window.__album) {
+        window.__album = [...el.querySelectorAll('.sf-badge')].map((x) => ({ topic: x.dataset.topic, on: x.classList.contains('on'), fresh: x.classList.contains('new') }));
+      }
+    }).observe(document.body, { subtree: true, childList: true, attributes: true });
+  });
+  await finish(page);
+  await expect.poll(() => spoken(page)).toContain('A new badge!');
+  const album = await page.evaluate(() => window.__album);
+  expect(album).toHaveLength(9);
+  expect(album.filter((x) => x.on).map((x) => x.topic)).toEqual(['kitchen']);
+  expect(album.filter((x) => x.fresh).map((x) => x.topic)).toEqual(['kitchen']);
+  expect((await game(page)).firstOk.knife).toBe(true);
+});
+
+test('SAFE-S2-06: ảnh của bố mẹ — Bông, con dao và nền bếp dùng ảnh đã thay; chưa thay thì vẫn hình vẽ; chạm vẫn đúng chỗ', async ({ page }) => {
+  await page.addInitScript(() => { window.__kidTest = { safetyPlan: [{ id: 'knife', safeLeft: true }, { id: 'tv-long', safeLeft: false }, { id: 'helmet', safeLeft: true }] }; });
+  await fakeSpeech(page);
+  await startApp(page);
+  await page.evaluate(async () => {
+    const db = await import('/js/db.js');
+    const png = await new Promise((r) => { const c = document.createElement('canvas'); c.width = 60; c.height = 60; c.getContext('2d').fillRect(10, 10, 40, 40); c.toBlob(r, 'image/png'); });
+    for (const [lessonId, word] of [['safety:people', 'bong'], ['safety:bg', 'kitchen'], ['safety:items', 'knife']]) {
+      await db.setWordImage(window.kidEnglish.db, { lessonId, word, blob: png, mimeType: 'image/png', width: 60, height: 60 });
+    }
+  });
+  await page.getByRole('button', { name: 'Trò chơi' }).click();
+  await page.getByRole('button', { name: 'Siêu nhân an toàn' }).click();
+  await ruleIs(page, 'knife');
+  await expect(page.locator('.sf-sp.sf-bong img.sf-img')).toHaveCount(1);
+  await expect(page.locator('.sf-sp.sf-knife img.sf-img')).toHaveCount(1);
+  await expect(page.locator('.sf-sp.sf-mummy svg')).toHaveCount(1);
+  await expect(page.locator('.sf-stage > .sf-scene')).toHaveClass(/pic/);
+  await stateIs(page, 'ask');
+  await page.locator('.sf-btn[data-answer="no"]').click();
+  await stateIs(page, 'fix');
+  await page.locator('.sf-sp.sf-mummy').click();
+  await ruleIs(page, 'tv-long');
+  await expect(page.locator('.sf-stage > .sf-scene')).not.toHaveClass(/pic/); // phòng khách chưa có ảnh nền
+});
+
+test('SAFE-S2-07: Góc bố mẹ — mức 3 + "Say it!" trong Cài đặt; trang "Nói thêm với bé"; trang ảnh; nhóm tiến độ Siêu nhân an toàn', async ({ page }) => {
+  await fakeSpeech(page);
+  await startApp(page);
+  await page.evaluate(() => window.kidEnglish.go('parent', { view: 'settings' }));
+  await page.locator('select:has(option:text("chuyện 2 bước"))').selectOption('3');
+  await expect.poll(() => game(page)).toMatchObject({ level: 3, lock: 3 });
+  await page.getByText('Lượt "Say it!" ở mức 3').click();
+  await expect.poll(() => page.evaluate(() => window.kidEnglish.settings.safetyTalk)).toBe(true);
+  await page.getByRole('button', { name: '💬 Nói thêm với bé…' }).click();
+  await expect(page.locator('.sf-tips li[data-rule="pond-toy"]')).toContainText('bố mẹ lấy');
+  await expect(page.locator('.sf-tips li')).toHaveCount(36);
+  await page.evaluate(() => window.kidEnglish.go('parent', { view: 'safety-images' }));
+  await expect(page.locator('.sp-admin-item[data-item="dog"]')).toBeVisible();
+  await expect(page.locator('.jb-admin-person[data-person="bong"]')).toBeVisible();
+  await expect(page.locator('.jb-admin-job[data-scene="pool"]')).toBeVisible();
+  await page.evaluate(async () => {
+    const t = await import('/js/player/track.js');
+    await t.markPhrasePick(window.kidEnglish, 'safe:dog', '🐕', { firstTry: true, award: true });
+    await window.kidEnglish.setSetting('safetyGame', { level: 1, rounds: 0, lock: null, firstOk: { dog: true } });
+  });
+  await page.evaluate(() => window.kidEnglish.go('parent', { view: 'progress' }));
+  await expect(page.getByText(/Siêu nhân an toàn — 1\/36 tình huống đã chơi · huy hiệu 1\/9/)).toBeVisible();
+  await expect(page.locator('.progress-list').getByText('Wait! Stay with Mommy.', { exact: false })).toBeVisible();
 });

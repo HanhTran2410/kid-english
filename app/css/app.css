@@ -3982,6 +3982,37 @@ img.dr-admin-face { width: 100%; height: 100%; object-fit: contain; }
 .sf-btn-text small { font-size: 15px; opacity: 0.8; }
 .sf-btn.nudge { animation: hint-hop 0.5s ease-in-out 3; }
 .sf-empty { position: absolute; left: 6%; right: 6%; top: 74%; margin: 0; text-align: center; font-size: clamp(18px, 3.4vmin, 26px); font-weight: 800; color: #3d2c5e; }
+/* S2 (0.85.0): 🛒 💧 🐕, ảnh của bố mẹ, mức 3 (hình nhắc lại bước 1), "Say it!", album huy hiệu */
+.sf-scene[data-scene="shop"] { background: linear-gradient(#f8f9fa 0 64%, #ced4da 64% 65%, #e9ecef 65%); }
+.sf-scene[data-scene="pool"] { background: linear-gradient(#d0ebff 0 60%, #e9ecef 60%); }
+.sf-scene[data-scene="pond"] { background: linear-gradient(#e7f5ff 0 58%, #8ce99a 58%); }
+.sf-scene.pic { background-size: cover; background-position: center; }
+.sf-scene.pic::before { display: none; }
+.sf-scene[data-scene="smoke"].pic::before { display: block; }
+.sf-img { display: block; width: 100%; height: 100%; object-fit: contain; object-position: 50% 100%; pointer-events: none; }
+.sf-bong.walk .sf-img { animation: dr-hop 0.5s ease-in-out infinite; }
+.sf-bong.sleep .sf-img { transform: rotate(-80deg); transform-origin: 50% 80%; }
+.sf-sp.front { z-index: 4; }
+.sf-sp.float, .sf-sp.sf-pole, .sf-sp.sf-armbands { z-index: 5; }
+.sf-sp.float { animation: sf-bob 1.8s ease-in-out infinite; }
+@keyframes sf-bob { 50% { transform: translateY(-8%); } }
+.sf-recap { position: absolute; z-index: 6; top: 10px; left: 12px; width: clamp(110px, 22%, 220px); aspect-ratio: 4 / 3; border: 4px solid #fff; border-radius: 16px; overflow: hidden; background: #fff; box-shadow: var(--shadow); pointer-events: none; }
+.sf-recap[hidden] { display: none; }
+.sf-recap-ok { position: absolute; right: 4px; bottom: 2px; font-family: var(--emoji); font-size: clamp(18px, 3.4vmin, 28px); }
+.sf-album { position: absolute; inset: 0; z-index: 8; display: grid; place-items: center; background: rgba(255, 248, 240, 0.82); pointer-events: none; }
+.sf-album[hidden] { display: none; }
+.sf-album-row { display: grid; grid-template-columns: repeat(5, auto); gap: clamp(8px, 2vmin, 18px); padding: 16px; }
+.sf-badge { display: grid; justify-items: center; gap: 2px; width: clamp(64px, 12vmin, 104px); padding: 8px 4px; border-radius: 50%; aspect-ratio: 1; align-content: center; background: #e9ecef; filter: grayscale(1); opacity: 0.45; }
+.sf-badge.on { background: radial-gradient(#fff3bf, #ffd43b); border: 4px solid #f59f00; filter: none; opacity: 1; box-shadow: var(--shadow); }
+.sf-badge.new { animation: pop 0.6s ease-out 3; }
+.sf-badge-emoji { font-family: var(--emoji); font-size: clamp(26px, 5.5vmin, 48px); line-height: 1; }
+.sf-badge small { font-size: clamp(10px, 1.8vmin, 14px); font-weight: 800; color: #3d2c5e; }
+.sf-mic { position: absolute; left: 50%; bottom: 6%; transform: translateX(-50%); z-index: 8; font-family: var(--emoji); font-size: clamp(44px, 9vmin, 80px); line-height: 1; animation: cf-mic 0.8s ease-in-out infinite; pointer-events: none; }
+.sf-mic[hidden], .sf-talk-star[hidden] { display: none; }
+.sf-talk-star { position: absolute; left: 50%; bottom: 20%; z-index: 8; font-family: var(--emoji); font-size: clamp(40px, 8vmin, 70px); pointer-events: none; }
+.sf-talk-star.fly { animation: cf-star 1s ease-in forwards; }
+@media (orientation: portrait) { .sf-album-row { grid-template-columns: repeat(3, auto); } }
+@media (prefers-reduced-motion: reduce) { .sf-sp.float, .sf-badge.new, .sf-mic, .sf-talk-star.fly { animation: none; } }
 .check-list { display: grid; gap: 6px; }
 @media (max-width: 600px), (orientation: portrait) {
   /* Màn dọc: cảnh giữ khung ngang 4 : 3 ở giữa (hình đặt theo % nên không bị to, đè nhau). */
@@ -4446,3 +4477,6 @@ img.dr-admin-face { width: 100%; height: 100%; object-fit: contain; }
 .nf-mover::after { content: ''; position: absolute; inset: -16px; } /* vùng chạm rộng hơn hình (đồ ở xa nhỏ) */
 .nf-mover.nf-pop { animation: hint-hop 0.5s ease-in-out; }
 @media (prefers-reduced-motion: reduce) { .nf-mover { transition: none; } .nf-mover.nf-pop { animation: none; } }
+.sf-tips { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+.sf-tips li { display: grid; grid-template-columns: auto 1fr; gap: 10px; align-items: start; }
+.sf-tips p { margin: 4px 0 0; }

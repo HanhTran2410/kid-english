@@ -18,7 +18,7 @@ import { cleanSoundsState } from '../../animal-sounds.js';
 import { cleanBubblesState } from '../../bubbles.js';
 import { cleanJobState } from '../../jobs/levels.js';
 import { cleanDoctorState } from '../../doctor.js';
-import { cleanSafetyState, TOPICS, TOPIC_IDS } from '../../jobs/safety.js';
+import { cleanSafetyState, badgesOf, TOPICS, TOPIC_IDS } from '../../jobs/safety.js';
 
 export function settingsView(app) {
   const body = parentLayout(app, { title: 'Cài đặt & chẩn đoán', back: () => goParent(app) });
@@ -273,7 +273,9 @@ function safetySection(app, save) {
   const state = cleanSafetyState(app.settings.safetyGame);
   const update = (patch) => save('safetyGame', { ...cleanSafetyState(app.settings.safetyGame), ...patch });
   const level = levelSelect(app, save, 'safetyGame', cleanSafetyState,
-    [['1', 'Mức 1 — Bông hỏi, bé chạm ✋ No / 👍 Yes'], ['2', 'Mức 2 — chọn tranh an toàn trong hai tranh']]);
+    [['1', 'Mức 1 — Bông hỏi, bé chạm ✋ No / 👍 Yes'], ['2', 'Mức 2 — chọn tranh an toàn trong hai tranh'],
+      ['3', 'Mức 3 — chuyện 2 bước (chỉ khi bố mẹ chọn)']]);
+  const badges = badgesOf(state);
   const focus = h('select', { onchange: (e) => update({ focus: e.target.value === 'none' ? null : e.target.value }) },
     h('option', { value: 'none', text: 'Không ưu tiên', selected: state.focus === null }),
     ...TOPIC_IDS.map((id) => h('option', { value: id, text: `${TOPICS[id].emoji} ${TOPICS[id].vi}`, selected: state.focus === id })));
@@ -291,9 +293,17 @@ function safetySection(app, save) {
       h('input', { type: 'checkbox', checked: app.settings.safetyVi !== false, onchange: (e) => save('safetyVi', e.target.checked) }),
       h('span', { text: 'Bông nói thêm câu tiếng Việt (câu hỏi, câu giải thích, việc cần làm)' })),
     h('p.field-hint', { text: 'Bé 3 tuổi chưa đọc phụ đề: bật để bé hiểu đúng quy tắc an toàn; tiếng Anh vẫn nói trước. Máy không có giọng tiếng Việt thì chỉ có phụ đề.' }),
-    field('Mức chơi', level, 'Tự lên mức 2 sau 3 lượt chơi xong. Bé mới làm quen nên khóa mức 1.'),
+    field('Mức chơi', level, 'Tự lên mức 2 sau 3 lượt chơi xong. Mức 3 không tự lên: chỉ khi bố mẹ chọn, lúc bé đã quen mức 2. Bé mới làm quen nên khóa mức 1.'),
+    h('label.check', {},
+      h('input', { type: 'checkbox', checked: Boolean(app.settings.safetyTalk), onchange: (e) => save('safetyTalk', e.target.checked) }),
+      h('span', { text: '🎤 Lượt "Say it!" ở mức 3 (bé nói theo câu ngắn)' })),
+    h('p.field-hint', { text: 'Tùy chọn, mặc định tắt. Chỉ khi mic đã bật sẵn (trò không hỏi quyền mic), không ghi âm; bé không nói cũng không sao, không ảnh hưởng sao hay huy hiệu.' }),
     field('Chủ đề ưu tiên', focus, 'Lượt nào cũng có 2 tình huống của chủ đề này.'),
     field('Chủ đề', topics, 'Tắt chủ đề chưa muốn nói với bé. Còn dưới 3 tình huống thì trò báo bố mẹ bật thêm.'),
+    h('p.field-hint', { text: `Huy hiệu: ${badges.length}/${TOPIC_IDS.length}${badges.length ? ` (${badges.map((t) => TOPICS[t].emoji).join(' ')})` : ''} — mở khi mọi tình huống của chủ đề được chọn đúng ngay lần đầu (một lần là đủ, không bao giờ mất). Huy hiệu là thành tích chơi game, không phải chứng nhận bé đã có kỹ năng ngoài đời.` }),
+    h('div.actions', {},
+      h('button.btn', { type: 'button', text: '💬 Nói thêm với bé…', onclick: () => goParent(app, 'safety-tips') }),
+      h('button.btn', { type: 'button', text: '🖼️ Ảnh Siêu nhân an toàn…', onclick: () => goParent(app, 'safety-images') })),
     h('p.field-hint', { text: 'App chỉ giúp bé nhớ câu và việc nên làm; bố mẹ vẫn là người dạy và trông bé.' }));
 }
 

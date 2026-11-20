@@ -1,6 +1,7 @@
 # SPEC — 🦸 Siêu nhân an toàn: "Bông ơi, dừng lại!" (Safety Hero)
 
-> Phiên bản spec: **draft5** (theo review cho bé 3+, mục 14) · Ngày: 2026-11-19 · Dựa trên app 0.83.0. **Đang làm S1 (0.84.0)**, ghi chú mục 15.
+> Phiên bản spec: **draft5** (theo review cho bé 3+, mục 14) · Ngày: 2026-11-19 · Dựa trên app 0.83.0. **Đã làm S1 (0.84.0) và S2 (0.85.0)**, ghi chú mục 15.
+> - **S2 (0.85.0), bố mẹ thêm:** thay được ảnh từng hình trong cảnh (Bông, mẹ, bố, đồ vật) và ảnh nền từng cảnh — mục 9.1.
 > - **draft5:**
 >   - **Review lại cho bé 3 tuổi (3+)**, không phải 6 tuổi (mục 14):
 >     - câu ngắn hẳn: câu hỏi 3–7 từ, câu giải thích 2–7 từ, câu nhắc lại 1–4 từ;
@@ -94,7 +95,13 @@ Chạm nhầm:
 ### 3.3 Mức 3 — "Story time" (S2, **chỉ khi bố mẹ chọn**)
 - Không tự lên mức 3. Bố mẹ chọn "Mức 3" trong Cài đặt khi bé đã quen.
 - Chuyện 2 bước, **mỗi bước chơi được độc lập** (bé không phải nhớ nhiều từ bước trước; bước 2 có hình nhắc lại bước 1). Bước 1 sai thì không sang bước 2.
+  - Một lượt = **2 chuyện × 2 bước = 4 tình huống (4 ⭐)**. Hai chuyện khác chủ đề; chủ đề ưu tiên (đang bật) có chuyện thì chuyện đó trước; còn lại ít gặp trước.
+  - Mỗi bước chơi như mức 2 (chọn tranh an toàn → thao tác sửa). Bước 1: Bông *"Story time!"*; bước 2: *"What next?"* + hình nhỏ (góc trái trên) cảnh an toàn của bước 1, ẩn lúc hiện hai tranh để không che tranh.
+  - Chuyện (`STORIES`): 📺 hẹn giờ → đi ngủ; xem thêm phim → chơi khuya; dao → rửa tay; nồi → thuốc; cầu thang → cửa sổ; viên bi → ổ điện; mũ bảo hiểm → nắm tay bố; bóng ra đường → qua đường; chuông cửa → kể với mẹ; kẹo → đi theo; cúi thấp → ra ngoài; không trốn → không quay vào; trốn ở siêu thị → bị lạc; bể bơi một mình → bơi cùng bố; ao → đồ rơi xuống ao. (🐕 chưa có chuyện.)
+  - Bật dưới 2 chuyện (bố mẹ tắt gần hết chủ đề): lượt thường, vẫn chơi kiểu chọn tranh.
 - **"Say it!"** hoàn toàn tùy chọn: dùng luật lượt nói SPEC-jobs5 mục 5; không ảnh hưởng ⭐, tiến độ, huy hiệu; không bắt phát âm đúng.
+  - Cài đặt riêng *"Lượt Say it! ở mức 3"* (`safetyTalk`, mặc định tắt). Chỉ khi mic đã sẵn sàng từ trước (trò không xin quyền mic), không ghi âm.
+  - Sau câu nhắc lại: Bông *"Say it!"* + câu ngắn; nghe ≤ 4 giây (cứng 6 giây). Khớp từ khóa (các từ ≥ 3 chữ cái của câu ngắn) → *"Great talking!"* + ⭐ bay (chỉ hiệu ứng); có tiếng → *"Good!"* + câu mẫu; im lặng → câu mẫu; lỗi → bỏ qua.
 
 ## 4. Chủ đề và tình huống
 
@@ -171,9 +178,9 @@ Mẹ luôn đứng gần trong cảnh (bé thấy rõ Bông không rời mẹ). 
 | `hide-shop` | 🛒 | 🚫 | *"Can I hide here?"* (sau kệ siêu thị) | *"No! Stay with Mommy."* | chạm mẹ → Bông nắm xe đẩy cạnh mẹ |
 | `run-off` | 🛒 | 🚫 | *"Toys! Can I run there?"* | *"No! Wait for Mommy."* | chạm mẹ → hai người cùng đi |
 | `lost` | 🛒 | ✅ | *"Where's Mommy? Stay here?"* | *"Yes! Stay here. Ask for help."* | chạm quầy thu ngân (gần Bông) → cô thu ngân ở lại quầy, mẹ tới đón |
-| `pool-alone` | 💧 | 🚫 | *"Can I jump in?"* (bể bơi) | *"No! Hold Mommy's hand near water."* | chạm bố → bố đứng sát Bông, Bông ở ngoài mép bể |
+| `pool-alone` | 💧 | 🚫 | *"Can I jump in?"* (bể bơi) | *"No! Hold Daddy's hand near water."* (bố ở cảnh) | chạm bố → bố đứng sát Bông, Bông ở ngoài mép bể |
 | `pond` | 💧 | 🚫 | *"Fish! Can I go close?"* (ao / hồ) | *"No! Stay back. Hold Mommy's hand."* | chạm mẹ → nắm tay, lùi xa mép ao |
-| `pond-toy` | 💧 | 🚫 | *"My toy fell in! Can I get it?"* | *"No! Stay back. Call Daddy."* | chạm bố → bố lấy đồ chơi bằng cây sào; Bông đứng xa mép nước |
+| `pond-toy` | 💧 | 🚫 | *"My toy! Can I get it?"* (8 từ thì quá dài; tiếng Việt nói rõ "rơi xuống nước") | *"No! Stay back. Call Daddy."* | chạm bố → bố lấy đồ chơi bằng cây sào; Bông đứng xa mép nước |
 | `swim-with` | 💧 | ✅ | *"Swim with Daddy?"* | *"Yes! Stay with Daddy."* | chạm bố → bố xuống bể trước, sát cạnh; phao tay chỉ minh họa |
 | `dog` | 🐕 | 🚫 | *"A doggy! Can I pet it?"* | *"Wait! Stay with Mommy."* | chạm mẹ → đứng cạnh mẹ nhìn từ xa, chó đi qua |
 
@@ -308,6 +315,15 @@ Review 3+ SAFE-28…35:
 
 Ảnh chụp iPad và điện thoại 390 px.
 
+### 9.1 Ảnh của bố mẹ (S2, bố mẹ thêm)
+- **Góc bố mẹ → 🦸 Ảnh Siêu nhân an toàn** (cũng mở từ Cài đặt → Siêu nhân an toàn):
+  - **Bông, mẹ, bố**: mỗi người một ảnh (copy prompt, chọn ảnh nền trắng, app tự bỏ nền). Áo choàng đỏ của Bông app vẽ thêm.
+  - **Đồ vật trong cảnh** (dao, TV, cửa, chó, bể bơi…): chọn từng ảnh, hoặc ảnh lưới AI cho nhiều đồ một lần. Hiệu ứng nhỏ (vạch vàng, thảm, bong bóng, nắp ổ điện, tay nắm tay, dây an toàn, 🤗, biển lối ra) vẫn là hình vẽ.
+  - **Ảnh nền từng cảnh** (bếp, phòng khách, phòng ngủ, cửa nhà, đường, công viên, sân, nhà có khói, siêu thị, bể bơi, ao).
+  - Ảnh nằm gọn trong khung của hình vẽ (`object-fit: contain`, chân chạm đáy) nên **chỗ chạm / chỗ thả không đổi** (bài học ảnh AI lệch chỗ chạm). Chưa có ảnh thì dùng hình vẽ; "Dùng hình vẽ sẵn" để bỏ ảnh.
+  - Chia sẻ sang máy khác bằng file (như Ảnh Đóng vai); Quản lý bài → "Nhập bài từ file" cũng nhận được.
+- Lưu: `images` với `lessonId` = `safety:people` / `safety:items` / `safety:bg`, `word` = mã người / mã hình (`k`) / mã cảnh.
+
 ## 11. Ngoài phạm vi (để sau)
 - Ảnh AI cho từng cảnh (như SPEC-art); chỗ chạm trên ảnh AI hay lệch, nên S1 dùng SVG / emoji.
 - Bài hát / vè (*"Stop, look, hold hands!"*).
@@ -352,3 +368,13 @@ Review 3+ SAFE-28…35:
 - Cảnh vẽ: mỗi hình `{ k, x, y, h }` (x tâm, y đáy, h chiều cao theo % khung); tranh mức 2 dùng lại cùng cảnh (`sceneAt`).
 - Tiến độ dùng `markPhrasePick` (ghi đúng / sai, chỉ +1 khi đúng ngay lần đầu, không trừ).
 - Test UI cố định tình huống bằng `window.__kidTest.safetyPlan`.
+
+**0.85.0 — S2:**
+- Thêm 🛒 `hide-shop`, `run-off`, `lost` (✅, chạm quầy; tranh chưa an toàn riêng `risky`: Bông đi lang thang xa quầy), 💧 `pool-alone`, `pond`, `pond-toy`, `swim-with` (✅), 🐕 `dog` → **9 chủ đề, 36 tình huống (24 🚫 + 12 ✅)**. 🐕 chỉ có 🚫; chỉ bật 🐕 thì dưới 3 tình huống, báo bố mẹ.
+- Nước vẽ "phía trước" (`front`) nên người đứng trong bể chỉ thấy nửa trên; Bông không bao giờ ở dưới nước một mình.
+- Mức: `MAX_LEVEL` 3 (chỉ qua khóa mức), `AUTO_MAX_LEVEL` 2 (tự lên tối đa 2). Kế hoạch mức 3: `planStory`; bản lưu lượt giữ `story` / `step`.
+- Album: hết lượt (sau *"Thank you, Safety Hero!"*), nếu đã có ít nhất một huy hiệu thì hiện 9 huy hiệu; huy hiệu mới nảy lên + *"A new badge!"*. Huy hiệu cũng hiện ở Cài đặt và Bé đã học.
+- "Nói thêm với bé": Góc bố mẹ → 💬 (và nút trong Cài đặt), mỗi tình huống một gợi ý (`TIPS`).
+- Bé đã học: nhóm "🦸 Siêu nhân an toàn" — số tình huống đã chơi, huy hiệu, mỗi tình huống: câu ngắn, ⭐, số lần đúng ngay / sai.
+- Không chơi lại được tình huống đã ghi xong (nút "Chơi lại tình huống" bỏ qua lúc đang nói câu nhắc lại / "Say it!").
+- Test: unit (bảng 36, mức 3, `planStory` 500 seed, từ khóa Say it!, huy hiệu, gợi ý / ảnh), UI SAFE-S2-01…07.

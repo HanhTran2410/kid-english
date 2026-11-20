@@ -47,6 +47,7 @@ import { acceptMissingPayload } from './missing.js';
 import { acceptSoundsPayload } from './sounds.js';
 import { acceptDoctorPayload } from './doctor.js';
 import { acceptJobsPayload } from './jobs.js';
+import { acceptSafetyPayload } from './safety.js';
 import { DRESS_IMAGES } from '../../dress-up.js';
 import { cleanSound, soundOf, tapLine, MAX_SOUND_CHARS } from '../../word-play.js';
 
@@ -80,7 +81,9 @@ export async function importPackage(app, file) {
   const hasDoctor = payload.images.some((img) => String(img.lessonId ?? '').startsWith('doctor:'));
   // File ảnh nền Đóng vai (SPEC-jobs mục 8) cũng nhập ở đây được.
   const hasJobs = payload.images.some((img) => String(img.lessonId ?? '').startsWith('jobs:'));
-  if (!payload.lessons.length && !sceneImages && !hasDress && !hasFeed && !hasHide && !hasPuzzle && !hasMissing && !hasSounds && !hasDoctor && !hasJobs) throw new BackupError('File này không có bài học nào.');
+  // File ảnh Siêu nhân an toàn (SPEC-safety S2) cũng nhập ở đây được.
+  const hasSafety = payload.images.some((img) => String(img.lessonId ?? '').startsWith('safety:'));
+  if (!payload.lessons.length && !sceneImages && !hasDress && !hasFeed && !hasHide && !hasPuzzle && !hasMissing && !hasSounds && !hasDoctor && !hasJobs && !hasSafety) throw new BackupError('File này không có bài học nào.');
   const existing = await listLessons(app.db);
   const before = new Set(existing.map((l) => l.id));
   // Bài mới trùng tên với bài đang có CÙNG LOẠI thì đặt tên "… 2", "… 3" (bài Mẫu câu "Animals" không làm bài Từ vựng
@@ -105,6 +108,7 @@ export async function importPackage(app, file) {
   const sounds = hasSounds ? await acceptSoundsPayload(app, payload) : { images: 0 };
   const doctor = hasDoctor ? await acceptDoctorPayload(app, payload) : { images: 0 };
   const jobs = hasJobs ? await acceptJobsPayload(app, payload) : { images: 0 };
+  const safety = hasSafety ? await acceptSafetyPayload(app, payload) : { images: 0 };
   const parts = [];
   if (added) parts.push(`nhập ${added} bài mới`);
   if (updated) parts.push(`cập nhật ${updated} bài đã có`);
@@ -116,6 +120,7 @@ export async function importPackage(app, file) {
   if (sounds.images) parts.push(`nhận ${sounds.images} ảnh / tiếng Ai kêu thế?`);
   if (doctor.images) parts.push(`nhận ${doctor.images} ảnh Bác sĩ nhí`);
   if (jobs.images) parts.push(`nhận ${jobs.images} ảnh Đóng vai`);
+  if (safety.images) parts.push(`nhận ${safety.images} ảnh Siêu nhân an toàn`);
   if (feed.images || feed.foods) parts.push(`nhận ${feed.images} ảnh Cho Bông ăn${feed.foods ? `, ${feed.foods} món mới` : ''}`);
   const summary = parts.length ? `Đã ${parts.join(', ')}` : 'Không có gì thay đổi';
   // Ghi lại đã nhập file nào, để biết file nào nhập rồi / chưa nhập.

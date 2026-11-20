@@ -1,7 +1,9 @@
-// 🦸 Siêu nhân an toàn (SPEC-safety.md, S1 0.84.0): mỗi lượt 3–5 tình huống. Bông định làm một việc rồi hỏi; mức 1 bé chạm
-// ✋ Stop! / 👍 OK!, mức 2 bé chọn tranh an toàn trong hai tranh. Đúng → câu giải thích → thao tác sửa (chạm hoặc kéo) →
+// 🦸 Siêu nhân an toàn (SPEC-safety.md, S1 0.84.0, S2 0.85.0): mỗi lượt 3–5 tình huống. Bông định làm một việc rồi hỏi; mức 1
+// bé chạm ✋ No! / 👍 Yes!, mức 2 bé chọn tranh an toàn trong hai tranh; mức 3 (bố mẹ khóa) là 2 chuyện × 2 bước như mức 2,
+// bước 2 có hình nhỏ nhắc lại bước 1, sau mỗi bước có lượt "Say it!" tùy chọn (không ghi gì). Đúng → câu giải thích → thao tác sửa (chạm hoặc kéo) →
 // ⭐ lên áo choàng Bông; đủ sao → "Thank you, Safety Hero!" → sticker. Nhầm: Bông đứng sững, gợi ý, hỏi lại; không âm "sai".
 // Bông không bao giờ làm việc nguy hiểm trên màn hình. Trạng thái: ask | pick → right → fix → fixed → (tình huống sau) | hero.
+// Hết lượt: album huy hiệu (huy hiệu mới nảy lên). Ảnh của bố mẹ (Góc bố mẹ → Ảnh Siêu nhân an toàn) thay từng hình / nền.
 // Khung chung ở jobs/kit.js (phụ đề, giọng đọc, lưu khi ra nền, hoan hô + sticker).
 
 import { h } from '../ui.js';
@@ -12,10 +14,14 @@ import { markPhrasePick } from '../player/track.js';
 import { afterJobRound } from '../jobs/levels.js';
 import { characterName } from './child.js';
 import { scaled } from '../timing.js';
+import { mediaBlob } from '../db.js';
+import { listen, RESULT } from '../speech/listen.js';
 import { jobScreen, saveSnap, takeSnap, clearSnap, restartAnim, wait, WRONG_LOCK_MS, MAX_NUDGES } from '../jobs/kit.js';
 import {
-  MAX_LEVEL, RULE_BY_ID, cleanSafetyState, afterRule, planRound, sceneStart, sceneAt, applyOps, dragOps, rightLines,
-  NO_BTN, YES_BTN, SHOULD_I_LINE, WHICH_LINE, ANSWER_NO_LINE, ANSWER_YES_LINE, ANSWER_CARD_LINE, THANKS_LINE,
+  AUTO_MAX_LEVEL, RULE_BY_ID, TOPICS, TOPIC_IDS, cleanSafetyState, afterRule, badgesOf, planRound, planStory, sceneStart, sceneAt,
+  applyOps, dragOps, rightLines, sayKeywords, ADULTS,
+  NO_BTN, YES_BTN, SHOULD_I_LINE, WHICH_LINE, ANSWER_NO_LINE, ANSWER_YES_LINE, ANSWER_CARD_LINE, THANKS_LINE, NEW_BADGE_LINE,
+  STORY_LINE, NEXT_LINE, SAY_IT_LINE, GREAT_TALK_LINE, GOOD_LINE, SAFETY_PEOPLE_IMAGES, SAFETY_ITEM_IMAGES, SAFETY_BG_IMAGES,
 } from '../jobs/safety.js';
 
 const JOB = 'safety';
@@ -26,6 +32,9 @@ const FIX_AGAIN_MS = 8000; // …rồi cách 8 giây, tối đa 3 lần (mục 5
 const FIX_REMINDERS = 3;
 const DRAG_START_PX = 8;
 const HIT_PAD = 0.5; // thả gần đích (thêm 50% mỗi phía) cũng được — vùng thả to cho bé 3 tuổi
+const TALK_MS = 4000; // "Say it!": nghe tối đa ~4 giây, giới hạn cứng 6 giây (SPEC-jobs5 mục 5)
+const TALK_CAP_MS = 6000;
+const ALBUM_MS = 1800;
 
 const INK = '#3d2c5e';
 /** Hình vẽ của cảnh: `svg` (viewBox w × h) hoặc `emoji`; `ar` = rộng / cao. */
@@ -95,6 +104,29 @@ const ART = {
   door: svg(120, 200, `<rect x="8" y="6" width="104" height="190" rx="6" fill="#a9714b" stroke="${INK}" stroke-width="5"/>
     <rect x="22" y="22" width="76" height="70" rx="4" fill="#c08457" stroke="${INK}" stroke-width="3"/><rect x="22" y="108" width="76" height="72" rx="4" fill="#c08457" stroke="${INK}" stroke-width="3"/>
     <circle cx="94" cy="104" r="7" fill="#ffd43b" stroke="${INK}" stroke-width="3"/><circle cx="60" cy="40" r="6" fill="#e7f5ff" stroke="${INK}" stroke-width="2"/>`),
+  // S2: 🛒 💧 🐕
+  cashier: emo('👩'), fish: emo('🐟'), dog: emo('🐕'),
+  aisle: svg(130, 200, `<rect x="6" y="6" width="118" height="190" rx="6" fill="#e9ecef" stroke="${INK}" stroke-width="5"/>
+    <path d="M6 66 h118 M6 128 h118" stroke="${INK}" stroke-width="5"/>
+    <g stroke="${INK}" stroke-width="2"><rect x="16" y="26" width="22" height="38" rx="3" fill="#ff8787"/><rect x="44" y="34" width="20" height="30" rx="3" fill="#ffd43b"/><rect x="70" y="22" width="22" height="42" rx="3" fill="#74c0fc"/><rect x="98" y="34" width="18" height="30" rx="3" fill="#8ce99a"/>
+    <rect x="16" y="94" width="26" height="32" rx="3" fill="#ffa94d"/><rect x="48" y="86" width="20" height="40" rx="3" fill="#b197fc"/><rect x="74" y="96" width="20" height="30" rx="3" fill="#ff8787"/><rect x="100" y="90" width="16" height="36" rx="3" fill="#ffd43b"/>
+    <rect x="16" y="154" width="20" height="36" rx="3" fill="#8ce99a"/><rect x="42" y="160" width="28" height="30" rx="3" fill="#74c0fc"/><rect x="76" y="150" width="18" height="40" rx="3" fill="#ffa94d"/><rect x="100" y="158" width="16" height="32" rx="3" fill="#b197fc"/></g>`),
+  cart: svg(120, 110, `<path d="M6 12 h18 l14 62 h66 l10 -46 H30" fill="#d0ebff" stroke="${INK}" stroke-width="5" stroke-linejoin="round"/>
+    <path d="M44 40 v28 M64 36 v32 M84 36 v32" stroke="${INK}" stroke-width="3"/><circle cx="46" cy="94" r="10" fill="#495057"/><circle cx="96" cy="94" r="10" fill="#495057"/>`),
+  toyshelf: svg(140, 160, `<rect x="6" y="6" width="128" height="150" rx="6" fill="#fff3bf" stroke="${INK}" stroke-width="5"/><path d="M6 80 h128" stroke="${INK}" stroke-width="5"/>
+    <circle cx="36" cy="58" r="18" fill="#ff6b6b" stroke="${INK}" stroke-width="3"/><rect x="66" y="34" width="26" height="42" rx="4" fill="#4dabf7" stroke="${INK}" stroke-width="3"/><path d="M100 76 l14 -40 l14 40 z" fill="#69db7c" stroke="${INK}" stroke-width="3"/>
+    <rect x="18" y="112" width="44" height="40" rx="6" fill="#ffa94d" stroke="${INK}" stroke-width="3"/><circle cx="96" cy="132" r="18" fill="#b197fc" stroke="${INK}" stroke-width="3"/>`),
+  desk: svg(180, 110, `<rect x="4" y="4" width="172" height="18" rx="6" fill="#ced4da" stroke="${INK}" stroke-width="4"/>
+    <rect x="12" y="22" width="156" height="84" fill="#63e6be" stroke="${INK}" stroke-width="4"/><rect x="120" y="-2" width="40" height="12" rx="3" fill="#495057"/>
+    <circle cx="40" cy="64" r="16" fill="#fff" stroke="${INK}" stroke-width="3"/><path d="M34 64 h12 M40 58 v12" stroke="#fa5252" stroke-width="4" stroke-linecap="round"/>`),
+  pool: svg(180, 60, `<rect x="2" y="2" width="176" height="58" fill="#4dabf7" opacity="0.88"/><rect x="2" y="2" width="176" height="8" fill="#a5d8ff"/>
+    <path d="M14 26 q10 -8 20 0 t20 0 M80 40 q10 -8 20 0 t20 0 M130 24 q10 -8 20 0 t20 0" stroke="#e7f5ff" stroke-width="4" fill="none" stroke-linecap="round"/>
+    <rect x="0" y="0" width="8" height="60" fill="#dee2e6" stroke="${INK}" stroke-width="3"/>`),
+  pondwater: svg(180, 60, `<path d="M8 10 q82 -14 170 0 V60 H2 Z" fill="#38d9a9" opacity="0.88"/>
+    <path d="M20 30 q10 -6 20 0 M90 42 q10 -6 20 0 M130 24 q10 -6 20 0" stroke="#e6fcf5" stroke-width="4" fill="none" stroke-linecap="round"/>
+    <path d="M6 60 V20 M14 60 V28 M172 60 V18" stroke="#2f9e44" stroke-width="5" stroke-linecap="round"/><ellipse cx="10" cy="16" rx="4" ry="9" fill="#a9714b"/>`),
+  pole: svg(144, 100, `<path d="M6 6 L126 86" stroke="#a9714b" stroke-width="8" stroke-linecap="round"/><circle cx="130" cy="88" r="12" fill="none" stroke="${INK}" stroke-width="4"/>`),
+  armbands: svg(120, 50, `<g fill="#ff922b" stroke="${INK}" stroke-width="4"><rect x="6" y="6" width="44" height="38" rx="16"/><rect x="70" y="6" width="44" height="38" rx="16"/></g>`),
   line: svg(200, 14, `<rect x="2" y="2" width="196" height="10" rx="5" fill="#fcc419" stroke="#e67700" stroke-width="2"/>`),
 };
 
@@ -115,6 +147,10 @@ export function safetyScreen(app, params = {}) {
   let drag = null;
 
   const name = characterName(app);
+  /** Ảnh bố mẹ thay (Góc bố mẹ → Ảnh Siêu nhân an toàn): người, đồ, nền. Chưa có ảnh thì dùng hình vẽ. */
+  const pics = { people: new Map(), items: new Map(), bg: new Map() };
+  const picUrls = [];
+  const badgesBefore = badgesOf(progress);
   const rule = () => RULE_BY_ID.get(plan[idx].id);
   const B = (line) => ({ who: 'bong', line });
 
@@ -122,6 +158,10 @@ export function safetyScreen(app, params = {}) {
   const cards = h('div.sf-cards', { hidden: true });
   const starsEl = h('div.sf-stars', { 'aria-hidden': 'true' });
   const hand = h('span.sf-hand', { text: '👆', 'aria-hidden': 'true', hidden: true });
+  const recap = h('div.sf-recap', { hidden: true, 'aria-hidden': 'true' }); // mức 3, bước 2: hình nhỏ nhắc lại bước 1
+  const album = h('div.sf-album', { hidden: true }); // hết lượt: huy hiệu chủ đề
+  const micEl = h('div.sf-mic', { 'aria-hidden': 'true', text: '🎤', hidden: true }); // "Say it!"
+  const talkStar = h('div.sf-talk-star', { 'aria-hidden': 'true', text: '⭐', hidden: true });
   const stopBtn = h('button.sf-btn.sf-stop', { type: 'button', 'aria-label': 'No', dataset: { answer: 'no' }, onclick: () => answer('no') },
     h('span.sf-btn-icon', { text: '✋' }), h('span.sf-btn-text', {}, h('b', { text: NO_BTN[0] }), h('small', { text: NO_BTN[1] })));
   const okBtn = h('button.sf-btn.sf-ok', { type: 'button', 'aria-label': 'Yes', dataset: { answer: 'yes' }, onclick: () => answer('yes') },
@@ -146,7 +186,7 @@ export function safetyScreen(app, params = {}) {
     },
   });
   const { stage, count, talk } = kit;
-  stage.append(scene, cards, starsEl);
+  stage.append(scene, cards, starsEl, recap, album, micEl, talkStar);
   kit.trayEl.append(stopBtn, okBtn);
   const stepKey = () => `${kit.epoch}:${idx}:${state}`;
 
@@ -168,14 +208,18 @@ export function safetyScreen(app, params = {}) {
   // ---------- Vẽ cảnh ----------
   const spriteEl = (id, root = scene) => root.querySelector(`.sf-sp[data-id="${id}"]`);
   function drawSprite(s, opts = {}) {
+    const person = s.k === 'bong' || ADULTS.has(s.k);
     const art = s.k === 'bong' ? { ar: 1, svg: bongSvg({ mood: 'happy' }) }
-      : s.k === 'mummy' || s.k === 'daddy' ? { ar: 0.8, svg: familySvg(s.k, 'happy') } : ART[s.k] ?? emo('❓');
+      : ADULTS.has(s.k) ? { ar: 0.8, svg: familySvg(s.k, 'happy') } : ART[s.k] ?? emo('❓');
+    const url = (person ? pics.people : pics.items).get(s.k);
     const el = h(`div.sf-sp.sf-${s.k}`, {
       dataset: { id: s.id, k: s.k },
       style: { left: `${s.x}%`, top: `${s.y}%`, height: `${s.h}%`, aspectRatio: String(art.ar), '--h': String(s.h) },
       hidden: Boolean(s.hidden),
     });
-    if (art.emoji) el.append(h('span.sf-emo', { text: art.emoji, 'aria-hidden': 'true' }));
+    // Ảnh của bố mẹ nằm gọn trong khung của hình vẽ (giữ nguyên chỗ chạm / chỗ thả).
+    if (url) el.append(h('img.sf-img', { src: url, alt: '', draggable: false }));
+    else if (art.emoji) el.append(h('span.sf-emo', { text: art.emoji, 'aria-hidden': 'true' }));
     else el.innerHTML = art.svg;
     for (const c of String(s.cls ?? '').split(' ').filter(Boolean)) el.classList.add(c);
     if (s.k === 'bong' && !opts.mini) el.classList.add('caped');
@@ -184,6 +228,9 @@ export function safetyScreen(app, params = {}) {
   function drawScene(root, list, sceneCls, rl, opts) {
     root.dataset.scene = rl.scene;
     root.className = `sf-scene${opts?.mini ? ' mini' : ''}`;
+    const bg = pics.bg.get(rl.scene);
+    root.style.backgroundImage = bg ? `url("${bg}")` : '';
+    root.classList.toggle('pic', Boolean(bg));
     for (const c of sceneCls) root.classList.add(c);
     root.replaceChildren(...list.map((s) => drawSprite(s, opts)));
   }
@@ -215,6 +262,7 @@ export function safetyScreen(app, params = {}) {
     cards.replaceChildren();
     scene.hidden = false;
     hand.hidden = true;
+    showRecap();
     app.root.dataset.rule = r.id; // cho test
     app.root.dataset.kind = r.kind;
     if (resume?.step === 'fix') {
@@ -240,7 +288,11 @@ export function safetyScreen(app, params = {}) {
       if (e === kit.epoch && state === 'ask') kit.armNudge();
       return;
     }
-    // Mức 2: Bông hỏi, rồi hai tranh: "Which one is safe?"
+    // Mức 2–3: Bông hỏi, rồi hai tranh: "Which one is safe?". Mức 3: mở chuyện / "What next?" trước câu hỏi.
+    const { step } = plan[idx];
+    if (!resume && step === 1) await talk([BV(STORY_LINE)]);
+    if (!resume && step === 2) await talk([BV(NEXT_LINE)]);
+    if (e !== kit.epoch) return;
     playCue(r);
     place('bong', r.walk, 94, resume ? 0 : WALK_MS);
     if (!resume) await Promise.all([talk([BV(r.ask)]), wait(WALK_MS)]);
@@ -269,6 +321,7 @@ export function safetyScreen(app, params = {}) {
     cards.replaceChildren(...(safeLeft ? pair : pair.reverse()));
     cards.hidden = false;
     scene.hidden = true;
+    recap.hidden = true;
   }
 
   // ---------- Chọn (mức 1: ✋ / 👍; mức 2: tranh) ----------
@@ -347,6 +400,7 @@ export function safetyScreen(app, params = {}) {
       cards.hidden = true;
       cards.replaceChildren();
       scene.hidden = false;
+      showRecap();
     }
     place('bong', r.walk, 94, 0);
     startFix(false);
@@ -497,6 +551,8 @@ export function safetyScreen(app, params = {}) {
     restartAnim(starsEl.children[stars - 1], 'pop');
     await talk([B(r.short)]);
     if (e !== kit.epoch) return;
+    await sayIt(r);
+    if (e !== kit.epoch) return;
     await wait(400);
     if (e !== kit.epoch) return;
     idx += 1;
@@ -540,20 +596,96 @@ export function safetyScreen(app, params = {}) {
     if (bong) restartAnim(bong, 'fly');
     await talk([B(THANKS_LINE)]);
     if (e !== kit.epoch) return;
+    await showAlbum();
+    if (e !== kit.epoch) return;
     finishRound();
+  }
+  /** Album huy hiệu (mục 6): mỗi chủ đề một huy hiệu — thành tích chơi game, không phải chứng nhận. Chưa có huy hiệu nào thì bỏ qua. */
+  async function showAlbum() {
+    const have = badgesOf(progress);
+    if (!have.length) return;
+    const fresh = have.filter((t) => !badgesBefore.includes(t));
+    album.replaceChildren(h('div.sf-album-row', {}, ...TOPIC_IDS.map((t) => h(`span.sf-badge${have.includes(t) ? '.on' : ''}${fresh.includes(t) ? '.new' : ''}`, {
+      dataset: { topic: t }, title: TOPICS[t].vi,
+    }, h('span.sf-badge-emoji', { text: TOPICS[t].emoji }), h('small', { text: TOPICS[t].en })))));
+    album.hidden = false;
+    for (const el of album.querySelectorAll('.sf-badge.new')) restartAnim(el, 'pop');
+    if (fresh.length) {
+      play('tada');
+      await talk([BV(NEW_BADGE_LINE)]);
+    } else await wait(ALBUM_MS);
+  }
+
+  /** Mức 3, bước 2: hình nhỏ cảnh an toàn của bước 1 (bé không phải nhớ bước trước). */
+  function showRecap() {
+    const p = plan?.[idx];
+    const prev = p?.step === 2 ? plan[idx - 1] : null;
+    recap.hidden = !prev;
+    if (!prev) return;
+    const pr = RULE_BY_ID.get(prev.id);
+    const { sprites: list, scene: cls } = sceneAt(pr, 'safe');
+    const mini = h('div.sf-scene');
+    drawScene(mini, list, cls, pr, { mini: true });
+    recap.replaceChildren(mini, h('span.sf-recap-ok', { text: '✅' }));
+  }
+
+  /**
+   * "Say it!" (mức 3, tùy chọn): chỉ khi bố mẹ bật "Lượt Say it!" và mic đã sẵn sàng từ trước — không bao giờ xin quyền mic.
+   * Bông nói câu ngắn, nghe ≤ 4 giây (không ghi âm). Không tính nhầm, không ảnh hưởng ⭐ / tiến độ / huy hiệu; lỗi gì cũng bỏ qua.
+   * Test UI đặt `window.__kidTest.safetyTalkResult` để giả kết quả nghe.
+   */
+  const talkOn = () => level === 3 && Boolean(app.settings.safetyTalk) && app.mic?.ready && globalThis.__kidTest?.safetyTalk !== false;
+  async function sayIt(r) {
+    if (!talkOn()) return;
+    const e = kit.epoch;
+    setState('talk');
+    await talk([BV(SAY_IT_LINE), B(r.short)]);
+    if (e !== kit.epoch) return;
+    micEl.hidden = false;
+    let result = null;
+    try {
+      const forced = globalThis.__kidTest?.safetyTalkResult;
+      if (forced === 'error') throw new Error('mic');
+      if (forced) {
+        await wait(300);
+        result = forced;
+      } else {
+        const onDemand = app.settings.micOnlyWhenListening;
+        if (onDemand) await app.mic.start();
+        try {
+          const cap = new Promise((resolve) => { setTimeout(() => resolve(null), TALK_CAP_MS); });
+          const out = await Promise.race([listen({ mic: app.mic, recognizer: app.recognizer, keywords: sayKeywords(r), record: false, maxMs: TALK_MS, signal: kit.signal }), cap]);
+          result = out?.result ?? null;
+        } finally {
+          if (onDemand) app.mic.release();
+        }
+      }
+    } catch {
+      result = null; // mic / nhận dạng lỗi: bỏ qua, đi tiếp
+    }
+    micEl.hidden = true;
+    if (e !== kit.epoch) return;
+    if (result === RESULT.MATCH) {
+      play('ding');
+      talkStar.hidden = false;
+      restartAnim(talkStar, 'fly');
+      await talk([B(GREAT_TALK_LINE)]);
+      talkStar.hidden = true;
+    } else if (result === RESULT.VOICE) await talk([B(GOOD_LINE), B(r.short)]);
+    else if (result === RESULT.SILENT) await talk([B(r.short)]);
   }
   function finishRound() {
     if (state === 'done') return;
     setState('done');
     kit.finishRound(() => {
       clearSnap(JOB);
-      progress = afterJobRound(progress, { maxLevel: MAX_LEVEL });
+      progress = afterJobRound(progress, { maxLevel: AUTO_MAX_LEVEL }); // mức 3 chỉ qua khóa mức
       app.setSetting('safetyGame', progress).catch(() => {});
     });
   }
 
   function restartRule() {
-    if (!plan || state === 'done' || state === 'hero' || state === 'empty') return;
+    if (!plan || state === 'done' || state === 'hero' || state === 'empty' || state === 'fixed' || state === 'talk') return; // đã ghi xong tình huống này
     kit.cancelAll();
     clearFixTimer();
     startRule();
@@ -576,29 +708,45 @@ export function safetyScreen(app, params = {}) {
     restartAnim(spriteEl('bong'), 'hop');
   }
 
+  async function loadPics() {
+    for (const [lessonId, map] of [[SAFETY_PEOPLE_IMAGES, pics.people], [SAFETY_ITEM_IMAGES, pics.items], [SAFETY_BG_IMAGES, pics.bg]]) {
+      for (const img of await app.db.getAllByIndex('images', 'lessonId', lessonId).catch(() => [])) {
+        const url = URL.createObjectURL(mediaBlob(img));
+        picUrls.push(url);
+        map.set(img.word, url);
+      }
+    }
+  }
+
   // Lượt dở (ra nền rồi quay lại): chơi nốt đúng kế hoạch và mức đã lưu, kể cả khi bố mẹ vừa đổi mức / tắt chủ đề (mục 8.2).
   const s = takeSnap(JOB, { continueDirectly: params.continueDirectly });
-  if (s && Array.isArray(s.plan) && s.plan.every((p) => RULE_BY_ID.has(p.id))) {
-    plan = s.plan;
-    level = s.level;
-    stars = s.stars ?? 0;
-    idx = Math.min(s.idx, plan.length);
-    if (idx >= plan.length) {
-      renderStars();
-      finishRound();
-    } else startRule(s);
-  } else {
-    plan = planRound({ off: progress.off, focus: progress.focus, seen: progress.seen });
+  loadPics().then(() => {
+    if (kit.signal.aborted) return;
+    if (s && Array.isArray(s.plan) && s.plan.every((p) => RULE_BY_ID.has(p.id))) {
+      plan = s.plan;
+      level = s.level;
+      stars = s.stars ?? 0;
+      idx = Math.min(s.idx, plan.length);
+      if (idx >= plan.length) {
+        renderStars();
+        finishRound();
+      } else startRule(s);
+      return;
+    }
+    const opts = { off: progress.off, focus: progress.focus, seen: progress.seen };
+    // Mức 3: 2 chuyện × 2 bước; không đủ chuyện (bố mẹ tắt gần hết chủ đề) thì lượt thường, vẫn chơi kiểu chọn tranh.
+    plan = (level === 3 && planStory(opts)) || planRound(opts);
     if (globalThis.__kidTest?.safetyPlan) plan = globalThis.__kidTest.safetyPlan; // test UI cố định tình huống
     if (!plan) showEmpty();
     else {
       idx = 0;
       startRule();
     }
-  }
+  });
 
   return () => {
     clearFixTimer();
     kit.cleanup();
+    picUrls.forEach((u) => URL.revokeObjectURL(u));
   };
 }

@@ -28,6 +28,8 @@ import { soundsAdminView } from './sounds.js';
 import { doctorAdminView } from './doctor.js';
 import { jobsAdminView } from './jobs.js';
 import { mathImagesView } from './math-images.js';
+import { safetyImagesView, safetyTipsView } from './safety.js';
+import { RULE_BY_ID, TOPICS, TOPIC_IDS, cleanSafetyState, badgesOf } from '../../jobs/safety.js';
 import { frameSummary } from '../../patterns2.js';
 
 const VIEWS = {
@@ -55,6 +57,8 @@ const VIEWS = {
   doctor: doctorAdminView,
   jobs: jobsAdminView,
   'math-images': mathImagesView,
+  'safety-images': safetyImagesView,
+  'safety-tips': safetyTipsView,
 };
 
 export function parentScreen(app, params = {}) {
@@ -97,6 +101,8 @@ function menuView(app) {
       item('🩺', 'Ảnh Bác sĩ nhí (ảnh đồ, ảnh nền phòng khám)', () => goParent(app, 'doctor')),
       item('👨‍⚕️', 'Ảnh Đóng vai (ảnh nền từng nghề)', () => goParent(app, 'jobs')),
       item('🧮', 'Ảnh Toán (ảnh đồ vật)', () => goParent(app, 'math-images')),
+      item('🦸', 'Ảnh Siêu nhân an toàn (Bông, bố mẹ, đồ vật, nền)', () => goParent(app, 'safety-images')),
+      item('💬', 'Siêu nhân an toàn: nói thêm với bé', () => goParent(app, 'safety-tips')),
       item('⚙️', 'Cài đặt & chẩn đoán', () => goParent(app, 'settings'))),
     h('button.exit-to-child', { type: 'button', onclick: () => app.go('home') },
       bongElement('menu-bong'), h('span', { text: 'Về màn hình của bé' })),
@@ -169,6 +175,11 @@ function progressView(app) {
     const numbers = numberRecords(list).filter(isLearned).sort((a, b) => Number(a.word.split(':')[1]) - Number(b.word.split(':')[1]));
     const letters = letterRecords(list).filter(isLearned).sort((a, b) => a.word.localeCompare(b.word));
     const sounds = soundRecords(list).filter(isLearned).sort((a, b) => a.word.localeCompare(b.word));
+    // Siêu nhân an toàn (S2): theo thứ tự bảng tình huống; mã đã bỏ khỏi bảng thì không hiện.
+    const order = [...RULE_BY_ID.keys()];
+    // Bản ghi chỉ có `attempts` (chọn đúng ngay / sai), không có lần luyện nói.
+    const safety = list.filter((r) => String(r.word).startsWith('safe:') && r.attempts && RULE_BY_ID.has(r.word.slice(5)))
+      .sort((a, b) => order.indexOf(a.word.slice(5)) - order.indexOf(b.word.slice(5)));
     // Sao khung của Mẫu câu mở rộng (SPEC-patterns2 mục 5): số hành động / đồ khác nhau bé đã nói được CẢ CÂU (có sao).
     const frames = frameSummary(list);
     if (frames.some((f) => f.count)) {
@@ -178,7 +189,7 @@ function progressView(app) {
           h('span.p-word', {}, h('b', { text: f.frame })),
           h('span.p-meta', { text: f.count ? `với ${f.count} ${f.what}` : 'chưa có' }))))));
     }
-    if (!words.length && !phrases.length && !numbers.length && !letters.length && !sounds.length && !frames.some((f) => f.count)) {
+    if (!words.length && !phrases.length && !numbers.length && !letters.length && !sounds.length && !safety.length && !frames.some((f) => f.count)) {
       body.append(section(null, h('p', { text: 'Bé chưa học từ, câu, số hay chữ cái nào.' })));
       return;
     }
@@ -206,6 +217,19 @@ function progressView(app) {
       body.append(section(`Chữ cái — ${known(letters)}/${letters.length} chữ đã thuộc (từ 3⭐)`,
         h('ul.progress-list', {}, ...letters.map((r) => row(r, `chữ ${r.word.replace(/^letter:/, '').toUpperCase()}`,
           r.attempts ? ` · chọn: đúng ngay ${r.attempts.right}, sai ${r.attempts.wrong}` : '')))));
+    }
+    if (safety.length) {
+      const badges = badgesOf(cleanSafetyState(app.settings.safetyGame));
+      body.append(section(`🦸 Siêu nhân an toàn — ${safety.length}/${RULE_BY_ID.size} tình huống đã chơi · huy hiệu ${badges.length}/${TOPIC_IDS.length}`,
+        h('p.muted', { text: `Huy hiệu: ${badges.length ? badges.map((t) => `${TOPICS[t].emoji} ${TOPICS[t].vi}`).join(', ') : 'chưa có'}. Sao chỉ tăng khi bé chọn đúng ngay lần đầu; chọn nhầm không bị trừ. Đây là thành tích chơi game — bố mẹ vẫn là người dạy bé ngoài đời.` }),
+        h('ul.progress-list', {}, ...safety.map((r) => {
+          const rule = RULE_BY_ID.get(r.word.slice(5));
+          return h('li', {},
+            h('span.p-emoji', { text: rule.emoji }),
+            h('span.p-word', { text: `${TOPICS[rule.topic].emoji} ${rule.short[0]} (${rule.short[1]})` }),
+            h('span.p-stars', { text: stars(r.mastery) }),
+            h('span.p-meta', { text: `chơi ${r.attempts.right + r.attempts.wrong} lần · đúng ngay ${r.attempts.right}, sai ${r.attempts.wrong}` }));
+        }))));
     }
     if (sounds.length) {
       body.append(section(`Âm (Jolly) — ${known(sounds)}/${sounds.length} âm đã thuộc (từ 3⭐)`,
