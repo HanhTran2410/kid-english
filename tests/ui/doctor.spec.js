@@ -142,7 +142,8 @@ test('3 ca → Hoan hô + sticker; đếm lượt + seen một lần; ghi "đã 
   const game = await page.evaluate(() => window.kidEnglish.settings.doctorGame);
   expect(game.rounds).toBe(1);
   expect(game.level).toBe(1);
-  expect(Object.values(game.seen).reduce((a, b) => a + b, 0)).toBe(3);
+  expect(Object.entries(game.seen).filter(([k]) => !k.startsWith('pt:')).reduce((a, [, b]) => a + b, 0)).toBe(3);
+  expect(Object.entries(game.seen).filter(([k]) => k.startsWith('pt:')).reduce((a, [, b]) => a + b, 0)).toBe(3); // mỗi ca một bạn thú (SPEC-jobs6 mục 4)
   const body = { hand: 'hands', foot: 'feet', nose: 'nose', mouth: 'mouth' };
   const words = await page.evaluate(async () => (await window.kidEnglish.db.getAll('progress')).map((p) => p.word));
   for (const c of healed) if (body[c.target]) expect(words).toContain(body[c.target]);
@@ -274,7 +275,7 @@ test('Góc bố mẹ → Ảnh Bác sĩ nhí: dùng lại ảnh có sẵn (ảnh
   const { openParent } = await import('./helpers.js');
   await openParent(page);
   await page.getByRole('button', { name: /Ảnh Bác sĩ nhí/ }).click();
-  await expect(page.locator('.sp-admin-item[data-item]')).toHaveCount(11);
+  await expect(page.locator('.sp-admin-item[data-item]')).toHaveCount(12); // + miếng bọt biển (SPEC-jobs6 mục 4)
   await expect(page.locator('.sp-admin-item[data-item="medicine"]').getByRole('button', { name: 'Ảnh có sẵn (1)…' })).toBeVisible();
   await page.getByRole('button', { name: 'Dùng lại ảnh đã có (2 đồ)' }).click();
   await expect.poll(() => doctorImages(page)).toEqual(['medicine', 'toothbrush']);
@@ -289,7 +290,7 @@ test('trò chơi dùng ảnh đồ bố mẹ thêm (khay) và ảnh nền phòng
   await fakeSpeech(page);
   await pinNewCase(page);
   await startApp(page);
-  for (const id of ['bandage', 'medicine', 'tissue', 'toothbrush', 'icepack', 'drops', 'water', 'blanket']) await addImage(page, 'doctor:items', id);
+  for (const id of ['bandage', 'medicine', 'tissue', 'toothbrush', 'icepack', 'drops', 'water', 'blanket', 'sponge']) await addImage(page, 'doctor:items', id);
   await addImage(page, 'doctor:bg', 'room');
   await page.getByRole('button', { name: 'Trò chơi' }).click();
   await page.getByRole('button', { name: 'Đóng vai' }).click();
@@ -372,7 +373,7 @@ test('D2 mức 3: chơi hết lượt với 11 ca (sốt: nhiệt kế; ho: khô
   await fakeSpeech(page);
   await pinNewCase(page);
   await startApp(page);
-  const others = ['cut-hand', 'cut-foot', 'tummy', 'runny-nose', 'tooth', 'ear-bug', 'eye', 'bump', 'sleepy'];
+  const others = ['cut-hand', 'cut-foot', 'tummy', 'runny-nose', 'tooth', 'ear-bug', 'eye', 'bump', 'sleepy', 'muddy'];
   await page.evaluate((o) => window.kidEnglish.setSetting('doctorGame', { level: 3, rounds: 0, lock: 3, seen: Object.fromEntries(o.map((id) => [id, 9])) }), others);
   await page.getByRole('button', { name: 'Trò chơi' }).click();
   await page.getByRole('button', { name: 'Đóng vai' }).click();
@@ -392,7 +393,7 @@ test('D2 mức 3: chơi hết lượt với 11 ca (sốt: nhiệt kế; ho: khô
   await expect(page.locator('.prize-sticker')).toBeVisible({ timeout: 15000 });
   const said = await spoken(page);
   expect(said).toContain('You feel warm!');
-  expect(said).toContain('Cough! Cough!');
+  expect(said.some((t) => t.endsWith('Cough! Cough!'))).toBe(true); // bạn thú nông trại kêu trước ("Baa! Cough! Cough!")
 });
 
 test('D2: Cài đặt → "Mức chơi Bác sĩ nhí" có 3 mức, chọn mức 3 thì khóa mức 3', async ({ page }) => {

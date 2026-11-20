@@ -1,5 +1,6 @@
 // Bạn thú (bệnh nhân) của Bác sĩ nhí (SPEC-doctor mục 5): một khung thân chung kiểu thú bông, ngồi trên giường,
-// 4 cái đầu khác nhau (gấu, mèo, cún, heo). Mọi bạn dùng chung tọa độ vùng chạm (SPOTS trong doctor.js), viewBox 240 × 300.
+// 4 cái đầu khác nhau (gấu, mèo, cún, heo) + 3 bạn nông trại (bò, cừu, ngựa — SPEC-jobs6 mục 4: sừng, bờm, lông cừu nằm
+// trong vùng đầu / ngoài mọi vùng, không lấn sang mắt / tai / tay). Mọi bạn dùng chung tọa độ vùng chạm (SPOTS trong doctor.js), viewBox 240 × 300.
 // Mặt (buồn / vui / buồn ngủ) và dấu hiệu bệnh vẽ trong nhóm riêng để đổi mà không vẽ lại cả bạn thú.
 
 import { SPOTS, VIEW_W, VIEW_H } from './doctor.js';
@@ -14,9 +15,35 @@ const LOOKS = {
   kitty: { fur: '#ffc078', shade: '#e8994a', light: '#fff1dc', ear: '#ffb3c7' },
   puppy: { fur: '#f5e6cc', shade: '#d9c19b', light: '#ffffff', ear: '#a9744a' },
   piggy: { fur: '#ffc2d1', shade: '#f08cab', light: '#ffe0e8', ear: '#ff9ab5' },
+  cow: { fur: '#ffffff', shade: '#868e96', light: '#ffe3ec', ear: '#ffc9d6', spot: '#495057', horn: '#f8d66d' },
+  sheep: { fur: '#ffe8cc', shade: '#d9a066', light: '#fff4e6', ear: '#ffd8a8', wool: '#ffffff', woolShade: '#ced4da' },
+  horse: { fur: '#c0803f', shade: '#8a5a2b', light: '#e8b67e', ear: '#e8b67e', mane: '#5c3a1e' },
 };
 
 function ears(id, c) {
+  if (id === 'cow') {
+    return `
+      <path d="M90 36 q-14 -12 -8 -30 M150 36 q14 -12 8 -30" fill="none" stroke="${c.horn}" stroke-width="10" stroke-linecap="round"/>
+      <path d="M90 36 q-14 -12 -8 -30 M150 36 q14 -12 8 -30" fill="none" stroke="#c9a227" stroke-width="2" stroke-linecap="round" opacity="0.6"/>
+      <ellipse cx="56" cy="42" rx="24" ry="12" fill="${c.fur}" stroke="${c.shade}" stroke-width="3" transform="rotate(-22 56 42)"/>
+      <ellipse cx="56" cy="42" rx="13" ry="6" fill="${c.ear}" transform="rotate(-22 56 42)"/>
+      <ellipse cx="184" cy="42" rx="24" ry="12" fill="${c.fur}" stroke="${c.shade}" stroke-width="3" transform="rotate(22 184 42)"/>
+      <ellipse cx="184" cy="42" rx="13" ry="6" fill="${c.ear}" transform="rotate(22 184 42)"/>`;
+  }
+  if (id === 'sheep') {
+    return `
+      <ellipse cx="54" cy="44" rx="26" ry="12" fill="${c.fur}" stroke="${c.shade}" stroke-width="3" transform="rotate(28 54 44)"/>
+      <ellipse cx="54" cy="44" rx="14" ry="6" fill="${c.ear}" transform="rotate(28 54 44)"/>
+      <ellipse cx="186" cy="44" rx="26" ry="12" fill="${c.fur}" stroke="${c.shade}" stroke-width="3" transform="rotate(-28 186 44)"/>
+      <ellipse cx="186" cy="44" rx="14" ry="6" fill="${c.ear}" transform="rotate(-28 186 44)"/>`;
+  }
+  if (id === 'horse') {
+    return `
+      <path d="M52 62 L60 4 L94 40 Z" fill="${c.fur}" stroke="${c.shade}" stroke-width="3" stroke-linejoin="round"/>
+      <path d="M62 50 L64 20 L84 40 Z" fill="${c.ear}"/>
+      <path d="M188 62 L180 4 L146 40 Z" fill="${c.fur}" stroke="${c.shade}" stroke-width="3" stroke-linejoin="round"/>
+      <path d="M178 50 L176 20 L156 40 Z" fill="${c.ear}"/>`;
+  }
   if (id === 'kitty') {
     return `
       <path d="M44 66 L56 6 L98 38 Z" fill="${c.fur}" stroke="${c.shade}" stroke-width="3" stroke-linejoin="round"/>
@@ -42,6 +69,18 @@ function ears(id, c) {
 }
 
 function muzzle(id, c) {
+  if (id === 'cow') {
+    return `
+      <ellipse cx="120" cy="124" rx="40" ry="26" fill="${c.ear}" stroke="${c.shade}" stroke-width="3"/>
+      <ellipse cx="104" cy="120" rx="5" ry="7" fill="${INK}" opacity="0.7"/>
+      <ellipse cx="136" cy="120" rx="5" ry="7" fill="${INK}" opacity="0.7"/>`;
+  }
+  if (id === 'horse') {
+    return `
+      <ellipse cx="120" cy="126" rx="36" ry="30" fill="${c.light}"/>
+      <ellipse cx="108" cy="124" rx="4" ry="6" fill="${INK}" opacity="0.7"/>
+      <ellipse cx="132" cy="124" rx="4" ry="6" fill="${INK}" opacity="0.7"/>`;
+  }
   if (id === 'piggy') {
     return `
       <ellipse cx="120" cy="112" rx="24" ry="16" fill="${c.ear}" stroke="${c.shade}" stroke-width="3"/>
@@ -57,6 +96,33 @@ function muzzle(id, c) {
     <ellipse cx="120" cy="124" rx="32" ry="26" fill="${c.light}"/>
     <ellipse cx="120" cy="110" rx="11" ry="8" fill="${INK}"/>
     <ellipse cx="116" cy="107" rx="3" ry="2" fill="#fff" opacity="0.7"/>`;
+}
+
+/** Đốm bò trên thân (không trùng tay / chân / mặt). */
+function bodyExtras(id, c) {
+  if (id === 'cow') {
+    return `<path d="M86 186 q14 -12 26 0 q4 14 -12 18 q-16 -2 -14 -18 Z M138 236 q16 -8 22 6 q-2 14 -16 12 q-12 -4 -6 -18 Z" fill="${c.spot}" opacity="0.85"/>`;
+  }
+  if (id === 'sheep') {
+    // Lông cừu bông xù quanh thân (chỉ trang trí; vùng chạm vẫn là bụng / tay / chân).
+    const puffs = [[70, 190], [92, 172], [120, 166], [148, 172], [170, 190], [176, 222], [166, 252], [74, 252], [64, 222]];
+    return puffs.map(([x, y]) => `<circle cx="${x}" cy="${y}" r="18" fill="${c.wool}" stroke="${c.woolShade}" stroke-width="2"/>`).join('') +
+      `<ellipse cx="120" cy="226" rx="40" ry="38" fill="${c.light}"/>`;
+  }
+  return '';
+}
+/** Trên đầu: búi lông cừu, bờm ngựa, đốm bò (trong vùng đầu, trên mắt). */
+function headExtras(id, c) {
+  if (id === 'sheep') {
+    const puffs = [[84, 40], [104, 30], [126, 28], [148, 34], [164, 46]];
+    return puffs.map(([x, y]) => `<circle cx="${x}" cy="${y}" r="17" fill="${c.wool}" stroke="${c.woolShade}" stroke-width="2"/>`).join('');
+  }
+  if (id === 'horse') {
+    return `<path d="M96 34 q8 -26 24 -26 q16 0 24 26 q-12 -8 -24 -6 q-12 -2 -24 6 Z" fill="${c.mane}" stroke="${c.shade}" stroke-width="2" stroke-linejoin="round"/>
+      <path d="M104 30 q4 14 -2 24 M120 24 q4 14 -2 26 M136 30 q4 14 -2 24" fill="none" stroke="${c.mane}" stroke-width="7" stroke-linecap="round"/>`;
+  }
+  if (id === 'cow') return `<path d="M140 40 q16 -8 26 6 q-4 14 -18 10 q-12 -4 -8 -16 Z" fill="${c.spot}" opacity="0.85"/>`;
+  return '';
 }
 
 /**
@@ -129,6 +195,13 @@ export function signSvg(sign, look = LOOKS.teddy) {
     case 'fever':
       return `<circle cx="80" cy="124" r="13" fill="#ff6b6b" opacity="0.55"/><circle cx="160" cy="124" r="13" fill="#ff6b6b" opacity="0.55"/>
         <path d="M178 60 q6 10 0 16 q-6 -6 0 -16 z" fill="#9bd4ff"/>`;
+    case 'muddy':
+      // Bùn nâu ở hai bàn chân (+ vài vệt), không vẽ gì đáng sợ.
+      return `<g class="dr-mud" fill="#8d5a2b" opacity="0.88">
+        <path d="M58 280 q4 -16 22 -14 q20 0 22 14 q-4 14 -22 12 q-20 2 -22 -12 Z"/>
+        <path d="M138 280 q4 -16 22 -14 q20 0 22 14 q-4 14 -22 12 q-20 2 -22 -12 Z"/>
+        <circle cx="70" cy="254" r="6"/><circle cx="168" cy="250" r="5"/><circle cx="150" cy="258" r="4"/>
+      </g>`;
     case 'cough':
       return `<text x="168" y="150" font-size="22" font-weight="900" fill="${INK}" opacity="0.7">cough</text>`;
     default: return '';
@@ -154,10 +227,12 @@ export function patientSvg(id, { mood = 'sad', sign = null, title = '' } = {}) {
       <ellipse cx="178" cy="196" rx="15" ry="34" fill="${c.fur}" stroke="${c.shade}" stroke-width="3" transform="rotate(-34 178 196)"/>
       <ellipse cx="120" cy="220" rx="66" ry="58" fill="${c.fur}" stroke="${c.shade}" stroke-width="3"/>
       <ellipse cx="120" cy="226" rx="40" ry="38" fill="${c.light}"/>
+      ${bodyExtras(id, c)}
       <circle cx="40" cy="214" r="17" fill="${c.fur}" stroke="${c.shade}" stroke-width="3"/>
       <circle cx="200" cy="214" r="17" fill="${c.fur}" stroke="${c.shade}" stroke-width="3"/>
       ${ears(id, c)}
       <circle cx="120" cy="96" r="70" fill="${c.fur}" stroke="${c.shade}" stroke-width="3"/>
+      ${headExtras(id, c)}
       ${muzzle(id, c)}
     </g>
     <g class="dr-face">${faceSvg(mood)}</g>

@@ -97,7 +97,20 @@ export const PATIENTS = [
   { id: 'puppy', name: 'Puppy', vi: 'Cún Puppy', emoji: '🐶', pitch: 1.25 },
   { id: 'piggy', name: 'Piggy', vi: 'Heo Piggy', emoji: '🐷', pitch: 0.9 },
 ];
-export const PATIENT_BY_ID = new Map(PATIENTS.map((p) => [p.id, p]));
+/**
+ * Bạn thú nông trại (SPEC-jobs6 mục 4): chỉ là bệnh nhân của Bác sĩ nhí (nghề khác vẫn dùng 4 bạn ở trên). Vào phòng kêu
+ * tiếng của mình (`sound`: file của Ai kêu thế?) rồi nói triệu chứng có `cry` đứng trước ("Moo! My foot hurts!").
+ * `word`: từ của bài Animals (ghi "đã gặp" khi chữa xong ca không nhầm).
+ */
+export const FARM_PATIENTS = [
+  { id: 'cow', name: 'Moo-Moo', vi: 'Bò Moo', emoji: '🐮', pitch: 0.8, sound: 'cow', cry: 'Moo!', word: 'cow' },
+  { id: 'sheep', name: 'Baa-Baa', vi: 'Cừu Baa', emoji: '🐑', pitch: 1.3, sound: 'sheep', cry: 'Baa!' },
+  { id: 'horse', name: 'Neigh-Neigh', vi: 'Ngựa Hí', emoji: '🐴', pitch: 1.05, sound: 'horse', cry: 'Neigh!' },
+];
+export const FARM_PATIENT_IDS = new Set(FARM_PATIENTS.map((p) => p.id));
+/** Mọi bệnh nhân của Bác sĩ nhí. */
+export const DOCTOR_PATIENTS = [...PATIENTS, ...FARM_PATIENTS];
+export const PATIENT_BY_ID = new Map(DOCTOR_PATIENTS.map((p) => [p.id, p]));
 
 // ---------- Dụng cụ khám, đồ chữa (mục 6.1, 6.2) ----------
 /**
@@ -130,6 +143,9 @@ export const TREATS = [
     draw: 'a cup of warm water with a little steam', reuse: ['warm water', 'water', 'cup'] },
   { id: 'blanket', kind: 'treat', emoji: '🛏️', name: 'blanket', vi: 'cái chăn', ask: 'a blanket', wrong: "that's the blanket", notThis: 'not the blanket',
     draw: 'a soft folded blanket', reuse: ['blanket'] },
+  // Ca lấm bùn của bạn thú nông trại (SPEC-jobs6 mục 4). `fresh`: từ mới — luôn gọi tên ở mọi mức, không làm đồ nhiễu.
+  { id: 'sponge', kind: 'treat', emoji: '🧽', name: 'sponge', vi: 'miếng bọt biển', ask: 'a sponge', wrong: "that's the sponge", notThis: 'not the sponge',
+    draw: 'a soft yellow sponge with white soap bubbles on top', reuse: ['sponge'], fresh: true },
 ];
 export const ITEM_BY_ID = new Map([...TOOLS, ...TREATS].map((t) => [t.id, t]));
 
@@ -195,6 +211,12 @@ export const CASES = [
     say: ['Cough! Cough!', 'Khụ! Khụ!'], remind: ['Cough! Cough!', 'Khụ! Khụ!'],
     steps: [{ type: 'check', item: 'stethoscope', from: 2 }, { type: 'treat', item: 'water' }],
   },
+  {
+    // Chỉ bạn thú nông trại (`farm`): vào phòng đã lấm bùn ở chân, thấy trước khi nghe (SPEC-jobs6 mục 4).
+    id: 'muddy', level: 1, sign: 'muddy', hurt: 'foot', farm: true,
+    say: ["I'm muddy!", 'Tớ lấm bùn hết rồi!'], remind: ['My foot is muddy!', 'Chân tớ lấm bùn cơ!'],
+    steps: [{ type: 'touch', target: 'foot' }, { type: 'treat', item: 'sponge' }],
+  },
 ];
 export const CASE_BY_ID = new Map(CASES.map((c) => [c.id, c]));
 
@@ -222,7 +244,7 @@ const shuffle = (list, rng) => {
 export function trayFor(step, level, { rng = Math.random } = {}) {
   const pool = step.type === 'check' ? TOOLS : TREATS;
   const size = Math.min(TRAY_SIZE[level]?.[step.type] ?? 2, pool.length);
-  const others = shuffle(pool.filter((t) => t.id !== step.item), rng).slice(0, size - 1);
+  const others = shuffle(pool.filter((t) => t.id !== step.item && !t.fresh), rng).slice(0, size - 1);
   return shuffle([ITEM_BY_ID.get(step.item), ...others], rng).map((t) => t.id);
 }
 
@@ -231,10 +253,10 @@ export function trayFor(step, level, { rng = Math.random } = {}) {
  * 1. 3 ca khác nhau trong nhóm của mức (bắt buộc);
  * 2. tối đa 2 ca bé ít gặp nhất (`seen`: mã ca → số lần khỏi), còn lại ngẫu nhiên;
  * 3. nên: không có hai ca cùng đồ chữa cuối — thử tối đa 20 bộ, không đạt thì dùng bộ cuối.
- * Mỗi ca một bạn thú khác nhau.
+ * Mỗi ca một bạn thú khác nhau, ưu tiên bạn ít gặp (`seen['pt:<mã>']`); ca chỉ của thú nông trại (`farm`) nhận bạn nông trại.
  * @returns {Array<{ id: string, patient: string }>}
  */
-export function pickCases(level, { seen = {}, rng = Math.random, pool = casesFor(level), n = CASES_PER_ROUND } = {}) {
+export function pickCases(level, { seen = {}, rng = Math.random, pool = casesFor(level), n = CASES_PER_ROUND, patients = DOCTOR_PATIENTS } = {}) {
   const count = (c) => (Number.isInteger(seen?.[c.id]) ? seen[c.id] : 0);
   let pick = [];
   for (let i = 0; i < PICK_TRIES; i++) {
@@ -245,8 +267,17 @@ export function pickCases(level, { seen = {}, rng = Math.random, pool = casesFor
     const items = pick.map((c) => lastItem(c, level));
     if (new Set(items).size === items.length) break;
   }
-  const patients = shuffle(PATIENTS, rng);
-  return pick.map((c, i) => ({ id: c.id, patient: patients[i % patients.length].id }));
+  const met = (p) => (Number.isInteger(seen?.[`pt:${p.id}`]) ? seen[`pt:${p.id}`] : 0);
+  const order = shuffle(patients, rng).sort((a, b) => met(a) - met(b));
+  const used = new Set();
+  const take = (ok) => {
+    const p = order.find((x) => !used.has(x.id) && ok(x)) ?? order.find((x) => !used.has(x.id)) ?? order[0];
+    used.add(p.id);
+    return p.id;
+  };
+  const out = pick.map((c) => ({ id: c.id, patient: c.farm ? take((p) => FARM_PATIENT_IDS.has(p.id)) : null }));
+  for (const o of out) if (!o.patient) o.patient = take(() => true);
+  return out;
 }
 
 // ---------- Câu nói (mục 6.4): mỗi câu [tiếng Anh, tiếng Việt] ----------
@@ -279,7 +310,7 @@ export const askLine = (item) => [`${capital(ITEM_BY_ID.get(item).ask)}, please!
 export const stepPrompt = (step, level) => {
   if (step.type === 'touch') return { who: 'bong', line: WHERE_LINE };
   if (step.type === 'check') return { who: 'bong', line: checkLine(step.item) };
-  return level <= 1 ? { who: 'patient', line: askLine(step.item) } : { who: 'bong', line: HOW_HELP_LINE };
+  return level <= 1 || ITEM_BY_ID.get(step.item)?.fresh ? { who: 'patient', line: askLine(step.item) } : { who: 'bong', line: HOW_HELP_LINE };
 };
 
 /**
@@ -290,7 +321,7 @@ export const stepPrompt = (step, level) => {
 export function wrongItemLine(given, step, level, wrongs) {
   const g = ITEM_BY_ID.get(given);
   const need = ITEM_BY_ID.get(step.item);
-  const named = step.type === 'check' || level <= 1;
+  const named = step.type === 'check' || level <= 1 || Boolean(need.fresh);
   const needEn = step.type === 'check' ? `Use ${need.the}!` : `I need ${need.ask}!`;
   const needVi = step.type === 'check' ? `Dùng ${need.vi} cơ!` : `Tớ cần ${need.vi} cơ!`;
   if (named) return { line: [`Hmm, ${g.wrong}. ${needEn}`, `Ừm, đó là ${g.vi}. ${needVi}`], hint: true };
@@ -308,6 +339,7 @@ export const DONE_LINES = {
   icepack: { who: 'patient', line: ['Nice and cool!', 'Mát quá!'] },
   water: { who: 'patient', line: ['Mmm, warm water.', 'Ừm, nước ấm.'] },
   blanket: { who: 'bong', line: ['Time to rest.', 'Nghỉ một chút nhé.'] },
+  sponge: { who: 'patient', line: ['Clean! Thank you!', 'Sạch rồi! Cảm ơn bác sĩ!'] },
   stethoscope: { who: 'bong', line: ['Listen! Thump, thump.', 'Nghe này! Thình thịch.'] },
   thermometer: { who: 'bong', line: ['You feel warm!', 'Bạn hơi nóng!'] },
   flashlight: { who: 'bong', line: ['Open wide! Say aah!', 'Há miệng ra! Nói "a" nào!'] },
@@ -327,7 +359,7 @@ export function cleanDoctorState(saved, { maxLevel = PLAYABLE_LEVEL } = {}) {
   const lock = ok(s.lock) ? s.lock : null;
   const seen = {};
   if (s.seen && typeof s.seen === 'object') {
-    for (const [id, n] of Object.entries(s.seen)) if ((CASE_BY_ID.has(id) || NEW_CASE_IDS.includes(id) || FEELING_BY_ID.has(id.replace(/^feel:/, ''))) && Number.isInteger(n) && n > 0) seen[id] = n;
+    for (const [id, n] of Object.entries(s.seen)) if ((CASE_BY_ID.has(id) || NEW_CASE_IDS.includes(id) || FEELING_BY_ID.has(id.replace(/^feel:/, '')) || PATIENT_BY_ID.has(id.replace(/^pt:/, ''))) && Number.isInteger(n) && n > 0) seen[id] = n;
   }
   return {
     level: lock ?? (ok(s.level) ? s.level : 1),
@@ -460,9 +492,11 @@ export function planCheckup(level, patients, { rng = Math.random } = {}) {
  * mỗi ca có bộ sticker sinh sẵn; bạn thú khác nhau (ca đo mức 3 có hai bạn).
  */
 export function planDoctorRound(level, { seen = {}, rng = Math.random, eyeWords = [] } = {}) {
-  const ill = pickCases(level, { seen, rng, n: CASES_PER_ROUND - 1 });
+  // Chỉ test UI đặt `window.__kidTest.doctorCases` (2 ca bệnh { id, patient }) để cố định ca và bạn thú.
+  const forced = globalThis.__kidTest?.doctorCases;
+  const ill = Array.isArray(forced) ? forced.map((c) => ({ id: c.id, patient: c.patient })) : pickCases(level, { seen, rng, n: CASES_PER_ROUND - 1 });
   const used = new Set(ill.map((c) => c.patient));
-  const free = shuffleList(PATIENTS.map((p) => p.id).filter((id) => !used.has(id)), rng);
+  const free = shuffleList(DOCTOR_PATIENTS.map((p) => p.id).filter((id) => !used.has(id)), rng);
   const extra = level >= 2 && pickNewCase(seen, rng) === 'eyes' ? planEyes(level, free[0], { words: eyeWords, rng }) : planCheckup(level, free, { rng });
   const cases = [...ill];
   // Chỉ test UI đặt `window.__kidTest.doctorNewAt` để cố định chỗ ca mới; bình thường ngẫu nhiên.

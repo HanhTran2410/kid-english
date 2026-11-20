@@ -1,6 +1,6 @@
 # SPEC — 🧑‍⚕️ Đóng vai nghề: nói chọn món, đồ bỏ quên mức 1, thú nông trại khám bệnh, 5 nghề mới
 
-> Phiên bản spec: **draft2** (sửa theo review, mục 13) · Ngày: 2026-11-20 · Dựa trên app 0.87.1. **Bố mẹ đã duyệt (2026-11-20).** Đã làm: 0.88.0, 0.89.0. Ghi chú khi làm: mục 14.
+> Phiên bản spec: **draft2** (sửa theo review, mục 13) · Ngày: 2026-11-20 · Dựa trên app 0.87.1. **Bố mẹ đã duyệt (2026-11-20).** Đã làm: 0.88.0, 0.89.0, 0.90.0. Ghi chú khi làm: mục 14.
 > - draft1: bản đầu, 8 bản, 7 câu hỏi.
 > - **draft2, sửa theo review:** giới hạn thao tác mỗi mức + luật tiến độ + lưu / chạm trùng / giọng lỗi / micro lỗi cho mọi bản (mục 1.1); Đầu bếp khớp tên món theo từ, một lần chọn duy nhất giữa chạm và micro (2); Xe buýt dấu hiệu nhìn thấy, không trách (3); Bác sĩ kiểm vùng chạm riêng từng con, tiếng lỗi không kẹt (4); Thợ cắt tóc bỏ tóc giả, ít lọn (5); Nha sĩ một khách, chạm là tự chải, không đếm răng mức 1, kẹo không tính nhầm (6); Họa sĩ tách kỹ năng, "tô màu tự do" (7); Làm vườn sửa logic trời mưa, mức 1 hai bước (8); Người giữ thú bỏ tiếng ngựa cho ngựa vằn, voi = big, hươu = tall (9); trang chọn nghề, checklist nội dung (10, 11); chốt 7 câu hỏi (12).
 >
@@ -350,3 +350,13 @@ Thú hoang trong vườn thú (Nông trại là vật nuôi). **Người lớn b
 - Test: unit bus (500 seed mức 1 luôn 1 đồ, câu mức 1); UI JOBS6-07, 08; sửa test Xe buýt mức 1 cũ (giờ có đồ bỏ quên).
 - Kèm: `app/shared/index.json` thêm `sieu-nhan-an-toan-2026-11-20.zip` (bố mẹ tải lên GitHub).
 - Sửa 2 test hay lỗi khi chạy cả bộ (máy chậm): SAFE-S2-02 ghi lại lúc hình nhắc lại hiện (MutationObserver) thay vì bắt đúng khoảnh khắc; JOBS4-27 chỉ kiểm không có xe khác chạy (xe đúng có thể đã chạy xong).
+
+### 0.90.0 — 🩺 bạn thú nông trại (mục 4)
+- `doctor.js`: `FARM_PATIENTS` (bò *Moo-Moo*, cừu *Baa-Baa*, ngựa *Neigh-Neigh*; `sound`, `cry`, `pitch` riêng), `DOCTOR_PATIENTS` = 4 bạn cũ + 3 bạn mới — **chỉ Bác sĩ nhí** dùng; các nghề khác vẫn dùng `PATIENTS` (4 bạn). `PATIENT_BY_ID` có cả 7.
+- `pickCases`: bạn ít gặp trước (`seen['pt:<mã>']`, ghi khi xong mỗi ca, cả ca đo / khám mắt); ca `farm` (lấm bùn) luôn nhận bạn nông trại. `cleanDoctorState` giữ mã `pt:`.
+- Ca `muddy` (mức 1 trở lên): bùn nâu ở hai bàn chân (`signSvg('muddy')`, thấy ngay khi vào), chạm chân → **miếng bọt biển** 🧽 (`sponge`, `fresh`: luôn gọi tên *"A sponge, please!"* ở mọi mức, không làm đồ nhiễu ở ca khác) → bùn mất, *"Clean! Thank you!"*. Ảnh bọt biển thay được trong Ảnh Bác sĩ nhí (12 đồ).
+- Vào phòng: *"Hello, doctor!"* → tiếng con vật (file của Ai kêu thế?, tối đa 2,5 giây, lỗi thì bỏ qua) → triệu chứng có tiếng kêu đứng trước (*"Moo! I'm muddy!"*, *"Neigh! Ouch! My hand hurts!"*); chơi tiếp sau ra nền cũng nói câu có tiếng kêu.
+- Hình (`patients.js`): cùng thân / tư thế 4 bạn cũ; bò (sừng vàng, tai ngang, mõm hồng to, đốm), cừu (lông bông trên đầu và quanh thân, tai cụp), ngựa (tai nhọn, bờm nâu, mõm sáng). Ảnh chụp có vòng `SPOTS`: mắt, mũi, miệng, tai, tay, chân nằm trong vòng; sừng / búi lông / bờm ở vùng đầu hoặc ngoài mọi vùng.
+- Bò (Animals) "đã gặp" khi chữa xong ca không nhầm lần nào (`wrong:<ca>` trong `recorded`).
+- **Khác spec:** spec ghi "3 bệnh nhân mới thay được ảnh như 4 bạn cũ" — 4 bạn cũ **không** có mục thay ảnh bạn thú (chỉ thay ảnh đồ), nên 3 bạn mới cũng vậy.
+- Test: unit (bùn chỉ với bạn nông trại, bạn ít gặp trước, bọt biển không làm nhiễu, `pt:` qua `cleanDoctorState`); UI JOBS6-09…11; sửa DOC-12 (đếm `seen` tách mã `pt:`) và số đồ trong Ảnh Bác sĩ nhí (12).

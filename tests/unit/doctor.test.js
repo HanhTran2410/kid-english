@@ -3,6 +3,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   CASES, CASE_BY_ID, TOOLS, TREATS, ITEM_BY_ID, REGIONS, SPOTS, PATIENTS, TRAY_SIZE, PLAYABLE_LEVEL,
+  DOCTOR_PATIENTS, FARM_PATIENTS, FARM_PATIENT_IDS,
   regionAt, stepsFor, casesFor, trayFor, pickCases, stepPrompt, wrongItemLine, doneLine, yesTouchLine, wrongTouchLine, askLine,
   cleanDoctorState, afterDoctorRound, afterHealed,
   planEyes, pickNewCase, eyeWordOk, DEFAULT_EYE_WORDS, pointLine, seeLine, wrongEyeLine, needGlassesLine,
@@ -31,10 +32,10 @@ test('dữ liệu: mỗi ca có ≥ 1 bước ở mọi mức mà ca xuất hi�
     assert.equal(c.say.length, 2);
     assert.equal(c.remind.length, 2);
   }
-  assert.equal(CASES.length, 11);
-  assert.deepEqual(casesFor(1).map((c) => c.id), ['cut-hand', 'cut-foot', 'tummy', 'runny-nose', 'tooth']);
-  assert.equal(casesFor(2).length, 9);
-  assert.equal(casesFor(3).length, 11);
+  assert.equal(CASES.length, 12);
+  assert.deepEqual(casesFor(1).map((c) => c.id), ['cut-hand', 'cut-foot', 'tummy', 'runny-nose', 'tooth', 'muddy']);
+  assert.equal(casesFor(2).length, 10);
+  assert.equal(casesFor(3).length, 12);
   for (const item of [...TOOLS, ...TREATS]) {
     assert.ok(item.wrong && item.notThis && (item.ask || item.the), item.id);
     // Ảnh lưới + dùng lại ảnh có sẵn (mục 10).
@@ -96,13 +97,13 @@ test('chọn ca: 3 ca khác nhau trong nhóm mức, 3 bạn thú khác nhau, ưu
       assert.equal(picks.length, 3);
       assert.equal(new Set(picks.map((p) => p.id)).size, 3);
       assert.equal(new Set(picks.map((p) => p.patient)).size, 3);
-      assert.ok(picks.every((p) => allowed.has(p.id) && PATIENTS.some((x) => x.id === p.patient)));
+      assert.ok(picks.every((p) => allowed.has(p.id) && DOCTOR_PATIENTS.some((x) => x.id === p.patient)));
       const last = picks.map((p) => stepsFor(CASE_BY_ID.get(p.id), level).at(-1).item);
       assert.equal(new Set(last).size, 3, `mức ${level}: ${picks.map((p) => p.id)}`);
     }
   }
   // Ít gặp: 2 ca chưa gặp lần nào luôn có mặt.
-  const seen = { 'cut-hand': 5, 'cut-foot': 5, tummy: 5 };
+  const seen = { 'cut-hand': 5, 'cut-foot': 5, tummy: 5, muddy: 5 };
   for (let i = 0; i < 30; i++) {
     const ids = pickCases(1, { seen, rng }).map((p) => p.id);
     assert.ok(ids.includes('runny-nose') && ids.includes('tooth'), ids.join());
@@ -165,9 +166,9 @@ test('mức (D2): chơi được cả 3 mức; dữ liệu hỏng → mức 1; �
 });
 
 test('giọng bạn thú: mỗi bạn một cao độ khác nhau, khác giọng thường của Bông (1)', () => {
-  const pitches = PATIENTS.map((p) => p.pitch);
+  const pitches = DOCTOR_PATIENTS.map((p) => p.pitch);
   assert.ok(pitches.every((x) => typeof x === 'number' && x !== 1 && x >= 0.5 && x <= 2));
-  assert.equal(new Set(pitches).size, PATIENTS.length);
+  assert.equal(new Set(pitches).size, DOCTOR_PATIENTS.length);
 });
 
 test('SPEC-doctor2 DR1 — rửa tay: mức 1 ba món thứ tự tùy ý (không găng); mức 2–3 có găng, món tiếp theo theo thứ tự; mã không trùng đồ chữa', () => {
@@ -355,4 +356,48 @@ test('DR4 — câu nói: cảm xúc, câu giúp, thẻ nhầm, đồ nhầm (a /
   for (const f of m.FEELINGS) for (const line of [m.feelLine(f.id), m.helpLine(f.id), m.feelIsLine('Teddy', f.id)]) {
     assert.ok(line.every((t) => t && !/undefined/.test(t)));
   }
+});
+
+test('SPEC-jobs6 mục 4: 3 bạn thú nông trại — ca lấm bùn chỉ gặp với bạn nông trại, bạn ít gặp trước, bọt biển là từ mới (luôn gọi tên, không làm đồ nhiễu)', () => {
+  assert.deepEqual(FARM_PATIENTS.map((p) => p.id), ['cow', 'sheep', 'horse']);
+  assert.ok(FARM_PATIENTS.every((p) => p.cry && p.sound));
+  assert.equal(PATIENTS.length, 4, 'nghề khác vẫn dùng 4 bạn cũ');
+  const rng = seeded(21);
+  let muddy = 0;
+  for (const level of [1, 2, 3]) {
+    for (let i = 0; i < 300; i++) {
+      const picks = pickCases(level, { rng });
+      assert.equal(new Set(picks.map((p) => p.patient)).size, 3);
+      for (const p of picks) if (p.id === 'muddy') {
+        muddy += 1;
+        assert.ok(FARM_PATIENT_IDS.has(p.patient), p.patient);
+      }
+    }
+  }
+  assert.ok(muddy > 50);
+  // Bạn ít gặp trước: 4 bạn cũ đã gặp nhiều → 3 bạn nông trại.
+  const seen = { 'pt:teddy': 5, 'pt:kitty': 5, 'pt:puppy': 5, 'pt:piggy': 5 };
+  for (let i = 0; i < 30; i++) {
+    const ps = pickCases(1, { seen, rng }).map((p) => p.patient);
+    assert.ok(ps.every((id) => FARM_PATIENT_IDS.has(id)), ps.join());
+  }
+  // Mã bạn thú giữ qua cleanDoctorState; mã lạ bị bỏ.
+  assert.deepEqual(cleanDoctorState({ seen: { 'pt:cow': 2, 'pt:dragon': 1, muddy: 1 } }).seen, { 'pt:cow': 2, muddy: 1 });
+  // Bọt biển: không làm đồ nhiễu ở ca khác; ở ca lấm bùn thì có trong khay, mọi mức đều gọi tên.
+  const muddyCase = CASE_BY_ID.get('muddy');
+  const sponge = muddyCase.steps.find((s) => s.item === 'sponge');
+  for (const c of CASES) for (let level = c.level; level <= 3; level++) for (const step of stepsFor(c, level)) {
+    if (step.type !== 'treat') continue;
+    for (let i = 0; i < 20; i++) {
+      const tray = trayFor(step, level, { rng });
+      if (c.id === 'muddy') assert.ok(tray.includes('sponge'));
+      else assert.ok(!tray.includes('sponge'), c.id);
+    }
+  }
+  for (const level of [1, 2, 3]) {
+    assert.deepEqual(stepPrompt(sponge, level).line, ['A sponge, please!', 'Cho tớ miếng bọt biển nhé!']);
+    assert.ok(wrongItemLine('bandage', sponge, level, 1).hint);
+  }
+  assert.deepEqual(yesTouchLine(muddyCase)[0], 'Yes! My foot.');
+  assert.deepEqual(doneLine(muddyCase, sponge).line[0], 'Clean! Thank you!');
 });

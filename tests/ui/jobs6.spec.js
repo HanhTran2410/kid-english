@@ -1,6 +1,6 @@
 // SPEC-jobs6 (0.88.0) — 👨‍🍳 Đầu bếp nhí mức 3: bé nói tên món để chọn (vừa nói vừa chạm). Test giả kết quả nhận dạng bằng
 // window.__kidTest.chefTalkResult = { text, delay?, error? }; chuỗi ('voice' / 'match'…) là kiểu cũ của lượt nói.
-// 0.89.0 — 🚌 Xe buýt mức 1: đồ bỏ quên làm quen (mục 3).
+// 0.89.0 — 🚌 Xe buýt mức 1: đồ bỏ quên làm quen (mục 3). 0.90.0 — 🩺 Bác sĩ nhí: bạn thú nông trại (mục 4).
 import { test, expect } from '@playwright/test';
 import { fakeSpeech, startApp } from './helpers.js';
 
@@ -226,4 +226,78 @@ test('JOBS6-08: xe buýt mức 1 — bé không chạm → sau 2 lần nhắc ch
   await expect(page.locator('.jb-play.jb-done')).toHaveCount(1, { timeout: 60000 });
   expect(await spoken(page)).toContain(`My ${item}! Thank you!`);
   expect((await page.evaluate(() => window.kidEnglish.settings.busGame)).seen[item]).toBeUndefined();
+});
+
+// ---------- 0.90.0: 🩺 Bác sĩ nhí — bạn thú nông trại (mục 4) ----------
+async function openDoctorWith(page, cases) {
+  await fakeSpeech(page);
+  await page.addInitScript((c) => { window.__kidTest = { doctorCases: c, doctorNewAt: 2, doctorComfortAt: -1 }; }, cases);
+  await startApp(page);
+  await page.getByRole('button', { name: 'Trò chơi' }).click();
+  await page.getByRole('button', { name: 'Đóng vai' }).click();
+  await page.getByRole('button', { name: 'Bác sĩ nhí' }).click();
+  const dp = page.locator('.dr-play');
+  await expect(dp).toHaveAttribute('data-state', 'wash', { timeout: 15000 });
+  for (const id of ['soap', 'rinse', 'towel', 'gloves']) {
+    const item = page.locator(`.dr-item[data-item="${id}"]`);
+    if (!(await item.count())) continue;
+    await item.click();
+    await expect(item).toHaveCount(0, { timeout: 15000 });
+  }
+  await expect(dp).toHaveAttribute('data-state', 'touch', { timeout: 15000 });
+  return dp;
+}
+const drSpot = (page, region) => page.locator(`.dr-spot[data-region="${region}"]`).first();
+
+test('JOBS6-09: bò lấm bùn — thấy bùn ở chân trước khi nghe, "Moo! I\'m muddy!", chạm chân → "A sponge, please!" → lau sạch bùn; bò đúng ngay → ghi "cow"', async ({ page }) => {
+  const dp = await openDoctorWith(page, [{ id: 'muddy', patient: 'cow' }, { id: 'tummy', patient: 'sheep' }]);
+  await expect(page.locator('.dr-patient')).toHaveAttribute('data-patient', 'cow');
+  await expect(page.locator('.dr-patient .dr-mud')).toHaveCount(1);
+  const said = await spoken(page);
+  expect(said).toContain("Moo! I'm muddy!");
+  expect(said.indexOf('Hello, doctor!')).toBeLessThan(said.indexOf("Moo! I'm muddy!"));
+  await drSpot(page, 'foot').click();
+  await expect(dp).toHaveAttribute('data-state', 'treat', { timeout: 15000 });
+  await expect(page.locator('.dr-item[data-item="sponge"]')).toHaveCount(1);
+  await expect.poll(() => spoken(page)).toContain('A sponge, please!');
+  await page.locator('.dr-item[data-item="sponge"]').click();
+  await expect.poll(() => spoken(page), { timeout: 15000 }).toContain('Clean! Thank you!');
+  await expect(page.locator('.dr-patient .dr-mud')).toHaveCount(0, { timeout: 15000 });
+  await expect(dp).toHaveAttribute('data-state', 'sticker', { timeout: 15000 });
+  await expect.poll(() => page.evaluate(async () => (await window.kidEnglish.db.getAll('progress')).filter((p) => p.word === 'cow').reduce((a, p) => a + (p.practiceCount ?? 0), 0))).toBe(1);
+  expect((await page.evaluate(() => window.kidEnglish.settings.doctorGame)).seen['pt:cow']).toBe(1);
+});
+
+test('JOBS6-10: cừu ca bụng đau — kêu trước "Baa! My tummy hurts!", bọt biển không có trong khay; ra nền rồi quay lại vẫn nói có "Baa!"', async ({ page }) => {
+  const dp = await openDoctorWith(page, [{ id: 'tummy', patient: 'sheep' }, { id: 'cut-hand', patient: 'horse' }]);
+  await expect(page.locator('.dr-patient')).toHaveAttribute('data-patient', 'sheep');
+  expect(await spoken(page)).toContain('Baa! My tummy hurts!');
+  await drSpot(page, 'tummy').click();
+  await expect(dp).toHaveAttribute('data-state', 'treat', { timeout: 15000 });
+  await expect(page.locator('.dr-item[data-item="sponge"]')).toHaveCount(0);
+  await page.evaluate(() => {
+    Object.defineProperty(document, 'visibilityState', { value: 'hidden', configurable: true });
+    document.dispatchEvent(new Event('visibilitychange'));
+    Object.defineProperty(document, 'visibilityState', { value: 'visible', configurable: true });
+    document.dispatchEvent(new Event('visibilitychange'));
+  });
+  await page.locator('.resume-overlay .start-btn').click();
+  await expect(dp).toHaveAttribute('data-state', 'treat', { timeout: 15000 });
+  expect((await spoken(page)).filter((t) => t === 'Baa! My tummy hurts!').length).toBe(2);
+});
+
+test('JOBS6-11: ngựa — chạm nhầm chỗ thì không ghi "đã gặp" từ Animals (ngựa không có trong bài); vùng chạm mắt / tai / tay / chân đúng chỗ trên hình', async ({ page }) => {
+  const dp = await openDoctorWith(page, [{ id: 'cut-hand', patient: 'horse' }, { id: 'muddy', patient: 'cow' }]);
+  await expect(page.locator('.dr-patient')).toHaveAttribute('data-patient', 'horse');
+  expect(await spoken(page)).toContain('Neigh! Ouch! My hand hurts!');
+  // Bờm / tai ngựa không che vùng chạm: điểm giữa mỗi vùng nằm trên phần tử có data-region đúng.
+  for (const region of ['eye', 'ear', 'nose', 'hand', 'foot']) {
+    const box = await drSpot(page, region).boundingBox();
+    const hit = await page.evaluate(([x, y]) => document.elementFromPoint(x, y)?.closest('.dr-patient') !== null, [box.x + box.width / 2, box.y + box.height / 2]);
+    expect(hit, region).toBe(true);
+  }
+  await drSpot(page, 'nose').click();
+  await expect.poll(async () => (await spoken(page)).some((t) => t.startsWith("That's my nose!"))).toBe(true);
+  await drSpot(page, 'hand').click();
+  await expect(dp).toHaveAttribute('data-state', 'treat', { timeout: 15000 });
 });

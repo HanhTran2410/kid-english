@@ -15,6 +15,8 @@ import { markPracticed } from '../player/track.js';
 import { numberKey } from '../numbers.js';
 import { scaled } from '../timing.js';
 import { patientSvg, faceSvg, glowSvg } from '../patients.js';
+import { SOUND_BY_ID } from '../animal-sounds.js';
+import { playSoundFile } from './animal-sounds.js';
 import {
   jobScreen, saveSnap, takeSnap, clearSnap, restartAnim, center, wait, reduceMotion, WRONG_LOCK_MS, MAX_NUDGES,
 } from '../jobs/kit.js';
@@ -97,9 +99,9 @@ const WASH_SVG = `<svg class="dr-wash-svg" viewBox="0 0 300 240" aria-hidden="tr
 /** Đồ bay tới vùng nào; null = chỗ đau của ca (vùng của bước chạm). */
 const ITEM_TARGET = {
   bandage: null, medicine: 'mouth', tissue: 'nose', toothbrush: 'mouth', drops: 'eye', icepack: 'head', water: 'mouth',
-  blanket: 'tummy', stethoscope: 'tummy', thermometer: 'hand', flashlight: null,
+  blanket: 'tummy', stethoscope: 'tummy', thermometer: 'hand', flashlight: null, sponge: 'foot',
 };
-const ITEM_SOUND = { bandage: 'pop', medicine: 'chomp', tissue: 'honk', toothbrush: 'brush', stethoscope: 'ding', thermometer: 'ding', drops: 'pop', icepack: 'pop', water: 'chomp', blanket: 'sparkle' };
+const ITEM_SOUND = { sponge: 'whoosh', bandage: 'pop', medicine: 'chomp', tissue: 'honk', toothbrush: 'brush', stethoscope: 'ding', thermometer: 'ding', drops: 'pop', icepack: 'pop', water: 'chomp', blanket: 'sparkle' };
 /** Dỗ bạn thú (DR4): mặt theo cảm xúc, chỗ đồ giúp bay tới, hình đồ giúp (vẽ SVG, khác dáng hẳn nhau). */
 const FEEL_MOOD = { scared: 'scared', sad: 'teary', sleepy: 'drowsy', hungry: 'hungry' };
 const COMFORT_TARGET = { teddy: 'tummy', hug: 'tummy', pillow: 'head', apple: 'mouth' };
@@ -199,6 +201,12 @@ export function doctorScreen(app, params = {}) {
   const steps = () => stepsFor(curCase(), level);
   const curStep = () => steps()[stepIdx];
   const P = (line) => ({ who: 'patient', line });
+  /** Triệu chứng; bạn thú nông trại kêu trước: "Moo! My foot hurts!" (SPEC-jobs6 mục 4). */
+  const sayLine = () => {
+    const s = curCase().say;
+    const cry = curPatient()?.cry;
+    return cry ? [`${cry} ${s[0]}`, s[1]] : s;
+  };
   const B = (line) => ({ who: 'bong', line });
   const patientEl = h('div.dr-patient');
   const washPhoto = h('div.dr-wash-photo');
@@ -370,7 +378,10 @@ export function doctorScreen(app, params = {}) {
     if (stepIdx >= steps().length) {
       if (!recorded.has(`seen:${caseIdx}`)) {
         recorded.add(`seen:${caseIdx}`);
-        progress = afterHealed(progress, curCase().id);
+        progress = afterHealed(afterHealed(progress, curCase().id), `pt:${cases[caseIdx].patient}`);
+        // Bò (bài Animals): "đã gặp" khi chữa xong ca không nhầm lần nào (SPEC-jobs6 mục 4).
+        const word = curPatient()?.word;
+        if (word && !recorded.has(`wrong:${caseIdx}`)) markPracticed(app, word, curPatient().emoji);
         saveProgress();
       }
       // Khỏi rồi: lưu ở bước tặng sticker — ra nền rồi quay lại thì bạn thú vẫn xin sticker (SPEC-doctor2 mục 4).
@@ -423,7 +434,13 @@ export function doctorScreen(app, params = {}) {
     play('doorbell');
     await wait(ENTER_MS);
     if (e !== kit.epoch) return;
-    await talk([B(COME_IN_LINE), P(HELLO_DOCTOR_LINE), ...(needComfort() ? [] : [P(curCase().say)])]);
+    await talk([B(COME_IN_LINE), P(HELLO_DOCTOR_LINE)]);
+    if (e !== kit.epoch) return;
+    // Bạn thú nông trại kêu tiếng của mình (file của Ai kêu thế?); file lỗi / chưa mở âm thanh thì bỏ qua, không chờ quá 2,5 giây.
+    const cry = SOUND_BY_ID.get(curPatient()?.sound ?? '');
+    if (cry) await Promise.race([playSoundFile(cry, { isCurrent: () => e === kit.epoch }).catch(() => false), wait(2500)]);
+    if (e !== kit.epoch) return;
+    if (!needComfort()) await talk([P(sayLine())]);
     if (e !== kit.epoch) return;
     if (needComfort()) startComfort();
     else beginStep();
@@ -439,14 +456,14 @@ export function doctorScreen(app, params = {}) {
     }
     tray = step.type === 'touch' ? [] : resume?.tray?.length ? resume.tray : trayFor(step, level);
     renderTray();
-    const named = step.type === 'check' || level <= 1;
+    const named = step.type === 'check' || level <= 1 || Boolean(ITEM_BY_ID.get(step.item)?.fresh);
     if (step.type === 'touch') setGlow(level <= 1 || wrongs >= 2 || nudges > 0 ? step.target : null);
     else setGlow(null);
     if (step.type !== 'touch' && wrongs >= (named ? 1 : 2)) kit.setHint(step.item);
     setState(step.type);
     snap();
     const { who, line } = stepPrompt(step, level);
-    await talk([...(resume ? [P(curCase().say)] : []), { who, line }]);
+    await talk([...(resume ? [P(sayLine())] : []), { who, line }]);
     if (e === kit.epoch) kit.armNudge();
   }
 
@@ -469,6 +486,7 @@ export function doctorScreen(app, params = {}) {
     if (key === lastWrong.key && now - lastWrong.at < WRONG_LOCK_MS) return false;
     lastWrong = { key, at: now };
     wrongs += 1;
+    recorded.add(`wrong:${caseIdx}`);
     snap();
     kit.clearNudge();
     play('boing');
@@ -556,6 +574,11 @@ export function doctorScreen(app, params = {}) {
       await wait(REST_MS);
       z.remove();
       if (e !== kit.epoch) return;
+    }
+    // Bọt biển lau sạch bùn (SPEC-jobs6 mục 4).
+    if (id === 'sponge') {
+      const sign = group('dr-sign');
+      if (sign) sign.innerHTML = '';
     }
     // Băng dán ở lại trên người bạn thú (cả lúc ra về).
     if (id === 'bandage') {
@@ -943,7 +966,7 @@ export function doctorScreen(app, params = {}) {
     setState('busy');
     if (!recorded.has(`seen:${caseIdx}`)) {
       recorded.add(`seen:${caseIdx}`);
-      progress = afterHealed(progress, kind);
+      progress = afterHealed(afterHealed(progress, kind), `pt:${cases[caseIdx].patient}`);
       saveProgress();
     }
     saveSnap(JOB, { level, cases, caseIdx, stepIdx: 0, wrongs: 0, nudges: 0, tray: [], recorded: [...recorded], washed: [...washed], washDone, mWho, mCount, eIdx, phase: 'sticker' });
