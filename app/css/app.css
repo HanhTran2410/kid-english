@@ -4141,6 +4141,10 @@ img.dr-admin-face { width: 100%; height: 100%; object-fit: contain; }
 .bs-seats { position: absolute; left: 6%; right: 27%; top: 12%; height: 50%; display: flex; gap: 4%; }
 .bs-seat { flex: 1; max-width: 30%; border-radius: 10px; background: #e7f5ff; border: 4px solid #3d2c5e; overflow: hidden; display: grid; place-items: end center; }
 .bs-seat .bs-person { width: 100%; height: 100%; pointer-events: none; }
+/* Xe buýt mức 1: người bỏ quên đồ có ❓ trên đầu, nhìn quanh (SPEC-jobs6 mục 3). */
+.bs-queue .bs-person.asking { position: relative; animation: bs-look 1.6s ease-in-out infinite; }
+.bs-person.asking::before { content: '❓'; position: absolute; left: 50%; top: -6%; translate: -50% -100%; font-family: var(--emoji); font-size: clamp(18px, 4cqh, 32px); line-height: 1; pointer-events: none; }
+@keyframes bs-look { 0%, 100% { transform: none; } 30% { transform: rotate(-4deg); } 70% { transform: rotate(4deg); } }
 .bs-person { padding: 0; border: 0; background: none; }
 .bs-person svg { display: block; width: 100%; height: 100%; }
 .bs-stop { position: absolute; right: 3%; bottom: 8%; width: min(36%, 380px); height: 70%; display: flex; align-items: flex-end; gap: 6px; }

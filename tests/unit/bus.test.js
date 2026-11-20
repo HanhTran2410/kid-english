@@ -91,12 +91,9 @@ test('JOBS4-33 / U3: 500 seed mỗi mức — thời tiết, đèn đỏ mức 3
       weathers.add(plan.weather);
       if (level >= 3) assert.ok([3, END].includes(plan.lightBefore));
       const walkers = walkersOf(plan);
-      if (level === 1) assert.deepEqual(plan.lost, []);
-      else {
-        assert.ok(walkers.length >= 2, 'vỉa hè luôn ≥ 2 người');
-        assert.ok(lostOk(plan, level));
-      }
-      if (level === 2) {
+      assert.ok(walkers.length >= 2, 'vỉa hè luôn ≥ 2 người');
+      assert.ok(lostOk(plan, level));
+      if (level <= 2) {
         assert.equal(plan.lost.length, 1);
         const owner = walkers.find((p) => p.id === plan.lost[0].owner);
         assert.ok(['grandma', 'grandpa', 'mummy'].includes(owner.member));
@@ -126,6 +123,10 @@ test('JOBS4-11: vỉa hè chỉ 1 người thì không có đồ bỏ quên (m�
   assert.ok(!lostOk({ ...f2, lost: [{ owner: 'p2', item: 'teddy' }] }, 2), 'sister không có dấu hiệu bỏ quên được');
   assert.ok(!lostOk({ ...f2, lost: [] }, 2));
   assert.ok(!lostOk({ ...fallbackPlan(1), lost: [{ owner: 'p2', item: 'teddy' }] }, 1));
+  // SPEC-jobs6 mục 3: mức 1 luôn có đúng một đồ là dấu hiệu của chủ.
+  assert.ok(lostOk(fallbackPlan(1), 1));
+  assert.ok(!lostOk({ ...fallbackPlan(1), lost: [] }, 1));
+  assert.ok(!lostOk({ ...fallbackPlan(1), lost: [{ owner: 'p0', item: 'glasses' }, { owner: 'p1', item: 'ball' }] }, 1));
 });
 
 test('mức 2: người bỏ quên thiếu đúng dấu hiệu trên hình (JOBS4-10 — bà mất kính, ông vẫn đeo kính)', () => {
@@ -143,6 +144,8 @@ test('câu thời tiết, đồ bỏ quên', () => {
   assert.equal(fixWrongLine('sunglasses', 'rainy')[0], "That's the sunglasses. It's rainy! Wipers!");
   assert.equal(fixWrongLine('windows', 'rainy')[0], "That's the window. It's rainy! Wipers!");
   assert.equal(cardWrongLine('sunny')[0], "That's sunny. Look outside! What's the weather?");
+  assert.equal(lostAskLine({ item: 'hat', member: 'grandpa' }, 1)[0], 'Oh! A hat! Whose hat?');
+  assert.equal(lostAskLine({ item: 'glasses', member: 'grandma' }, 1)[0], 'Oh! Glasses! Whose glasses?');
   assert.equal(lostAskLine({ item: 'hat', member: 'grandpa' }, 2)[0], 'Oh! A hat! Whose hat is this?');
   assert.equal(lostAskLine({ item: 'glasses', member: 'grandma' }, 2)[0], 'Oh! Glasses! Whose glasses are these?');
   assert.equal(lostAskLine({ item: 'umbrella', member: 'grandpa' }, 3)[0], "Oh! An umbrella! It's Grandpa's umbrella!");

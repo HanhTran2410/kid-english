@@ -591,17 +591,18 @@ export function busScreen(app, params = {}) {
     roadToStop(e);
   }
 
-  // ---------- Đồ bỏ quên ở bến cuối (SPEC-jobs4 5.1, mức 2–3) ----------
+  // ---------- Đồ bỏ quên ở bến cuối (SPEC-jobs4 5.1; mức 1 làm quen: SPEC-jobs6 mục 3) ----------
   const lostIdx = () => (plan.lost ?? []).findIndex((l, i) => !taken.has(`lost:${i}`));
   const lostAt = (i) => ({ ...plan.lost[i], member: person(plan.lost[i].owner).member });
   const itemArt = (item) => ITEM_SVG[item] ?? `<span class="bs-item-emoji">${ITEMS[item].emoji}</span>`;
-  /** Vỉa hè: người xuống ở bến cuối; mức 2 người bỏ quên thiếu dấu hiệu cho tới khi nhận lại. Đồ còn nằm trên ghế. */
+  /** Vỉa hè: người xuống ở bến cuối; mức 1–2 người bỏ quên thiếu dấu hiệu cho tới khi nhận lại (mức 1 thêm ❓ trên đầu). Đồ còn nằm trên ghế. */
   function renderWalk() {
     const left = (plan.lost ?? []).filter((l, i) => !taken.has(`lost:${i}`));
     queue.replaceChildren(...walkersOf(plan).map((p) => {
-      const without = level === 2 ? left.find((l) => l.owner === p.id)?.item ?? '' : '';
+      const without = level <= 2 ? left.find((l) => l.owner === p.id)?.item ?? '' : '';
       const label = `${MEMBERS[p.member].name}${level >= 3 ? ` (${p.mood})` : ''}`;
       return h(`button.bs-person.${p.member}`, {
+        class: level <= 1 && without ? 'asking' : '',
         type: 'button', 'aria-label': label, dataset: { id: p.id, member: p.member, mood: p.mood, where: 'walk', without },
         html: familySvg(p.member, p.mood, label, without), onclick: () => tapWalker(p.id),
       });
@@ -624,7 +625,12 @@ export function busScreen(app, params = {}) {
     if (i < 0) return;
     const l = lostAt(i);
     if (id !== l.owner) {
-      if (!countWrong(`l:${i}:${id}`)) return;
+      // Mức 1 (làm quen): lắc đầu "Not mine!", không âm sai, không tính nhầm.
+      if (level <= 1) {
+        const now = Date.now();
+        if (lastWrong.key === `l:${i}:${id}` && now - lastWrong.at < WRONG_LOCK_MS) return;
+        lastWrong = { key: `l:${i}:${id}`, at: now };
+      } else if (!countWrong(`l:${i}:${id}`)) return;
       clearTimeout(autoTimer);
       restartAnim(queue.querySelector(`[data-id="${id}"]`), 'shake');
       if (wrongs >= 2) restartAnim(queue.querySelector(`[data-id="${l.owner}"]`), 'nudge');

@@ -2,7 +2,8 @@
 // trạm: (mức 2–3) người có trạm xuống ở đây nói "My stop, please! The yellow stop!" → bé chọn biển trên bản đồ → người đó
 // xuống; rồi đón người nhà (gọi lần lượt, mức 3 theo cảm xúc). Hành khách: { id, member, mood, boardStop, alightStop }
 // + trạng thái waiting → riding → off (mục 7.2). File thuần: kế hoạch lượt (bất biến mục 2.2), máy trạng thái, câu nói.
-// SPEC-jobs4 mục 5: thời tiết trên đường (giữa trạm 1 và 2, mọi mức) và đồ bỏ quên ở bến cuối (mức 2–3).
+// SPEC-jobs4 mục 5: thời tiết trên đường (giữa trạm 1 và 2, mọi mức) và đồ bỏ quên ở bến cuối (mức 2–3; mức 1 bản làm quen
+// từ 0.89.0, SPEC-jobs6 mục 3).
 
 import { planChecked, shuffle, pick, cap, leastSeen } from './levels.js';
 
@@ -52,7 +53,7 @@ export const ITEMS = {
  * Kế hoạch lượt: { stops: [màu trạm 1..3], mapExtra: màu nhiễu trên bản đồ, passengers, waiting: [[người đứng chờ ở trạm k]],
  * lightBefore: trạm có đèn đỏ trên đường tới (mức 3) | null, weather: thời tiết chặng trạm 1 → 2,
  * lost: [{ owner: id hành khách, item }] đồ bỏ quên ở bến cuối (mức 2–3) }.
- * - Mức 1: mỗi trạm đón 1 người (2 người chờ); mọi người xuống ở bến cuối, không có bản đồ, không có đồ bỏ quên.
+ * - Mức 1: mỗi trạm đón 1 người (2 người chờ); mọi người xuống ở bến cuối, không có bản đồ; một đồ bỏ quên là dấu hiệu của chủ.
  * - Mức 2: mỗi trạm đón 1, có trạm đón 2 (gọi lần lượt); trạm 2 và 3 mỗi trạm đúng một người xuống → bến cuối còn 2 người.
  * - Mức 3: như mức 2, đón theo cảm xúc: ở trạm có 2 người cùng vai khác cảm xúc; một lần đèn đỏ (chặng 2 → 3 hoặc
  *   3 → bến cuối — chặng 1 → 2 đã có thời tiết). Có trạm đón 2 như mức 2 để bến cuối có 2 người (đồ bỏ quên).
@@ -94,11 +95,11 @@ export function makePlan(level, { rng = Math.random, seen = {} } = {}) {
 }
 /** Người đứng trên vỉa hè bến cuối: người xuống ở bến cuối (người đã xuống ở trạm 2–3 không đứng đó). */
 export const walkersOf = (plan) => plan.passengers.filter((p) => p.alightStop === END);
-/** Đồ bỏ quên: vỉa hè < 2 người thì không có. Mức 2 một đồ (người có dấu hiệu), mức 3 một hoặc hai đồ của hai người. */
+/** Đồ bỏ quên: vỉa hè < 2 người thì không có. Mức 1–2 một đồ (người có dấu hiệu), mức 3 một hoặc hai đồ của hai người. */
 function makeLost(level, passengers, rng) {
   const walkers = passengers.filter((p) => p.alightStop === END);
-  if (level < 2 || walkers.length < 2) return [];
-  if (level === 2) {
+  if (walkers.length < 2) return [];
+  if (level <= 2) {
     const owners = walkers.filter((p) => SIGN[p.member]);
     if (!owners.length) return [];
     const p = pick(owners, rng);
@@ -148,20 +149,19 @@ export function planOk(plan, level) {
   return lostOk(plan, level);
 }
 /**
- * Đồ bỏ quên (SPEC-jobs4 5.1): mức 1 không có; mức 2 luôn có — vỉa hè ≥ 2 người, đồ là dấu hiệu của người được hỏi
+ * Đồ bỏ quên (SPEC-jobs4 5.1, SPEC-jobs6 mục 3): mức 1–2 luôn có — vỉa hè ≥ 2 người, một đồ là dấu hiệu của người được hỏi
  * (grandma / grandpa / mummy); mức 3 có khi vỉa hè ≥ 2 người — 1–2 đồ của người khác nhau trên vỉa hè.
  */
 export function lostOk(plan, level) {
   const lost = plan.lost ?? [];
   const walkers = walkersOf(plan);
-  if (level <= 1) return lost.length === 0;
   if (walkers.length < 2) return level >= 3 && lost.length === 0;
-  if (level === 2 && lost.length !== 1) return false;
+  if (level <= 2 && lost.length !== 1) return false;
   if (level >= 3 && (lost.length < 1 || lost.length > 2)) return false;
   if (new Set(lost.map((l) => l.owner)).size !== lost.length) return false;
   return lost.every((l) => {
     const p = walkers.find((w) => w.id === l.owner);
-    return p && l.item === (level === 2 ? SIGN[p.member] : ITEM3[p.member]);
+    return p && l.item === (level <= 2 ? SIGN[p.member] : ITEM3[p.member]);
   });
 }
 /** Số thao tác con của bé ở trạm `k` (chọn biển trên bản đồ + đón từng người). */
@@ -182,7 +182,7 @@ export function fallbackPlan(level) {
   const waiting = level >= 3
     ? [['p0', 'p3', extra(0, 'grandma', 'happy')], [extra(1, 'daddy', 'sad'), 'p1'], ['p2', extra(2, 'sister', 'happy')]]
     : [['p0', ...(level >= 2 ? ['p3'] : []), extra(0, 'baby', 'happy')], [extra(1, 'grandpa', 'happy'), 'p1'], ['p2', extra(2, 'grandpa', 'happy')]];
-  const lost = level >= 3 ? [{ owner: 'p3', item: 'phone' }, { owner: 'p2', item: 'teddy' }] : level === 2 ? [{ owner: 'p3', item: 'bag' }] : [];
+  const lost = level >= 3 ? [{ owner: 'p3', item: 'phone' }, { owner: 'p2', item: 'teddy' }] : level === 2 ? [{ owner: 'p3', item: 'bag' }] : [{ owner: 'p0', item: 'glasses' }];
   return { stops: ['red', 'yellow', 'blue'], mapExtra: 'green', passengers, waiting, lightBefore: level >= 3 ? 3 : null, weather: 'rainy', lost };
 }
 
@@ -256,9 +256,10 @@ export const cardWrongLine = (tapped) => [`That's ${tapped}. Look outside! What'
 // ---------- Đồ bỏ quên (SPEC-jobs4 5.1) ----------
 const owns = (member) => `${MEMBERS[member].name}'s`;
 const anItem = (item) => (ITEMS[item].plural ? cap(item) : `${ITEMS[item].an ? 'An' : 'A'} ${item}`);
-/** Mức 2: "Oh! A hat! Whose hat is this?"; mức 3: "Oh! An umbrella! It's Grandpa's umbrella!" / "Now… It's Sister's teddy!". */
+/** Mức 1: "Oh! A hat! Whose hat?"; mức 2: "Oh! A hat! Whose hat is this?"; mức 3: "Oh! An umbrella! It's Grandpa's umbrella!" / "Now… It's Sister's teddy!". */
 export function lostAskLine({ item, member }, level, second = false) {
   const vi = ITEMS[item].vi;
+  if (level <= 1) return [`Oh! ${anItem(item)}! Whose ${item}?`, `Ồ! ${cap(vi)}! Của ai đây?`];
   if (level <= 2) {
     return ITEMS[item].plural
       ? [`Oh! ${anItem(item)}! Whose ${item} are these?`, `Ồ! ${cap(vi)}! ${cap(vi)} của ai đây?`]

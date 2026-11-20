@@ -1,6 +1,6 @@
 # SPEC — 🧑‍⚕️ Đóng vai nghề: nói chọn món, đồ bỏ quên mức 1, thú nông trại khám bệnh, 5 nghề mới
 
-> Phiên bản spec: **draft2** (sửa theo review, mục 13) · Ngày: 2026-11-20 · Dựa trên app 0.87.1. **Bố mẹ đã duyệt (2026-11-20).** Đã làm: 0.88.0. Ghi chú khi làm: mục 14.
+> Phiên bản spec: **draft2** (sửa theo review, mục 13) · Ngày: 2026-11-20 · Dựa trên app 0.87.1. **Bố mẹ đã duyệt (2026-11-20).** Đã làm: 0.88.0, 0.89.0. Ghi chú khi làm: mục 14.
 > - draft1: bản đầu, 8 bản, 7 câu hỏi.
 > - **draft2, sửa theo review:** giới hạn thao tác mỗi mức + luật tiến độ + lưu / chạm trùng / giọng lỗi / micro lỗi cho mọi bản (mục 1.1); Đầu bếp khớp tên món theo từ, một lần chọn duy nhất giữa chạm và micro (2); Xe buýt dấu hiệu nhìn thấy, không trách (3); Bác sĩ kiểm vùng chạm riêng từng con, tiếng lỗi không kẹt (4); Thợ cắt tóc bỏ tóc giả, ít lọn (5); Nha sĩ một khách, chạm là tự chải, không đếm răng mức 1, kẹo không tính nhầm (6); Họa sĩ tách kỹ năng, "tô màu tự do" (7); Làm vườn sửa logic trời mưa, mức 1 hai bước (8); Người giữ thú bỏ tiếng ngựa cho ngựa vằn, voi = big, hươu = tall (9); trang chọn nghề, checklist nội dung (10, 11); chốt 7 câu hỏi (12).
 >
@@ -343,3 +343,10 @@ Thú hoang trong vườn thú (Nông trại là vật nuôi). **Người lớn b
 - `screens/chef.js`: `menuListenOn()` = mức 3 + lượt nói bật + `mic.ready` + `recognizer.enabled`. Thẻ chạm được ngay (trạng thái `menu` từ lúc chú hỏi); sau câu hỏi + *"Say it, or touch it!"* nghe **một lần** ≤ 6 giây (`listen` với `matcher` = `matchDishAlts`, không ghi âm). Chọn món chung một chỗ `chooseDish` (`taken.take('dish')`): chạm thì hủy nghe (`AbortController`), giọng khớp thì khóa thẻ. 🧹 / ra nền cũng hủy nghe; quay lại thì chờ chạm, không nghe lại.
 - Thiếu nhận dạng (chỉ đo âm lượng) ở mức 3: như 0.83.0 (chạm rồi lượt nói *"Pizza, please!"*). Mức 3 có nhận dạng: chạm thì **không** có lượt nói sau.
 - Test: unit `matchDish` (bảng ví dụ); UI `jobs6.spec.js` JOBS6-01…06 (`chefTalkResult = { text, delay?, error? }`, `delay` là thời gian thật).
+
+### 0.89.0 — 🚌 đồ bỏ quên mức 1 (mục 3)
+- `jobs/bus.js`: `makeLost` mức 1 như mức 2 (một đồ `SIGN` của người có dấu hiệu trên vỉa hè); `lostOk` mức 1–2 bắt buộc đúng 1 đồ; `fallbackPlan(1)` có kính của bà. Câu mức 1 *"Oh! A hat! Whose hat?"* (kính: *"Oh! Glasses! Whose glasses?"*).
+- `screens/bus.js`: mức 1–2 người bỏ quên vẽ thiếu dấu hiệu; mức 1 thêm class `asking` (❓ trên đầu, nghiêng đầu nhìn quanh). Chạm nhầm mức 1: *"Not mine!"*, không `boing`, không tính nhầm (vẫn gộp chạm trùng 0,4 giây); trả đúng vẫn ghi Family + `seen`.
+- Test: unit bus (500 seed mức 1 luôn 1 đồ, câu mức 1); UI JOBS6-07, 08; sửa test Xe buýt mức 1 cũ (giờ có đồ bỏ quên).
+- Kèm: `app/shared/index.json` thêm `sieu-nhan-an-toan-2026-11-20.zip` (bố mẹ tải lên GitHub).
+- Sửa 2 test hay lỗi khi chạy cả bộ (máy chậm): SAFE-S2-02 ghi lại lúc hình nhắc lại hiện (MutationObserver) thay vì bắt đúng khoảnh khắc; JOBS4-27 chỉ kiểm không có xe khác chạy (xe đúng có thể đã chạy xong).

@@ -333,11 +333,18 @@ test('SAFE-S2-02: mức 3 (bố mẹ khóa) — "Story time!", chọn tranh; bư
   await expect(page.locator('.sf-recap')).toBeHidden(); // bước 1: chưa có hình nhắc lại
   await solve(page);
   await stateIs(page, 'fix');
+  // Chế độ chạy nhanh: hình nhắc lại chỉ hiện chốc lát trước khi chọn tranh — ghi lại lúc nó hiện thay vì bắt đúng khoảnh khắc.
+  await page.evaluate(() => {
+    const el = document.querySelector('.sf-recap');
+    window.__recapSeen = null;
+    new MutationObserver(() => {
+      if (!el.hidden && !window.__recapSeen) window.__recapSeen = el.querySelector('.sf-scene')?.dataset.scene ?? '?';
+    }).observe(el, { attributes: true, childList: true, subtree: true });
+  });
   await solve(page);
   await ruleIs(page, 'pond-toy');
   await expect.poll(() => spoken(page)).toContain('What next?');
-  await expect(page.locator('.sf-recap')).toBeVisible();
-  await expect(page.locator('.sf-recap .sf-scene')).toHaveAttribute('data-scene', 'pond');
+  await expect.poll(() => page.evaluate(() => window.__recapSeen)).toBe('pond');
   await stateIs(page, 'pick');
   await expect(page.locator('.sf-recap')).toBeHidden(); // lúc chọn tranh: ẩn để không che tranh
   await finish(page);

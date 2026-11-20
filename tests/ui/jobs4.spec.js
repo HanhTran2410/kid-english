@@ -364,7 +364,7 @@ async function playBusUntil(page, re, skip = []) {
   throw new Error(`không tới ${re}`);
 }
 
-test('Xe buýt mức 1: thời tiết giữa trạm 1 và 2 — xe đỗ, nút đúng sáng, chạm nút khác không tính nhầm; không có đồ bỏ quên, hết lượt → sticker', async ({ page }) => {
+test('Xe buýt mức 1: thời tiết giữa trạm 1 và 2 — xe đỗ, nút đúng sáng, chạm nút khác không tính nhầm; đồ bỏ quên làm quen (0.89.0), hết lượt → sticker', async ({ page }) => {
   await openJob(page, 'bus', 1);
   await playBusUntil(page, /^wbtn$/);
   await expect(page.locator('.bs-play .jb-count')).toHaveText('2/3');
@@ -382,7 +382,7 @@ test('Xe buýt mức 1: thời tiết giữa trạm 1 và 2 — xe đỗ, nút �
   await expect.poll(() => spoken(page)).toContain("Good job! Let's go!");
   await playBusUntil(page, /^done$/);
   await expect(page.locator('.jb-play.jb-done')).toHaveCount(1);
-  expect((await spoken(page)).some((t) => /^Oh! /.test(t))).toBe(false);
+  expect((await spoken(page)).some((t) => /^Oh! .+! Whose \w+\?$/.test(t))).toBe(true);
   expect((await page.evaluate(() => window.kidEnglish.settings.busGame)).seen[want]).toBe(1);
 });
 
@@ -1020,7 +1020,8 @@ test('Cảnh sát mức 2 (JOBS4-27): 4 xe 2 loại × 2 màu, không nhún; g�
   await expect(page.locator('.pl-jv[data-state="go"]')).toHaveCount(0);
   await page.locator(`.pl-jv[data-id="${id}"]`).click();
   await page.locator(`.pl-jv:not([data-id="${id}"])`).first().click({ force: true }); // chạm thêm lúc xe đang chạy: không nhận
-  await expect(page.locator('.pl-jv[data-state="go"]')).toHaveCount(1);
+  // Máy chậm (chạy cả bộ test): xe đúng có thể đã chạy xong trước khi kiểm — chỉ kiểm không có xe nào khác chạy.
+  await expect(page.locator(`.pl-jv[data-state="go"]:not([data-id="${id}"])`)).toHaveCount(0);
   expect(await wordCount(page, type)).toBe(0);
   await stateIs(page, 'junction');
   await solveJunction(page);

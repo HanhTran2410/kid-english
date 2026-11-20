@@ -1,5 +1,6 @@
 // SPEC-jobs6 (0.88.0) — 👨‍🍳 Đầu bếp nhí mức 3: bé nói tên món để chọn (vừa nói vừa chạm). Test giả kết quả nhận dạng bằng
 // window.__kidTest.chefTalkResult = { text, delay?, error? }; chuỗi ('voice' / 'match'…) là kiểu cũ của lượt nói.
+// 0.89.0 — 🚌 Xe buýt mức 1: đồ bỏ quên làm quen (mục 3).
 import { test, expect } from '@playwright/test';
 import { fakeSpeech, startApp } from './helpers.js';
 
@@ -163,4 +164,66 @@ test('JOBS6-06: ra nền lúc đang nghe → quay lại hiện thẻ chờ chạ
   await card(page, 'salad').click();
   await stateIs(page, /^(cook|fruit)$/);
   await expect(page.locator('.cf-work')).toHaveAttribute('data-dish', 'salad');
+});
+
+// ---------- 0.89.0: 🚌 Xe buýt — đồ bỏ quên mức 1 (mục 3) ----------
+async function openBus(page, level) {
+  await fakeSpeech(page);
+  await startApp(page);
+  await page.evaluate((l) => window.kidEnglish.setSetting('busGame', { level: l, rounds: 0, lock: null, seen: {} }), level);
+  await page.getByRole('button', { name: 'Trò chơi' }).click();
+  await page.getByRole('button', { name: 'Đóng vai' }).click();
+  await page.locator('.jb-job-bus').click();
+  await expect(play(page)).toBeVisible();
+}
+const BUS_STATES = /^(horn|belt|map|green|pick|wcard|wbtn|lost)$/;
+async function playBusUntil(page, re) {
+  for (let i = 0; i < 80; i++) {
+    const s = await play(page).getAttribute('data-state');
+    if (re.test(s ?? '')) return;
+    if (BUS_STATES.test(s ?? '')) {
+      if (s === 'horn') await page.locator('.bs-wheel').click();
+      else if (s === 'belt') await page.locator('.bs-belt').click();
+      else if (s === 'map') await page.locator(`.bs-map-stop[data-color="${await page.locator('.bs-map').getAttribute('data-want')}"]`).click();
+      else if (s === 'green') await page.locator('.bs-pedal').click();
+      else if (s === 'pick' || s === 'lost') {
+        const id = await page.locator('.bs-queue').getAttribute('data-want');
+        if (id) await page.locator(`.bs-queue [data-id="${id}"]`).click();
+      } else if (s === 'wcard') await page.locator(`.bs-wcard[data-weather="${await page.locator('.bs-wcards').getAttribute('data-want')}"]`).click();
+      else if (s === 'wbtn') await page.locator(`.bs-fix[data-fix="${await page.locator('.bs-dash').getAttribute('data-want')}"]`).click();
+      await expect(play(page)).not.toHaveAttribute('data-state', s, { timeout: 15000 }).catch(() => {});
+    } else await page.waitForTimeout(150);
+  }
+  throw new Error(`không tới ${re}`);
+}
+
+test('JOBS6-07: xe buýt mức 1 — một đồ là dấu hiệu, chủ thiếu đúng đồ đó + ❓; chạm nhầm "Not mine!" không tính nhầm; trả đúng → ghi tiến độ', async ({ page }) => {
+  await openBus(page, 1);
+  await playBusUntil(page, /^lost$/);
+  await expect(page.locator('.bs-queue .bs-person')).toHaveCount(3);
+  const owner = await page.locator('.bs-queue').getAttribute('data-want');
+  const ownerEl = page.locator(`.bs-queue [data-id="${owner}"]`);
+  const item = await ownerEl.getAttribute('data-without');
+  expect(['glasses', 'hat', 'bag']).toContain(item);
+  await expect(ownerEl).toHaveClass(/asking/);
+  await expect(page.locator('.bs-queue .bs-person.asking')).toHaveCount(1);
+  await expect(page.locator('.bs-queue [data-without=""]')).toHaveCount(2);
+  await expect(page.locator(`.bs-seat [data-item="${item}"]`)).toHaveCount(1);
+  await expect.poll(async () => (await spoken(page)).some((t) => t === `Oh! ${item === 'glasses' ? 'Glasses' : `A ${item}`}! Whose ${item}?`)).toBe(true);
+  await page.locator(`.bs-queue .bs-person:not([data-id="${owner}"])`).first().click();
+  await expect.poll(async () => (await spoken(page)).some((t) => t === 'Not mine!' || t === 'Goo-goo!')).toBe(true);
+  await stateIs(page, 'lost');
+  await ownerEl.click();
+  await expect.poll(() => spoken(page)).toContain(`My ${item}! Thank you!`);
+  await expect(page.locator('.jb-play.jb-done')).toHaveCount(1, { timeout: 20000 });
+  expect((await page.evaluate(() => window.kidEnglish.settings.busGame)).seen[item]).toBe(1); // nhầm ở mức 1 không tính
+});
+
+test('JOBS6-08: xe buýt mức 1 — bé không chạm → sau 2 lần nhắc chủ tự lấy, không ghi tiến độ, lượt vẫn xong', async ({ page }) => {
+  await openBus(page, 1);
+  await playBusUntil(page, /^lost$/);
+  const item = await page.locator(`.bs-queue [data-id="${await page.locator('.bs-queue').getAttribute('data-want')}"]`).getAttribute('data-without');
+  await expect(page.locator('.jb-play.jb-done')).toHaveCount(1, { timeout: 60000 });
+  expect(await spoken(page)).toContain(`My ${item}! Thank you!`);
+  expect((await page.evaluate(() => window.kidEnglish.settings.busGame)).seen[item]).toBeUndefined();
 });
