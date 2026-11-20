@@ -1,7 +1,7 @@
 // 🦸 Siêu nhân an toàn (SPEC-safety.md, S1 0.84.0, S2 0.85.0): mỗi lượt 3–5 tình huống. Bông định làm một việc rồi hỏi; mức 1
 // bé chạm ✋ No! / 👍 Yes!, mức 2 bé chọn tranh an toàn trong hai tranh; mức 3 (bố mẹ khóa) là 2 chuyện × 2 bước như mức 2,
 // bước 2 có hình nhỏ nhắc lại bước 1, sau mỗi bước có lượt "Say it!" tùy chọn (không ghi gì). Đúng → câu giải thích → thao tác sửa (chạm hoặc kéo) →
-// ⭐ lên áo choàng Bông; đủ sao → "Thank you, Safety Hero!" → sticker. Nhầm: Bông đứng sững, gợi ý, hỏi lại; không âm "sai".
+// ⭐ lên hàng sao; đủ sao → "Thank you, Safety Hero!" → sticker. Nhầm: Bông đứng sững, gợi ý, hỏi lại; không âm "sai".
 // Bông không bao giờ làm việc nguy hiểm trên màn hình. Trạng thái: ask | pick → right → fix → fixed → (tình huống sau) | hero.
 // Hết lượt: album huy hiệu (huy hiệu mới nảy lên). Ảnh của bố mẹ (Góc bố mẹ → Ảnh Siêu nhân an toàn) thay từng hình / nền.
 // 🫶 Cơ thể của bé (SPEC-body, bố mẹ bật): tình huống `gentle` luôn chơi kiểu No / Yes ở mọi mức, câu hỏi đọc chậm,
@@ -243,7 +243,6 @@ export function safetyScreen(app, params = {}) {
     else if (art.emoji) el.append(h('span.sf-emo', { text: art.emoji, 'aria-hidden': 'true' }));
     else el.innerHTML = art.svg;
     for (const c of String(s.cls ?? '').split(' ').filter(Boolean)) el.classList.add(c);
-    if (s.k === 'bong' && !opts.mini) el.classList.add('caped');
     return el;
   }
   function drawScene(root, list, sceneCls, rl, opts) {

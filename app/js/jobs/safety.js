@@ -947,9 +947,9 @@ export const SAFETY_PEOPLE_IMAGES = 'safety:people';
 export const SAFETY_ITEM_IMAGES = 'safety:items';
 export const SAFETY_BG_IMAGES = 'safety:bg';
 const PERSON_RULES = 'Full body, standing, facing the viewer, cheerful, cute children\'s picture-book style, thick dark outline, soft flat colors. Pure flat white (#FFFFFF) background, no shadow, no scenery, no text.';
-/** Người: Bông (áo choàng đỏ vẽ thêm trong app), mẹ, bố. */
+/** Người: Bông, mẹ, bố. */
 export const SAFETY_PEOPLE = [
-  { id: 'bong', vi: 'Bông', emoji: '🐰', prompt: `A small cute plush bunny character named Bong for a toddler app. ${PERSON_RULES} No cape (the app adds a red superhero cape).` },
+  { id: 'bong', vi: 'Bông', emoji: '🐰', prompt: `A small cute plush bunny character named Bong for a toddler app. ${PERSON_RULES} No cape.` },
   { id: 'mummy', vi: 'Mẹ', emoji: '👩', prompt: `A friendly young Vietnamese mom in casual clothes, smiling. ${PERSON_RULES}` },
   { id: 'daddy', vi: 'Bố', emoji: '👨', prompt: `A friendly young Vietnamese dad in casual clothes, smiling. ${PERSON_RULES}` },
 ];

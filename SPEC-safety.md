@@ -24,7 +24,7 @@
 
 ## 1. Ý tưởng — vì sao không gò ép
 
-- **Bé là người giúp, không phải người bị dạy.** Người định làm việc nguy hiểm là **Bông** (hơi nghịch, khoác áo choàng siêu nhân). Bông hỏi *"Can I touch it?"*, bé là **Safety Hero** trả lời ✋ **No!** hoặc 👍 **Yes!**. Bé được làm người lớn, không bị mắng.
+- **Bé là người giúp, không phải người bị dạy.** Người định làm việc nguy hiểm là **Bông** (hơi nghịch). Bông hỏi *"Can I touch it?"*, bé là **Safety Hero** trả lời ✋ **No!** hoặc 👍 **Yes!**. Bé được làm người lớn, không bị mắng.
 - **Không chỉ có "không".** Mỗi lượt có cả việc **nên làm** (đội mũ, nắm tay bố, rửa tay, tắt TV khi chuông kêu). Câu "No!" luôn kèm việc nên làm thay (*"No! Sharp! Call Mommy."*).
 - **Chu trình 5 bước (review 3+):**
   1. **Nhìn** tình huống.
@@ -78,7 +78,7 @@ Ví dụ: chỉ bật 🚦 (2 🚫 + 3 ✅) → lượt 5 = 2 🚫 + 3 ✅; tắ
 4. Chạm đúng:
    - 🚫: Bông **phanh két** ngay chỗ đang đứng, *"Oops!"*, câu giải thích;
    - ✅: Bông nhảy vui, câu giải thích.
-5. **Thao tác sửa** (mục 5) → ⭐ lên áo choàng → tình huống sau.
+5. **Thao tác sửa** (mục 5) → ⭐ lên hàng sao → tình huống sau.
 
 Chạm nhầm:
 - 🚫 mà chạm 👍: Bông **đứng sững** ngay chỗ đang đứng (không đi tiếp, không chạm đồ), đồ vật lóe sáng, câu gợi ý (*"Hmm… wait! It's sharp!"*). Hai nút vẫn chọn được.
@@ -205,7 +205,7 @@ Emoji: kiểm tra trên Windows, iPad, Android (bài học quả ô liu 🫒). K
 
 ## 6. Thưởng
 
-- Mỗi tình huống xong: một ⭐ lên hàng sao áo choàng (số ⭐ = độ dài lượt, 3–5).
+- Mỗi tình huống xong: một ⭐ lên hàng sao (số ⭐ = độ dài lượt, 3–5).
 - Đủ ⭐: Bông bay một vòng, *"Thank you, Safety Hero!"*, sticker như các trò khác.
 - **Album "🦸 Safety Hero"** (S2): mỗi chủ đề một huy hiệu. Huy hiệu là **thành tích chơi game**, không phải chứng nhận bé đã có kỹ năng an toàn ngoài đời.
 - Không trừ sao, không có màn "thua".

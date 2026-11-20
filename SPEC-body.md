@@ -146,6 +146,6 @@ Câu hỏi ≤ 7 từ, giải thích ≤ 7 từ, nhắc lại ≤ 4 từ (luật
 ## 13. Ghi chú khi làm (0.87.0)
 - Tình huống 🫶 có cờ `gentle` (gộp `viAlways` ở mục 8): luôn No / Yes ở mọi mức, câu hỏi tiếng Anh đọc chậm (× 0.85, cả khi bé bấm 🔊 hỏi lại), tiếng Việt luôn đọc, không *"Oops!"*. `after`: câu *"You did right. It's not your fault."* / *"Con kể là đúng rồi. Không phải lỗi của con."* sau `secret`, `no-touch`.
 - Bốc lượt: `planRound` / `planStory` mặc định `off = OPT_IN_TOPICS`; màn chơi truyền `offTopics(state)`. `TOPIC_CAP.body = 2` (bỏ giới hạn khi chỉ còn 🫶). Xếp thứ tự: ít cặp cùng chủ đề trước, rồi ít chuỗi 3 cùng loại (`kindRuns`).
-- Hình: đồ bơi là emoji 🩱 trên áo choàng Bông (class `swim`), khăn tắm kéo lên Bông (`worn`), bồn tắm vẽ phía trước (chỉ thấy đầu Bông), bong bóng 🤗 / 🤫 / ❓, bàn tay 🖐️ hiện khi tới bước sửa (đứng riêng, không chạm Bông). Ảnh thay được: khăn, giá khăn, bồn tắm, vịt, bọt, bàn khám, ống nghe, nền `bath` / `clinic`.
+- Hình: đồ bơi là emoji 🩱 trên người Bông (class `swim`), khăn tắm kéo lên Bông (`worn`), bồn tắm vẽ phía trước (chỉ thấy đầu Bông), bong bóng 🤗 / 🤫 / ❓, bàn tay 🖐️ hiện khi tới bước sửa (đứng riêng, không chạm Bông). Ảnh thay được: khăn, giá khăn, bồn tắm, vịt, bọt, bàn khám, ống nghe, nền `bath` / `clinic`.
 - Cài đặt: dòng 🫶 riêng dưới các chủ đề; bật → hộp [Thôi] [Đọc gợi ý] [Bật] (`confirmDialog` có `extraText`); không có trong "Chủ đề ưu tiên". Trang "Nói thêm với bé" luôn có 🫶 (bố mẹ đọc trước khi bật).
 - Test: unit BODY (bảng, nâng cấp, 500 seed, huy hiệu), UI BODY-01…07.
